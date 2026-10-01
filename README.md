@@ -117,3 +117,6 @@ personalized recommendations, interactions with other users,
 or (if implemented) AI-generated quizzes, require an internet connection, 
 although previously synchronized shared information can still be viewed 
 offline where appropriate.
+
+## Figma
+For the design of the app, we have created a Figma project which includes mockups and tracks the design work. You can access it using this [link](https://www.figma.com/design/6Gggv7H9nuavBmqqvplxkD/DidYouStudy-?node-id=0-1&t=iAHZkCCt5bS0c0vp-1).
