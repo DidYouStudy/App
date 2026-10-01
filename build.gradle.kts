@@ -10,5 +10,6 @@ plugins {
 sonar {
     properties {
         property("sonar.organization", "didyoustudy")
+        property("sonar.projectKey", "DidYouStudy_App")
     }
 }
