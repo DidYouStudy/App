@@ -4,7 +4,7 @@ plugins {
     alias(libs.plugins.jetbrainsKotlinAndroid) apply false
     alias(libs.plugins.kotlinCompose) apply false
     alias(libs.plugins.ktfmt) apply false
-    id("org.sonarqube") version "7.3.1.8318"
+    alias(libs.plugins.sonar)
 }
 
 sonar {
