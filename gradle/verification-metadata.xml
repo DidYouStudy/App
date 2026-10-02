@@ -8,6 +8,12 @@
          <key-server uri="https://keyserver.ubuntu.com"/>
          <key-server uri="https://keys.openpgp.org"/>
       </key-servers>
+      <trusted-artifacts>
+         <trust file=".*-sources[.]jar" regex="true"/>
+         <trust file=".*-javadoc[.]jar" regex="true"/>
+         <!-- Android Studio also downloads Gradle sources -->
+         <trust group="gradle" name="gradle"/>
+      </trusted-artifacts>
       <trusted-keys>
          <trusted-key id="04543577D6A9CC626239C50C7ECBD740FF06AEB5">
             <trusting group="org.glassfish.jaxb"/>
