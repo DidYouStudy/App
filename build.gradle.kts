@@ -13,3 +13,5 @@ sonar {
         property("sonar.projectKey", "DidYouStudy_App")
     }
 }
+
+tasks.named("sonar") { dependsOn("jacocoTestReport") }
