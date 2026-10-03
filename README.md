@@ -120,3 +120,6 @@ offline where appropriate.
 
 ## Figma
 For the design of the app, we have created a Figma project which includes mockups and tracks the design work. You can access it using this [link](https://www.figma.com/design/6Gggv7H9nuavBmqqvplxkD/DidYouStudy-?node-id=0-1&t=iAHZkCCt5bS0c0vp-1).
+
+## Architecture Design
+You can access the architecture design of the app in the same Figma project, or using the following [link](https://www.figma.com/design/6Gggv7H9nuavBmqqvplxkD/DidYouStudy-?node-id=127-449&t=cvg3umobGP4bajTg-1).
