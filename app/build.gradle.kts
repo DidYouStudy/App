@@ -1,3 +1,4 @@
+// Co-authored-by: Gemini AI Agent
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
