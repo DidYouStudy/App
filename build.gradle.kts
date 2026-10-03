@@ -14,4 +14,4 @@ sonar {
     }
 }
 
-tasks.named("sonar") { dependsOn("app:jacocoTestReport") }
+tasks.named("sonar") { dependsOn(":app:jacocoTestReport") }
