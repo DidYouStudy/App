@@ -4,7 +4,6 @@ plugins {
   alias(libs.plugins.androidApplication)
   alias(libs.plugins.kotlinCompose)
   alias(libs.plugins.ktfmt)
-  alias(libs.plugins.sonar)
   id("jacoco")
 }
 
@@ -85,23 +84,22 @@ kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
 
 sonar {
   properties {
-    property("sonar.host.url", "https://sonarcloud.io")
     // Comma-separated paths to the various directories containing the *.xml JUnit report files.
     // Each path may be absolute or relative to the project base directory.
     property(
         "sonar.junit.reportPaths",
-        "${project.layout.buildDirectory.get()}/test-results/testDebugUnitTest/",
+        "${layout.buildDirectory.get().asFile.absolutePath}/test-results/testDebugUnitTest/",
     )
     // Paths to xml files with Android Lint issues. If the main flavor is changed, this file will
     // have to be changed too.
     property(
         "sonar.androidLint.reportPaths",
-        "${project.layout.buildDirectory.get()}/reports/lint-results-debug.xml",
+        "${layout.buildDirectory.get().asFile.absolutePath}/reports/lint-results-debug.xml",
     )
     // Paths to JaCoCo XML coverage report files.
     property(
         "sonar.coverage.jacoco.xmlReportPaths",
-        "${project.layout.buildDirectory.get()}/reports/jacoco/jacocoTestReport/jacocoTestReport.xml",
+        "${layout.buildDirectory.get().asFile.absolutePath}/reports/jacoco/jacocoTestReport/jacocoTestReport.xml",
     )
   }
 }
@@ -165,6 +163,9 @@ tasks.register("jacocoTestReport", JacocoReport::class) {
   reports {
     xml.required = true
     html.required = true
+    xml.outputLocation.set(
+        layout.buildDirectory.file("reports/jacoco/jacocoTestReport/jacocoTestReport.xml")
+    )
   }
 
   val fileFilter =
@@ -178,7 +179,7 @@ tasks.register("jacocoTestReport", JacocoReport::class) {
       )
 
   val debugTree =
-      fileTree("${project.layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
+      fileTree("${layout.buildDirectory.get().asFile.absolutePath}/tmp/kotlin-classes/debug") {
         exclude(fileFilter)
       }
 
@@ -186,9 +187,9 @@ tasks.register("jacocoTestReport", JacocoReport::class) {
   sourceDirectories.setFrom(files(mainSrc))
   classDirectories.setFrom(files(debugTree))
   executionData.setFrom(
-      fileTree(project.layout.buildDirectory.get()) {
+      fileTree(layout.buildDirectory.get().asFile.absolutePath) {
         include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
-        include("outputs/code_coverage/debugAndroidTest/connected/*/coverage.ec")
+        include("outputs/code_coverage/debugAndroidTest/connected/*/*.ec")
       }
   )
 }

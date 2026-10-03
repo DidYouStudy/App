@@ -11,6 +11,8 @@ sonar {
     properties {
         property("sonar.organization", "didyoustudy")
         property("sonar.projectKey", "DidYouStudy_App")
+        property("sonar.host.url", "https://sonarcloud.io")
+        property("sonar.sourceEncoding", "UTF-8")
     }
 }
 
