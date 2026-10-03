@@ -1,10 +1,10 @@
+// Co-authored-by: Gemini AI Agent
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
   alias(libs.plugins.androidApplication)
   alias(libs.plugins.kotlinCompose)
   alias(libs.plugins.ktfmt)
-  alias(libs.plugins.sonar)
   id("jacoco")
 }
 
@@ -25,7 +25,8 @@ android {
 
   buildTypes {
     release {
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(
           getDefaultProguardFile("proguard-android-optimize.txt"),
           "proguard-rules.pro",
@@ -84,26 +85,22 @@ kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
 
 sonar {
   properties {
-    property("sonar.projectKey", "gf_android-sample")
-    property("sonar.projectName", "Android-Sample")
-    property("sonar.organization", "gabrielfleischer")
-    property("sonar.host.url", "https://sonarcloud.io")
     // Comma-separated paths to the various directories containing the *.xml JUnit report files.
     // Each path may be absolute or relative to the project base directory.
     property(
         "sonar.junit.reportPaths",
-        "${project.layout.buildDirectory.get()}/test-results/testDebugunitTest/",
+        "${layout.buildDirectory.get().asFile.absolutePath}/test-results/testDebugUnitTest/",
     )
     // Paths to xml files with Android Lint issues. If the main flavor is changed, this file will
     // have to be changed too.
     property(
         "sonar.androidLint.reportPaths",
-        "${project.layout.buildDirectory.get()}/reports/lint-results-debug.xml",
+        "${layout.buildDirectory.get().asFile.absolutePath}/reports/lint-results-debug.xml",
     )
     // Paths to JaCoCo XML coverage report files.
     property(
         "sonar.coverage.jacoco.xmlReportPaths",
-        "${project.layout.buildDirectory.get()}/reports/jacoco/jacocoTestReport/jacocoTestReport.xml",
+        "${layout.buildDirectory.get().asFile.absolutePath}/reports/jacoco/jacocoTestReport/jacocoTestReport.xml",
     )
   }
 }
@@ -161,11 +158,15 @@ tasks.withType<Test> {
 }
 
 tasks.register("jacocoTestReport", JacocoReport::class) {
+  dependsOn("testDebugUnitTest")
   mustRunAfter("testDebugUnitTest", "connectedDebugAndroidTest")
 
   reports {
     xml.required = true
     html.required = true
+    xml.outputLocation.set(
+        layout.buildDirectory.file("reports/jacoco/jacocoTestReport/jacocoTestReport.xml")
+    )
   }
 
   val fileFilter =
@@ -179,17 +180,19 @@ tasks.register("jacocoTestReport", JacocoReport::class) {
       )
 
   val debugTree =
-      fileTree("${project.layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
+      fileTree(layout.buildDirectory.dir("intermediates/built_in_kotlinc/debug")) {
         exclude(fileFilter)
-      }
+      } +
+          fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) { exclude(fileFilter) } +
+          fileTree(layout.buildDirectory.dir("intermediates/javac/debug")) { exclude(fileFilter) }
 
   val mainSrc = "${project.layout.projectDirectory}/src/main/java"
   sourceDirectories.setFrom(files(mainSrc))
   classDirectories.setFrom(files(debugTree))
   executionData.setFrom(
-      fileTree(project.layout.buildDirectory.get()) {
+      fileTree(layout.buildDirectory.get().asFile.absolutePath) {
         include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
-        include("outputs/code_coverage/debugAndroidTest/connected/*/coverage.ec")
+        include("outputs/code_coverage/debugAndroidTest/connected/*/*.ec")
       }
   )
 }
