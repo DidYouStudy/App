@@ -14,7 +14,6 @@ sonar {
         property("sonar.host.url", "https://sonarcloud.io")
         property("sonar.sourceEncoding", "UTF-8")
         property("sonar.exclusions", "**/res/**/*.webp,**/res/**/*.png,**/res/**/*.jpg,**/build/**")
-        property("sonar.coverage.jacoco.xmlReportPaths", "app/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml")
     }
 }
 
