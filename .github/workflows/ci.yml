@@ -1,3 +1,4 @@
+# Co-authored-by: Gemini AI Agent
 name: CI - Test Runner
 
 # Run the workflow when commits are pushed on main or when a PR is modified
@@ -106,11 +107,11 @@ jobs:
       # This step generates the coverage report which will be uploaded to sonar
       - name: Generate Coverage Report
         run: |
-          ./gradlew jacocoTestReport
+          ./gradlew :app:jacocoTestReport
 
       # Upload the various reports to sonar
       - name: Upload report to SonarCloud
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: ./gradlew app:jacocoTestReport sonar --parallel --build-cache
+        run: ./gradlew sonar --parallel --build-cache
