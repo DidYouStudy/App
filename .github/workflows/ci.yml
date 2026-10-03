@@ -1,3 +1,4 @@
+# Co-authored-by: Gemini AI Agent
 name: CI - Test Runner
 
 # Run the workflow when commits are pushed on main or when a PR is modified
@@ -45,7 +46,7 @@ jobs:
       #
       # To avoid that, we cache the the gradle folder to reuse it later.
       - name: Gradle cache
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
 
       # Cache the Emulator, if the cache does not hit, create the emulator.
       # API 34 matches targetSdk. compileSdk 37 is only the compile platform.
@@ -60,7 +61,7 @@ jobs:
 
       - name: create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
         with:
           api-level: 34
           target: google_apis
@@ -93,7 +94,7 @@ jobs:
 
       # Run connected tests on the emulator
       - name: run tests
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
         with:
           api-level: 34
           target: google_apis
@@ -106,7 +107,7 @@ jobs:
       # This step generates the coverage report which will be uploaded to sonar
       - name: Generate Coverage Report
         run: |
-          ./gradlew jacocoTestReport
+          ./gradlew :app:jacocoTestReport
 
       # Upload the various reports to sonar
       - name: Upload report to SonarCloud
