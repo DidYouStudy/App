@@ -28,7 +28,7 @@ jobs:
           fetch-depth: 0
       - name: Test CI routing
         run: |
-          python3 -m pip install coverage==7.10.6
+          python3 -m pip install --only-binary :all: coverage==7.10.6
           python3 -m coverage run --source=.github/scripts -m unittest discover -s .github/scripts -p 'test_*.py'
           python3 -m coverage report --fail-under=90
           python3 -m coverage xml -o build/reports/ci/coverage.xml
