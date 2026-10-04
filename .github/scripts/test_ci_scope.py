@@ -1,7 +1,9 @@
 # Co-authored-by: Codex AI Agent
+import io
+import json
 import unittest
 
-from ci_scope import ci_passes, requires_android_ci
+from ci_scope import ci_passes, main, requires_android_ci
 
 
 class ScopeTests(unittest.TestCase):
@@ -51,6 +53,36 @@ class StatusTests(unittest.TestCase):
     def test_missing_or_invalid_scope_fails(self):
         for scope in (None, "", "invalid"):
             self.assertFalse(ci_passes(self.needs(scope)))
+
+
+class CommandTests(unittest.TestCase):
+    def test_changes_read_nul_delimited_paths(self):
+        for data, expected in (
+            (b"", "false"),
+            (b"README.md\0docs/setup.md\0", "false"),
+            (b"README.md\0app/file\nname.kt\0", "true"),
+            (b"app/non-utf8-\xff.kt\0", "true"),
+        ):
+            with self.subTest(data=data):
+                stdin = io.TextIOWrapper(io.BytesIO(data))
+                stdout = io.StringIO()
+                self.assertEqual(0, main(["changes"], stdin, stdout))
+                self.assertEqual(f"android={expected}\n", stdout.getvalue())
+
+    def test_status_returns_correct_exit_code(self):
+        for result, expected in (("success", 0), ("failure", 1)):
+            needs = StatusTests().needs(result=result)
+            stdout = io.StringIO()
+            self.assertEqual(
+                expected, main(["status"], io.StringIO(json.dumps(needs)), stdout)
+            )
+            self.assertTrue(stdout.getvalue())
+
+    def test_invalid_arguments_fail(self):
+        for argv in ([], ["unknown"], ["changes", "extra"]):
+            stdout = io.StringIO()
+            self.assertEqual(1, main(argv, io.StringIO(), stdout))
+            self.assertIn("Usage:", stdout.getvalue())
 
 
 if __name__ == "__main__":

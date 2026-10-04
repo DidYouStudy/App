@@ -31,23 +31,30 @@ def ci_passes(needs):
     )
 
 
-if __name__ == "__main__":
-    if sys.argv[1] == "changes":
+def main(argv, stdin, stdout):
+    if argv == ["changes"]:
         paths = [
             p
-            for p in sys.stdin.buffer.read()
+            for p in stdin.buffer.read()
             .decode("utf-8", errors="surrogateescape")
             .split("\0")
             if p
         ]
-        print(f"android={str(requires_android_ci(paths)).lower()}")
-    elif sys.argv[1] == "status":
-        passed = ci_passes(json.load(sys.stdin))
+        print(f"android={str(requires_android_ci(paths)).lower()}", file=stdout)
+        return 0
+    elif argv == ["status"]:
+        passed = ci_passes(json.load(stdin))
         print(
             "CI passed."
             if passed
-            else "A required CI job failed, was cancelled, or unexpectedly skipped."
+            else "A required CI job failed, was cancelled, or unexpectedly skipped.",
+            file=stdout,
         )
-        sys.exit(0 if passed else 1)
+        return 0 if passed else 1
     else:
-        sys.exit("Usage: ci_scope.py changes|status")
+        print("Usage: ci_scope.py changes|status", file=stdout)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:], sys.stdin, sys.stdout))

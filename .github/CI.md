@@ -36,7 +36,9 @@ The successful main run [37125016168](https://github.com/DidYouStudy/App/actions
 
 The required status check keeps the name `CI`. It succeeds only when all three
 Android jobs succeed, or when a successfully classified documentation-only
-change skips all three. Routing unit tests run on every invocation.
+change skips all three. Routing unit tests run on every invocation, require at
+least 90% Python coverage, and transfer their XML report to Sonar alongside
+the Android coverage.
 Only root Markdown files and Markdown under `docs/` are documentation-only;
 assets, resources, scripts, dependency files and unknown paths run full CI.
 Missing comparison commits also run full CI. Renames are compared as deletion
