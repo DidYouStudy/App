@@ -1,55 +1,103 @@
 # Co-authored-by: Gemini AI Agent
+# Co-authored-by: Codex AI Agent
 name: CI - Test Runner
 
-# Run the workflow when commits are pushed on main or when a PR is modified
 on:
   push:
-    branches:
-      - main
-
+    branches: [main]
   pull_request:
-    types:
-      - opened
-      - synchronize
-      - reopened
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+# Cancel obsolete PR runs; let every main commit finish and populate shared caches.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  ci:
-    name: CI
-    # Execute the CI on the course's runners
-    runs-on: ubuntu-latest
-
+  changes:
+    name: Determine CI scope
+    runs-on: ubuntu-24.04
+    outputs:
+      android: ${{ steps.scope.outputs.android }}
     steps:
-      # First step : Checkout the repository on the runner
-      - name: Checkout
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Test CI routing
+        run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
+      - name: Detect build-relevant changes
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          # Missing/deleted base commits must run the full suite.
+          if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]] || ! git cat-file -e "$BASE_SHA^{commit}"; then
+            echo 'android=true' >> "$GITHUB_OUTPUT"
+          else
+            git diff --no-renames --name-only -z "$BASE_SHA" "$HEAD_SHA" |
+              python3 .github/scripts/ci_scope.py changes >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    name: Build, lint and unit tests
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
-          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of Sonar analysis (if we use Sonar Later)
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
+        with:
+          # Optional: cross-run configuration caching requires an AES key secret.
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+      - name: Build and verify all variants
+        run: ./gradlew ktfmtCheck assemble lint check --parallel --build-cache --configuration-cache
+      - name: Upload unit coverage, bytecode and analysis reports
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: build-analysis
+          retention-days: 1
+          if-no-files-found: error
+          path: |
+            app/build/intermediates/built_in_kotlinc/
+            app/build/intermediates/javac/
+            app/build/tmp/kotlin-classes/
+            app/build/outputs/unit_test_code_coverage/
+            app/build/test-results/
+            app/build/reports/
 
-
-      # Kernel-based Virtual Machine (KVM) is an open source virtualization technology built into Linux. Enabling it allows the Android emulator to run faster.
-      - name: Enable KVM group perms
+  android-tests:
+    name: Android tests
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-
-      - name: Setup JDK
-        uses: actions/setup-java@v6
+      - uses: actions/setup-java@v6
         with:
-          distribution: "temurin"
-          java-version: "21"
-
-      # Caching is a very useful part of a CI, as a workflow is executed in a clean environment every time,
-      # this means that one would need to re-download and re-process gradle files for every run. Which is very time consuming.
-      #
-      # To avoid that, we cache the the gradle folder to reuse it later.
-      - name: Gradle cache
-        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
-
-      # Cache the Emulator, if the cache does not hit, create the emulator.
-      # API 34 matches targetSdk. compileSdk 37 is only the compile platform.
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
+      - name: Prepare test APKs before starting emulator
+        run: ./gradlew assembleDebug assembleDebugAndroidTest --parallel --build-cache
       - name: AVD cache
         uses: actions/cache@v6
         id: avd-cache
@@ -57,9 +105,9 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-34
-
-      - name: create AVD and generate snapshot for caching
+          # Bump v2 when the emulator or system image becomes incompatible.
+          key: avd-${{ runner.os }}-${{ runner.arch }}-34-google_apis-x86_64-v2
+      - name: Create cached AVD snapshot
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
         with:
@@ -69,31 +117,8 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
-          script: echo "Generated AVD snapshot for caching."
-
-      - name: Grant execute permission for gradlew
-        run: |
-          chmod +x ./gradlew
-
-      # Check formatting
-      - name: KTFmt Check
-        run: |
-          ./gradlew ktfmtCheck
-
-      # This step runs gradle commands to build the application
-      - name: Assemble
-        run: |
-          # To run the CI with debug information, add --info
-          ./gradlew assemble lint --parallel --build-cache
-
-      # Run Unit tests
-      - name: Run tests
-        run: |
-          # To run the CI with debug information, add --info
-          ./gradlew check --parallel --build-cache
-
-      # Run connected tests on the emulator
-      - name: run tests
+          script: echo 'Generated AVD snapshot for caching.'
+      - name: Run connected tests
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
         with:
           api-level: 34
@@ -102,16 +127,53 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: ./gradlew connectedCheck --parallel --build-cache
+          script: ./gradlew connectedDebugAndroidTest --parallel --build-cache
+      - name: Upload connected coverage
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: connected-coverage
+          retention-days: 1
+          if-no-files-found: error
+          path: app/build/outputs/code_coverage/
 
-      # This step generates the coverage report which will be uploaded to sonar
-      - name: Generate Coverage Report
-        run: |
-          ./gradlew :app:jacocoTestReport
-
-      # Upload the various reports to sonar
-      - name: Upload report to SonarCloud
+  analysis:
+    name: Combined coverage and SonarCloud
+    needs: [build, android-tests]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: build-analysis
+          path: app/build
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: connected-coverage
+          path: app/build/outputs/code_coverage
+      - name: Generate combined coverage and upload analysis
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: ./gradlew sonar --parallel --build-cache
+        # Unit tests already ran in build; use their transferred execution data.
+        run: ./gradlew sonar -x :app:testDebugUnitTest --parallel --build-cache
+
+  ci:
+    name: CI
+    if: always()
+    needs: [changes, build, android-tests, analysis]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Report required CI result
+        env:
+          JOB_RESULTS: ${{ toJSON(needs) }}
+        run: printf '%s' "$JOB_RESULTS" | python3 .github/scripts/ci_scope.py status
