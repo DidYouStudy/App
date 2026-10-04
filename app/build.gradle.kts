@@ -1,4 +1,5 @@
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Codex AI Agent
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -6,6 +7,7 @@ plugins {
   alias(libs.plugins.kotlinCompose)
   alias(libs.plugins.ktfmt)
   id("jacoco")
+  id("com.google.gms.google-services")
 }
 
 android {
@@ -23,6 +25,15 @@ android {
     vectorDrawables { useSupportLibrary = true }
   }
 
+  signingConfigs {
+    getByName("debug") {
+      storeFile = file("debug.keystore")
+      storePassword = "android"
+      keyAlias = "androiddebugkey"
+      keyPassword = "android"
+    }
+  }
+
   buildTypes {
     release {
       isMinifyEnabled = true
@@ -34,6 +45,7 @@ android {
     }
 
     debug {
+      signingConfig = signingConfigs.getByName("debug")
       enableUnitTestCoverage = true
       enableAndroidTestCoverage = true
     }
@@ -112,6 +124,13 @@ fun DependencyHandlerScope.globalTestImplementation(dep: Any) {
 }
 
 dependencies {
+  implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
+  implementation(libs.firebase.auth)
+  implementation(libs.androidx.credentials)
+  implementation(libs.androidx.credentials.play.services.auth)
+  implementation(libs.googleid)
+  implementation(libs.kotlinx.coroutines.play.services)
+
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.appcompat)
   implementation(libs.material)

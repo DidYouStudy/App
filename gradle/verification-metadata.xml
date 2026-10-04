@@ -13,6 +13,15 @@
          <trust file=".*-javadoc[.]jar" regex="true"/>
          <!-- Android Studio also downloads Gradle sources -->
          <trust group="gradle" name="gradle"/>
+         <trust group="^com[.]google[.]gms($|([.].*))" regex="true"/>
+         <trust group="^com[.]google[.]android[.]gms($|([.].*))" regex="true"/>
+         <trust group="^com[.]google[.]firebase($|([.].*))" regex="true"/>
+         <trust group="^androidx([.].*)?$" regex="true"/>
+         <trust group="^com[.]google[.]android[.]libraries[.]identity[.]googleid($|([.].*))" regex="true"/>
+         <trust group="^com[.]google[.]android[.]play($|([.].*))" regex="true"/>
+         <trust group="^com[.]google[.]android[.]recaptcha($|([.].*))" regex="true"/>
+         <trust group="^com[.]squareup[.]okio($|([.].*))" regex="true"/>
+         <trust group="^org[.]jetbrains[.]kotlinx($|([.].*))" regex="true"/>
       </trusted-artifacts>
       <trusted-keys>
          <trusted-key id="04543577D6A9CC626239C50C7ECBD740FF06AEB5">
