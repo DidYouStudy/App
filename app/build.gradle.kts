@@ -1,10 +1,12 @@
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Claude Opus 5.5
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
   alias(libs.plugins.androidApplication)
   alias(libs.plugins.kotlinCompose)
   alias(libs.plugins.ktfmt)
+  alias(libs.plugins.googleServices)
   id("jacoco")
 }
 
@@ -147,6 +149,14 @@ dependencies {
 
   // ----------       Robolectric     ------------
   testImplementation(libs.robolectric)
+
+  // ---------------- Firebase -------------------
+  implementation(platform(libs.firebase.bom))
+  implementation(libs.firebase.auth)
+  implementation(libs.firebase.firestore)
+  implementation(libs.firebase.storage)
+  // Task.await() for suspend-based repositories
+  implementation(libs.kotlinx.coroutines.play.services)
 }
 
 tasks.withType<Test> {
