@@ -5,7 +5,6 @@ plugins {
   alias(libs.plugins.androidApplication)
   alias(libs.plugins.kotlinCompose)
   alias(libs.plugins.ktfmt)
-  alias(libs.plugins.sonar)
   id("jacoco")
 }
 
@@ -86,11 +85,6 @@ kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
 
 sonar {
   properties {
-    property("sonar.projectKey", "DidYouStudy_App")
-    property("sonar.organization", "didyoustudy")
-    property("sonar.host.url", "https://sonarcloud.io")
-    property("sonar.sourceEncoding", "UTF-8")
-    property("sonar.exclusions", "**/.webp, **/.png, **/.jpg, **/.keystore, /build/")
     // Comma-separated paths to the various directories containing the *.xml JUnit report files.
     // Each path may be absolute or relative to the project base directory.
     property(

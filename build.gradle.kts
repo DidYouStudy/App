@@ -14,7 +14,7 @@ sonar {
         property("sonar.projectKey", "DidYouStudy_App")
         property("sonar.host.url", "https://sonarcloud.io")
         property("sonar.sourceEncoding", "UTF-8")
-        property("sonar.exclusions", "**/res/**/*.webp,**/res/**/*.png,**/res/**/*.jpg,**/build/**")
+        property("sonar.exclusions", "**/*.webp,**/*.png,**/*.jpg,**/*.keystore,**/build/**")
     }
 }
 
