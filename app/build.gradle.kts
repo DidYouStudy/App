@@ -147,8 +147,11 @@ dependencies {
   globalTestImplementation(libs.kaspresso)
   globalTestImplementation(libs.kaspresso.compose)
 
-  // ----------       Robolectric     ------------
+  // ----------       Robolectric & Mocking     ------------
   testImplementation(libs.robolectric)
+  testImplementation(libs.mockito.core)
+  testImplementation(libs.mockito.kotlin)
+  testImplementation(libs.coroutines.test)
 
   // ---------------- Firebase -------------------
   implementation(platform(libs.firebase.bom))
