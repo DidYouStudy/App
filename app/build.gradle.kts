@@ -1,5 +1,6 @@
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Codex AI Agent
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -25,6 +26,15 @@ android {
     vectorDrawables { useSupportLibrary = true }
   }
 
+  signingConfigs {
+    getByName("debug") {
+      storeFile = file("debug.keystore")
+      storePassword = "android"
+      keyAlias = "androiddebugkey"
+      keyPassword = "android"
+    }
+  }
+
   buildTypes {
     release {
       isMinifyEnabled = true
@@ -36,6 +46,7 @@ android {
     }
 
     debug {
+      signingConfig = signingConfigs.getByName("debug")
       enableUnitTestCoverage = true
       enableAndroidTestCoverage = true
     }
@@ -114,12 +125,18 @@ fun DependencyHandlerScope.globalTestImplementation(dep: Any) {
 }
 
 dependencies {
+  implementation(libs.androidx.credentials)
+  implementation(libs.androidx.credentials.play.services.auth)
+  implementation(libs.googleid)
+
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.appcompat)
   implementation(libs.material)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(platform(libs.compose.bom))
   testImplementation(libs.junit)
+  testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
+  testImplementation("org.mockito:mockito-core:5.13.0")
   globalTestImplementation(libs.androidx.junit)
   globalTestImplementation(libs.androidx.espresso.core)
 

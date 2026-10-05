@@ -1,5 +1,7 @@
+# Co-authored-by: Codex AI Agent
 ./idea
 
 /build
 /app/build
 local.properties
+google-services.json
