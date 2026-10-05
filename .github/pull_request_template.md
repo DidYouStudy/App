@@ -6,12 +6,6 @@
 <!-- Link the task/user story from the Scrum board. "Closes" auto-closes it on merge. -->
 Closes #
 
-## Type of change
-- [ ] Feature
-- [ ] Bug fix
-- [ ] Refactor
-- [ ] Tests
-- [ ] Docs / config / CI
 
 ## Changes
 <!-- Short bullet list of the main changes. -->
