@@ -1,3 +1,4 @@
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.preferences
 
 import androidx.lifecycle.ViewModel

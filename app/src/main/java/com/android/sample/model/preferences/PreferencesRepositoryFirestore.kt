@@ -1,3 +1,4 @@
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.model.preferences
 
 import com.google.firebase.firestore.FirebaseFirestore
