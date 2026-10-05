@@ -7,3 +7,5 @@
 .externalNativeBuild
 .cxx
 local.properties
+# Firebase config, injected in CI from the GOOGLE_SERVICES_JSON secret
+app/google-services.json
