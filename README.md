@@ -1,5 +1,12 @@
 # App description
 
+## Building locally
+The app uses Firebase, and `app/google-services.json` is not committed. Download
+it from the Firebase console (Project settings → Your apps → `com.android.sample`)
+and place it in `app/` before building, otherwise the build fails at
+`processDebugGoogleServices`. CI writes it from the `GOOGLE_SERVICES_JSON`
+repository secret (the file, base64-encoded).
+
 ## App name
 DidYouStudy?
 

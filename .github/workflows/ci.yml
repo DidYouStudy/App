@@ -1,3 +1,5 @@
+# Co-authored-by: Gemini AI Agent
+# Co-authored-by: Claude Opus 5.5
 name: CI - Test Runner
 
 # Run the workflow when commits are pushed on main or when a PR is modified
@@ -26,6 +28,17 @@ jobs:
           submodules: recursive
           fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of Sonar analysis (if we use Sonar Later)
 
+      # The google-services plugin needs app/google-services.json, which is not committed.
+      # It is stored base64-encoded in the GOOGLE_SERVICES_JSON repository secret.
+      - name: Write google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "::error::GOOGLE_SERVICES_JSON secret is not set"
+            exit 1
+          fi
+          echo "$GOOGLE_SERVICES_JSON" | base64 --decode > app/google-services.json
 
       # Kernel-based Virtual Machine (KVM) is an open source virtualization technology built into Linux. Enabling it allows the Android emulator to run faster.
       - name: Enable KVM group perms
@@ -45,7 +58,7 @@ jobs:
       #
       # To avoid that, we cache the the gradle folder to reuse it later.
       - name: Gradle cache
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
 
       # Cache the Emulator, if the cache does not hit, create the emulator.
       # API 34 matches targetSdk. compileSdk 37 is only the compile platform.
@@ -60,7 +73,7 @@ jobs:
 
       - name: create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
         with:
           api-level: 34
           target: google_apis
@@ -93,7 +106,7 @@ jobs:
 
       # Run connected tests on the emulator
       - name: run tests
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
         with:
           api-level: 34
           target: google_apis
@@ -106,7 +119,7 @@ jobs:
       # This step generates the coverage report which will be uploaded to sonar
       - name: Generate Coverage Report
         run: |
-          ./gradlew jacocoTestReport
+          ./gradlew :app:jacocoTestReport
 
       # Upload the various reports to sonar
       - name: Upload report to SonarCloud
