@@ -6,7 +6,7 @@ plugins {
   alias(libs.plugins.androidApplication)
   alias(libs.plugins.kotlinCompose)
   alias(libs.plugins.ktfmt)
-  alias(libs.plugins.googleServices)
+  // alias(libs.plugins.googleServices)
   id("jacoco")
 }
 
