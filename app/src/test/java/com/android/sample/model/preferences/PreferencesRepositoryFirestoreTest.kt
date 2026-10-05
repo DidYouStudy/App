@@ -76,6 +76,15 @@ class PreferencesRepositoryFirestoreTest {
   }
 
   @Test
+  fun getPreferences_returnsFailure_whenUserIdIsBlank() = runTest {
+    val result = repository.getPreferences("   ")
+
+    assertTrue(result.isFailure)
+    assertTrue(result.exceptionOrNull() is IllegalArgumentException)
+    assertEquals("User ID must not be blank", result.exceptionOrNull()?.message)
+  }
+
+  @Test
   fun savePreferences_succeeds_whenUserIdIsNotBlank() = runTest {
     val prefs = UserPreferences(userId = "user123", sessionLengthMinutes = 45)
     `when`(documentReference.set(prefs)).thenReturn(Tasks.forResult(null))

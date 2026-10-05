@@ -11,6 +11,7 @@ class PreferencesRepositoryFirestore(
   private val collection = firestore.collection("preferences")
 
   override suspend fun getPreferences(userId: String): Result<UserPreferences?> = runCatching {
+    require(userId.isNotBlank()) { "User ID must not be blank" }
     val documentSnapshot = collection.document(userId).get().await()
     if (documentSnapshot.exists()) {
       documentSnapshot.toObject(UserPreferences::class.java)
