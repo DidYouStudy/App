@@ -1,4 +1,5 @@
 // Co-authored-by: Codex AI Agent
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.auth
 
 import androidx.lifecycle.ViewModel
