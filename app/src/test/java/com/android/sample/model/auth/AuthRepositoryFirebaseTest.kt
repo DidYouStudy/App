@@ -14,7 +14,6 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthCredential
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
@@ -163,17 +162,24 @@ class AuthRepositoryFirebaseTest {
   }
 
   @Test
-  fun cancelledFirebaseTaskPropagatesCancellationAndAllowsNextOperation() = runTest {
+  fun firebaseCancellingItsOwnTaskIsReportedAsUnknownFailure() = runTest {
     `when`(auth.signInWithCredential(any(AuthCredential::class.java)))
         .thenReturn(Tasks.forCanceled())
-    try {
-      repository.signInWithGoogle("token")
-      fail("Expected cancellation")
-    } catch (_: CancellationException) {
-      // Cancellation must remain a coroutine signal, rather than becoming an AuthException.
-    }
-    repository.signOut()
-    verify(auth).signOut()
+    val failure = failure { repository.signInWithGoogle("token") }
+    // The caller was not cancelled, so the UI must see a failure rather than silence.
+    assertEquals(AuthError.UNKNOWN, failure.error)
+    assertTrue(failure.cause is CancellationException)
+  }
+
+  @Test
+  fun callerCancellationPropagatesWithoutAnAuthError() = runTest {
+    val task = TaskCompletionSource<AuthResult>()
+    `when`(auth.signInWithCredential(any(AuthCredential::class.java))).thenReturn(task.task)
+    val request = async { repository.signInWithGoogle("token") }
+    runCurrent()
+    request.cancelAndJoin()
+    assertTrue(request.isCancelled)
+    assertTrue(request.getCompletionExceptionOrNull() !is AuthException)
   }
 
   @Test
@@ -250,7 +256,7 @@ class AuthRepositoryFirebaseTest {
   }
 
   @Test
-  fun cleanupCancellationPropagatesWithoutWrappingAndReleasesOperationLock() = runTest {
+  fun cleanupCancellationPropagatesWithoutWrapping() = runTest {
     val cancellation = CancellationException("cancelled")
     cleanup = { throw cancellation }
     try {
@@ -262,132 +268,6 @@ class AuthRepositoryFirebaseTest {
     cleanup = {}
     repository.signOut()
     verify(auth, times(2)).signOut()
-  }
-
-  @Test
-  fun cancelledSignInFinishesBeforeQueuedSignOutSoFinalSessionIsSignedOut() = runTest {
-    val emissions = mutableListOf<UserAccount?>()
-    val collection =
-        launch(UnconfinedTestDispatcher(testScheduler)) {
-          repository.currentUser.collect { emissions += it }
-        }
-    runCurrent()
-    val listener = ArgumentCaptor.forClass(FirebaseAuth.AuthStateListener::class.java)
-    verify(auth).addAuthStateListener(listener.capture())
-    listener.value.onAuthStateChanged(auth)
-    runCurrent()
-    val task = TaskCompletionSource<AuthResult>()
-    `when`(auth.signInWithCredential(any(AuthCredential::class.java))).thenReturn(task.task)
-    val request = async { repository.signInWithGoogle("token") }
-    runCurrent()
-    assertFalse(request.isCompleted)
-    request.cancelAndJoin()
-    assertTrue(request.isCancelled)
-    assertFalse(task.task.isCanceled)
-    doAnswer {
-          `when`(auth.currentUser).thenReturn(null)
-          listener.value.onAuthStateChanged(auth)
-          null
-        }
-        .`when`(auth)
-        .signOut()
-    val signOut = async { repository.signOut() }
-    runCurrent()
-    assertFalse(signOut.isCompleted)
-    verify(auth, never()).signOut()
-    val result = mock(AuthResult::class.java)
-    val user = firebaseUser(account)
-    `when`(result.user).thenReturn(user)
-    // Model Firebase updating its session before completing the sign-in task.
-    `when`(auth.currentUser).thenReturn(user)
-    listener.value.onAuthStateChanged(auth)
-    runCurrent()
-    assertEquals(account, emissions.last())
-    task.setResult(result)
-    runCurrent()
-    assertTrue(task.task.isSuccessful)
-    signOut.await()
-    verify(auth).signOut()
-    assertEquals(listOf(null, account, null), emissions)
-    collection.cancelAndJoin()
-  }
-
-  @Test
-  fun failedLateSignInStillReleasesLockForSignOut() = runTest {
-    val task = TaskCompletionSource<AuthResult>()
-    `when`(auth.signInWithCredential(any(AuthCredential::class.java))).thenReturn(task.task)
-    val signIn = async { repository.signInWithGoogle("token") }
-    runCurrent()
-    signIn.cancelAndJoin()
-    val signOut = async { repository.signOut() }
-    runCurrent()
-    verify(auth, never()).signOut()
-    task.setException(FirebaseNetworkException("offline"))
-    runCurrent()
-    signOut.await()
-    verify(auth).signOut()
-  }
-
-  @Test
-  fun cancelledQueuedSignOutDoesNotReleasePendingSignInLock() = runTest {
-    val task = TaskCompletionSource<AuthResult>()
-    `when`(auth.signInWithCredential(any(AuthCredential::class.java))).thenReturn(task.task)
-    val signIn = async { repository.signInWithGoogle("first") }
-    runCurrent()
-    signIn.cancelAndJoin()
-    val cancelledSignOut = async { repository.signOut() }
-    runCurrent()
-    cancelledSignOut.cancelAndJoin()
-    val retry = async { repository.signInWithGoogle("retry") }
-    runCurrent()
-    verify(auth, times(1)).signInWithCredential(any(AuthCredential::class.java))
-    successfulSignIn(account)
-    task.setException(FirebaseNetworkException("offline"))
-    runCurrent()
-    assertEquals(account, retry.await())
-    verify(auth, times(2)).signInWithCredential(any(AuthCredential::class.java))
-    verify(auth, never()).signOut()
-  }
-
-  @Test
-  fun signOutWaitsForPendingSignIn() = runTest {
-    val task = TaskCompletionSource<AuthResult>()
-    `when`(auth.signInWithCredential(any(AuthCredential::class.java))).thenReturn(task.task)
-    val signIn = async { repository.signInWithGoogle("token") }
-    runCurrent()
-    val signOut = async { repository.signOut() }
-    runCurrent()
-    verify(auth, never()).signOut()
-    assertFalse(signOut.isCompleted)
-    val result = mock(AuthResult::class.java)
-    val user = firebaseUser(account)
-    `when`(result.user).thenReturn(user)
-    task.setResult(result)
-    runCurrent()
-    assertEquals(account, signIn.await())
-    signOut.await()
-    verify(auth).signOut()
-  }
-
-  @Test
-  fun signInWaitsForCleanupAndCancelledQueuedRequestNeverCallsFirebase() = runTest {
-    val completion = CompletableDeferred<Unit>()
-    cleanup = { completion.await() }
-    val signOut = async { repository.signOut() }
-    runCurrent()
-    val cancelled = async { repository.signInWithGoogle("cancelled") }
-    val signIn = async { repository.signInWithGoogle("next") }
-    runCurrent()
-    verify(auth, never()).signInWithCredential(any(AuthCredential::class.java))
-    cancelled.cancelAndJoin()
-    successfulSignIn(account)
-    completion.complete(Unit)
-    runCurrent()
-    signOut.await()
-    assertEquals(account, signIn.await())
-    val captor = ArgumentCaptor.forClass(AuthCredential::class.java)
-    verify(auth, times(1)).signInWithCredential(captor.capture())
-    assertEquals("google.com", captor.value.provider)
   }
 
   private fun firebaseUser(account: UserAccount): FirebaseUser {

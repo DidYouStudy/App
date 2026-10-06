@@ -16,10 +16,6 @@ interface AuthRepository {
    * Manager, not from Firebase. Never store or log it. The returned account describes this
    * operation; [currentUser] is the source of truth for the current session.
    *
-   * Cancelling a caller does not cancel an already-started Firebase task. The Firebase
-   * implementation keeps later operations queued until that task finishes, while allowing the
-   * caller to cancel.
-   *
    * @throws AuthException if authentication fails or the token is blank.
    * @throws kotlinx.coroutines.CancellationException if the caller's coroutine is cancelled.
    */
