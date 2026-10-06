@@ -1,9 +1,23 @@
 // Co-authored-by: Codex AI Agent
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.model.auth
 
 import kotlinx.coroutines.flow.Flow
 
-/** Authentication contract consumed by ViewModels; implementations own the authentication SDK. */
+/**
+ * Authentication contract consumed by ViewModels; implementations own the authentication SDK.
+ *
+ * Not safe for overlapping calls: start [signInWithGoogle] or [signOut] only after the previous
+ * call has returned. Firebase keeps a single current user, so if two operations run at the same
+ * time, whichever finishes last decides who is signed in. For example, a slow sign-in finishing
+ * after a sign-out would leave the app signed in, and later Firestore writes would use that
+ * account. Running operations one after another in the same coroutine (e.g. a future "switch
+ * account": [signOut], then [signInWithGoogle]) is safe.
+ *
+ * Today only AuthViewModel calls these operations, and it ignores new actions while one is running.
+ * If another caller is added, route it through AuthViewModel, or wrap each operation in the
+ * implementation with `Mutex.withLock`.
+ */
 interface AuthRepository {
   /**
    * The signed-in account, or null when nobody is signed in. This is the single source of truth for

@@ -1,5 +1,4 @@
 # Co-authored-by: Claude Opus 5.5
-# Co-authored-by: Codex AI Agent
 [versions]
 agp = "9.3.0"
 kotlin = "2.3.0"
