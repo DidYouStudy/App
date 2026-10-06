@@ -10,12 +10,6 @@ import kotlinx.coroutines.flow.Flow
  * Sign-in and sign-out run one at a time: if one is still running, the next call waits for it to
  * finish. Firebase keeps a single current user, so overlapping operations could otherwise end in
  * the wrong order and leave the wrong account signed in (and later Firestore writes would use it).
- *
- * One known limit: Firebase cannot cancel a sign-in that has started. If the caller is cancelled
- * meanwhile (e.g. the user leaves the screen), the next operation may start while that sign-in
- * still completes in the background, so a sign-out started at that moment could be undone. This
- * needs a cancellation and a new operation within the same second or two, so it is unlikely; the
- * ViewModel also ignores new actions while one is running.
  */
 interface AuthRepository {
   /**

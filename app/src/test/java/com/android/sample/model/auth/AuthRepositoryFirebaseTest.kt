@@ -179,9 +179,17 @@ class AuthRepositoryFirebaseTest {
     `when`(auth.signInWithCredential(any(AuthCredential::class.java))).thenReturn(task.task)
     val request = async { repository.signInWithGoogle("token") }
     runCurrent()
-    request.cancelAndJoin()
+    request.cancel()
+    val signOut = async { repository.signOut() }
+    runCurrent()
+    // The started sign-in keeps the lock until Firebase finishes, so it cannot undo the sign-out.
+    verify(auth, never()).signOut()
+    task.setException(FirebaseNetworkException("offline"))
+    runCurrent()
     assertTrue(request.isCancelled)
     assertTrue(request.getCompletionExceptionOrNull() !is AuthException)
+    signOut.await()
+    verify(auth).signOut()
   }
 
   @Test

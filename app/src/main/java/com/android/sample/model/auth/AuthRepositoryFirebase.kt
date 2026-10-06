@@ -9,6 +9,7 @@ import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.currentCoroutineContext
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 
 /**
  * Firebase-backed sessions. Inject the Firebase instance and credential cleanup function so that
@@ -55,15 +57,21 @@ class AuthRepositoryFirebase(
   override suspend fun signInWithGoogle(idToken: String): UserAccount {
     if (idToken.isBlank()) throw AuthException(AuthError.INVALID_CREDENTIAL)
     val result = operationMutex.withLock {
-      try {
-        firebaseAuth.signInWithCredential(GoogleAuthProvider.getCredential(idToken, null)).await()
-      } catch (exception: CancellationException) {
-        // If our coroutine was cancelled, ensureActive() rethrows so the caller stops quietly.
-        // Otherwise Firebase cancelled its own task, which is a failure the UI must report.
-        currentCoroutineContext().ensureActive()
-        throw AuthException(AuthError.UNKNOWN, exception)
-      } catch (exception: Exception) {
-        throw AuthException(exception.toAuthError(), exception)
+      // Firebase cannot cancel a started sign-in, so keep the lock until it really finishes.
+      val outcome =
+          withContext(NonCancellable) {
+            runCatching {
+              firebaseAuth
+                  .signInWithCredential(GoogleAuthProvider.getCredential(idToken, null))
+                  .await()
+            }
+          }
+      // If the caller was cancelled meanwhile, stop quietly now that Firebase is done.
+      currentCoroutineContext().ensureActive()
+      // A CancellationException here means Firebase cancelled its own task: report it as UNKNOWN.
+      outcome.getOrElse { exception ->
+        val error = if (exception is Exception) exception.toAuthError() else AuthError.UNKNOWN
+        throw AuthException(error, exception)
       }
     }
     return result.user?.toUserAccount() ?: throw AuthException(AuthError.UNKNOWN)
