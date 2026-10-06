@@ -26,15 +26,23 @@ class AuthRepositoryFirebase(
     private val firebaseAuth: FirebaseAuth,
     private val clearCredentialState: suspend () -> Unit,
 ) : AuthRepository {
+  /**
+   * Turns Firebase's callback-based AuthStateListener into a flow. Nothing runs until someone
+   * collects; each collector registers its own listener.
+   */
   override val currentUser: Flow<UserAccount?> = callbackFlow {
-    // Firebase immediately calls a newly registered listener with its persisted session.
+    // Firebase calls a newly registered listener immediately with the session restored from disk,
+    // then again after every sign-in and sign-out.
     val listener = FirebaseAuth.AuthStateListener { auth ->
       trySend(auth.currentUser?.toUserAccount())
     }
     firebaseAuth.addAuthStateListener(listener)
+    // Runs when collection stops (e.g. the ViewModel is cleared), so the listener never leaks.
     awaitClose { firebaseAuth.removeAuthStateListener(listener) }
   }
+      // Only the latest session matters: a slow collector skips intermediate values.
       .buffer(Channel.CONFLATED)
+      // Firebase may notify twice for the same account; emit only real changes.
       .distinctUntilChanged()
 
   /** Exchanges a Google ID token for a Firebase session. */
@@ -74,13 +82,18 @@ class AuthRepositoryFirebase(
           photoUrl = photoUrl?.toString(),
       )
 
+  /** Maps Firebase sign-in failures to [AuthError]; see each value for what it means. */
   private fun Exception.toAuthError(): AuthError =
       when (this) {
+        // Offline or timed out.
         is FirebaseNetworkException -> AuthError.NETWORK
+        // Malformed or expired token, or one issued for another project.
         is FirebaseAuthInvalidCredentialsException -> AuthError.INVALID_CREDENTIAL
+        // The account was disabled or deleted in the Firebase console.
         is FirebaseAuthInvalidUserException ->
             if (errorCode == "ERROR_USER_DISABLED") AuthError.USER_DISABLED
             else AuthError.INVALID_CREDENTIAL
+        // Rate limiting, account collisions, console configuration errors, unexpected failures.
         else -> AuthError.UNKNOWN
       }
 }

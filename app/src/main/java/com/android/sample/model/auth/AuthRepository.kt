@@ -6,8 +6,19 @@ import kotlinx.coroutines.flow.Flow
 /** Authentication contract consumed by ViewModels; implementations own the authentication SDK. */
 interface AuthRepository {
   /**
-   * Emits the persisted session when collected, then subsequent sign-in/sign-out changes. A null
-   * value means signed out. Collection must release its listener when cancelled.
+   * The signed-in account, or null when nobody is signed in. This is the single source of truth for
+   * "who is signed in": the ViewModel observes it instead of keeping its own copy, and uses it for
+   * example to choose between the login screen and the rest of the app.
+   *
+   * What it emits:
+   * - As soon as collection starts: the session restored from the device, so a user who signed in
+   *   earlier is still signed in after restarting the app (null if nobody is).
+   * - Afterwards: a new value on every sign-in or sign-out, including ones the screen did not
+   *   start, for example when Firebase ends the session because the account was deleted or
+   *   disabled.
+   *
+   * Consecutive identical values are skipped. Each collector gets its own listener, which is
+   * removed when collection stops, so nothing leaks when the ViewModel is cleared.
    */
   val currentUser: Flow<UserAccount?>
 
