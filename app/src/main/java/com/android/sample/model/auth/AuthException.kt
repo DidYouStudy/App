@@ -7,7 +7,9 @@ package com.android.sample.model.auth
  * original SDK exception stays in [AuthException.cause] for logs and is never shown to users.
  *
  * Failures come from these operations:
- * - Sign-in: Firebase exchanges a Google ID token for a Firebase session
+ * - Account picker: Credential Manager shows Google's account picker and returns a Google ID token
+ *   ([GoogleSignInHelper.getIdToken]).
+ * - Sign-in: Firebase exchanges that token for a Firebase session
  *   ([AuthRepository.signInWithGoogle]).
  * - Sign-out: ends that session, then clears Credential Manager's state ([AuthRepository.signOut]).
  *
@@ -53,11 +55,37 @@ enum class AuthError {
   CREDENTIAL_STATE_CLEAR_FAILED,
 
   /**
-   * Anything not covered above. Comes from: Firebase cancelling its own sign-in task, a successful
-   * sign-in that returns no user, `FirebaseTooManyRequestsException` (rate limited),
-   * `FirebaseAuthUserCollisionException` (the email already uses another sign-in method), a generic
-   * `FirebaseAuthException` such as `ERROR_OPERATION_NOT_ALLOWED` (Google sign-in is not enabled in
-   * the Firebase console), or any unexpected exception.
+   * The user closed the Google account picker (back button, tap outside) before choosing an account
+   * (`GetCredentialCancellationException`).
+   *
+   * Expect: this is the user's choice, not a failure. Screens should show nothing; the ViewModel
+   * only stops loading.
+   */
+  CANCELLED,
+
+  /**
+   * The device has no Google account the picker can offer (`NoCredentialException`).
+   *
+   * Expect: tell the user to add a Google account in the device settings. On an emulator, sign in
+   * to a Google account in the emulator's settings first.
+   */
+  NO_CREDENTIAL,
+
+  /**
+   * Anything not covered above.
+   *
+   * From the account picker: `GetCredentialUnknownException` (often a missing SHA-1 fingerprint or
+   * a wrong Web client ID, reported as "code 10"), `GetCredentialProviderConfigurationException` or
+   * `GetCredentialUnsupportedException` (Google Play services missing or outdated, e.g. an emulator
+   * image without Google APIs), `GetCredentialInterruptedException` (the system interrupted the
+   * request; retrying usually works), an unexpected credential type, or a Google ID token that
+   * cannot be parsed (`GoogleIdTokenParsingException`).
+   *
+   * From Firebase: Firebase cancelling its own sign-in task, a successful sign-in that returns no
+   * user, `FirebaseTooManyRequestsException` (rate limited), `FirebaseAuthUserCollisionException`
+   * (the email already uses another sign-in method), a generic `FirebaseAuthException` such as
+   * `ERROR_OPERATION_NOT_ALLOWED` (Google sign-in is not enabled in the Firebase console), or any
+   * unexpected exception.
    *
    * Expect: show a generic "something went wrong, try again" message and log the cause. Repeated
    * UNKNOWN errors during development usually mean a configuration problem.

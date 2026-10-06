@@ -14,6 +14,7 @@ import androidx.credentials.PasswordCredential
 import androidx.credentials.exceptions.ClearCredentialUnknownException
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialUnknownException
+import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
@@ -88,36 +89,44 @@ class GoogleSignInHelperTest {
   @Test
   fun rejectsNonCustomCredential() = runTest {
     respondWith(PasswordCredential("id", "password"))
-    assertTrue(failure { helper.getIdToken(activity, "web-client") } is IllegalStateException)
+    assertEquals(AuthError.UNKNOWN, authFailure { helper.getIdToken(activity, "web-client") }.error)
   }
 
   @Test
   fun rejectsUnsupportedCustomCredentialType() = runTest {
     respondWith(CustomCredential("unsupported-provider", Bundle()))
-    assertTrue(failure { helper.getIdToken(activity, "web-client") } is IllegalStateException)
+    assertEquals(AuthError.UNKNOWN, authFailure { helper.getIdToken(activity, "web-client") }.error)
   }
 
   @Test
   fun malformedGoogleCredentialReportsParsingFailure() = runTest {
     respondWith(CustomCredential(GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL, Bundle()))
-    assertTrue(
-        failure { helper.getIdToken(activity, "web-client") } is GoogleIdTokenParsingException
-    )
+    val failure = authFailure { helper.getIdToken(activity, "web-client") }
+    assertEquals(AuthError.UNKNOWN, failure.error)
+    assertTrue(failure.cause is GoogleIdTokenParsingException)
   }
 
   @Test
-  fun pickerDismissalAndOtherFailuresPropagateWithoutWrapping() = runTest {
-    for (cause in
+  fun mapsPickerFailuresToAuthErrorsAndRetainsCause() = runTest {
+    val cases =
         listOf(
-            GetCredentialCancellationException("dismissed"),
-            GetCredentialUnknownException("picker unavailable"),
-            CancellationException("screen destroyed"),
-        )) {
-      doAnswer { throw cause }
-          .`when`(manager)
-          .getCredential(anyNonNull<Context>(), anyNonNull<GetCredentialRequest>())
-      assertSame(cause, failure { helper.getIdToken(activity, "web-client") })
+            GetCredentialCancellationException("dismissed") to AuthError.CANCELLED,
+            NoCredentialException("no account") to AuthError.NO_CREDENTIAL,
+            GetCredentialUnknownException("picker unavailable") to AuthError.UNKNOWN,
+        )
+    for ((cause, expected) in cases) {
+      pickerThrows(cause)
+      val failure = authFailure { helper.getIdToken(activity, "web-client") }
+      assertEquals(expected, failure.error)
+      assertSame(cause, failure.cause)
     }
+  }
+
+  @Test
+  fun coroutineCancellationPropagatesWithoutWrapping() = runTest {
+    val cancellation = CancellationException("screen destroyed")
+    pickerThrows(cancellation)
+    assertSame(cancellation, failure { helper.getIdToken(activity, "web-client") })
   }
 
   @Test
@@ -169,6 +178,15 @@ class GoogleSignInHelperTest {
         .`when`(manager)
         .getCredential(anyNonNull<Context>(), anyNonNull<GetCredentialRequest>())
   }
+
+  private suspend fun pickerThrows(cause: Exception) {
+    doAnswer { throw cause }
+        .`when`(manager)
+        .getCredential(anyNonNull<Context>(), anyNonNull<GetCredentialRequest>())
+  }
+
+  private suspend fun authFailure(action: suspend () -> Unit): AuthException =
+      failure(action) as? AuthException ?: throw AssertionError("Expected an AuthException")
 
   private suspend fun failure(action: suspend () -> Unit): Throwable {
     try {
