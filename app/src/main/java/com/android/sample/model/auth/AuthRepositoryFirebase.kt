@@ -57,7 +57,11 @@ class AuthRepositoryFirebase(
   override suspend fun signInWithGoogle(idToken: String): UserAccount {
     if (idToken.isBlank()) throw AuthException(AuthError.INVALID_CREDENTIAL)
     val result = operationMutex.withLock {
-      // Firebase cannot cancel a started sign-in, so keep the lock until it really finishes.
+      // Why NonCancellable: once a sign-in request is sent, Firebase cannot stop it. If the caller
+      // were cancelled here (e.g. the user leaves the screen) and we released the lock at once, a
+      // sign-out could run before that request completes, and the late sign-in would then sign
+      // the user back in. So we wait for Firebase's answer while still holding the lock, even if
+      // the caller was cancelled.
       val outcome =
           withContext(NonCancellable) {
             runCatching {
