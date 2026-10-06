@@ -12,12 +12,14 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
 
 @RunWith(AndroidJUnit4::class)
 class SignInScreenTest {
@@ -61,6 +63,26 @@ class SignInScreenTest {
     composeTestRule.onNodeWithTag(SignInScreenTestTags.GOOGLE_BUTTON).performClick()
     org.junit.Assert.assertEquals(2, callbackCount)
     composeTestRule.onNodeWithTag(SignInScreenTestTags.LOADING).assertDoesNotExist()
+  }
+
+  @Test
+  @Config(qualifiers = "w640dp-h360dp")
+  fun googleButtonCanBeReachedAndClickedOnShortLandscapeScreen() {
+    var callbackCount = 0
+    composeTestRule.setContent {
+      SignInScreen(
+          isLoading = false,
+          errorMessage = null,
+          onSignInClick = { callbackCount++ },
+      )
+    }
+
+    composeTestRule
+        .onNodeWithTag(SignInScreenTestTags.GOOGLE_BUTTON)
+        .performScrollTo()
+        .assertIsDisplayed()
+        .performClick()
+    org.junit.Assert.assertEquals(1, callbackCount)
   }
 
   @Test
