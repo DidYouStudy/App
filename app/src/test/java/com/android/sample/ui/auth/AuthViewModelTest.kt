@@ -73,7 +73,7 @@ class AuthViewModelTest {
         val result = CompletableDeferred<UserAccount>()
         repository.publishSessions = false
         repository.signIn = { result.await() }
-        viewModel.signInWithGoogle("google-token")
+        viewModel.signInWithGoogle { "google-token" }
         assertTrue(viewModel.uiState.value.isLoading)
         runCurrent()
         assertEquals(listOf("google-token"), repository.tokens)
@@ -109,7 +109,7 @@ class AuthViewModelTest {
         repository.publishSessions = false
         val result = CompletableDeferred<UserAccount>()
         repository.signIn = { result.await() }
-        viewModel.signInWithGoogle("token")
+        viewModel.signInWithGoogle { "token" }
         session(bob)
         result.complete(alice)
         runCurrent()
@@ -136,11 +136,11 @@ class AuthViewModelTest {
       runTest(dispatcher) {
         val result = CompletableDeferred<UserAccount>()
         repository.signIn = { result.await() }
-        viewModel.signInWithGoogle("first")
-        viewModel.signInWithGoogle("duplicate-before-launch")
+        viewModel.signInWithGoogle { "first" }
+        viewModel.signInWithGoogle { "duplicate-before-launch" }
         viewModel.signOut()
         runCurrent()
-        viewModel.signInWithGoogle("duplicate-while-suspended")
+        viewModel.signInWithGoogle { "duplicate-while-suspended" }
         viewModel.signOut()
         runCurrent()
         assertEquals(listOf("first"), repository.tokens)
@@ -159,10 +159,10 @@ class AuthViewModelTest {
         repository.signOutAction = { completion.await() }
         viewModel.signOut()
         viewModel.signOut()
-        viewModel.signInWithGoogle("ignored")
+        viewModel.signInWithGoogle { "ignored" }
         runCurrent()
         viewModel.signOut()
-        viewModel.signInWithGoogle("also-ignored")
+        viewModel.signInWithGoogle { "also-ignored" }
         runCurrent()
         assertEquals(1, repository.signOutCalls)
         assertTrue(repository.tokens.isEmpty())
@@ -175,9 +175,9 @@ class AuthViewModelTest {
   fun exposesEveryRepositoryErrorAndPreservesExistingSession() =
       runTest(dispatcher) {
         session(alice)
-        for (error in AuthError.entries) {
+        for (error in AuthError.entries.filter { it != AuthError.CANCELLED }) {
           repository.signIn = { throw AuthException(error) }
-          viewModel.signInWithGoogle("token")
+          viewModel.signInWithGoogle { "token" }
           runCurrent()
           assertEquals(
               AuthUiState(user = alice, isInitializing = false, error = error),
@@ -194,10 +194,27 @@ class AuthViewModelTest {
       }
 
   @Test
+  fun pickerFailuresShareErrorStateAndDismissalShowsNothing() =
+      runTest(dispatcher) {
+        session(alice)
+        viewModel.signInWithGoogle { throw AuthException(AuthError.CANCELLED) }
+        runCurrent()
+        assertEquals(AuthUiState(user = alice, isInitializing = false), viewModel.uiState.value)
+        viewModel.signInWithGoogle { throw AuthException(AuthError.NO_CREDENTIAL) }
+        runCurrent()
+        assertEquals(
+            AuthUiState(user = alice, isInitializing = false, error = AuthError.NO_CREDENTIAL),
+            viewModel.uiState.value,
+        )
+        // The repository is never called without a token.
+        assertTrue(repository.tokens.isEmpty())
+      }
+
+  @Test
   fun unexpectedFailuresBecomeUnknownForBothActions() =
       runTest(dispatcher) {
         repository.signIn = { throw IllegalStateException("private diagnostic") }
-        viewModel.signInWithGoogle("token")
+        viewModel.signInWithGoogle { "token" }
         runCurrent()
         assertEquals(AuthError.UNKNOWN, viewModel.uiState.value.error)
         assertFalse(viewModel.uiState.value.isLoading)
@@ -212,11 +229,11 @@ class AuthViewModelTest {
   fun retryClearsOldErrorImmediatelyAndCanSucceed() =
       runTest(dispatcher) {
         repository.signIn = { throw AuthException(AuthError.NETWORK) }
-        viewModel.signInWithGoogle("first")
+        viewModel.signInWithGoogle { "first" }
         runCurrent()
         val result = CompletableDeferred<UserAccount>()
         repository.signIn = { result.await() }
-        viewModel.signInWithGoogle("retry")
+        viewModel.signInWithGoogle { "retry" }
         assertNull(viewModel.uiState.value.error)
         assertTrue(viewModel.uiState.value.isLoading)
         runCurrent()
@@ -231,7 +248,7 @@ class AuthViewModelTest {
       runTest(dispatcher) {
         val result = CompletableDeferred<UserAccount>()
         repository.signIn = { result.await() }
-        viewModel.signInWithGoogle("token")
+        viewModel.signInWithGoogle { "token" }
         session(alice)
         assertEquals(
             AuthUiState(user = alice, isInitializing = false, isLoading = true),
@@ -271,7 +288,7 @@ class AuthViewModelTest {
       runTest(dispatcher) {
         session(alice)
         repository.signIn = { throw AuthException(AuthError.NETWORK) }
-        viewModel.signInWithGoogle("token")
+        viewModel.signInWithGoogle { "token" }
         runCurrent()
         val expected = viewModel.uiState.value.copy(error = null)
         viewModel.clearError()
@@ -284,7 +301,7 @@ class AuthViewModelTest {
       runTest(dispatcher) {
         session(alice)
         repository.signIn = { throw CancellationException("cancelled") }
-        viewModel.signInWithGoogle("cancelled")
+        viewModel.signInWithGoogle { "cancelled" }
         runCurrent()
         assertEquals(AuthUiState(user = alice, isInitializing = false), viewModel.uiState.value)
         repository.signOutAction = { throw CancellationException("cancelled") }
@@ -292,7 +309,7 @@ class AuthViewModelTest {
         runCurrent()
         assertEquals(AuthUiState(user = alice, isInitializing = false), viewModel.uiState.value)
         repository.signIn = { bob }
-        viewModel.signInWithGoogle("retry")
+        viewModel.signInWithGoogle { "retry" }
         runCurrent()
         assertEquals(bob, viewModel.uiState.value.user)
       }
@@ -309,7 +326,7 @@ class AuthViewModelTest {
             cancelled = true
           }
         }
-        viewModel.signInWithGoogle("token")
+        viewModel.signInWithGoogle { "token" }
         runCurrent()
         assertEquals(1, repository.currentUser.subscriptionCount.value)
         store.clear()

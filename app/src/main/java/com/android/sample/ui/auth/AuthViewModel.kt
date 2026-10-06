@@ -44,12 +44,14 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
   }
 
   /**
-   * Starts Google sign-in from a main-thread UI action. Repeated actions are ignored while busy;
-   * session identity is updated only by [AuthRepository.currentUser].
+   * Starts Google sign-in from a main-thread UI action. [getIdToken] opens the account picker
+   * (normally GoogleSignInHelper.getIdToken), so picker failures share this screen's loading and
+   * error state. Repeated actions are ignored while busy; session identity is updated only by
+   * [AuthRepository.currentUser].
    */
   @MainThread
-  fun signInWithGoogle(idToken: String) {
-    runOperation { repository.signInWithGoogle(idToken) }
+  fun signInWithGoogle(getIdToken: suspend () -> String) {
+    runOperation { repository.signInWithGoogle(getIdToken()) }
   }
 
   /**
@@ -85,7 +87,8 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
         throw exception
       } catch (exception: Exception) {
         val error = (exception as? AuthException)?.error ?: AuthError.UNKNOWN
-        mutableUiState.update { it.copy(error = error) }
+        // Closing the account picker is the user's choice, not a failure to report.
+        if (error != AuthError.CANCELLED) mutableUiState.update { it.copy(error = error) }
       } finally {
         mutableUiState.update { it.copy(isLoading = false) }
       }
