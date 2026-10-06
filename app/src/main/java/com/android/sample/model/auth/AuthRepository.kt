@@ -7,16 +7,15 @@ import kotlinx.coroutines.flow.Flow
 /**
  * Authentication contract consumed by ViewModels; implementations own the authentication SDK.
  *
- * Not safe for overlapping calls: start [signInWithGoogle] or [signOut] only after the previous
- * call has returned. Firebase keeps a single current user, so if two operations run at the same
- * time, whichever finishes last decides who is signed in. For example, a slow sign-in finishing
- * after a sign-out would leave the app signed in, and later Firestore writes would use that
- * account. Running operations one after another in the same coroutine (e.g. a future "switch
- * account": [signOut], then [signInWithGoogle]) is safe.
+ * Sign-in and sign-out run one at a time: if one is still running, the next call waits for it to
+ * finish. Firebase keeps a single current user, so overlapping operations could otherwise end in
+ * the wrong order and leave the wrong account signed in (and later Firestore writes would use it).
  *
- * Today only AuthViewModel calls these operations, and it ignores new actions while one is running.
- * If another caller is added, route it through AuthViewModel, or wrap each operation in the
- * implementation with `Mutex.withLock`.
+ * One known limit: Firebase cannot cancel a sign-in that has started. If the caller is cancelled
+ * meanwhile (e.g. the user leaves the screen), the next operation may start while that sign-in
+ * still completes in the background, so a sign-out started at that moment could be undone. This
+ * needs a cancellation and a new operation within the same second or two, so it is unlikely; the
+ * ViewModel also ignores new actions while one is running.
  */
 interface AuthRepository {
   /**

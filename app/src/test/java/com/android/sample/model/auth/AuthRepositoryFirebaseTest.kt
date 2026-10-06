@@ -15,6 +15,7 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthCredential
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
@@ -269,6 +270,42 @@ class AuthRepositoryFirebaseTest {
     cleanup = {}
     repository.signOut()
     verify(auth, times(2)).signOut()
+  }
+
+  @Test
+  fun signOutWaitsForPendingSignIn() = runTest {
+    val task = TaskCompletionSource<AuthResult>()
+    `when`(auth.signInWithCredential(any(AuthCredential::class.java))).thenReturn(task.task)
+    val signIn = async { repository.signInWithGoogle("token") }
+    runCurrent()
+    val signOut = async { repository.signOut() }
+    runCurrent()
+    // Sign-out must not run before the pending sign-in finishes, or the sign-in would undo it.
+    verify(auth, never()).signOut()
+    val result = mock(AuthResult::class.java)
+    val user = firebaseUser(account)
+    `when`(result.user).thenReturn(user)
+    task.setResult(result)
+    runCurrent()
+    assertEquals(account, signIn.await())
+    signOut.await()
+    verify(auth).signOut()
+  }
+
+  @Test
+  fun signInWaitsForPendingSignOut() = runTest {
+    val cleanupDone = CompletableDeferred<Unit>()
+    cleanup = { cleanupDone.await() }
+    val signOut = async { repository.signOut() }
+    runCurrent()
+    successfulSignIn(account)
+    val signIn = async { repository.signInWithGoogle("token") }
+    runCurrent()
+    verify(auth, never()).signInWithCredential(any(AuthCredential::class.java))
+    cleanupDone.complete(Unit)
+    runCurrent()
+    signOut.await()
+    assertEquals(account, signIn.await())
   }
 
   private fun firebaseUser(account: UserAccount): FirebaseUser {

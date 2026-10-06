@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -27,6 +29,9 @@ class AuthRepositoryFirebase(
     private val firebaseAuth: FirebaseAuth,
     private val clearCredentialState: suspend () -> Unit,
 ) : AuthRepository {
+  // Runs sign-in and sign-out one at a time; see the AuthRepository documentation.
+  private val operationMutex = Mutex()
+
   /**
    * Turns Firebase's callback-based AuthStateListener into a flow. Nothing runs until someone
    * collects; each collector registers its own listener.
@@ -49,22 +54,23 @@ class AuthRepositoryFirebase(
   /** Exchanges a Google ID token for a Firebase session. */
   override suspend fun signInWithGoogle(idToken: String): UserAccount {
     if (idToken.isBlank()) throw AuthException(AuthError.INVALID_CREDENTIAL)
-    val result =
-        try {
-          firebaseAuth.signInWithCredential(GoogleAuthProvider.getCredential(idToken, null)).await()
-        } catch (exception: CancellationException) {
-          // If our coroutine was cancelled, ensureActive() rethrows so the caller stops quietly.
-          // Otherwise Firebase cancelled its own task, which is a failure the UI must report.
-          currentCoroutineContext().ensureActive()
-          throw AuthException(AuthError.UNKNOWN, exception)
-        } catch (exception: Exception) {
-          throw AuthException(exception.toAuthError(), exception)
-        }
+    val result = operationMutex.withLock {
+      try {
+        firebaseAuth.signInWithCredential(GoogleAuthProvider.getCredential(idToken, null)).await()
+      } catch (exception: CancellationException) {
+        // If our coroutine was cancelled, ensureActive() rethrows so the caller stops quietly.
+        // Otherwise Firebase cancelled its own task, which is a failure the UI must report.
+        currentCoroutineContext().ensureActive()
+        throw AuthException(AuthError.UNKNOWN, exception)
+      } catch (exception: Exception) {
+        throw AuthException(exception.toAuthError(), exception)
+      }
+    }
     return result.user?.toUserAccount() ?: throw AuthException(AuthError.UNKNOWN)
   }
 
   /** Ends the Firebase session first, then clears the account preference in Credential Manager. */
-  override suspend fun signOut() {
+  override suspend fun signOut() = operationMutex.withLock {
     firebaseAuth.signOut()
     try {
       clearCredentialState()
