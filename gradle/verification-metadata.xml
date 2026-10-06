@@ -10,6 +10,10 @@
       </key-servers>
       <trusted-artifacts>
          <trust group="gradle" name="gradle"/>
+         <trust group="org.mockito"/>
+         <trust group="org.mockito.kotlin"/>
+         <trust group="net.bytebuddy"/>
+         <trust group="org.objenesis"/>
          <trust file=".*-javadoc[.]jar" regex="true"/>
          <trust file=".*-sources[.]jar" regex="true"/>
       </trusted-artifacts>
