@@ -116,6 +116,7 @@ fun DependencyHandlerScope.globalTestImplementation(dep: Any) {
 dependencies {
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.appcompat)
+  implementation(libs.androidx.navigation.compose)
   implementation(libs.material)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(platform(libs.compose.bom))
@@ -130,6 +131,8 @@ dependencies {
 
   implementation(libs.compose.ui)
   implementation(libs.compose.ui.graphics)
+  implementation(libs.compose.material)
+  implementation(libs.compose.material.icons.extended)
   // Material Design 3
   implementation(libs.compose.material3)
   // Integration with activities
