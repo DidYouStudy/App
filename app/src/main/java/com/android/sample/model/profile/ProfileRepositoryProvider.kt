@@ -7,8 +7,8 @@ import android.content.Context
  * Application-level wiring for the profile repository.
  *
  * This provider is separate from [com.android.sample.model.auth.AuthRepositoryProvider]:
- * [com.android.sample.model.auth.AuthRepositoryProvider] creates the Firebase repository responsible
- * for authentication, while this provider creates the Firestore repository responsible
+ * [com.android.sample.model.auth.AuthRepositoryProvider] creates the Firebase repository
+ * responsible for authentication, while this provider creates the Firestore repository responsible
  * for persisted profile documents.
  */
 object ProfileRepositoryProvider {

@@ -10,6 +10,7 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Transaction
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.test.runCurrent
@@ -25,6 +26,7 @@ import org.mockito.Mockito.never
 import org.mockito.Mockito.`when`
 import org.mockito.kotlin.verify
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ProfileRepositoryFirestoreTest {
   private lateinit var firestore: FirebaseFirestore
   private lateinit var collection: CollectionReference
