@@ -22,10 +22,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.annotation.Config
 
 @RunWith(AndroidJUnit4::class)
-@Config
 class SignInRouteTest {
   @get:Rule val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
@@ -120,8 +118,10 @@ class SignInRouteTest {
     composeTestRule.onNodeWithTag(SignInScreenTestTags.GOOGLE_BUTTON).performClick()
     composeTestRule.waitForIdle()
 
+    assertEquals(listOf(composeTestRule.activity), receivedActivities)
     composeTestRule.onNodeWithTag(SignInScreenTestTags.ERROR).assertDoesNotExist()
     composeTestRule.onNodeWithTag(SignInScreenTestTags.GOOGLE_BUTTON).assertIsEnabled()
+    assertEquals(emptyList<String>(), repository.tokens)
   }
 
   @Test

@@ -5,6 +5,7 @@ import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
 import kotlinx.coroutines.flow.MutableStateFlow
 
+/** Records Google sign-in tokens; tests control sign-in results with [signInAction]. */
 class TestAuthRepository : AuthRepository {
   override val currentUser = MutableStateFlow<UserAccount?>(null)
   val tokens = mutableListOf<String>()
