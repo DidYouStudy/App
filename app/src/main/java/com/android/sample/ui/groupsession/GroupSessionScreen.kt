@@ -11,6 +11,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.credentials.CredentialManager
+import com.android.sample.ui.navigation.BottomNavigationMenu
+import com.android.sample.ui.navigation.NavigationActions
+import com.android.sample.ui.navigation.NavigationTestTags
+import com.android.sample.ui.navigation.Tab
 
 object GroupSessionScreenTestTags {
   const val PREFERENCES_BUTTON = "preferencesButton"
@@ -22,6 +26,7 @@ fun GroupSessionScreen(
     // TODO add VM as parameter
     credentialManager: CredentialManager = CredentialManager.create(LocalContext.current),
     onSignedOut: () -> Unit = {},
+    navigationActions: NavigationActions? = null,
 ) {
   Scaffold(
       topBar = {
@@ -29,6 +34,13 @@ fun GroupSessionScreen(
             title = {
               Text("Group sessions", modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE))
             },
+        )
+      },
+      bottomBar = {
+        BottomNavigationMenu(
+            selectedTab = Tab.GroupSession,
+            onTabSelected = { tab -> navigationActions?.navigateTo(tab.destination) },
+            modifier = Modifier.testTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU),
         )
       },
       content = { pd -> Text("Group sessions screen", modifier = Modifier.padding(pd)) },
