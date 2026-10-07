@@ -126,13 +126,6 @@ class NavigationTests {
   }
 
   @Test
-  fun canNavigateToCalendarAndBackToDashboard() {
-    composeTestRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
-    composeTestRule.onNodeWithTag(NavigationTestTags.DASHBOARD_TAB).performClick()
-    checkDashboardScreenIsDisplayed()
-  }
-
-  @Test
   fun canNavigateToCalendarAndBackToDashboardUsingSystemBack() {
     composeTestRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
     checkCalendarScreenIsDisplayed()
@@ -148,6 +141,8 @@ class NavigationTests {
     checkCalendarScreenIsDisplayed()
     composeTestRule.onNodeWithTag(NavigationTestTags.GROUP_SESSION_TAB).performClick()
     checkGroupSessionScreenIsDisplayed()
+    composeTestRule.onNodeWithTag(NavigationTestTags.DASHBOARD_TAB).performClick()
+    checkDashboardScreenIsDisplayed()
   }
 
   /**
