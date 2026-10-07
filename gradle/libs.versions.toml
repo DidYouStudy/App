@@ -19,6 +19,7 @@ robolectric = "4.16.1"
 sonar = "7.3.1.8318"
 firebaseBom = "34.19.0"
 googleServices = "4.5.0"
+navigationCompose = "2.10.2"
 coroutines = "1.11.0"
 mockito = "5.12.0"
 mockitoKotlin = "5.4.0"
@@ -36,6 +37,8 @@ androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecyc
 
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+compose-material = { group = "androidx.compose.material", name = "material" }
+compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 compose-ui = { group = "androidx.compose.ui", name = "ui" }
 compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 compose-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
@@ -54,6 +57,7 @@ firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.r
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
 firebase-storage = { group = "com.google.firebase", name = "firebase-storage" }
+androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "coroutines" }
 mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
 mockito-kotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version.ref = "mockitoKotlin" }
