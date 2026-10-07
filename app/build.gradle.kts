@@ -1,5 +1,6 @@
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Codex AI Agent
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -23,6 +24,17 @@ android {
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     vectorDrawables { useSupportLibrary = true }
+  }
+
+  signingConfigs {
+    // Shared debug key, committed so every teammate and CI build has the SHA-1 registered in
+    // Firebase for Google sign-in. Debug only: never use this key for release builds.
+    getByName("debug") {
+      storeFile = file("debug.keystore")
+      storePassword = "android"
+      keyAlias = "androiddebugkey"
+      keyPassword = "android"
+    }
   }
 
   buildTypes {
@@ -160,6 +172,12 @@ dependencies {
   implementation(libs.firebase.storage)
   // Task.await() for suspend-based repositories
   implementation(libs.kotlinx.coroutines.play.services)
+
+  // ------------- Google sign-in ----------------
+  // Credential Manager and its Play Services provider (R8 rules ship inside the AAR)
+  implementation(libs.androidx.credentials)
+  implementation(libs.androidx.credentials.play.services.auth)
+  implementation(libs.googleid)
 }
 
 tasks.withType<Test> {
