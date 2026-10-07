@@ -6,4 +6,9 @@
     <string name="sign_in_title">Ready to study?</string>
     <string name="sign_in_google_button">Authenticate With Google</string>
     <string name="sign_in_logo_description">DidYouStudy? logo</string>
+    <string name="sign_in_error_network">No internet connection. Check your network and try again.</string>
+    <string name="sign_in_error_invalid_credential">Google sign-in failed. Please try again.</string>
+    <string name="sign_in_error_user_disabled">This account has been disabled.</string>
+    <string name="sign_in_error_no_credential">No Google account found on this device. Add one in your device settings.</string>
+    <string name="sign_in_error_unknown">Something went wrong. Please try again.</string>
 </resources>
