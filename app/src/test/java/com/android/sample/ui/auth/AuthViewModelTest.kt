@@ -12,8 +12,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.resetMain
@@ -72,20 +74,40 @@ class AuthViewModelTest {
   @Test
   fun brokenSessionFlowEndsStartupAndReportsUnknownInsteadOfCrashing() =
       runTest(dispatcher) {
-        val failsAtStartup = AuthViewModel(BrokenSessionRepository())
+        val failsAtStartup =
+            AuthViewModel(
+                SessionOnlyRepository(flow { throw IllegalStateException("private diagnostic") })
+            )
         store.put("failsAtStartup", failsAtStartup)
         runCurrent()
         assertEquals(
             AuthUiState(isInitializing = false, error = AuthError.UNKNOWN),
             failsAtStartup.uiState.value,
         )
-        val failsLater = AuthViewModel(BrokenSessionRepository(alice))
+        val failsLater =
+            AuthViewModel(
+                SessionOnlyRepository(
+                    flow {
+                      emit(alice)
+                      throw IllegalStateException("private diagnostic")
+                    }
+                )
+            )
         store.put("failsLater", failsLater)
         runCurrent()
         assertEquals(
             AuthUiState(user = alice, isInitializing = false, error = AuthError.UNKNOWN),
             failsLater.uiState.value,
         )
+      }
+
+  @Test
+  fun sessionFlowThatCompletesKeepsLastUserWithoutError() =
+      runTest(dispatcher) {
+        val completed = AuthViewModel(SessionOnlyRepository(flowOf(alice)))
+        store.put("completed", completed)
+        runCurrent()
+        assertEquals(AuthUiState(user = alice, isInitializing = false), completed.uiState.value)
       }
 
   @Test
@@ -383,14 +405,9 @@ class AuthViewModelTest {
 
   private class OtherViewModel : ViewModel()
 
-  /** Emits [beforeFailure] (if any), then its session flow throws. */
-  private class BrokenSessionRepository(private val beforeFailure: UserAccount? = null) :
+  /** A repository whose session flow is given by the test; the actions are not used. */
+  private class SessionOnlyRepository(override val currentUser: Flow<UserAccount?>) :
       AuthRepository {
-    override val currentUser = flow {
-      if (beforeFailure != null) emit(beforeFailure)
-      throw IllegalStateException("private diagnostic")
-    }
-
     override suspend fun signInWithGoogle(idToken: String): UserAccount = error("Not used")
 
     override suspend fun signOut() = error("Not used")
