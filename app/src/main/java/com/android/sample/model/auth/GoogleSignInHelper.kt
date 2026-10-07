@@ -13,6 +13,7 @@ import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Opens Google's account picker and reads its ID token. Failures are reported as [AuthException],
@@ -30,6 +31,10 @@ class GoogleSignInHelper(private val credentialManager: CredentialManager) {
    * @throws AuthException with [AuthError.CANCELLED] if the user closes the picker,
    *   [AuthError.NO_CREDENTIAL] if the device has no Google account, or [AuthError.UNKNOWN] for any
    *   other picker or token failure (often a missing SHA-1 or wrong client ID).
+   * @throws IllegalArgumentException if [serverClientId] is blank. This is a configuration bug, not
+   *   a sign-in failure, so it is not reported as an [AuthException].
+   * @throws CancellationException if the calling coroutine is cancelled while the picker is open
+   *   (e.g. the screen is destroyed). It is rethrown unwrapped so cancellation propagates.
    */
   suspend fun getIdToken(activity: Activity, serverClientId: String): String {
     require(serverClientId.isNotBlank()) { "The Web OAuth client ID must not be blank." }
@@ -46,6 +51,12 @@ class GoogleSignInHelper(private val credentialManager: CredentialManager) {
           throw AuthException(AuthError.NO_CREDENTIAL, exception)
         } catch (exception: GetCredentialException) {
           // Setup problems (SHA-1, client ID, Play services) and other picker failures.
+          throw AuthException(AuthError.UNKNOWN, exception)
+        } catch (exception: CancellationException) {
+          // The calling coroutine was cancelled (e.g. the screen left); let it stop normally.
+          throw exception
+        } catch (exception: Exception) {
+          // Anything else getCredential() throws, e.g. an invalid request.
           throw AuthException(AuthError.UNKNOWN, exception)
         }
     if (

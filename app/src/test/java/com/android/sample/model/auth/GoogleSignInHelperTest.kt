@@ -124,6 +124,17 @@ class GoogleSignInHelperTest {
   }
 
   @Test
+  fun wrapsUnexpectedPickerExceptionsAsUnknownAndRetainsCause() = runTest {
+    // Exceptions outside GetCredentialException, e.g. from an invalid request.
+    for (cause in listOf(IllegalArgumentException("bad request"), IllegalStateException("odd"))) {
+      pickerThrows(cause)
+      val failure = authFailure { helper.getIdToken(activity, "web-client") }
+      assertEquals(AuthError.UNKNOWN, failure.error)
+      assertSame(cause, failure.cause)
+    }
+  }
+
+  @Test
   fun coroutineCancellationPropagatesWithoutWrapping() = runTest {
     val cancellation = CancellationException("screen destroyed")
     pickerThrows(cancellation)
