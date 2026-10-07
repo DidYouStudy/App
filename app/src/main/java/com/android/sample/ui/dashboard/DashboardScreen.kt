@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.credentials.CredentialManager
+import com.android.sample.ui.navigation.NavigationTestTags
 import kotlin.collections.get
 
 object DashBoardScreenTestTags {
