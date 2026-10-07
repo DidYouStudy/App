@@ -7,6 +7,26 @@ and place it in `app/` before building, otherwise the build fails at
 `processDebugGoogleServices`. CI writes it from the `GOOGLE_SERVICES_JSON`
 repository secret (the file, base64-encoded).
 
+### Google sign-in
+Debug builds are signed with the shared `app/debug.keystore`, so every teammate
+and CI produce the same signing certificate. Google sign-in only works once its
+SHA-1 is registered for `com.android.sample` in the Firebase console (Project
+settings → Your apps → Add fingerprint):
+
+```
+A0:14:17:9F:C5:A8:5B:C6:DF:35:F1:03:FE:36:43:59:D1:0F:36:52
+```
+
+After adding it, download `google-services.json` again (and update the CI
+secret), since the file then contains the new OAuth client. With a missing
+fingerprint the account picker usually fails with "Developer console is not set
+up correctly" (code 10) or finds no matching credential.
+To check the fingerprint yourself, run
+`keytool -list -v -keystore app/debug.keystore -storepass android`.
+
+This key is public and for debug builds only; never register it for, or use it
+to sign, a release build.
+
 ## App name
 DidYouStudy?
 
@@ -124,3 +144,9 @@ personalized recommendations, interactions with other users,
 or (if implemented) AI-generated quizzes, require an internet connection, 
 although previously synchronized shared information can still be viewed 
 offline where appropriate.
+
+## Figma
+For the design of the app, we have created a Figma project which includes mockups and tracks the design work. You can access it using this [link](https://www.figma.com/design/6Gggv7H9nuavBmqqvplxkD/DidYouStudy-?node-id=0-1&t=iAHZkCCt5bS0c0vp-1).
+
+## Architecture Design
+You can access the architecture design of the app in the same Figma project, or using the following [link](https://www.figma.com/design/6Gggv7H9nuavBmqqvplxkD/DidYouStudy-?node-id=127-449&t=cvg3umobGP4bajTg-1).
