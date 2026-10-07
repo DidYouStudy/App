@@ -4,10 +4,10 @@ package com.android.sample.ui.auth
 import android.app.Activity
 import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.credentials.CredentialManager
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
 import com.android.sample.model.auth.GoogleSignInHelper
 
@@ -17,7 +17,7 @@ fun SignInRoute(
     modifier: Modifier = Modifier,
     getIdToken: suspend (Activity) -> String = ::requestGoogleIdToken,
 ) {
-  val uiState = viewModel.uiState.collectAsState().value
+  val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
   val activity = LocalActivity.current
 
   SignInScreen(
