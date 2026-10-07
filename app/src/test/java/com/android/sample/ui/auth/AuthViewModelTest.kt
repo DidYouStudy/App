@@ -176,7 +176,8 @@ class AuthViewModelTest {
   fun exposesEveryRepositoryErrorAndPreservesExistingSession() =
       runTest(dispatcher) {
         session(alice)
-        for (error in AuthError.entries.filter { it != AuthError.CANCELLED }) {
+        val silent = setOf(AuthError.CANCELLED, AuthError.CREDENTIAL_STATE_CLEAR_FAILED)
+        for (error in AuthError.entries.filter { it !in silent }) {
           repository.signIn = { throw AuthException(error) }
           viewModel.signInWithGoogle { "token" }
           runCurrent()
@@ -265,20 +266,18 @@ class AuthViewModelTest {
       }
 
   @Test
-  fun cleanupFailureReportsErrorButSessionFlowCanStillSignUserOut() =
+  fun cleanupFailureAfterSignOutShowsNoErrorAndUserIsSignedOut() =
       runTest(dispatcher) {
         session(alice)
+        // An earlier visible error is cleared when sign-out starts.
+        repository.signIn = { throw AuthException(AuthError.NETWORK) }
+        viewModel.signInWithGoogle { "token" }
+        runCurrent()
+        assertEquals(AuthError.NETWORK, viewModel.uiState.value.error)
         repository.signOutAction = {
           repository.currentUser.emit(null)
           throw AuthException(AuthError.CREDENTIAL_STATE_CLEAR_FAILED)
         }
-        viewModel.signOut()
-        runCurrent()
-        assertEquals(
-            AuthUiState(isInitializing = false, error = AuthError.CREDENTIAL_STATE_CLEAR_FAILED),
-            viewModel.uiState.value,
-        )
-        repository.signOutAction = {}
         viewModel.signOut()
         runCurrent()
         assertEquals(AuthUiState(isInitializing = false), viewModel.uiState.value)

@@ -30,6 +30,15 @@ data class AuthUiState(
 )
 
 /**
+ * Errors the user has nothing to act on, so the screen never shows them:
+ * - [AuthError.CANCELLED]: closing the account picker is the user's choice, not a failure.
+ * - [AuthError.CREDENTIAL_STATE_CLEAR_FAILED]: Firebase has already signed the user out; only
+ *   Credential Manager's remembered account was not cleared, and the next sign-in still shows the
+ *   picker.
+ */
+private val silentErrors = setOf(AuthError.CANCELLED, AuthError.CREDENTIAL_STATE_CLEAR_FAILED)
+
+/**
  * Manages authentication state through the repository contract, without Firebase or Activity APIs.
  */
 class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
@@ -94,8 +103,7 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
         mutableUiState.update { it.copy(error = AuthError.UNKNOWN) }
       } catch (exception: Exception) {
         val error = (exception as? AuthException)?.error ?: AuthError.UNKNOWN
-        // Closing the account picker is the user's choice, not a failure to report.
-        if (error != AuthError.CANCELLED) mutableUiState.update { it.copy(error = error) }
+        if (error !in silentErrors) mutableUiState.update { it.copy(error = error) }
       } finally {
         mutableUiState.update { it.copy(isLoading = false) }
       }
