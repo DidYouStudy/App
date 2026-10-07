@@ -11,10 +11,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.credentials.CredentialManager
-import com.android.sample.ui.navigation.BottomNavigationMenu
-import com.android.sample.ui.navigation.NavigationActions
-import com.android.sample.ui.navigation.NavigationTestTags
-import com.android.sample.ui.navigation.Tab
 
 object CalendarScreenTestTags {
   const val PREFERENCES_BUTTON = "preferencesButton"
@@ -26,7 +22,6 @@ fun CalendarScreen(
     // TODO add VM as parameter
     credentialManager: CredentialManager = CredentialManager.create(LocalContext.current),
     onSignedOut: () -> Unit = {},
-    navigationActions: NavigationActions? = null,
 ) {
   Scaffold(
       topBar = {
@@ -34,13 +29,6 @@ fun CalendarScreen(
             title = {
               Text("Calendar", modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE))
             },
-        )
-      },
-      bottomBar = {
-        BottomNavigationMenu(
-            selectedTab = Tab.Calendar,
-            onTabSelected = { tab -> navigationActions?.navigateTo(tab.destination) },
-            modifier = Modifier.testTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU),
         )
       },
       content = { pd -> Text("Calendar screen", modifier = Modifier.padding(pd)) },

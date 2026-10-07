@@ -11,10 +11,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.credentials.CredentialManager
-import com.android.sample.ui.navigation.BottomNavigationMenu
-import com.android.sample.ui.navigation.NavigationActions
-import com.android.sample.ui.navigation.NavigationTestTags
-import com.android.sample.ui.navigation.Tab
 import kotlin.collections.get
 
 object DashBoardScreenTestTags {
@@ -27,7 +23,6 @@ fun DashboardScreen(
     // TODO add VM as parameter
     credentialManager: CredentialManager = CredentialManager.create(LocalContext.current),
     onSignedOut: () -> Unit = {},
-    navigationActions: NavigationActions? = null,
 ) {
   Scaffold(
       topBar = {
@@ -35,13 +30,6 @@ fun DashboardScreen(
             title = {
               Text("Dashboard", modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE))
             },
-        )
-      },
-      bottomBar = {
-        BottomNavigationMenu(
-            selectedTab = Tab.Dashboard,
-            onTabSelected = { tab -> navigationActions?.navigateTo(tab.destination) },
-            modifier = Modifier.testTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU),
         )
       },
       content = { pd -> Text("Dashboard screen", modifier = Modifier.padding(pd)) },

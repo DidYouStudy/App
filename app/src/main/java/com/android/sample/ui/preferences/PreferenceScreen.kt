@@ -13,8 +13,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.credentials.CredentialManager
-import com.android.sample.ui.navigation.NavigationActions
-import com.android.sample.ui.navigation.NavigationTestTags
 
 object PreferenceScreenTestTags {
   const val PREFERENCES_BUTTON = "preferencesButton"
@@ -26,7 +24,6 @@ fun PreferenceScreen(
     // TODO add VM as parameter
     credentialManager: CredentialManager = CredentialManager.create(LocalContext.current),
     onSignedOut: () -> Unit = {},
-    navigationActions: NavigationActions? = null,
 ) {
   // TODO WHEN DOING TOP NAVIGATION
   Scaffold(
