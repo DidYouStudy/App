@@ -49,8 +49,16 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
 
   init {
     viewModelScope.launch {
-      repository.currentUser.collect { user ->
-        mutableUiState.update { it.copy(user = user, isInitializing = false) }
+      try {
+        repository.currentUser.collect { user ->
+          mutableUiState.update { it.copy(user = user, isInitializing = false) }
+        }
+      } catch (exception: CancellationException) {
+        throw exception
+      } catch (exception: Exception) {
+        // The session flow broke: end startup so the screen is not stuck, keep the last known
+        // user, and report it rather than crashing the app.
+        mutableUiState.update { it.copy(isInitializing = false, error = AuthError.UNKNOWN) }
       }
     }
   }

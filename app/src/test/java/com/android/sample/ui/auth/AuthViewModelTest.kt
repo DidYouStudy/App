@@ -13,6 +13,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.resetMain
@@ -66,6 +67,25 @@ class AuthViewModelTest {
         assertEquals(bob, viewModel.uiState.value.user)
         session(null)
         assertEquals(AuthUiState(isInitializing = false), viewModel.uiState.value)
+      }
+
+  @Test
+  fun brokenSessionFlowEndsStartupAndReportsUnknownInsteadOfCrashing() =
+      runTest(dispatcher) {
+        val failsAtStartup = AuthViewModel(BrokenSessionRepository())
+        store.put("failsAtStartup", failsAtStartup)
+        runCurrent()
+        assertEquals(
+            AuthUiState(isInitializing = false, error = AuthError.UNKNOWN),
+            failsAtStartup.uiState.value,
+        )
+        val failsLater = AuthViewModel(BrokenSessionRepository(alice))
+        store.put("failsLater", failsLater)
+        runCurrent()
+        assertEquals(
+            AuthUiState(user = alice, isInitializing = false, error = AuthError.UNKNOWN),
+            failsLater.uiState.value,
+        )
       }
 
   @Test
@@ -362,6 +382,19 @@ class AuthViewModelTest {
   }
 
   private class OtherViewModel : ViewModel()
+
+  /** Emits [beforeFailure] (if any), then its session flow throws. */
+  private class BrokenSessionRepository(private val beforeFailure: UserAccount? = null) :
+      AuthRepository {
+    override val currentUser = flow {
+      if (beforeFailure != null) emit(beforeFailure)
+      throw IllegalStateException("private diagnostic")
+    }
+
+    override suspend fun signInWithGoogle(idToken: String): UserAccount = error("Not used")
+
+    override suspend fun signOut() = error("Not used")
+  }
 
   private class FakeAuthRepository : AuthRepository {
     override val currentUser = MutableSharedFlow<UserAccount?>()
