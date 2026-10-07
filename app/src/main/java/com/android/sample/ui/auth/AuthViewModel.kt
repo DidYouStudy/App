@@ -10,6 +10,8 @@ import com.android.sample.model.auth.AuthException
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -83,9 +85,13 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
       try {
         operation()
       } catch (exception: CancellationException) {
-        // Cancellation is a coroutine control signal, not an authentication error; let it
-        // propagate.
-        throw exception
+        // A CancellationException can mean either that this coroutine was cancelled
+        // (e.g. the ViewModel was cleared) or that the operation itself was cancelled
+        // while the coroutine is still active (e.g. by an SDK task).
+        // ensureActive() rethrows only in the first case; otherwise, report the
+        // operation-level cancellation as an error.
+        currentCoroutineContext().ensureActive()
+        mutableUiState.update { it.copy(error = AuthError.UNKNOWN) }
       } catch (exception: Exception) {
         val error = (exception as? AuthException)?.error ?: AuthError.UNKNOWN
         // Closing the account picker is the user's choice, not a failure to report.

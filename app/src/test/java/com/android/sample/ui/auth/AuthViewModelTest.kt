@@ -298,17 +298,21 @@ class AuthViewModelTest {
       }
 
   @Test
-  fun cancellationIsNotDisplayedAsFailureAndAllowsRetry() =
+  fun cancellationFromInsideOperationIsReportedAsUnknownAndAllowsRetry() =
       runTest(dispatcher) {
         session(alice)
-        repository.signIn = { throw CancellationException("cancelled") }
-        viewModel.signInWithGoogle { "cancelled" }
+        val unknown = AuthUiState(user = alice, isInitializing = false, error = AuthError.UNKNOWN)
+        viewModel.signInWithGoogle { throw CancellationException("picker cancelled") }
         runCurrent()
-        assertEquals(AuthUiState(user = alice, isInitializing = false), viewModel.uiState.value)
-        repository.signOutAction = { throw CancellationException("cancelled") }
+        assertEquals(unknown, viewModel.uiState.value)
+        repository.signIn = { throw CancellationException("task cancelled") }
+        viewModel.signInWithGoogle { "token" }
+        runCurrent()
+        assertEquals(unknown, viewModel.uiState.value)
+        repository.signOutAction = { throw CancellationException("task cancelled") }
         viewModel.signOut()
         runCurrent()
-        assertEquals(AuthUiState(user = alice, isInitializing = false), viewModel.uiState.value)
+        assertEquals(unknown, viewModel.uiState.value)
         repository.signIn = { bob }
         viewModel.signInWithGoogle { "retry" }
         runCurrent()
