@@ -137,6 +137,23 @@ class ProfileRepositoryFirestoreTest {
     assertEquals(exception, result.exceptionOrNull()?.cause)
   }
 
+  // Propagates cancellation thrown synchronously during profile deserialization.
+  @Test
+  fun getProfile_propagatesCancellation_whenDeserializationIsCancelled() = runTest {
+    val cancellation = CancellationException("Cancelled")
+    val snapshot = mock(DocumentSnapshot::class.java)
+    `when`(snapshot.exists()).thenReturn(true)
+    `when`(snapshot.toObject(UserProfile::class.java)).thenThrow(cancellation)
+    `when`(document.get()).thenReturn(Tasks.forResult(snapshot))
+
+    try {
+      repository.getProfile("user123")
+      fail("Expected cancellation to propagate")
+    } catch (actual: CancellationException) {
+      assertSame(cancellation, actual)
+    }
+  }
+
   // Rejects a stored profile whose UID does not match the requested document ID.
   @Test
   fun getProfile_returnsInvalidProfileData_whenStoredUidDoesNotMatchRequestedId() = runTest {
@@ -305,6 +322,26 @@ class ProfileRepositoryFirestoreTest {
         assertEquals(exception, result.exceptionOrNull()?.cause)
         verify(transaction, never()).set(any(), any())
       }
+
+  // Propagates cancellation thrown during existing-profile deserialization in the transaction.
+  @Test
+  fun createProfile_propagatesCancellation_whenExistingDeserializationIsCancelled() = runTest {
+    val cancellation = CancellationException("Cancelled")
+    val snapshot = mock(DocumentSnapshot::class.java)
+    val transaction = mock(Transaction::class.java)
+    `when`(snapshot.exists()).thenReturn(true)
+    `when`(snapshot.toObject(UserProfile::class.java)).thenThrow(cancellation)
+    `when`(transaction.get(document)).thenReturn(snapshot)
+    stubTransaction(transaction)
+
+    try {
+      repository.createProfile("user123")
+      fail("Expected cancellation to propagate")
+    } catch (actual: CancellationException) {
+      assertSame(cancellation, actual)
+    }
+    verify(transaction, never()).set(any(), any())
+  }
 
   // Rejects an existing profile whose UID does not match the requested document ID.
   @Test
