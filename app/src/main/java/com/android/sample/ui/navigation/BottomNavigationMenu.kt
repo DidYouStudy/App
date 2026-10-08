@@ -38,7 +38,7 @@ fun BottomNavigationMenu(
     modifier: Modifier = Modifier,
 ) {
   NavigationBar(
-      modifier = modifier.fillMaxWidth().testTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU),
+      modifier = modifier.fillMaxWidth(),
       containerColor = MaterialTheme.colorScheme.surface,
       content = {
         tabs.forEach { tab ->
