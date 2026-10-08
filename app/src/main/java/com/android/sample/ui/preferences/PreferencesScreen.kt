@@ -18,10 +18,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,6 +38,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.sample.model.preferences.PreferenceDefaults
+import com.android.sample.model.preferences.TimeOfDay
 import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
 
 // ---------------------------------------------------------------------------
@@ -46,31 +56,72 @@ interface PreferenceOption {
 // Enum Classes for representing the available preferences
 // ---------------------------------------------------------------------------
 
-enum class StudyTime(override val label: String, override val testTag: String) : PreferenceOption {
-    MORNING("Morning", Tags.STUDY_TIME_MORNING),
-    AFTERNOON("Afternoon", Tags.STUDY_TIME_AFTERNOON),
-    EVENING("Evening", Tags.STUDY_TIME_EVENING),
-    NIGHT("Night", Tags.STUDY_TIME_NIGHT),
+enum class StudyTime(
+    val timeOfDay: TimeOfDay,
+    override val testTag: String,
+) : PreferenceOption {
+    MORNING(TimeOfDay.MORNING, Tags.STUDY_TIME_MORNING),
+    AFTERNOON(TimeOfDay.AFTERNOON, Tags.STUDY_TIME_AFTERNOON),
+    EVENING(TimeOfDay.EVENING, Tags.STUDY_TIME_EVENING),
+    NIGHT(TimeOfDay.NIGHT, Tags.STUDY_TIME_NIGHT);
+
+    // Reuse the label from your domain enum instead of duplicating it
+    override val label: String get() = timeOfDay.displayName
+
+    companion object {
+        fun from(timeOfDay: TimeOfDay): StudyTime = entries.first { it.timeOfDay == timeOfDay }
+    }
 }
 
-enum class SessionLength(override val label: String, override val testTag: String) : PreferenceOption {
-    THIRTY_MIN("30 min", Tags.SESSION_LENGTH_30_MIN),
-    ONE_HOUR("1 hour", Tags.SESSION_LENGTH_1_HOUR),
-    TWO_HOURS("2 hours", Tags.SESSION_LENGTH_2_HOURS),
-    THREE_HOURS("3 hours", Tags.SESSION_LENGTH_3_HOURS),
+enum class SessionLength(
+    val minutes: Int,
+    override val label: String,
+    override val testTag: String,
+) : PreferenceOption {
+    THIRTY_MIN(30, "30 min", Tags.SESSION_LENGTH_30_MIN),
+    ONE_HOUR(60, "1 hour", Tags.SESSION_LENGTH_1_HOUR),
+    TWO_HOURS(120, "2 hours", Tags.SESSION_LENGTH_2_HOURS),
+    THREE_HOURS(180, "3 hours", Tags.SESSION_LENGTH_3_HOURS);
+
+    companion object {
+        // Falls back to the default if the stored value isn't one of the options
+        fun fromMinutes(minutes: Int): SessionLength =
+            entries.firstOrNull { it.minutes == minutes } ?:
+                entries.first { it.minutes == PreferenceDefaults.DEFAULT_SESSION_MINUTES }
+    }
 }
 
-enum class BreakDuration(override val label: String, override val testTag: String) : PreferenceOption {
-    FIVE_MIN("5 minutes", Tags.BREAK_DURATION_5_MIN),
-    TEN_MIN("10 minutes", Tags.BREAK_DURATION_10_MIN),
-    FIFTEEN_MIN("15 minutes", Tags.BREAK_DURATION_15_MIN),
-    TWENTY_MIN("20 minutes", Tags.BREAK_DURATION_20_MIN),
+enum class BreakDuration(
+    val minutes: Int,
+    override val label: String,
+    override val testTag: String,
+) : PreferenceOption {
+    FIVE_MIN(5, "5 minutes", Tags.BREAK_DURATION_5_MIN),
+    TEN_MIN(10, "10 minutes", Tags.BREAK_DURATION_10_MIN),
+    FIFTEEN_MIN(15, "15 minutes", Tags.BREAK_DURATION_15_MIN),
+    TWENTY_MIN(20, "20 minutes", Tags.BREAK_DURATION_20_MIN);
+
+    companion object {
+        fun fromMinutes(minutes: Int): BreakDuration =
+            entries.firstOrNull { it.minutes == minutes } ?:
+                entries.first { it.minutes == PreferenceDefaults.DEFAULT_BREAK_MINUTES }
+    }
 }
 
-enum class BreakFrequency(override val label: String, override val testTag: String) : PreferenceOption {
-    EVERY_30_MIN("Every 30 min", Tags.BREAK_FREQUENCY_30_MIN),
-    EVERY_45_MIN("Every 45 min", Tags.BREAK_FREQUENCY_45_MIN),
-    EVERY_HOUR("Every hour", Tags.BREAK_FREQUENCY_1_HOUR),
+enum class BreakFrequency(
+    val minutes: Int,
+    override val label: String,
+    override val testTag: String,
+) : PreferenceOption {
+    EVERY_30_MIN(30, "Every 30 min", Tags.BREAK_FREQUENCY_30_MIN),
+    EVERY_45_MIN(45, "Every 45 min", Tags.BREAK_FREQUENCY_45_MIN),
+    EVERY_HOUR(60, "Every hour", Tags.BREAK_FREQUENCY_1_HOUR);
+
+    companion object {
+        fun fromMinutes(minutes: Int): BreakFrequency =
+            entries.firstOrNull { it.minutes == minutes } ?:
+                entries.first { it.minutes == PreferenceDefaults.DEFAULT_FREQUENCY_MINUTES }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -81,18 +132,75 @@ enum class BreakFrequency(override val label: String, override val testTag: Stri
     Actual stateful preference screen
  */
 @Composable
-fun PreferenceScreen() {}
+fun PreferenceScreen(
+    modifier: Modifier = Modifier,
+    viewModel: PreferencesViewModel = viewModel(),
+    onImportClick: () -> Unit,
+    onAddLocationClick: () -> Unit,
+    onSaved: () -> Unit,
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    when (val state = uiState) {
+        // if the screen should be loading
+        is PreferencesUiState.Loading ->
+            Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+
+        // if an error occurred
+        is PreferencesUiState.Error ->
+            Column(
+                modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(state.message)
+                Button(
+                    onClick = viewModel::loadPreferences,
+                ) { Text("Retry") }
+            }
+
+        is PreferencesUiState.Success -> {
+            var draft by remember(state.preferences) { mutableStateOf(state.preferences) }
+            PreferenceScreenStateless(
+                selectedStudyTimes = draft.preferredStudyTimes.map { StudyTime.from(it) }.toSet(),
+                selectedSessionLength = SessionLength.fromMinutes(draft.sessionLengthMinutes),
+                selectedBreakDuration = BreakDuration.fromMinutes(draft.breakLengthMinutes),
+                selectedBreakFrequency = BreakFrequency.fromMinutes(draft.breakFrequencyMinutes),
+                onImportClick = onImportClick,
+                onAddLocationClick = onAddLocationClick,
+                onStudyTimeToggle = { time ->
+                    val tod = time.timeOfDay
+                    draft = draft.copy(
+                        preferredStudyTimes =
+                            if (tod in draft.preferredStudyTimes) draft.preferredStudyTimes - tod
+                            else draft.preferredStudyTimes + tod
+                    )
+                },
+                onSessionLengthSelect = { draft = draft.copy(sessionLengthMinutes = it.minutes) },
+                onBreakDurationSelect = { draft = draft.copy(breakLengthMinutes = it.minutes) },
+                onBreakFrequencySelect = { draft = draft.copy(breakFrequencyMinutes = it.minutes) },
+                onSaveClick = {
+                    viewModel.updatePreferences(draft)
+                    onSaved()
+                },
+                modifier = modifier,
+            )
+        }
+    }
+}
 
 /*
     Stateless preference screen used for the Success state and for previewing
  */
 @Composable
 fun PreferenceScreenStateless(
+    modifier: Modifier = Modifier,
     selectedStudyTimes: Set<StudyTime>,
     selectedSessionLength: SessionLength,
     selectedBreakDuration: BreakDuration,
     selectedBreakFrequency: BreakFrequency,
-    modifier: Modifier = Modifier,
     onImportClick: () -> Unit,
     onAddLocationClick: () -> Unit,
     onStudyTimeToggle: (StudyTime) -> Unit,
