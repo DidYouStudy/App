@@ -33,7 +33,7 @@ import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
    Actual stateful preference screen
 */
 @Composable
-fun PreferenceScreen(
+fun PreferencesScreen(
     modifier: Modifier = Modifier,
     viewModel: PreferencesViewModel = viewModel(),
     onImportClick: () -> Unit,
@@ -198,7 +198,7 @@ fun PreferenceScreenStateless(
 
 @Preview // (showBackground = true, showSystemUi = true)
 @Composable
-private fun PreferenceScreenPreview() {
+private fun PreferencesScreenPreview() {
   MaterialTheme {
     PreferenceScreenStateless(
         selectedStudyTimes = setOf(StudyTime.MORNING, StudyTime.AFTERNOON),
