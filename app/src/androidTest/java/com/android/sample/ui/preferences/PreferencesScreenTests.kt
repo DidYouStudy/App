@@ -1,6 +1,7 @@
 // Co-authored-by: Claude AI Agent
 package com.android.sample.ui.preferences
 
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -10,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.TimeOfDay
 import com.android.sample.model.preferences.UserPreferences
@@ -68,7 +70,10 @@ class PreferencesScreenTests {
   }
 
   private fun click(tag: String) {
-    composeTestRule.onNodeWithTag(tag).performScrollTo().performClick()
+    composeTestRule
+        .onNodeWithTag(tag)
+        .performScrollTo()
+        .performSemanticsAction(SemanticsActions.OnClick)
   }
 
   private fun assertSelected(tag: String) {

@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
@@ -13,6 +14,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
 import org.junit.Before
 import org.junit.Rule
@@ -52,21 +54,19 @@ class PreferencesScreenStatelessTests {
     }
   }
 
-  private fun scrollTo(tag: String) = composeTestRule.onNodeWithTag(tag).performScrollTo()
-
   private fun assertSelected(tag: String) {
-    scrollTo(tag)
-    composeTestRule.onNodeWithTag(tag).assertIsSelected()
+    composeTestRule.onNodeWithTag(tag).performScrollTo().assertIsSelected()
   }
 
   private fun assertNotSelected(tag: String) {
-    scrollTo(tag)
-    composeTestRule.onNodeWithTag(tag).assertIsNotSelected()
+    composeTestRule.onNodeWithTag(tag).performScrollTo().assertIsNotSelected()
   }
 
   private fun click(tag: String) {
-    scrollTo(tag)
-    composeTestRule.onNodeWithTag(tag).performClick()
+    composeTestRule
+        .onNodeWithTag(tag)
+        .performScrollTo()
+        .performSemanticsAction(SemanticsActions.OnClick)
   }
 
   @Test
@@ -89,13 +89,9 @@ class PreferencesScreenStatelessTests {
             Tags.BREAK_FREQUENCY_LABEL,
         )
     labelsAndTexts.forEach { tag ->
-      scrollTo(tag)
-      composeTestRule.onNodeWithTag(tag).assertIsDisplayed()
+      composeTestRule.onNodeWithTag(tag).performScrollTo().assertIsDisplayed()
     }
-
-    scrollTo(Tags.IMPORT_SCHEDULE_BUTTON)
-    composeTestRule.onNodeWithTag(Tags.IMPORT_SCHEDULE_BUTTON).assertIsDisplayed()
-    scrollTo(Tags.ADD_STUDY_LOCATION_BUTTON)
+    composeTestRule.onNodeWithTag(Tags.IMPORT_SCHEDULE_BUTTON).performScrollTo().assertIsDisplayed()
     composeTestRule.onNodeWithTag(Tags.ADD_STUDY_LOCATION_BUTTON).assertIsDisplayed()
   }
 
@@ -104,9 +100,9 @@ class PreferencesScreenStatelessTests {
     val allOptions: List<PreferenceOption> =
         StudyTime.entries + SessionLength.entries + BreakDuration.entries + BreakFrequency.entries
     allOptions.forEach { option ->
-      scrollTo(option.testTag)
       composeTestRule
           .onNodeWithTag(option.testTag)
+          .performScrollTo()
           .assertIsDisplayed()
           .assertTextEquals(option.label)
     }
