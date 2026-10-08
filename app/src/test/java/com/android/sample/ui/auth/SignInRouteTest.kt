@@ -31,6 +31,7 @@ class SignInRouteTest {
   private lateinit var viewModel: AuthViewModel
   private lateinit var repository: TestAuthRepository
   private val receivedActivities = mutableListOf<Activity>()
+  private var signedInCount = 0
 
   @After
   fun tearDown() {
@@ -46,6 +47,30 @@ class SignInRouteTest {
 
     assertEquals(listOf(composeTestRule.activity), receivedActivities)
     assertEquals(listOf("fake-token"), repository.tokens)
+  }
+
+  @Test
+  fun successfulSignInCallsOnSignedInExactlyOnce() {
+    setRoute()
+
+    composeTestRule.onNodeWithTag(SignInScreenTestTags.GOOGLE_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+
+    assertEquals(1, signedInCount)
+    composeTestRule.waitForIdle()
+    assertEquals(1, signedInCount)
+  }
+
+  @Test
+  fun alreadySignedInUserCallsOnSignedInExactlyOnceWhenRouteAppears() {
+    repositoryForTest().currentUser.value =
+        UserAccount("test-user", "test@example.com", "Test User", null)
+
+    setRoute()
+
+    assertEquals(1, signedInCount)
+    composeTestRule.waitForIdle()
+    assertEquals(1, signedInCount)
   }
 
   @Test
@@ -83,6 +108,8 @@ class SignInRouteTest {
         .assertIsDisplayed()
         .assertTextEquals(composeTestRule.activity.getString(R.string.sign_in_error_network))
     composeTestRule.onNodeWithTag(SignInScreenTestTags.GOOGLE_BUTTON).assertIsEnabled()
+    assertEquals(0, signedInCount)
+    verifyCallbackRespondsToLaterSignedInUser()
   }
 
   @Test
@@ -122,6 +149,8 @@ class SignInRouteTest {
     composeTestRule.onNodeWithTag(SignInScreenTestTags.ERROR).assertDoesNotExist()
     composeTestRule.onNodeWithTag(SignInScreenTestTags.GOOGLE_BUTTON).assertIsEnabled()
     assertEquals(emptyList<String>(), repository.tokens)
+    assertEquals(0, signedInCount)
+    verifyCallbackRespondsToLaterSignedInUser()
   }
 
   @Test
@@ -156,6 +185,12 @@ class SignInRouteTest {
     return repository
   }
 
+  private fun verifyCallbackRespondsToLaterSignedInUser() {
+    repository.currentUser.value = UserAccount("test-user", null, null, null)
+    composeTestRule.waitForIdle()
+    assertEquals(1, signedInCount)
+  }
+
   private fun setRoute(
       getIdToken: suspend (Activity) -> String = { activity ->
         receivedActivities += activity
@@ -165,7 +200,13 @@ class SignInRouteTest {
     val testRepository = repositoryForTest()
     viewModel = AuthViewModel(testRepository)
     viewModelStore.put("auth", viewModel)
-    composeTestRule.setContent { SignInRoute(viewModel = viewModel, getIdToken = getIdToken) }
+    composeTestRule.setContent {
+      SignInRoute(
+          viewModel = viewModel,
+          onSignedIn = { signedInCount++ },
+          getIdToken = getIdToken,
+      )
+    }
     composeTestRule.waitForIdle()
   }
 }
