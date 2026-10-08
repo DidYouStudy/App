@@ -1,7 +1,6 @@
 // Co-authored-by: Copilot
 package com.android.sample.model.profile
 
-import android.content.Context
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.FirebaseFirestore
 import org.junit.After
@@ -24,20 +23,18 @@ class ProfileRepositoryProviderTest {
     setInstance(null)
   }
 
-  // Returns the same cached repository regardless of which context is supplied.
+  // Returns the same cached repository across repeated calls.
   @Test
-  fun getRepository_cachesRepositoryAcrossCallsAndContexts() {
+  fun getRepository_cachesRepositoryAcrossCalls() {
     val firestore = mock(FirebaseFirestore::class.java)
     val collection = mock(CollectionReference::class.java)
-    val firstContext = mock(Context::class.java)
-    val secondContext = mock(Context::class.java)
     `when`(firestore.collection("profiles")).thenReturn(collection)
 
     mockStatic(FirebaseFirestore::class.java).use { firebase ->
       firebase.`when`<FirebaseFirestore> { FirebaseFirestore.getInstance() }.thenReturn(firestore)
 
-      val first = ProfileRepositoryProvider.getRepository(firstContext)
-      val second = ProfileRepositoryProvider.getRepository(secondContext)
+      val first = ProfileRepositoryProvider.getRepository()
+      val second = ProfileRepositoryProvider.getRepository()
 
       assertSame(first, second)
       firebase.verify({ FirebaseFirestore.getInstance() }, times(1))
