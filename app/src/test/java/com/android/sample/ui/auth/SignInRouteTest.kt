@@ -3,6 +3,10 @@ package com.android.sample.ui.auth
 
 import android.app.Activity
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -30,6 +34,7 @@ class SignInRouteTest {
   private val viewModelStore = ViewModelStore()
   private lateinit var viewModel: AuthViewModel
   private lateinit var repository: TestAuthRepository
+  private lateinit var recompositionTrigger: MutableState<Int>
   private val receivedActivities = mutableListOf<Activity>()
   private var signedInCount = 0
 
@@ -57,6 +62,9 @@ class SignInRouteTest {
     composeTestRule.waitForIdle()
 
     assertEquals(1, signedInCount)
+    composeTestRule.runOnIdle { recompositionTrigger.value++ }
+    composeTestRule.waitForIdle()
+    composeTestRule.runOnIdle { recompositionTrigger.value++ }
     composeTestRule.waitForIdle()
     assertEquals(1, signedInCount)
   }
@@ -69,6 +77,9 @@ class SignInRouteTest {
     setRoute()
 
     assertEquals(1, signedInCount)
+    composeTestRule.runOnIdle { recompositionTrigger.value++ }
+    composeTestRule.waitForIdle()
+    composeTestRule.runOnIdle { recompositionTrigger.value++ }
     composeTestRule.waitForIdle()
     assertEquals(1, signedInCount)
   }
@@ -198,12 +209,14 @@ class SignInRouteTest {
       }
   ) {
     val testRepository = repositoryForTest()
+    recompositionTrigger = mutableStateOf(0)
     viewModel = AuthViewModel(testRepository)
     viewModelStore.put("auth", viewModel)
     composeTestRule.setContent {
       SignInRoute(
           viewModel = viewModel,
           onSignedIn = { signedInCount++ },
+          modifier = Modifier.testTag("route-${recompositionTrigger.value}"),
           getIdToken = getIdToken,
       )
     }
