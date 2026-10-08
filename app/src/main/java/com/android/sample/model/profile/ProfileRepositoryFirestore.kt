@@ -1,6 +1,7 @@
 // Co-authored-by: Copilot
 package com.android.sample.model.profile
 
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.CancellationException
@@ -36,8 +37,7 @@ class ProfileRepositoryFirestore(
       if (!snapshot.exists()) {
         null
       } else {
-        snapshot.toObject(UserProfile::class.java)
-            ?: throw ProfileException(ProfileError.INVALID_PROFILE_DATA)
+        snapshot.toUserProfile(userId)
       }
     }
   }
@@ -45,8 +45,10 @@ class ProfileRepositoryFirestore(
   /**
    * Creates a profile unless a document already exists.
    *
-   * The transaction makes the existence check and write atomic. When another request has already
-   * created the profile, the existing document is returned unchanged.
+   * The transaction makes the existence check and write atomic. Callers should normally invoke this
+   * method only after [getProfile] returns `null`; the transaction read is an internal race-safety
+   * check. When another request has already created the profile, the existing document is returned
+   * unchanged.
    *
    * @param userId stable authentication identifier and profile document ID.
    * @return [Result.success] containing the created or existing profile; [Result.failure]
@@ -63,8 +65,7 @@ class ProfileRepositoryFirestore(
           .runTransaction { transaction ->
             val snapshot = transaction.get(document)
             if (snapshot.exists()) {
-              snapshot.toObject(UserProfile::class.java)
-                  ?: throw ProfileException(ProfileError.INVALID_PROFILE_DATA)
+              snapshot.toUserProfile(userId)
             } else {
               val profile = UserProfile(uid = userId)
               transaction.set(document, profile)
@@ -87,5 +88,20 @@ class ProfileRepositoryFirestore(
     } catch (exception: Exception) {
       Result.failure(ProfileException(ProfileError.UNKNOWN, exception))
     }
+  }
+
+  private fun DocumentSnapshot.toUserProfile(userId: String): UserProfile {
+    val profile =
+        try {
+          toObject(UserProfile::class.java)
+        } catch (exception: CancellationException) {
+          throw exception
+        } catch (exception: Exception) {
+          throw ProfileException(ProfileError.INVALID_PROFILE_DATA, exception)
+        } ?: throw ProfileException(ProfileError.INVALID_PROFILE_DATA)
+    if (profile.uid != userId) {
+      throw ProfileException(ProfileError.INVALID_PROFILE_DATA)
+    }
+    return profile
   }
 }

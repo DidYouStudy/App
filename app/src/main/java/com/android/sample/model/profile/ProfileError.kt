@@ -8,7 +8,7 @@ package com.android.sample.model.profile
  * exception classes or provider-specific message text.
  */
 enum class ProfileError {
-  /** The repository received a blank authentication user ID. */
+  /** The repository received an invalid authentication user ID. */
   INVALID_USER_ID,
 
   /** Firestore rejected, failed, or could not complete the profile operation. */
