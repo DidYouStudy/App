@@ -194,17 +194,17 @@ class ProfileRepositoryFirestoreTest {
     assertTrue(request.isCancelled)
   }
 
-  // Propagates cancellation when a failed read task wraps it as the cause.
+  // Maps a wrapped cancellation cause to the current unknown profile error.
   @Test
-  fun getProfile_propagatesWrappedCancellationFromFailedTask() = runTest {
+  fun getProfile_returnsUnknownFailure_whenReadTaskWrapsCancellation() = runTest {
     val cancellation = CancellationException("Cancelled")
     val wrapped = IllegalStateException("Firestore wrapper", cancellation)
     `when`(document.get()).thenReturn(Tasks.forException(wrapped))
 
-    val request = async { repository.getProfile("user123") }
+    val result = repository.getProfile("user123")
 
-    request.cancelAndJoin()
-    assertTrue(request.isCancelled)
+    assertProfileError(result, ProfileError.UNKNOWN)
+    assertEquals(wrapped, result.exceptionOrNull()?.cause)
   }
 
   // Creates and returns a profile when the transaction finds no existing document.
@@ -387,17 +387,17 @@ class ProfileRepositoryFirestoreTest {
     assertTrue(request.isCancelled)
   }
 
-  // Propagates cancellation when a failed transaction task wraps it as the cause.
+  // Maps a wrapped cancellation cause to the current unknown profile error.
   @Test
-  fun createProfile_propagatesWrappedCancellationFromFailedTask() = runTest {
+  fun createProfile_returnsUnknownFailure_whenTransactionTaskWrapsCancellation() = runTest {
     val cancellation = CancellationException("Cancelled")
     val wrapped = IllegalStateException("Firestore wrapper", cancellation)
     `when`(firestore.runTransaction<UserProfile>(any())).thenReturn(Tasks.forException(wrapped))
 
-    val request = async { repository.createProfile("user123") }
+    val result = repository.createProfile("user123")
 
-    request.cancelAndJoin()
-    assertTrue(request.isCancelled)
+    assertProfileError(result, ProfileError.UNKNOWN)
+    assertEquals(wrapped, result.exceptionOrNull()?.cause)
   }
 
   private fun stubTransaction(transaction: Transaction) {
