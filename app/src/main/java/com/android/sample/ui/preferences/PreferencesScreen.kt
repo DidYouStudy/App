@@ -29,10 +29,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
 
-// ---------------------------------------------------------------------------
-// Screen
-// ---------------------------------------------------------------------------
-
 /*
     Actual stateful preference screen
  */
@@ -194,9 +190,9 @@ fun PreferenceScreenStateless(
     }
 }
 
-// ---------------------------------------------------------------------------
-// Preview with the selected preferences being the ones from the mockup on Figma
-// ---------------------------------------------------------------------------
+/*
+    Preview with the selected preferences being the ones from the mockup on Figma
+ */
 
 @Preview//(showBackground = true, showSystemUi = true)
 @Composable

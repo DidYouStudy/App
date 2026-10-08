@@ -5,18 +5,18 @@ import com.android.sample.model.preferences.PreferenceDefaults
 import com.android.sample.model.preferences.TimeOfDay
 import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
 
-// ---------------------------------------------------------------------------
-// Interface for representing all preferences
-// ---------------------------------------------------------------------------
+/*
+    Interface for representing all preferences
+ */
 
 interface PreferenceOption {
     val label: String
     val testTag: String
 }
 
-// ---------------------------------------------------------------------------
-// Enum Classes for representing the available preferences
-// ---------------------------------------------------------------------------
+/*
+    Enum Classes for representing the available preferences
+ */
 
 enum class StudyTime(
     val timeOfDay: TimeOfDay,
