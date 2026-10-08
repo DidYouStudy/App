@@ -1,6 +1,5 @@
 package com.android.sample.ui.navigation
 
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 
 sealed class Screen(
@@ -39,9 +38,9 @@ open class NavigationActions(
         // If the destination is already on top of stack, don’t push another copy to stack
         launchSingleTop = true
         // Before adding the new destination,
-        // pop stack entries until the start destination is on top (according to options).
+        // pop stack entries until the given screen is on top (according to options).
         // Useful for tab-style navigation to avoid deep stacks.
-        popUpTo(navController.graph.findStartDestination().id) {
+        popUpTo(screen.route) {
           // Pops destinations until the start destination is on top of the stack,
           // start destination included (<=> clears stack)
           inclusive = true
