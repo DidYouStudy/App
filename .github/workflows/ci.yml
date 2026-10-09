@@ -150,10 +150,14 @@ jobs:
 
       # The AVD snapshot does not include the Android SDK system image.
       # Bump v1 to refresh the cached package; sdkmanager still checks for updates.
+      - name: Locate Android system image
+        id: system-image
+        run: echo "path=${ANDROID_HOME:?}/system-images/android-34/google_apis/x86_64" >> "$GITHUB_OUTPUT"
+
       - name: Android system image cache
         uses: actions/cache@v6
         with:
-          path: ${{ env.ANDROID_HOME }}/system-images/android-34/google_apis/x86_64
+          path: ${{ steps.system-image.outputs.path }}
           key: android-system-image-v1-${{ runner.os }}-${{ runner.arch }}-34-google_apis-x86_64
 
       # Cache the Emulator, if the cache does not hit, create the emulator.
