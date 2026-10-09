@@ -92,7 +92,7 @@ jobs:
 
       # Configure Gradle once for formatting, debug assembly, lint, and unit tests.
       - name: Check formatting, build debug, and verify
-        run: ./gradlew ktfmtCheck assembleDebug lint check --parallel --build-cache
+        run: ./gradlew ktfmtCheck assembleDebug lint check --parallel --build-cache --configuration-cache
 
       # Run connected tests on the emulator
       - name: run tests
