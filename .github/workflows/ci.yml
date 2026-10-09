@@ -18,11 +18,98 @@ on:
   workflow_dispatch:
 
 jobs:
-  ci:
-    name: CI
-    # Execute the CI on the course's runners
+  build:
+    name: Build, lint and unit tests
     runs-on: ubuntu-latest
+    steps:
+      # First step : Checkout the repository on the runner
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of Sonar analysis (if we use Sonar Later)
 
+      # The google-services plugin needs app/google-services.json, which is not committed.
+      # It is stored base64-encoded in the GOOGLE_SERVICES_JSON repository secret.
+      - name: Write google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "::error::GOOGLE_SERVICES_JSON secret is not set"
+            exit 1
+          fi
+          echo "$GOOGLE_SERVICES_JSON" | base64 --decode > app/google-services.json
+
+      - name: Setup JDK
+        uses: actions/setup-java@v6
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      # Caching is a very useful part of a CI, as a workflow is executed in a clean environment every time,
+      # this means that one would need to re-download and re-process gradle files for every run. Which is very time consuming.
+      #
+      # To avoid that, we cache the the gradle folder to reuse it later.
+      - name: Gradle cache
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
+        with:
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/pull/87/merge' }}
+          # Preserve dependency files referenced by the project configuration cache.
+          cache-cleanup: never
+
+      # Cache only an encrypted archive; keep the project directory off the cache service.
+      - name: Gradle configuration cache
+        if: env.GRADLE_ENCRYPTION_KEY != ''
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/gradle-configuration-cache.tar.gpg
+          key: gradle-configuration-v4-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.gradle.kts', '**/*.gradle', 'gradle.properties', 'gradle/**', '.github/workflows/ci.yml') }}-${{ github.sha }}
+          restore-keys: |
+            gradle-configuration-v4-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.gradle.kts', '**/*.gradle', 'gradle.properties', 'gradle/**', '.github/workflows/ci.yml') }}-
+
+      - name: Restore encrypted Gradle configuration
+        if: env.GRADLE_ENCRYPTION_KEY != ''
+        run: |
+          if [ -f "$RUNNER_TEMP/gradle-configuration-cache.tar.gpg" ]; then
+            printf '%s' "$GRADLE_ENCRYPTION_KEY" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --decrypt --output "$RUNNER_TEMP/gradle-configuration-cache.tar" "$RUNNER_TEMP/gradle-configuration-cache.tar.gpg"
+            tar -xf "$RUNNER_TEMP/gradle-configuration-cache.tar"
+            rm "$RUNNER_TEMP/gradle-configuration-cache.tar"
+          fi
+
+      - name: Grant execute permission for gradlew
+        run: |
+          chmod +x ./gradlew
+
+      # Configure Gradle once for formatting, debug assembly, lint, and unit tests.
+      - name: Check formatting, build debug, and verify
+        run: ./gradlew ktfmtCheck assembleDebug lint check --parallel --build-cache --configuration-cache
+
+      - name: Encrypt Gradle configuration for caching
+        if: env.GRADLE_ENCRYPTION_KEY != ''
+        run: |
+          tar --exclude='*.lock' -cf "$RUNNER_TEMP/gradle-configuration-cache.tar" .gradle/configuration-cache
+          printf '%s' "$GRADLE_ENCRYPTION_KEY" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --symmetric --cipher-algo AES256 --output "$RUNNER_TEMP/gradle-configuration-cache.tar.gpg" "$RUNNER_TEMP/gradle-configuration-cache.tar"
+          rm "$RUNNER_TEMP/gradle-configuration-cache.tar"
+
+      - name: Upload build and unit verification results
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: build-analysis
+          retention-days: 1
+          if-no-files-found: error
+          path: |
+            app/build/intermediates/built_in_kotlinc/debug/
+            app/build/intermediates/javac/debug/
+            app/build/tmp/kotlin-classes/debug/
+            app/build/outputs/unit_test_code_coverage/
+            app/build/test-results/
+            app/build/reports/
+
+  android-tests:
+    name: Emulator tests
+    runs-on: ubuntu-latest
     steps:
       # First step : Checkout the repository on the runner
       - name: Checkout
@@ -56,36 +143,10 @@ jobs:
           distribution: "temurin"
           java-version: "21"
 
-      # Caching is a very useful part of a CI, as a workflow is executed in a clean environment every time,
-      # this means that one would need to re-download and re-process gradle files for every run. Which is very time consuming.
-      #
-      # To avoid that, we cache the the gradle folder to reuse it later.
       - name: Gradle cache
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
         with:
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/pull/87/merge' }}
-          # Preserve dependency files referenced by the project configuration cache.
-          cache-cleanup: never
-
-      # Cache only an encrypted archive; keep the project directory off the cache service.
-      - name: Gradle configuration cache
-        if: env.GRADLE_ENCRYPTION_KEY != ''
-        uses: actions/cache@v6
-        with:
-          path: ${{ runner.temp }}/gradle-configuration-cache.tar.gpg
-          key: gradle-configuration-v3-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.gradle.kts', '**/*.gradle', 'gradle.properties', 'gradle/**', '.github/workflows/ci.yml') }}-${{ github.sha }}
-          restore-keys: |
-            gradle-configuration-v3-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.gradle.kts', '**/*.gradle', 'gradle.properties', 'gradle/**', '.github/workflows/ci.yml') }}-
-
-      - name: Restore encrypted Gradle configuration
-        if: env.GRADLE_ENCRYPTION_KEY != ''
-        run: |
-          if [ -f "$RUNNER_TEMP/gradle-configuration-cache.tar.gpg" ]; then
-            printf '%s' "$GRADLE_ENCRYPTION_KEY" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --decrypt --output "$RUNNER_TEMP/gradle-configuration-cache.tar" "$RUNNER_TEMP/gradle-configuration-cache.tar.gpg"
-            tar -xf "$RUNNER_TEMP/gradle-configuration-cache.tar"
-            rm "$RUNNER_TEMP/gradle-configuration-cache.tar"
-          fi
 
       # Cache the Emulator, if the cache does not hit, create the emulator.
       # API 34 matches targetSdk. compileSdk 37 is only the compile platform.
@@ -114,17 +175,6 @@ jobs:
         run: |
           chmod +x ./gradlew
 
-      # Configure Gradle once for formatting, debug assembly, lint, and unit tests.
-      - name: Check formatting, build debug, and verify
-        run: ./gradlew ktfmtCheck assembleDebug lint check --parallel --build-cache --configuration-cache
-
-      - name: Encrypt Gradle configuration for caching
-        if: env.GRADLE_ENCRYPTION_KEY != ''
-        run: |
-          tar --exclude='*.lock' -cf "$RUNNER_TEMP/gradle-configuration-cache.tar" .gradle/configuration-cache
-          printf '%s' "$GRADLE_ENCRYPTION_KEY" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --symmetric --cipher-algo AES256 --output "$RUNNER_TEMP/gradle-configuration-cache.tar.gpg" "$RUNNER_TEMP/gradle-configuration-cache.tar"
-          rm "$RUNNER_TEMP/gradle-configuration-cache.tar"
-
       # Run connected tests on the emulator
       - name: run tests
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
@@ -137,14 +187,101 @@ jobs:
           disable-animations: true
           script: ./gradlew connectedCheck --parallel --build-cache
 
-      # This step generates the coverage report which will be uploaded to sonar
-      - name: Generate Coverage Report
-        run: |
-          ./gradlew :app:jacocoTestReport
+      - name: Upload emulator coverage
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: connected-coverage
+          retention-days: 1
+          if-no-files-found: error
+          path: app/build/outputs/code_coverage/
 
-      # Upload the various reports to sonar
-      - name: Upload report to SonarCloud
+  analysis:
+    name: Combined coverage and Sonar
+    needs: [build, android-tests]
+    runs-on: ubuntu-latest
+    steps:
+      # First step : Checkout the repository on the runner
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of Sonar analysis (if we use Sonar Later)
+
+      # The google-services plugin needs app/google-services.json, which is not committed.
+      # It is stored base64-encoded in the GOOGLE_SERVICES_JSON repository secret.
+      - name: Write google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "::error::GOOGLE_SERVICES_JSON secret is not set"
+            exit 1
+          fi
+          echo "$GOOGLE_SERVICES_JSON" | base64 --decode > app/google-services.json
+
+      - name: Setup JDK
+        uses: actions/setup-java@v6
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Grant execute permission for gradlew
+        run: |
+          chmod +x ./gradlew
+
+      - name: Gradle cache
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
+        with:
+          cache-read-only: true
+
+      - name: Download build and unit verification results
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: build-analysis
+          path: app/build
+
+      - name: Download emulator coverage
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: connected-coverage
+          path: app/build/outputs/code_coverage
+
+      - name: Verify transferred analysis inputs
+        run: |
+          test -s app/build/outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec
+          test -s app/build/reports/lint-results-debug.xml
+          connected_coverage_file=$(find app/build/outputs/code_coverage -name '*.ec' -type f -size +0c -print -quit)
+          test -n "$connected_coverage_file"
+          compiled_class_file=$(find app/build/intermediates -name '*.class' -type f -print -quit)
+          test -n "$compiled_class_file"
+
+      # Unit tests already ran in build. Generate combined coverage from their execution data.
+      - name: Generate combined coverage and upload to SonarCloud
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: ./gradlew sonar --parallel --build-cache
+        run: ./gradlew sonar -x :app:testDebugUnitTest --parallel --build-cache
+
+      - name: Upload combined coverage report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: combined-coverage-report
+          retention-days: 1
+          if-no-files-found: error
+          path: app/build/reports/jacoco/jacocoTestReport/
+
+  ci:
+    name: CI
+    needs: [build, android-tests, analysis]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every job to succeed
+        env:
+          BUILD_RESULT: ${{ needs.build.result }}
+          ANDROID_RESULT: ${{ needs.android-tests.result }}
+          ANALYSIS_RESULT: ${{ needs.analysis.result }}
+        run: |
+          test "$BUILD_RESULT" = success
+          test "$ANDROID_RESULT" = success
+          test "$ANALYSIS_RESULT" = success
