@@ -148,6 +148,14 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/pull/87/merge' }}
 
+      # The AVD snapshot does not include the Android SDK system image.
+      # Bump v1 to refresh the cached package; sdkmanager still checks for updates.
+      - name: Android system image cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.ANDROID_HOME }}/system-images/android-34/google_apis/x86_64
+          key: android-system-image-v1-${{ runner.os }}-${{ runner.arch }}-34-google_apis-x86_64
+
       # Cache the Emulator, if the cache does not hit, create the emulator.
       # API 34 matches targetSdk. compileSdk 37 is only the compile platform.
       - name: AVD cache
