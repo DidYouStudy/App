@@ -66,6 +66,25 @@ jobs:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/pull/87/merge' }}
 
+      # Cache only an encrypted archive; keep the project directory off the cache service.
+      - name: Gradle configuration cache
+        if: env.GRADLE_ENCRYPTION_KEY != ''
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/gradle-configuration-cache.tar.gpg
+          key: gradle-configuration-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.gradle.kts', '**/*.gradle', 'gradle.properties', 'gradle/**', '.github/workflows/ci.yml') }}-${{ github.sha }}
+          restore-keys: |
+            gradle-configuration-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.gradle.kts', '**/*.gradle', 'gradle.properties', 'gradle/**', '.github/workflows/ci.yml') }}-
+
+      - name: Restore encrypted Gradle configuration
+        if: env.GRADLE_ENCRYPTION_KEY != ''
+        run: |
+          if [ -f "$RUNNER_TEMP/gradle-configuration-cache.tar.gpg" ]; then
+            printf '%s' "$GRADLE_ENCRYPTION_KEY" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --decrypt --output "$RUNNER_TEMP/gradle-configuration-cache.tar" "$RUNNER_TEMP/gradle-configuration-cache.tar.gpg"
+            tar -xf "$RUNNER_TEMP/gradle-configuration-cache.tar"
+            rm "$RUNNER_TEMP/gradle-configuration-cache.tar"
+          fi
+
       # Cache the Emulator, if the cache does not hit, create the emulator.
       # API 34 matches targetSdk. compileSdk 37 is only the compile platform.
       - name: AVD cache
@@ -96,6 +115,13 @@ jobs:
       # Configure Gradle once for formatting, debug assembly, lint, and unit tests.
       - name: Check formatting, build debug, and verify
         run: ./gradlew ktfmtCheck assembleDebug lint check --parallel --build-cache --configuration-cache
+
+      - name: Encrypt Gradle configuration for caching
+        if: env.GRADLE_ENCRYPTION_KEY != ''
+        run: |
+          tar --exclude='*.lock' -cf "$RUNNER_TEMP/gradle-configuration-cache.tar" .gradle/configuration-cache
+          printf '%s' "$GRADLE_ENCRYPTION_KEY" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --symmetric --cipher-algo AES256 --output "$RUNNER_TEMP/gradle-configuration-cache.tar.gpg" "$RUNNER_TEMP/gradle-configuration-cache.tar"
+          rm "$RUNNER_TEMP/gradle-configuration-cache.tar"
 
       # Run connected tests on the emulator
       - name: run tests
