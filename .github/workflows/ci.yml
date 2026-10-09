@@ -65,6 +65,8 @@ jobs:
         with:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/pull/87/merge' }}
+          # Preserve dependency files referenced by the project configuration cache.
+          cache-cleanup: never
 
       # Cache only an encrypted archive; keep the project directory off the cache service.
       - name: Gradle configuration cache
@@ -72,9 +74,9 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ runner.temp }}/gradle-configuration-cache.tar.gpg
-          key: gradle-configuration-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.gradle.kts', '**/*.gradle', 'gradle.properties', 'gradle/**', '.github/workflows/ci.yml') }}-${{ github.sha }}
+          key: gradle-configuration-v3-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.gradle.kts', '**/*.gradle', 'gradle.properties', 'gradle/**', '.github/workflows/ci.yml') }}-${{ github.sha }}
           restore-keys: |
-            gradle-configuration-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.gradle.kts', '**/*.gradle', 'gradle.properties', 'gradle/**', '.github/workflows/ci.yml') }}-
+            gradle-configuration-v3-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.gradle.kts', '**/*.gradle', 'gradle.properties', 'gradle/**', '.github/workflows/ci.yml') }}-
 
       - name: Restore encrypted Gradle configuration
         if: env.GRADLE_ENCRYPTION_KEY != ''
