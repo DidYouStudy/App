@@ -7,14 +7,19 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -24,14 +29,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
 
 /*
    Actual stateful preference screen
 */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PreferencesScreen(
     modifier: Modifier = Modifier,
@@ -40,59 +48,84 @@ fun PreferencesScreen(
     onAddLocationClick: () -> Unit,
     onSaved: () -> Unit,
 ) {
-  val uiState by viewModel.uiState.collectAsState()
+  Scaffold(
+      topBar = {
+        TopAppBar(
+            title = {
+              Text(
+                  text = "Complete your profile",
+                  style = MaterialTheme.typography.displaySmall,
+                  fontWeight = FontWeight.Bold,
+                  modifier =
+                      Modifier.fillMaxWidth()
+                          .background(
+                              MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                          )
+                          .statusBarsPadding()
+                          .padding(horizontal = 16.dp, vertical = 16.dp)
+                          .testTag(Tags.PREFERENCE_TITLE),
+              )
+            },
+            modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE),
+        )
+      },
+      modifier = Modifier.fillMaxSize(),
+      content = { pd ->
+        val uiState by viewModel.uiState.collectAsState()
 
-  when (val state = uiState) {
-    // if the screen should be loading
-    is PreferencesUiState.Loading ->
-        Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-          CircularProgressIndicator()
-        }
+        when (val state = uiState) {
+          // if the screen should be loading
+          is PreferencesUiState.Loading ->
+              Box(modifier.fillMaxSize().padding(pd), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+              }
 
-    // if an error occurred
-    is PreferencesUiState.Error ->
-        Column(
-            modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-          Text(state.message)
-          Button(
-              onClick = viewModel::loadPreferences,
-          ) {
-            Text("Retry")
+          // if an error occurred
+          is PreferencesUiState.Error ->
+              Column(
+                  modifier.fillMaxSize().padding(pd),
+                  verticalArrangement = Arrangement.Center,
+                  horizontalAlignment = Alignment.CenterHorizontally,
+              ) {
+                Text(state.message)
+                Button(
+                    onClick = viewModel::loadPreferences,
+                ) {
+                  Text("Retry")
+                }
+              }
+
+          is PreferencesUiState.Success -> {
+            var draft by remember(state.preferences) { mutableStateOf(state.preferences) }
+            PreferenceScreenStateless(
+                selectedStudyTimes = draft.preferredStudyTimes.map { StudyTime.from(it) }.toSet(),
+                selectedSessionLength = SessionLength.fromMinutes(draft.sessionLengthMinutes),
+                selectedBreakDuration = BreakDuration.fromMinutes(draft.breakLengthMinutes),
+                selectedBreakFrequency = BreakFrequency.fromMinutes(draft.breakFrequencyMinutes),
+                onImportClick = onImportClick,
+                onAddLocationClick = onAddLocationClick,
+                onStudyTimeToggle = { time ->
+                  val tod = time.timeOfDay
+                  draft =
+                      draft.copy(
+                          preferredStudyTimes =
+                              if (tod in draft.preferredStudyTimes) draft.preferredStudyTimes - tod
+                              else draft.preferredStudyTimes + tod
+                      )
+                },
+                onSessionLengthSelect = { draft = draft.copy(sessionLengthMinutes = it.minutes) },
+                onBreakDurationSelect = { draft = draft.copy(breakLengthMinutes = it.minutes) },
+                onBreakFrequencySelect = { draft = draft.copy(breakFrequencyMinutes = it.minutes) },
+                onSaveClick = {
+                  viewModel.updatePreferences(draft)
+                  onSaved()
+                },
+                modifier = modifier.padding(pd),
+            )
           }
         }
-
-    is PreferencesUiState.Success -> {
-      var draft by remember(state.preferences) { mutableStateOf(state.preferences) }
-      PreferenceScreenStateless(
-          selectedStudyTimes = draft.preferredStudyTimes.map { StudyTime.from(it) }.toSet(),
-          selectedSessionLength = SessionLength.fromMinutes(draft.sessionLengthMinutes),
-          selectedBreakDuration = BreakDuration.fromMinutes(draft.breakLengthMinutes),
-          selectedBreakFrequency = BreakFrequency.fromMinutes(draft.breakFrequencyMinutes),
-          onImportClick = onImportClick,
-          onAddLocationClick = onAddLocationClick,
-          onStudyTimeToggle = { time ->
-            val tod = time.timeOfDay
-            draft =
-                draft.copy(
-                    preferredStudyTimes =
-                        if (tod in draft.preferredStudyTimes) draft.preferredStudyTimes - tod
-                        else draft.preferredStudyTimes + tod
-                )
-          },
-          onSessionLengthSelect = { draft = draft.copy(sessionLengthMinutes = it.minutes) },
-          onBreakDurationSelect = { draft = draft.copy(breakLengthMinutes = it.minutes) },
-          onBreakFrequencySelect = { draft = draft.copy(breakFrequencyMinutes = it.minutes) },
-          onSaveClick = {
-            viewModel.updatePreferences(draft)
-            onSaved()
-          },
-          modifier = modifier,
-      )
-    }
-  }
+      },
+  )
 }
 
 /*
@@ -124,9 +157,6 @@ fun PreferenceScreenStateless(
 
     // inner container for the preference content
     Column(modifier = Modifier.fillMaxSize()) {
-
-      // helper method which builds the title of the screen
-      PreferenceHeader()
 
       // component which contains the scrollable content
       Column(

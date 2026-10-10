@@ -72,7 +72,6 @@ class PreferencesScreenStatelessTests {
   @Test
   fun displayAllStaticComponents() {
     composeTestRule.onNodeWithTag(Tags.PREFERENCE_SCREEN).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(Tags.PREFERENCE_TITLE).assertIsDisplayed()
     composeTestRule.onNodeWithTag(Tags.PREFERENCE_SCROLL_CONTAINER).assertIsDisplayed()
     composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).assertIsDisplayed()
   }
