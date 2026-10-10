@@ -2,8 +2,10 @@
 // Co-authored-by: Claude Opus 5.5
 package com.android.sample.model.auth
 
+import android.app.Activity
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.android.sample.R
 import com.google.firebase.auth.FirebaseAuth
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
@@ -15,17 +17,18 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Mockito.*
+import org.mockito.stubbing.Answer
 import org.robolectric.RobolectricTestRunner
 
 /**
- * Tests the provider lifecycle without initializing Firebase. The private singleton is cleared
+ * Tests the provider lifecycle without initializing Firebase. The private singletons are cleared
  * around each test because the Robolectric sandbox shares static state between tests.
  */
 @RunWith(RobolectricTestRunner::class)
 class AuthRepositoryProviderTest {
-  @Before fun clearBefore() = setInstance(null)
+  @Before fun clearBefore() = reset()
 
-  @After fun clearAfter() = setInstance(null)
+  @After fun clearAfter() = reset()
 
   @Test
   fun concurrentCallersWaitForInitializationAndShareOneRepository() {
@@ -119,16 +122,50 @@ class AuthRepositoryProviderTest {
         assertTrue(repository is AuthRepositoryFirebase)
         assertSame(repository, AuthRepositoryProvider.getRepository(caller))
         assertSame(repository, AuthRepositoryProvider.getRepository(anotherCaller))
-        verify(caller, times(2)).applicationContext
+        verify(caller, times(1)).applicationContext
         verifyNoInteractions(anotherCaller)
         firebase.verify({ FirebaseAuth.getInstance() }, times(2))
-        assertEquals(2, helpers.constructed().size)
+        // The helper is shared, so the failed attempt's helper is reused rather than rebuilt.
+        assertEquals(1, helpers.constructed().size)
 
-        // The helper created by the successful attempt must be the one used for logout cleanup.
         repository.signOut()
         verify(auth).signOut()
-        verify(helpers.constructed()[1]).clearCredentialState()
-        verifyNoInteractions(helpers.constructed()[0])
+        verify(helpers.constructed().single()).clearCredentialState()
+      }
+    }
+  }
+
+  @Test
+  fun signInPickerAndSignOutCleanupShareOneHelper() = runTest {
+    val application = ApplicationProvider.getApplicationContext<Context>()
+    val activity = mock(Activity::class.java)
+    `when`(activity.applicationContext).thenReturn(application)
+    `when`(activity.getString(R.string.default_web_client_id)).thenReturn("web-client")
+    val pickerCalls = mutableListOf<List<Any?>>()
+
+    // Records each picker request and returns a token; other calls (sign-out cleanup) do nothing.
+    val answer = Answer { invocation ->
+      if (invocation.method.name == "getIdToken") {
+        pickerCalls += listOf(invocation.mock, invocation.arguments[0], invocation.arguments[1])
+        "fake-token"
+      } else {
+        Unit
+      }
+    }
+
+    mockConstructionWithAnswer(GoogleSignInHelper::class.java, answer).use { helpers ->
+      mockStatic(FirebaseAuth::class.java).use { firebase ->
+        firebase
+            .`when`<FirebaseAuth> { FirebaseAuth.getInstance() }
+            .thenReturn(mock(FirebaseAuth::class.java))
+
+        assertEquals("fake-token", AuthRepositoryProvider.requestGoogleIdToken(activity))
+        assertEquals("fake-token", AuthRepositoryProvider.requestGoogleIdToken(activity))
+        AuthRepositoryProvider.getRepository(activity).signOut()
+
+        val helper = helpers.constructed().single()
+        assertEquals(List(2) { listOf(helper, activity, "web-client") }, pickerCalls)
+        verify(helper).clearCredentialState()
       }
     }
   }
@@ -149,6 +186,14 @@ class AuthRepositoryProviderTest {
     AuthRepositoryProvider::class.java.getDeclaredField("instance").apply {
       isAccessible = true
       set(null, repository)
+    }
+  }
+
+  private fun reset() {
+    setInstance(null)
+    AuthRepositoryProvider::class.java.getDeclaredField("helper").apply {
+      isAccessible = true
+      set(null, null)
     }
   }
 }
