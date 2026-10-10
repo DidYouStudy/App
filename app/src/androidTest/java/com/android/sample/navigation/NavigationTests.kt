@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot
 package com.android.sample.navigation
 
 import androidx.activity.ComponentActivity
@@ -115,6 +116,7 @@ class NavigationTests {
   }
 
   @Test
+  // TODO change to SignIn when VM can be created as default parameter
   fun navigationStartsOnDashboardTab() {
     checkDashboardScreenIsDisplayed()
   }
@@ -126,9 +128,23 @@ class NavigationTests {
   }
 
   @Test
+  fun canNavigateToGroupSession() {
+    composeTestRule.onNodeWithTag(NavigationTestTags.GROUP_SESSION_TAB).performClick()
+    checkGroupSessionScreenIsDisplayed()
+  }
+
+  @Test
   fun canNavigateToCalendarAndBackToDashboardUsingSystemBack() {
     composeTestRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
     checkCalendarScreenIsDisplayed()
+    pressBack(shouldFinish = false)
+    checkDashboardScreenIsDisplayed()
+  }
+
+  @Test
+  fun canNavigateToGroupSessionAndBackToDashboardUsingSystemBack() {
+    composeTestRule.onNodeWithTag(NavigationTestTags.GROUP_SESSION_TAB).performClick()
+    checkGroupSessionScreenIsDisplayed()
     pressBack(shouldFinish = false)
     checkDashboardScreenIsDisplayed()
   }
@@ -159,5 +175,11 @@ class NavigationTests {
     pressBack(shouldFinish = false)
     assertFalse(composeTestRule.activity.isFinishing)
     checkDashboardScreenIsDisplayed()
+  }
+
+  @Test
+  fun pressingBackFromDashboardFinishesActivity() {
+    checkDashboardScreenIsDisplayed()
+    pressBack(shouldFinish = true)
   }
 }
