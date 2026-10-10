@@ -155,7 +155,8 @@ jobs:
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
         with:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          # Temporary dependency persistence for PR #87's configuration-cache experiment.
+          cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/pull/87/merge' }}
           cache-cleanup: never
 
       # Cache only an encrypted archive; keep the project directory off the cache service.
