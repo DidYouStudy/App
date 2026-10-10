@@ -347,6 +347,7 @@ jobs:
         env:
           SOURCE_COMMIT: ${{ github.sha }}
         run: |
+          # Upload paths share app/build/ as their root, so it is omitted inside the artifact.
           test -s verified-build/outputs/apk/debug/app-debug.apk
           mkdir apk-artifact
           cp verified-build/outputs/apk/debug/app-debug.apk apk-artifact/DidYouStudy-debug.apk
@@ -357,5 +358,6 @@ jobs:
         with:
           name: DidYouStudy-debug-apk-${{ github.run_number }}
           path: apk-artifact/
-          retention-days: 90
+          # Keep manual sprint-review builds longer than ordinary main builds.
+          retention-days: ${{ github.event_name == 'workflow_dispatch' && 90 || 30 }}
           if-no-files-found: error
