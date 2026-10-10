@@ -7,10 +7,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.credentials.CredentialManager
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -24,8 +22,10 @@ object GroupSessionScreenTestTags {
 @Composable
 fun GroupSessionScreen(
     // TODO add VM as parameter
-    credentialManager: CredentialManager = CredentialManager.create(LocalContext.current),
-    onSignedOut: () -> Unit = {},
+    // TODO: add credentialManager as parameter
+    // credentialManager: CredentialManager = CredentialManager.create(LocalContext.current),
+    // TODO: add onSignedOut as parameter
+    // onSignedOut: () -> Unit = {},
     navigationActions: NavigationActions? = null,
 ) {
   Scaffold(
