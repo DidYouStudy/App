@@ -43,6 +43,7 @@ import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
 @Composable
 fun PreferencesScreen(
     modifier: Modifier = Modifier,
+    // TODO FIX VM INSTANCE NOT BEING ABLE TO BE CREATED AS DEFAULT PARAMETER
     viewModel: PreferencesViewModel = viewModel(),
     onImportClick: () -> Unit,
     onAddLocationClick: () -> Unit,
