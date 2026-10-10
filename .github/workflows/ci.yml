@@ -155,8 +155,7 @@ jobs:
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
         with:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          # Temporary dependency persistence for PR #87's configuration-cache experiment.
-          cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/pull/87/merge' }}
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
           cache-cleanup: never
 
       # Cache only an encrypted archive; keep the project directory off the cache service.
@@ -226,8 +225,7 @@ jobs:
           rm "$RUNNER_TEMP/gradle-configuration-cache.tar"
 
       - name: Save encrypted Gradle configuration
-        # Temporary PR #87 write allowance for the creation/reuse experiment.
-        if: (github.ref == 'refs/heads/main' || github.ref == 'refs/pull/87/merge') && env.GRADLE_ENCRYPTION_KEY != '' && steps.configuration-cache.outputs.cache-hit != 'true'
+        if: github.ref == 'refs/heads/main' && env.GRADLE_ENCRYPTION_KEY != '' && steps.configuration-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: ${{ runner.temp }}/gradle-configuration-cache.tar.gpg
