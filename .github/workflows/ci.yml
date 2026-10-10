@@ -85,7 +85,17 @@ jobs:
 
       # Configure Gradle once for formatting, debug assembly, lint, and unit tests.
       - name: Check formatting, build debug, and verify
-        run: ./gradlew ktfmtCheck assembleDebug lint check --parallel --build-cache --configuration-cache
+        run: ./gradlew ktfmtCheck assembleDebug lint check --parallel --build-cache --configuration-cache --profile
+
+      # Temporary timing experiment: Gradle HTML profile, not an external build scan.
+      - name: Upload Gradle profile (build)
+        if: always() && !cancelled()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: gradle-profile-build
+          path: build/reports/profile/
+          retention-days: 7
+          if-no-files-found: warn
 
       - name: Encrypt Gradle configuration for caching
         if: env.GRADLE_ENCRYPTION_KEY != ''
@@ -193,7 +203,17 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: ./gradlew connectedCheck --parallel --build-cache
+          script: ./gradlew connectedCheck --parallel --build-cache --profile
+
+      # Temporary timing experiment: Gradle HTML profile, not an external build scan.
+      - name: Upload Gradle profile (emulator)
+        if: always() && !cancelled()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: gradle-profile-emulator
+          path: build/reports/profile/
+          retention-days: 7
+          if-no-files-found: warn
 
       - name: Upload emulator coverage
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -268,7 +288,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: ./gradlew sonar -x :app:testDebugUnitTest --parallel --build-cache
+        run: ./gradlew sonar -x :app:testDebugUnitTest --parallel --build-cache --profile
+
+      # Temporary timing experiment: Gradle HTML profile, not an external build scan.
+      - name: Upload Gradle profile (analysis)
+        if: always() && !cancelled()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: gradle-profile-analysis
+          path: build/reports/profile/
+          retention-days: 7
+          if-no-files-found: warn
 
       - name: Upload combined coverage report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
