@@ -13,7 +13,6 @@ import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Tab
-import kotlin.collections.get
 
 object DashBoardScreenTestTags {
   const val PREFERENCES_BUTTON = "preferencesButton"

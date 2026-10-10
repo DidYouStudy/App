@@ -74,7 +74,6 @@ fun DidYouStudyApp(
       composable(Screen.Dashboard.route) {
         DashboardScreen(
             navigationActions = navigationActions,
-            credentialManager = credentialManager,
         )
       }
     }
@@ -86,7 +85,6 @@ fun DidYouStudyApp(
       composable(Screen.Calendar.route) {
         CalendarScreen(
             navigationActions = navigationActions,
-            credentialManager = credentialManager,
         )
       }
     }
@@ -98,7 +96,6 @@ fun DidYouStudyApp(
       composable(Screen.GroupSession.route) {
         GroupSessionScreen(
             navigationActions = navigationActions,
-            credentialManager = credentialManager,
         )
       }
     }
