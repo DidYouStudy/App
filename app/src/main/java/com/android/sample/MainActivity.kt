@@ -18,7 +18,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
 import com.android.sample.resources.C
-import com.android.sample.ui.authentication.SignInScreen
+import com.android.sample.ui.auth.SignInRoute
 import com.android.sample.ui.calendar.CalendarScreen
 import com.android.sample.ui.dashboard.DashboardScreen
 import com.android.sample.ui.groupsession.GroupSessionScreen
@@ -63,10 +63,7 @@ fun DidYouStudyApp(
         route = Screen.Auth.name,
     ) {
       composable(Screen.Auth.route) {
-        SignInScreen(
-            credentialManager = credentialManager,
-            onSignedIn = { navigationActions.navigateTo(Screen.Dashboard) },
-        )
+        SignInRoute(onSignedIn = { navigationActions.navigateTo(Screen.Dashboard) })
       }
     }
 
