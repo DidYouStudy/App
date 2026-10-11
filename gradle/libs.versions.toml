@@ -1,7 +1,8 @@
 # Co-authored-by: Claude Opus 5.5
 # Co-authored-by: Codex AI Agent
+# Co-authored-by: OpenAI Codex
 [versions]
-agp = "9.3.0"
+agp = "9.3.2"
 kotlin = "2.3.0"
 coreKtx = "1.19.0"
 ktfmt = "0.27.0"
