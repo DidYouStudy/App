@@ -1,5 +1,6 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Codex AI Agent
 package com.android.sample.ui.auth
 
 import android.app.Activity
@@ -11,14 +12,13 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.android.sample.model.auth.AuthRepositoryProvider
 
 @Composable
 fun SignInRoute(
     onSignedIn: () -> Unit,
+    getIdToken: suspend (Activity) -> String,
     modifier: Modifier = Modifier,
     viewModel: AuthViewModel = authViewModel(),
-    getIdToken: suspend (Activity) -> String = AuthRepositoryProvider::requestGoogleIdToken,
 ) {
   val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
   // React when the session-flow user becomes non-null, including restored sessions.
