@@ -155,9 +155,8 @@ class AuthRepositoryProviderTest {
 
     mockConstructionWithAnswer(GoogleSignInHelper::class.java, answer).use { helpers ->
       mockStatic(FirebaseAuth::class.java).use { firebase ->
-        firebase
-            .`when`<FirebaseAuth> { FirebaseAuth.getInstance() }
-            .thenReturn(mock(FirebaseAuth::class.java))
+        val auth = mock(FirebaseAuth::class.java)
+        firebase.`when`<FirebaseAuth> { FirebaseAuth.getInstance() }.thenReturn(auth)
 
         assertEquals("fake-token", AuthRepositoryProvider.requestGoogleIdToken(activity))
         assertEquals("fake-token", AuthRepositoryProvider.requestGoogleIdToken(activity))
@@ -165,6 +164,7 @@ class AuthRepositoryProviderTest {
 
         val helper = helpers.constructed().single()
         assertEquals(List(2) { listOf(helper, activity, "web-client") }, pickerCalls)
+        verify(auth).signOut()
         verify(helper).clearCredentialState()
       }
     }
