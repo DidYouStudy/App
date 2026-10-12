@@ -36,8 +36,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.sample.R
+import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.DysOrange
 import com.android.sample.ui.theme.SampleAppTheme
+import com.android.sample.ui.theme.Spacing
 
 /** One planned study slot shown in "Your Day" (display model, not a domain model). */
 data class DashboardSession(val timeRange: String, val subject: String)
@@ -63,17 +65,22 @@ fun DashboardContent(sessions: List<DashboardSession>, modifier: Modifier = Modi
               .fillMaxSize()
               .background(Color.White)
               .verticalScroll(rememberScrollState())
-              .padding(start = 20.dp, top = 16.dp, end = 20.dp, bottom = 20.dp)
+              .padding(
+                  start = Spacing.extraLarge,
+                  top = Spacing.large,
+                  end = Spacing.extraLarge,
+                  bottom = Spacing.extraLarge,
+              )
               .testTag(DashboardContentTestTags.CONTENT),
-      verticalArrangement = Arrangement.spacedBy(12.dp),
+      verticalArrangement = Arrangement.spacedBy(Spacing.medium),
   ) {
     Column(
         modifier =
             Modifier.fillMaxWidth()
-                .heightIn(min = 184.dp)
-                .border(1.dp, Color.Black, RoundedCornerShape(10.dp))
-                .background(Color.White, RoundedCornerShape(10.dp))
-                .padding(14.dp)
+                .heightIn(min = Dimens.dashboardCardMinHeight)
+                .border(Dimens.borderThin, Color.Black, RoundedCornerShape(Dimens.cornerMedium))
+                .background(Color.White, RoundedCornerShape(Dimens.cornerMedium))
+                .padding(Dimens.cardPadding)
                 .testTag(DashboardContentTestTags.YOUR_DAY_CARD),
     ) {
       Text(
@@ -83,10 +90,10 @@ fun DashboardContent(sessions: List<DashboardSession>, modifier: Modifier = Modi
           color = Color.Black,
           modifier = Modifier.testTag(DashboardContentTestTags.YOUR_DAY_TITLE),
       )
-      Spacer(modifier = Modifier.height(10.dp))
+      Spacer(modifier = Modifier.height(Dimens.dashboardSectionSpacing))
       if (sessions.isEmpty()) {
         Box(
-            modifier = Modifier.fillMaxWidth().height(105.dp),
+            modifier = Modifier.fillMaxWidth().height(Dimens.dashboardEmptyDayHeight),
             contentAlignment = Alignment.Center,
         ) {
           Text(
@@ -97,14 +104,21 @@ fun DashboardContent(sessions: List<DashboardSession>, modifier: Modifier = Modi
           )
         }
       } else {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.medium)) {
           sessions.forEachIndexed { index, session ->
             Column(
                 modifier =
                     Modifier.fillMaxWidth()
-                        .heightIn(min = 55.dp)
-                        .border(1.dp, DysOrange, RoundedCornerShape(9.dp))
-                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                        .heightIn(min = Dimens.dashboardSessionMinHeight)
+                        .border(
+                            Dimens.borderThin,
+                            DysOrange,
+                            RoundedCornerShape(Dimens.cornerSmall),
+                        )
+                        .padding(
+                            horizontal = Dimens.dashboardSessionHorizontalPadding,
+                            vertical = Spacing.small,
+                        )
                         .testTag(DashboardContentTestTags.sessionItem(index)),
                 verticalArrangement = Arrangement.Center,
             ) {
@@ -129,10 +143,10 @@ fun DashboardContent(sessions: List<DashboardSession>, modifier: Modifier = Modi
     Column(
         modifier =
             Modifier.fillMaxWidth()
-                .heightIn(min = 184.dp)
-                .border(1.dp, Color.Black, RoundedCornerShape(10.dp))
-                .background(Color.White, RoundedCornerShape(10.dp))
-                .padding(14.dp)
+                .heightIn(min = Dimens.dashboardCardMinHeight)
+                .border(Dimens.borderThin, Color.Black, RoundedCornerShape(Dimens.cornerMedium))
+                .background(Color.White, RoundedCornerShape(Dimens.cornerMedium))
+                .padding(Dimens.cardPadding)
                 .testTag(DashboardContentTestTags.STATS_CARD),
     ) {
       Text(
@@ -142,7 +156,7 @@ fun DashboardContent(sessions: List<DashboardSession>, modifier: Modifier = Modi
           color = Color.Black,
           modifier = Modifier.testTag(DashboardContentTestTags.STATS_TITLE),
       )
-      Spacer(modifier = Modifier.height(12.dp))
+      Spacer(modifier = Modifier.height(Spacing.medium))
       Text(
           text = stringResource(R.string.dashboard_stats_placeholder),
           color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -156,10 +170,10 @@ fun DashboardContent(sessions: List<DashboardSession>, modifier: Modifier = Modi
 fun DashboardAddButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
   Surface(
       onClick = onClick,
-      modifier = modifier.size(50.dp).testTag(DashboardContentTestTags.ADD_BUTTON),
+      modifier = modifier.size(Dimens.addButtonSize).testTag(DashboardContentTestTags.ADD_BUTTON),
       shape = CircleShape,
       color = Color.White,
-      border = BorderStroke(2.dp, DysOrange),
+      border = BorderStroke(Dimens.borderThick, DysOrange),
       shadowElevation = 0.dp,
   ) {
     Icon(
