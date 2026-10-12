@@ -2,12 +2,17 @@
 package com.android.sample.ui.dashboard
 
 import android.content.Context
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -16,13 +21,19 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.annotation.GraphicsMode
 
 @RunWith(AndroidJUnit4::class)
 class DashboardContentTest {
@@ -70,17 +81,32 @@ class DashboardContentTest {
 
     composeTestRule.onNodeWithTag(DashboardContentTestTags.EMPTY_DAY).assertDoesNotExist()
     sessions.forEachIndexed { index, session ->
-      val item =
+      val itemNode =
           composeTestRule.onNodeWithTag(
               DashboardContentTestTags.sessionItem(index),
               useUnmergedTree = true,
           )
-      item.assertIsDisplayed()
-      item.assert(
+      itemNode.assertIsDisplayed()
+      itemNode.assert(
           hasAnyDescendant(hasText(session.timeRange, substring = false))
               .and(hasAnyDescendant(hasText(session.subject, substring = false)))
       )
-      item.onChildren().assertCountEquals(2)
+      itemNode.onChildren().assertCountEquals(2)
+      if (index > 0) {
+        val previousTop =
+            composeTestRule
+                .onNodeWithTag(
+                    DashboardContentTestTags.sessionItem(index - 1),
+                    useUnmergedTree = true,
+                )
+                .getUnclippedBoundsInRoot()
+                .top
+        val currentTop = itemNode.getUnclippedBoundsInRoot().top
+        assertTrue(
+            "Session item ${index - 1} must appear above session item $index",
+            previousTop < currentTop,
+        )
+      }
     }
     composeTestRule
         .onNodeWithTag(DashboardContentTestTags.sessionItem(sessions.size))
@@ -88,18 +114,34 @@ class DashboardContentTest {
   }
 
   @Test
+  // NATIVE graphics are needed for Robolectric to measure text layout correctly.
+  @GraphicsMode(GraphicsMode.Mode.NATIVE)
   fun longSubjectIsDisplayedInFull() {
     val longSubject = "Advanced statistical mechanics and computational modelling workshop"
     composeTestRule.setContent {
-      DashboardContent(
-          sessions =
-              listOf(
-                  DashboardSession(timeRange = "10:00 - 12:00", subject = longSubject),
-              ),
-      )
+      Box(Modifier.requiredSize(width = 360.dp, height = 800.dp)) {
+        DashboardContent(
+            sessions =
+                listOf(
+                    DashboardSession(timeRange = "10:00 - 12:00", subject = longSubject),
+                ),
+        )
+      }
     }
 
-    composeTestRule.onNodeWithText(longSubject, useUnmergedTree = true).assertIsDisplayed()
+    var textLayoutResult: TextLayoutResult? = null
+    composeTestRule
+        .onNodeWithText(longSubject, useUnmergedTree = true)
+        .assertIsDisplayed()
+        .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { getTextLayoutResult ->
+          val results = mutableListOf<TextLayoutResult>()
+          assertTrue(getTextLayoutResult.invoke(results))
+          textLayoutResult = results.single()
+        }
+
+    val layoutResult = checkNotNull(textLayoutResult)
+    assertFalse(layoutResult.hasVisualOverflow)
+    assertTrue(layoutResult.lineCount > 1)
   }
 
   @Test
