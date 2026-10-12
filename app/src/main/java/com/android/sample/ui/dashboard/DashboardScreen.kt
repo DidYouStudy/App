@@ -1,3 +1,4 @@
+// Co-authored-by: GitHub Copilot
 package com.android.sample.ui.dashboard
 
 import androidx.compose.foundation.layout.padding
@@ -27,6 +28,7 @@ fun DashboardScreen(
     // TODO: add onSignedOut as parameter
     // onSignedOut: () -> Unit = {},
     navigationActions: NavigationActions? = null,
+    onAddClick: () -> Unit = {},
 ) {
   Scaffold(
       topBar = {
@@ -43,7 +45,9 @@ fun DashboardScreen(
             modifier = Modifier.testTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU),
         )
       },
-      content = { pd -> Text("Dashboard screen", modifier = Modifier.padding(pd)) },
+      floatingActionButton = { DashboardAddButton(onClick = onAddClick) },
+      // Sessions will come from a ViewModel once the study-session backend exists.
+      content = { pd -> DashboardContent(sessions = emptyList(), modifier = Modifier.padding(pd)) },
   )
 }
 
