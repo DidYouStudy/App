@@ -125,7 +125,7 @@ class AuthRepositoryProviderTest {
         verify(caller, times(1)).applicationContext
         verifyNoInteractions(anotherCaller)
         firebase.verify({ FirebaseAuth.getInstance() }, times(2))
-        // The helper is shared, so the failed attempt's helper is reused rather than rebuilt.
+        // Firebase failed before helper construction; the successful retry creates one helper.
         assertEquals(1, helpers.constructed().size)
 
         repository.signOut()
