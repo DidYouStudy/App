@@ -11,4 +11,5 @@
     <string name="sign_in_error_user_disabled">This account has been disabled.</string>
     <string name="sign_in_error_no_credential">No Google account found on this device. Add one in your device settings.</string>
     <string name="sign_in_error_unknown">Something went wrong. Please try again.</string>
+    <string name="profile_button_description">Open profile</string>
 </resources>
