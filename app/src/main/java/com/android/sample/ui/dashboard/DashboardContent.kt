@@ -7,7 +7,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,7 +21,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -101,15 +99,14 @@ fun DashboardContent(sessions: List<DashboardSession>, modifier: Modifier = Modi
       } else {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
           sessions.forEachIndexed { index, session ->
-            Row(
+            Column(
                 modifier =
                     Modifier.fillMaxWidth()
                         .heightIn(min = 55.dp)
                         .border(1.dp, DysOrange, RoundedCornerShape(9.dp))
                         .padding(horizontal = 10.dp, vertical = 8.dp)
                         .testTag(DashboardContentTestTags.sessionItem(index)),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalArrangement = Arrangement.Center,
             ) {
               Text(
                   text = session.timeRange,
@@ -158,19 +155,18 @@ fun DashboardContent(sessions: List<DashboardSession>, modifier: Modifier = Modi
 @Composable
 fun DashboardAddButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
   Surface(
+      onClick = onClick,
       modifier = modifier.size(50.dp).testTag(DashboardContentTestTags.ADD_BUTTON),
       shape = CircleShape,
       color = Color.White,
       border = BorderStroke(2.dp, DysOrange),
       shadowElevation = 0.dp,
   ) {
-    IconButton(onClick = onClick, modifier = Modifier.fillMaxSize()) {
-      Icon(
-          imageVector = Icons.Default.Add,
-          contentDescription = stringResource(R.string.dashboard_add_description),
-          tint = DysOrange,
-      )
-    }
+    Icon(
+        imageVector = Icons.Default.Add,
+        contentDescription = stringResource(R.string.dashboard_add_description),
+        tint = DysOrange,
+    )
   }
 }
 
