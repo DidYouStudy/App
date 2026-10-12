@@ -13,6 +13,8 @@ sealed class Screen(
 
   object Preferences : Screen(route = "preferences", name = "Preferences")
 
+  object Settings : Screen(route = "settings", name = "Settings")
+
   object Calendar : Screen(route = "calendar", name = "Calendar", isTopLevelDestination = true)
 
   object GroupSession :
