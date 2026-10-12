@@ -12,11 +12,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
+import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
-
-object DashBoardScreenTestTags {
-  const val PREFERENCES_BUTTON = "preferencesButton"
-}
+import com.android.sample.ui.profile.ProfileButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +31,9 @@ fun DashboardScreen(
         TopAppBar(
             title = {
               Text("Dashboard", modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE))
+            },
+            actions = {
+              ProfileButton(onClick = { navigationActions?.navigateTo(Screen.Settings) })
             },
         )
       },
