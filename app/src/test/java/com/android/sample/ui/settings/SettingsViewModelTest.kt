@@ -8,6 +8,7 @@ import com.android.sample.model.profile.UserProfile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -154,5 +155,71 @@ class SettingsViewModelTest {
     viewModel.clearError()
 
     assertNull(viewModel.uiState.value.error)
+  }
+
+  @Test
+  fun init_handlesExceptionInCurrentUserFlow_updatesErrorInState() = runTest {
+    `when`(authRepository.currentUser).thenReturn(flow { throw RuntimeException("Flow error") })
+
+    val viewModel = SettingsViewModel(authRepository, profileRepository)
+
+    val state = viewModel.uiState.value
+    assertFalse(state.isLoading)
+    assertEquals("Flow error", state.error)
+  }
+
+  @Test
+  fun init_handlesExceptionWithNullMessage_usesDefaultErrorMessage() = runTest {
+    val exception = object : RuntimeException(null as String?) {}
+    `when`(authRepository.currentUser).thenReturn(flow { throw exception })
+
+    val viewModel = SettingsViewModel(authRepository, profileRepository)
+
+    val state = viewModel.uiState.value
+    assertFalse(state.isLoading)
+    assertEquals("Failed to load user profile", state.error)
+  }
+
+  @Test
+  fun init_handlesProfileRepositoryFailure_fallsBackToGoogleAuth() = runTest {
+    val userAccount =
+        UserAccount(
+            uid = "user123",
+            email = "test@example.com",
+            displayName = "Google Name",
+            photoUrl = null,
+        )
+    `when`(profileRepository.getProfile("user123"))
+        .thenReturn(Result.failure(RuntimeException("Firestore error")))
+
+    currentUserFlow.value = userAccount
+    val viewModel = SettingsViewModel(authRepository, profileRepository)
+
+    val state = viewModel.uiState.value
+    assertFalse(state.isLoading)
+    assertEquals("Google Name", state.username)
+  }
+
+  @Test
+  fun signOut_failure_updatesErrorInState() = runTest {
+    `when`(authRepository.signOut()).thenThrow(RuntimeException("Sign out failed"))
+    val viewModel = SettingsViewModel(authRepository, profileRepository)
+
+    viewModel.signOut()
+
+    val state = viewModel.uiState.value
+    assertEquals("Sign out failed", state.error)
+  }
+
+  @Test
+  fun signOut_failureWithNullMessage_usesDefaultErrorMessage() = runTest {
+    val exception = object : RuntimeException(null as String?) {}
+    `when`(authRepository.signOut()).thenThrow(exception)
+    val viewModel = SettingsViewModel(authRepository, profileRepository)
+
+    viewModel.signOut()
+
+    val state = viewModel.uiState.value
+    assertEquals("Failed to sign out", state.error)
   }
 }
