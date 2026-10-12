@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot
+// Co-authored-by: Claude AI Agent
 package com.android.sample.navigation
 
 import androidx.activity.ComponentActivity

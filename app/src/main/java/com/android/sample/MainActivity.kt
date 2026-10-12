@@ -1,3 +1,4 @@
+// Co-authored-by: Claude AI Agent
 package com.android.sample
 
 import android.content.Context
