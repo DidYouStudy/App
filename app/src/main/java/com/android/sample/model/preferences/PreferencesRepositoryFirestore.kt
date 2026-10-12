@@ -12,9 +12,8 @@ import kotlinx.coroutines.tasks.await
  *
  * @param firestore The [FirebaseFirestore] instance used for database operations.
  */
-class PreferencesRepositoryFirestore(
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
-) : PreferencesRepository {
+class PreferencesRepositoryFirestore(private val firestore: FirebaseFirestore) :
+    PreferencesRepository {
 
   private val collection = firestore.collection("preferences")
 
