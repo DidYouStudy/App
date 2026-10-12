@@ -6,6 +6,7 @@ import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -75,6 +76,14 @@ class PreferencesRepositoryFirestoreTest {
     assertEquals("Firestore error", result.exceptionOrNull()?.message)
   }
 
+  @Test(expected = CancellationException::class)
+  fun getPreferences_rethrowsCancellationException() = runTest {
+    val exception = CancellationException("Job cancelled")
+    `when`(documentReference.get()).thenReturn(Tasks.forException(exception))
+
+    repository.getPreferences("user123")
+  }
+
   @Test
   fun getPreferences_returnsFailure_whenUserIdIsBlank() = runTest {
     val result = repository.getPreferences("   ")
@@ -117,5 +126,14 @@ class PreferencesRepositoryFirestoreTest {
 
     assertTrue(result.isFailure)
     assertEquals("Write failed", result.exceptionOrNull()?.message)
+  }
+
+  @Test(expected = CancellationException::class)
+  fun savePreferences_rethrowsCancellationException() = runTest {
+    val prefs = UserPreferences(userId = "user123")
+    val exception = CancellationException("Job cancelled")
+    `when`(documentReference.set(prefs)).thenReturn(Tasks.forException(exception))
+
+    repository.savePreferences(prefs)
   }
 }
