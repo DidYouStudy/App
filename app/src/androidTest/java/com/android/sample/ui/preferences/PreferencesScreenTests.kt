@@ -54,7 +54,7 @@ class PreferencesScreenTests {
     savedCallbacks = 0
     val viewModel = PreferencesViewModel(repository, userId)
     composeTestRule.setContent {
-      PreferenceScreen(
+      PreferencesScreen(
           viewModel = viewModel,
           onImportClick = { importClicks++ },
           onAddLocationClick = { addLocationClicks++ },

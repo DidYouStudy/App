@@ -11,14 +11,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.credentials.CredentialManager
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.R
 import com.android.sample.model.auth.GoogleSignInHelper
 
 @Composable
 fun SignInRoute(
-    viewModel: AuthViewModel,
-    onSignedIn: () -> Unit,
     modifier: Modifier = Modifier,
+    // TODO FIX VM INSTANCE NOT BEING ABLE TO BE CREATED AS DEFAULT PARAMETER
+    viewModel: AuthViewModel = viewModel(),
+    onSignedIn: () -> Unit,
     getIdToken: suspend (Activity) -> String = ::requestGoogleIdToken,
 ) {
   val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
