@@ -33,9 +33,11 @@ import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
 // Building blocks / Helper methods
 // ---------------------------------------------------------------------------
 
-/*
-   Builds the title of the screen
-*/
+/**
+ * Displays the preferences screen title.
+ *
+ * @param modifier Modifier applied to the title.
+ */
 @Composable
 internal fun PreferencesHeader(modifier: Modifier = Modifier) {
   Text(
@@ -52,9 +54,13 @@ internal fun PreferencesHeader(modifier: Modifier = Modifier) {
   )
 }
 
-/*
-   Builds the label containers for the preference sections
-*/
+/**
+ * Displays a bold label for a preference section.
+ *
+ * @param text Text shown as the section label.
+ * @param testTag Test tag applied to the label for UI tests.
+ * @param modifier Modifier applied to the label.
+ */
 @Composable
 internal fun SectionLabel(text: String, testTag: String, modifier: Modifier = Modifier) {
   Text(
@@ -65,9 +71,14 @@ internal fun SectionLabel(text: String, testTag: String, modifier: Modifier = Mo
   )
 }
 
-/*
-   Builds the wide buttons used for import, add and save
-*/
+/**
+ * Displays a full-width pill-shaped button.
+ *
+ * @param text Text shown inside the button.
+ * @param onClick Action invoked when the button is clicked.
+ * @param testTag Test tag applied to the button for UI tests.
+ * @param modifier Modifier applied to the button.
+ */
 @Composable
 internal fun WidePillButton(
     text: String,
@@ -84,9 +95,14 @@ internal fun WidePillButton(
   }
 }
 
-/*
-   Builds the row of preference options for time_of_day for multiple choice
-*/
+/**
+ * Displays a row of selectable options that may be selected independently.
+ *
+ * @param options Options shown in the row.
+ * @param selected Currently selected options.
+ * @param onToggle Called with an option when it is toggled.
+ * @param modifier Modifier applied to the row.
+ */
 @Composable
 internal fun <T : PreferenceOption> MultiChoiceRow(
     options: List<T>,
@@ -102,10 +118,14 @@ internal fun <T : PreferenceOption> MultiChoiceRow(
         modifier = modifier,
     )
 
-/*
-   Builds the row of preference options for study_length, break_duration and break_frequency for
-   single choice
-*/
+/**
+ * Displays a row of options where only one option may be selected.
+ *
+ * @param options Options shown in the row.
+ * @param selected Currently selected option.
+ * @param onSelect Called with an option when it is selected.
+ * @param modifier Modifier applied to the row.
+ */
 @Composable
 internal fun <T : PreferenceOption> SingleChoiceRow(
     options: List<T>,
@@ -121,9 +141,14 @@ internal fun <T : PreferenceOption> SingleChoiceRow(
         modifier = modifier,
     )
 
-/*
-   Formats the shape of the pill (preferences) buttons
-*/
+/**
+ * Returns the shape for an option segment based on its position and selection state.
+ *
+ * @param index Zero-based position of the segment in the row.
+ * @param count Number of segments in the row.
+ * @param selected Whether the segment is selected.
+ * @return A circular shape for selected segments, or a shape with rounded outer corners otherwise.
+ */
 @Composable
 internal fun segmentShape(index: Int, count: Int, selected: Boolean): Shape {
   if (selected) return CircleShape
@@ -141,9 +166,15 @@ internal fun segmentShape(index: Int, count: Int, selected: Boolean): Shape {
   )
 }
 
-/*
-   Builds a row of pill buttons / preference options for the given role
-*/
+/**
+ * Displays selectable options with selection semantics and a role.
+ *
+ * @param options Options shown in the row.
+ * @param isSelected Returns whether an option is currently selected.
+ * @param onClick Called with an option when it is selected.
+ * @param role Accessibility role assigned to each option.
+ * @param modifier Modifier applied to the row.
+ */
 @Composable
 internal fun <T : PreferenceOption> ChoiceRow(
     options: List<T>,

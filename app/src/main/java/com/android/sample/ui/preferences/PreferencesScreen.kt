@@ -19,7 +19,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,6 +29,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.R
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -38,6 +38,16 @@ import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
 /*
    Actual stateful preference screen
 */
+/**
+ * Displays the preference screen, loading saved preferences and allowing the user to edit and save
+ * them.
+ *
+ * @param modifier Modifier applied to the screen and its content.
+ * @param viewModel ViewModel that loads and updates the user's preferences.
+ * @param onImportClick Called when the user requests to import a schedule.
+ * @param onAddLocationClick Called when the user requests to add study locations.
+ * @param onSaved Called after the user saves the edited preferences.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PreferencesScreen(
@@ -57,7 +67,7 @@ fun PreferencesScreen(
       },
       modifier = modifier.fillMaxSize(),
       content = { pd ->
-        val uiState by viewModel.uiState.collectAsState()
+        val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
         when (val state = uiState) {
           // if the screen should be loading
@@ -117,6 +127,22 @@ fun PreferencesScreen(
 /*
    Stateless preference screen used for the Success state and for previewing
 */
+/**
+ * Displays the preference controls for an already-loaded preference state.
+ *
+ * @param modifier Modifier applied to the screen content.
+ * @param selectedStudyTimes Currently selected study times.
+ * @param selectedSessionLength Currently selected study session length.
+ * @param selectedBreakDuration Currently selected break duration.
+ * @param selectedBreakFrequency Currently selected break frequency.
+ * @param onImportClick Called when the user requests to import a schedule.
+ * @param onAddLocationClick Called when the user requests to add study locations.
+ * @param onStudyTimeToggle Called when a study-time option is toggled.
+ * @param onSessionLengthSelect Called when a session length is selected.
+ * @param onBreakDurationSelect Called when a break duration is selected.
+ * @param onBreakFrequencySelect Called when a break frequency is selected.
+ * @param onSaveClick Called when the user saves the selected preferences.
+ */
 @Composable
 fun PreferenceScreenStateless(
     modifier: Modifier = Modifier,
@@ -154,15 +180,32 @@ fun PreferenceScreenStateless(
           verticalArrangement = Arrangement.spacedBy(8.dp),
       ) {
         // import schedule section
-        SectionLabel(stringResource(id = R.string.preferences_import_schedule_label), Tags.IMPORT_SCHEDULE_LABEL)
-        WidePillButton(stringResource(id = R.string.preferences_import_schedule_button), onImportClick, Tags.IMPORT_SCHEDULE_BUTTON)
+        SectionLabel(
+            stringResource(id = R.string.preferences_import_schedule_label),
+            Tags.IMPORT_SCHEDULE_LABEL,
+        )
+        WidePillButton(
+            stringResource(id = R.string.preferences_import_schedule_button),
+            onImportClick,
+            Tags.IMPORT_SCHEDULE_BUTTON,
+        )
 
         // add study locations section
-        SectionLabel(stringResource(id = R.string.preferences_add_study_locations_label), Tags.STUDY_LOCATIONS_LABEL)
-        WidePillButton(stringResource(id = R.string.preferences_add_study_locations_button), onAddLocationClick, Tags.ADD_STUDY_LOCATION_BUTTON)
+        SectionLabel(
+            stringResource(id = R.string.preferences_add_study_locations_label),
+            Tags.STUDY_LOCATIONS_LABEL,
+        )
+        WidePillButton(
+            stringResource(id = R.string.preferences_add_study_locations_button),
+            onAddLocationClick,
+            Tags.ADD_STUDY_LOCATION_BUTTON,
+        )
 
         // time_of_day preference section
-        SectionLabel(stringResource(id = R.string.preferences_study_time_label), Tags.STUDY_TIME_LABEL)
+        SectionLabel(
+            stringResource(id = R.string.preferences_study_time_label),
+            Tags.STUDY_TIME_LABEL,
+        )
         MultiChoiceRow(
             options = StudyTime.entries,
             selected = selectedStudyTimes,
@@ -170,7 +213,10 @@ fun PreferenceScreenStateless(
         )
 
         // study_length preference section
-        SectionLabel(stringResource(id = R.string.preferences_session_length_label), Tags.SESSION_LENGTH_LABEL)
+        SectionLabel(
+            stringResource(id = R.string.preferences_session_length_label),
+            Tags.SESSION_LENGTH_LABEL,
+        )
         SingleChoiceRow(
             options = SessionLength.entries,
             selected = selectedSessionLength,
@@ -178,7 +224,10 @@ fun PreferenceScreenStateless(
         )
 
         // break_duration preference section
-        SectionLabel(stringResource(id = R.string.preferences_break_duration_label), Tags.BREAK_DURATION_LABEL)
+        SectionLabel(
+            stringResource(id = R.string.preferences_break_duration_label),
+            Tags.BREAK_DURATION_LABEL,
+        )
         SingleChoiceRow(
             options = BreakDuration.entries,
             selected = selectedBreakDuration,
@@ -186,7 +235,10 @@ fun PreferenceScreenStateless(
         )
 
         // break_frequency preference section
-        SectionLabel(stringResource(id = R.string.preferences_break_frequency_label), Tags.BREAK_FREQUENCY_LABEL)
+        SectionLabel(
+            stringResource(id = R.string.preferences_break_frequency_label),
+            Tags.BREAK_FREQUENCY_LABEL,
+        )
         SingleChoiceRow(
             options = BreakFrequency.entries,
             selected = selectedBreakFrequency,
@@ -212,7 +264,7 @@ fun PreferenceScreenStateless(
    Preview with the selected preferences being the ones from the mockup on Figma
 */
 
-@Preview // (showBackground = true, showSystemUi = true)
+@Preview
 @Composable
 private fun PreferencesScreenPreview() {
   MaterialTheme {
