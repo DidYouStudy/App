@@ -1,11 +1,15 @@
 // Co-authored-by: GitHub Copilot
 package com.android.sample.ui.dashboard
 
+import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.sample.R
 import com.android.sample.ui.navigation.NavigationTestTags
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -17,10 +21,19 @@ class DashboardScreenTest {
   @get:Rule val composeTestRule = createComposeRule()
 
   @Test
-  fun screenShowsDashboardContentEmptyStateAddButtonAndNavigationBars() {
+  fun screenWiresLocalizedDashboardCardsEmptyStateAndNavigationBars() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
     composeTestRule.setContent { DashboardScreen(navigationActions = null, onAddClick = {}) }
 
     composeTestRule.onNodeWithTag(DashboardContentTestTags.CONTENT).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.YOUR_DAY_CARD).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.YOUR_DAY_TITLE)
+        .assertTextEquals(context.getString(R.string.dashboard_your_day))
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.STATS_CARD).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.STATS_TITLE)
+        .assertTextEquals(context.getString(R.string.dashboard_your_stats))
     composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).assertIsDisplayed()
     composeTestRule.onNodeWithTag(DashboardContentTestTags.EMPTY_DAY).assertIsDisplayed()
     composeTestRule.onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE).assertIsDisplayed()

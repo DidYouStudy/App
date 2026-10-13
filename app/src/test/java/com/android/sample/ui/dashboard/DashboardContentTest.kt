@@ -40,7 +40,7 @@ class DashboardContentTest {
   @get:Rule val composeTestRule = createComposeRule()
 
   @Test
-  fun alwaysShowsDashboardCardsAndLocalizedStats() {
+  fun showsYourDayCardWithLocalizedTitle() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     composeTestRule.setContent { DashboardContent(sessions = emptyList()) }
 
@@ -49,13 +49,17 @@ class DashboardContentTest {
     composeTestRule
         .onNodeWithTag(DashboardContentTestTags.YOUR_DAY_TITLE)
         .assertTextEquals(context.getString(R.string.dashboard_your_day))
+  }
+
+  @Test
+  fun showsStatsCardWithLocalizedTitle() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    composeTestRule.setContent { DashboardContent(sessions = emptyList()) }
+
     composeTestRule.onNodeWithTag(DashboardContentTestTags.STATS_CARD).assertIsDisplayed()
     composeTestRule
         .onNodeWithTag(DashboardContentTestTags.STATS_TITLE)
         .assertTextEquals(context.getString(R.string.dashboard_your_stats))
-    composeTestRule
-        .onNodeWithText(context.getString(R.string.dashboard_stats_placeholder))
-        .assertIsDisplayed()
   }
 
   @Test
@@ -71,27 +75,31 @@ class DashboardContentTest {
   }
 
   @Test
-  fun sessionsAppearInInputOrderWithOnlyTheirOwnTexts() {
+  fun sessionItemsShowExactlyTheirTextsInInputAndOnScreenOrder() {
     val sessions =
         listOf(
-            DashboardSession(timeRange = "08:15 - 09:45", subject = "Algebra"),
-            DashboardSession(timeRange = "13:00 - 14:30", subject = "Chemistry"),
+            DashboardSession(startTime = "08:15", endTime = "09:45", subject = "Algebra"),
+            DashboardSession(startTime = "13:00", endTime = "14:30", subject = "Chemistry"),
         )
     composeTestRule.setContent { DashboardContent(sessions = sessions) }
 
     composeTestRule.onNodeWithTag(DashboardContentTestTags.EMPTY_DAY).assertDoesNotExist()
     sessions.forEachIndexed { index, session ->
-      val itemNode =
-          composeTestRule.onNodeWithTag(
-              DashboardContentTestTags.sessionItem(index),
-              useUnmergedTree = true,
-          )
+      val itemTag = DashboardContentTestTags.sessionItem(index)
+      val itemNode = composeTestRule.onNodeWithTag(itemTag, useUnmergedTree = true)
       itemNode.assertIsDisplayed()
+      itemNode.onChildren().assertCountEquals(3)
+      listOf(session.startTime, session.endTime, session.subject).forEach { text ->
+        composeTestRule.onNodeWithText(text, useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule
+            .onAllNodes(hasText(text, substring = false), useUnmergedTree = true)
+            .assertCountEquals(1)
+      }
       itemNode.assert(
-          hasAnyDescendant(hasText(session.timeRange, substring = false))
+          hasAnyDescendant(hasText(session.startTime, substring = false))
+              .and(hasAnyDescendant(hasText(session.endTime, substring = false)))
               .and(hasAnyDescendant(hasText(session.subject, substring = false)))
       )
-      itemNode.onChildren().assertCountEquals(2)
       if (index > 0) {
         val previousTop =
             composeTestRule
@@ -114,16 +122,19 @@ class DashboardContentTest {
   }
 
   @Test
-  // NATIVE graphics are needed for Robolectric to measure text layout correctly.
   @GraphicsMode(GraphicsMode.Mode.NATIVE)
-  fun longSubjectIsDisplayedInFull() {
+  fun longSubjectWrapsAndRemainsFullyVisible() {
     val longSubject = "Advanced statistical mechanics and computational modelling workshop"
     composeTestRule.setContent {
       Box(Modifier.requiredSize(width = 360.dp, height = 800.dp)) {
         DashboardContent(
             sessions =
                 listOf(
-                    DashboardSession(timeRange = "10:00 - 12:00", subject = longSubject),
+                    DashboardSession(
+                        startTime = "10:00",
+                        endTime = "12:00",
+                        subject = longSubject,
+                    ),
                 ),
         )
       }
@@ -145,11 +156,12 @@ class DashboardContentTest {
   }
 
   @Test
-  fun lastOfManySessionsCanBeScrolledIntoView() {
+  fun lastOfEightSessionsCanBeScrolledIntoView() {
     val sessions =
         (1..8).map { index ->
           DashboardSession(
-              timeRange = "%02d:00 - %02d:00".format(index, index + 1),
+              startTime = "%02d:00".format(index),
+              endTime = "%02d:00".format(index + 1),
               subject = "Subject $index",
           )
         }
@@ -159,6 +171,125 @@ class DashboardContentTest {
 
     composeTestRule.onNodeWithTag(lastSessionTag).performScrollTo().assertIsDisplayed()
     composeTestRule.onNodeWithText(lastSession.subject).assertIsDisplayed()
+  }
+
+  @Test
+  fun statsTilesShowTheirLocalizedLabels() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    composeTestRule.setContent { DashboardContent(sessions = emptyList()) }
+
+    listOf(
+            DashboardContentTestTags.STAT_AVERAGE_DAILY to R.string.dashboard_stat_average_daily,
+            DashboardContentTestTags.STAT_TOTAL_SESSIONS to R.string.dashboard_stat_total_sessions,
+            DashboardContentTestTags.STAT_AVERAGE_FOCUS to R.string.dashboard_stat_average_focus,
+        )
+        .forEach { (tileTag, labelResource) ->
+          composeTestRule.onNodeWithTag(tileTag).onChildren().assertCountEquals(2)
+          composeTestRule
+              .onNodeWithTag(tileTag)
+              .assert(
+                  hasAnyDescendant(hasText(context.getString(labelResource), substring = false))
+              )
+        }
+  }
+
+  @Test
+  fun statsCardShowsLocalizedHint() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    composeTestRule.setContent { DashboardContent(sessions = emptyList()) }
+
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.STATS_HINT)
+        .assertTextEquals(context.getString(R.string.dashboard_stats_placeholder))
+  }
+
+  @Test
+  fun defaultStatsShowLocalizedEmptyValueInEveryTile() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val emptyValue = context.getString(R.string.dashboard_stat_empty_value)
+    composeTestRule.setContent {
+      DashboardContent(sessions = emptyList(), stats = DashboardStats())
+    }
+
+    listOf(
+            DashboardContentTestTags.STAT_AVERAGE_DAILY,
+            DashboardContentTestTags.STAT_TOTAL_SESSIONS,
+            DashboardContentTestTags.STAT_AVERAGE_FOCUS,
+        )
+        .forEach { tileTag ->
+          composeTestRule.onNodeWithTag(tileTag).onChildren().assertCountEquals(2)
+          composeTestRule
+              .onNodeWithTag(tileTag)
+              .assert(hasAnyDescendant(hasText(emptyValue, substring = false)))
+        }
+  }
+
+  @Test
+  fun populatedStatsShowOnlyTheirOwnValueInEachTile() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val emptyValue = context.getString(R.string.dashboard_stat_empty_value)
+    val stats =
+        DashboardStats(
+            averageDailyStudyTime = "1h 20m",
+            totalSessions = "12",
+            averageFocusDuration = "35m",
+        )
+    val tileValues =
+        listOf(
+            DashboardContentTestTags.STAT_AVERAGE_DAILY to "1h 20m",
+            DashboardContentTestTags.STAT_TOTAL_SESSIONS to "12",
+            DashboardContentTestTags.STAT_AVERAGE_FOCUS to "35m",
+        )
+    composeTestRule.setContent { DashboardContent(sessions = emptyList(), stats = stats) }
+
+    tileValues.forEach { (tileTag, value) ->
+      composeTestRule.onNodeWithTag(tileTag).onChildren().assertCountEquals(2)
+      composeTestRule
+          .onNodeWithTag(tileTag)
+          .assert(hasAnyDescendant(hasText(value, substring = false)))
+    }
+    composeTestRule
+        .onNodeWithText(emptyValue, substring = false, useUnmergedTree = true)
+        .assertDoesNotExist()
+  }
+
+  @Test
+  @GraphicsMode(GraphicsMode.Mode.NATIVE)
+  fun sideBySideStatTilesHaveEqualHeightWhenLabelsWrap() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    composeTestRule.setContent {
+      Box(Modifier.requiredSize(width = 360.dp, height = 800.dp)) {
+        DashboardContent(sessions = emptyList())
+      }
+    }
+
+    val longLabelLayout = mutableListOf<TextLayoutResult>()
+    composeTestRule
+        .onNodeWithText(
+            context.getString(R.string.dashboard_stat_average_daily),
+            useUnmergedTree = true,
+        )
+        .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { getTextLayoutResult ->
+          assertTrue(getTextLayoutResult.invoke(longLabelLayout))
+        }
+    assertTrue(
+        "The narrow layout must wrap the longer label",
+        longLabelLayout.single().lineCount > 1,
+    )
+
+    val averageDailyBounds =
+        composeTestRule
+            .onNodeWithTag(DashboardContentTestTags.STAT_AVERAGE_DAILY)
+            .getUnclippedBoundsInRoot()
+    val totalSessionsBounds =
+        composeTestRule
+            .onNodeWithTag(DashboardContentTestTags.STAT_TOTAL_SESSIONS)
+            .getUnclippedBoundsInRoot()
+    assertEquals(
+        "Side-by-side statistic tiles must have equal heights",
+        averageDailyBounds.bottom - averageDailyBounds.top,
+        totalSessionsBounds.bottom - totalSessionsBounds.top,
+    )
   }
 
   @Test
