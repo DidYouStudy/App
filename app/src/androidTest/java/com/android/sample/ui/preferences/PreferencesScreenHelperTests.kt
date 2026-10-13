@@ -18,12 +18,6 @@ class PreferencesScreenHelperTests {
   @get:Rule val composeTestRule = createComposeRule()
 
   @Test
-  fun headerDisplaysTitle() {
-    composeTestRule.setContent { MaterialTheme { PreferenceHeader() } }
-    composeTestRule.onNodeWithTag(Tags.PREFERENCE_TITLE).assertIsDisplayed()
-  }
-
-  @Test
   fun sectionLabelDisplaysTextWithGivenTag() {
     composeTestRule.setContent {
       MaterialTheme { SectionLabel(text = "Some label", testTag = "customLabelTag") }

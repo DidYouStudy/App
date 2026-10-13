@@ -12,13 +12,16 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.sample.R
+import com.android.sample.model.auth.GoogleSignInHelper
 
 @Composable
 fun SignInRoute(
-    onSignedIn: () -> Unit,
-    getIdToken: suspend (Activity) -> String,
     modifier: Modifier = Modifier,
     viewModel: AuthViewModel = authViewModel(),
+    onSignedIn: () -> Unit,
+    getIdToken: suspend (Activity) -> String,
 ) {
   val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
   // React when the session-flow user becomes non-null, including restored sessions.
