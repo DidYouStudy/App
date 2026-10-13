@@ -220,7 +220,7 @@ class ProfileRepositoryFirestoreTest {
     val result = repository.createProfile("user123")
 
     assertTrue(result.isSuccess)
-    assertEquals(expected, result.getOrNull())
+    assertEquals(ProfileResolution.Created(expected), result.getOrNull())
     verify(transaction).set(document, expected)
     verify(collection).document("user123")
   }
@@ -239,7 +239,7 @@ class ProfileRepositoryFirestoreTest {
     val result = repository.createProfile("user123")
 
     assertTrue(result.isSuccess)
-    assertEquals(existing, result.getOrNull())
+    assertEquals(ProfileResolution.Existing(existing), result.getOrNull())
     verify(transaction, never()).set(any(), any())
     verify(collection).document("user123")
   }
@@ -268,7 +268,7 @@ class ProfileRepositoryFirestoreTest {
   @Test
   fun createProfile_returnsUnknownFailure_whenTransactionFailsUnexpectedly() = runTest {
     val exception = IllegalStateException("Transaction failed")
-    `when`(firestore.runTransaction<UserProfile>(any())).thenThrow(exception)
+    `when`(firestore.runTransaction<ProfileResolution>(any())).thenThrow(exception)
 
     val result = repository.createProfile("user123")
 
@@ -280,7 +280,8 @@ class ProfileRepositoryFirestoreTest {
   @Test
   fun createProfile_returnsFirestoreFailure_whenTransactionTaskFails() = runTest {
     val exception = firestoreException("Transaction failed")
-    `when`(firestore.runTransaction<UserProfile>(any())).thenReturn(Tasks.forException(exception))
+    `when`(firestore.runTransaction<ProfileResolution>(any()))
+        .thenReturn(Tasks.forException(exception))
 
     val result = repository.createProfile("user123")
 
@@ -364,7 +365,7 @@ class ProfileRepositoryFirestoreTest {
   @Test
   fun createProfile_propagatesSynchronousCancellationFromFirestoreCall() = runTest {
     val cancellation = CancellationException("Cancelled")
-    `when`(firestore.runTransaction<UserProfile>(any())).thenThrow(cancellation)
+    `when`(firestore.runTransaction<ProfileResolution>(any())).thenThrow(cancellation)
 
     try {
       repository.createProfile("user123")
@@ -377,8 +378,8 @@ class ProfileRepositoryFirestoreTest {
   // Propagates coroutine cancellation while profile creation is pending.
   @Test
   fun createProfile_propagatesCancellation_whileTransactionIsPending() = runTest {
-    val task = TaskCompletionSource<UserProfile>()
-    `when`(firestore.runTransaction<UserProfile>(any())).thenReturn(task.task)
+    val task = TaskCompletionSource<ProfileResolution>()
+    `when`(firestore.runTransaction<ProfileResolution>(any())).thenReturn(task.task)
 
     val request = async { repository.createProfile("user123") }
     runCurrent()
@@ -392,7 +393,8 @@ class ProfileRepositoryFirestoreTest {
   fun createProfile_returnsUnknownFailure_whenTransactionTaskWrapsCancellation() = runTest {
     val cancellation = CancellationException("Cancelled")
     val wrapped = IllegalStateException("Firestore wrapper", cancellation)
-    `when`(firestore.runTransaction<UserProfile>(any())).thenReturn(Tasks.forException(wrapped))
+    `when`(firestore.runTransaction<ProfileResolution>(any()))
+        .thenReturn(Tasks.forException(wrapped))
 
     val result = repository.createProfile("user123")
 
@@ -401,8 +403,8 @@ class ProfileRepositoryFirestoreTest {
   }
 
   private fun stubTransaction(transaction: Transaction) {
-    `when`(firestore.runTransaction<UserProfile>(any())).thenAnswer { invocation ->
-      val function = invocation.getArgument<Transaction.Function<UserProfile>>(0)
+    `when`(firestore.runTransaction<ProfileResolution>(any())).thenAnswer { invocation ->
+      val function = invocation.getArgument<Transaction.Function<ProfileResolution>>(0)
       Tasks.forResult(function.apply(transaction))
     }
   }
