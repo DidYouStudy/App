@@ -58,6 +58,32 @@ class SettingsViewModelTest {
   }
 
   @Test
+  fun currentUserEmitsNull_resetsUiStateToDefault() = runTest {
+    val userAccount =
+        UserAccount(
+            uid = "user123",
+            email = "test@example.com",
+            displayName = "Google Name",
+            photoUrl = "http://google.photo",
+        )
+    `when`(profileRepository.getProfile("user123")).thenReturn(Result.success(null))
+
+    currentUserFlow.value = userAccount
+    val viewModel = SettingsViewModel(authRepository, profileRepository)
+
+    assertEquals("Google Name", viewModel.uiState.value.username)
+
+    // Simulate sign-out or session termination
+    currentUserFlow.value = null
+
+    val resetState = viewModel.uiState.value
+    assertFalse(resetState.isLoading)
+    assertEquals("", resetState.username)
+    assertNull(resetState.profilePictureUrl)
+    assertNull(resetState.error)
+  }
+
+  @Test
   fun init_loadsUserProfile_fromFirestore_whenCustomValuesExist() = runTest {
     val userAccount =
         UserAccount(

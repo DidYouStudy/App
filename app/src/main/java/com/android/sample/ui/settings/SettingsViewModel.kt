@@ -40,7 +40,7 @@ class SettingsViewModel(
         authRepository.currentUser.collect { userAccount ->
           // safely prevent null pointer exception and stops the loading state
           if (userAccount == null) {
-            _uiState.update { it.copy(isLoading = false) }
+            _uiState.value = SettingsUiState(isLoading = false)
             return@collect
           }
 
@@ -49,9 +49,9 @@ class SettingsViewModel(
 
           val username =
               profile?.username?.takeIf { it.isNotBlank() }
-                  ?: userAccount.displayName
+                  ?: userAccount.displayName?.takeIf { it.isNotBlank() }
                   ?: userAccount.email?.substringBefore("@")
-                  ?: "User"
+                  ?: DEFAULT_USERNAME
 
           val photoUrl =
               profile?.profilePictureUrl?.takeIf { it.isNotBlank() } ?: userAccount.photoUrl
@@ -71,7 +71,7 @@ class SettingsViewModel(
         _uiState.update {
           it.copy(
               isLoading = false,
-              error = exception.localizedMessage ?: "Failed to load user profile",
+              error = exception.localizedMessage ?: FAILED_TO_LOAD_PROFILE_ERROR,
           )
         }
       }
@@ -86,7 +86,7 @@ class SettingsViewModel(
       } catch (exception: CancellationException) {
         throw exception
       } catch (exception: Exception) {
-        _uiState.update { it.copy(error = exception.localizedMessage ?: "Failed to sign out") }
+        _uiState.update { it.copy(error = exception.localizedMessage ?: FAILED_TO_SIGN_OUT_ERROR) }
       }
     }
   }
@@ -94,5 +94,11 @@ class SettingsViewModel(
   /** Clears any active error message. */
   fun clearError() {
     _uiState.update { it.copy(error = null) }
+  }
+
+  companion object {
+    const val DEFAULT_USERNAME = "User"
+    const val FAILED_TO_LOAD_PROFILE_ERROR = "Failed to load user profile"
+    const val FAILED_TO_SIGN_OUT_ERROR = "Failed to sign out"
   }
 }
