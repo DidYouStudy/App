@@ -64,6 +64,18 @@ class ProfileResolutionCoordinator(private val repository: ProfileRepository) {
     }
   }
 
+  /**
+   * Verifies that a resolution belongs to the authenticated user.
+   *
+   * The repository may return an existing profile from a concurrent create operation, so both
+   * [ProfileResolution.Existing] and [ProfileResolution.Created] are valid outcomes. Only the
+   * contained profile UID determines whether the result is safe to publish.
+   *
+   * @param user authenticated account whose UID must own the profile.
+   * @param resolution existing or newly created profile resolution to validate.
+   * @return the original resolution when its profile UID matches, or a failed result with
+   *   [ProfileError.INVALID_PROFILE_DATA].
+   */
   private fun validateProfile(
       user: UserAccount,
       resolution: ProfileResolution,
