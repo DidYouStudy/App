@@ -7,10 +7,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -29,7 +27,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -52,25 +49,11 @@ fun PreferencesScreen(
   Scaffold(
       topBar = {
         TopAppBar(
-            title = {
-              Text(
-                  text = "Complete your profile",
-                  style = MaterialTheme.typography.displaySmall,
-                  fontWeight = FontWeight.Bold,
-                  modifier =
-                      Modifier.fillMaxWidth()
-                          .background(
-                              MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-                          )
-                          .statusBarsPadding()
-                          .padding(horizontal = 16.dp, vertical = 16.dp)
-                          .testTag(Tags.PREFERENCE_TITLE),
-              )
-            },
-            modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE),
+            title = { PreferenceHeader(modifier) },
+            modifier = modifier.testTag(NavigationTestTags.TOP_BAR_TITLE),
         )
       },
-      modifier = Modifier.fillMaxSize(),
+      modifier = modifier.fillMaxSize(),
       content = { pd ->
         val uiState by viewModel.uiState.collectAsState()
 

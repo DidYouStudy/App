@@ -36,21 +36,18 @@ import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
 */
 @Composable
 internal fun PreferenceHeader(modifier: Modifier = Modifier) {
-  Box(
+  Text(
+      text = "Complete your profile",
+      style = MaterialTheme.typography.displaySmall,
+      fontWeight = FontWeight.Bold,
       modifier =
           modifier
               .fillMaxWidth()
               .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f))
               .statusBarsPadding()
-              .padding(horizontal = 16.dp, vertical = 16.dp),
-  ) {
-    Text(
-        text = "Complete your profile",
-        style = MaterialTheme.typography.displaySmall,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.testTag(Tags.PREFERENCE_TITLE),
-    )
-  }
+              .padding(horizontal = 16.dp, vertical = 16.dp)
+              .testTag(Tags.PREFERENCE_TITLE),
+  )
 }
 
 /*
