@@ -162,8 +162,10 @@ jobs:
         with:
           node-version: "22"
 
+      # --ignore-scripts: no dependency lifecycle scripts run on the runner. The ones skipped
+      # (re2, protobufjs) are optional; the emulators run without them.
       - name: Install Firebase CLI
-        run: npm install -g firebase-tools@15.31.0
+        run: npm install -g --ignore-scripts firebase-tools@15.31.0
 
       # The emulator JARs are downloaded on first use; reuse them while the CLI version is unchanged.
       - name: Firebase emulators cache
