@@ -1,3 +1,4 @@
+// Co-authored-by: Claude AI Agent
 package com.android.sample.ui.groupsession
 
 import androidx.compose.foundation.layout.padding
@@ -12,11 +13,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
+import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
-
-object GroupSessionScreenTestTags {
-  const val PREFERENCES_BUTTON = "preferencesButton"
-}
+import com.android.sample.ui.profile.ProfileButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +32,9 @@ fun GroupSessionScreen(
         TopAppBar(
             title = {
               Text("Group sessions", modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE))
+            },
+            actions = {
+              ProfileButton(onClick = { navigationActions?.navigateTo(Screen.Settings) })
             },
         )
       },

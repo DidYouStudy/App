@@ -1,4 +1,5 @@
 // Co-authored-by: Codex AI Agent
+// Co-authored-by: Claude AI Agent
 package com.android.sample
 
 import android.os.Bundle
@@ -23,6 +24,7 @@ import com.android.sample.ui.dashboard.DashboardScreen
 import com.android.sample.ui.groupsession.GroupSessionScreen
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.Screen
+import com.android.sample.ui.settings.SettingsScreen
 import com.android.sample.ui.theme.SampleAppTheme
 
 class MainActivity : ComponentActivity() {
@@ -94,6 +96,17 @@ fun DidYouStudyApp() {
     ) {
       composable(Screen.GroupSession.route) {
         GroupSessionScreen(
+            navigationActions = navigationActions,
+        )
+      }
+    }
+
+    navigation(
+        startDestination = Screen.Settings.route,
+        route = Screen.Settings.name,
+    ) {
+      composable(Screen.Settings.route) {
+        SettingsScreen(
             navigationActions = navigationActions,
         )
       }
