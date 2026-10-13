@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Codex AI Agent
 package com.android.sample.ui.auth
 
 import androidx.activity.ComponentActivity
@@ -64,7 +65,7 @@ class AuthViewModelFactoryTest {
   private fun setProviderRepository(repository: AuthRepository?) {
     AuthRepositoryProvider::class.java.getDeclaredField("instance").apply {
       isAccessible = true
-      set(null, repository)
+      set(AuthRepositoryProvider, repository)
     }
   }
 }
