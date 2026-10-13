@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot
+// Co-authored-by: Claude AI Agent
 package com.android.sample.navigation
 
 import androidx.activity.ComponentActivity
@@ -9,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import com.android.sample.DidYouStudyApp
 import com.android.sample.ui.navigation.NavigationTestTags
+import com.android.sample.ui.profile.ProfileButtonTestTags
 import junit.framework.TestCase.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Before
@@ -40,6 +42,14 @@ class NavigationTests {
         .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
         .assertIsDisplayed()
         .assertTextContains("Group Sessions", substring = false, ignoreCase = true)
+  }
+
+  private fun checkSettingsScreenIsDisplayed() {
+    composeTestRule
+        .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
+        .assertIsDisplayed()
+        .assertTextContains("settings", substring = true, ignoreCase = true)
+    composeTestRule.onNodeWithTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU).assertDoesNotExist()
   }
 
   private fun pressBack(shouldFinish: Boolean) {
@@ -181,5 +191,23 @@ class NavigationTests {
   fun pressingBackFromDashboardFinishesActivity() {
     checkDashboardScreenIsDisplayed()
     pressBack(shouldFinish = true)
+  }
+
+  @Test
+  fun profileButtonOpensSettingsAndBackButtonReturnsToDashboard() {
+    composeTestRule.onNodeWithTag(ProfileButtonTestTags.PROFILE_BUTTON).performClick()
+    checkSettingsScreenIsDisplayed()
+    composeTestRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).performClick()
+    checkDashboardScreenIsDisplayed()
+  }
+
+  @Test
+  fun profileButtonOpensSettingsFromCalendarAndSystemBackReturnsToCalendar() {
+    composeTestRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
+    checkCalendarScreenIsDisplayed()
+    composeTestRule.onNodeWithTag(ProfileButtonTestTags.PROFILE_BUTTON).performClick()
+    checkSettingsScreenIsDisplayed()
+    pressBack(shouldFinish = false)
+    checkCalendarScreenIsDisplayed()
   }
 }
