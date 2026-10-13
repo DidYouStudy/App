@@ -1,4 +1,5 @@
 <!-- Co-authored-by: GitHub Copilot -->
+<!-- Co-authored-by: Claude AI Agent -->
 <resources>
     <string name="app_name">SampleApp</string>
     <string name="title_activity_main">MainActivity</string>
@@ -14,4 +15,5 @@
     <string name="default_username">User</string>
     <string name="settings_error_failed_to_load_profile">Failed to load user profile.</string>
     <string name="settings_error_failed_to_sign_out">Failed to sign out.</string>
+    <string name="profile_button_description">Open profile</string>
 </resources>
