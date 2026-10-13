@@ -1,4 +1,5 @@
 <!-- Co-authored-by: GitHub Copilot -->
+<!-- Co-authored-by: Claude AI Agent -->
 <resources>
     <string name="app_name">SampleApp</string>
     <string name="title_activity_main">MainActivity</string>
@@ -20,4 +21,5 @@
     <string name="dashboard_stat_average_focus">Average focus duration</string>
     <string name="dashboard_stat_empty_value">—</string>
     <string name="dashboard_add_description">Add</string>
+    <string name="profile_button_description">Open profile</string>
 </resources>

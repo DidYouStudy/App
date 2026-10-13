@@ -1,3 +1,4 @@
+// Co-authored-by: Claude AI Agent
 package com.android.sample.ui.calendar
 
 import androidx.compose.foundation.layout.padding
@@ -12,11 +13,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
+import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
-
-object CalendarScreenTestTags {
-  const val PREFERENCES_BUTTON = "preferencesButton"
-}
+import com.android.sample.ui.profile.ProfileButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +32,9 @@ fun CalendarScreen(
         TopAppBar(
             title = {
               Text("Calendar", modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE))
+            },
+            actions = {
+              ProfileButton(onClick = { navigationActions?.navigateTo(Screen.Settings) })
             },
         )
       },
