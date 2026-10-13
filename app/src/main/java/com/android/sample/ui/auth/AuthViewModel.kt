@@ -112,8 +112,10 @@ class AuthViewModel(
   @MainThread
   fun signInWithGoogle(getIdToken: suspend () -> String) {
     if (mutableUiState.value.isLoading) return
-    invalidateProfileResolution()
-    runOperation { repository.signInWithGoogle(getIdToken()) }
+    runOperation(
+        operation = { repository.signInWithGoogle(getIdToken()) },
+        onFailure = ::invalidateProfileResolution,
+    )
   }
 
   /**
@@ -124,7 +126,7 @@ class AuthViewModel(
   fun signOut() {
     if (mutableUiState.value.isLoading) return
     invalidateProfileResolution()
-    runOperation { repository.signOut() }
+    runOperation(operation = { repository.signOut() })
   }
 
   /** Dismisses an error after the screen has displayed it, without changing the current session. */
@@ -138,7 +140,10 @@ class AuthViewModel(
    * while busy, show loading, clear the old error, report failures, and always stop loading. The
    * action is suspendable, so it runs in viewModelScope rather than blocking the UI thread.
    */
-  private fun runOperation(operation: suspend () -> Any?) {
+  private fun runOperation(
+      operation: suspend () -> Any?,
+      onFailure: () -> Unit = {},
+  ) {
     // Ignore another sign-in/sign-out tap while the current request is still running.
     if (mutableUiState.value.isLoading) return
     mutableUiState.update { it.copy(isLoading = true, error = null) }
@@ -146,10 +151,22 @@ class AuthViewModel(
       try {
         val signedInUser = operation()
         if (signedInUser is UserAccount) {
+          if (
+              activeProfileResolutionUserId == signedInUser.uid &&
+                  mutableProfileUiState.value.isLoading
+          ) {
+            return@launch
+          }
           when (mutableUiState.value.user?.uid) {
-            null -> pendingProfileUser = signedInUser
-            signedInUser.uid -> startProfileResolution(signedInUser)
-            else -> invalidateProfileResolution()
+            null -> {
+              invalidateProfileResolution()
+              pendingProfileUser = signedInUser
+            }
+            signedInUser.uid -> {
+              invalidateProfileResolution()
+              startProfileResolution(signedInUser)
+            }
+            else -> return@launch
           }
         }
       } catch (exception: CancellationException) {
