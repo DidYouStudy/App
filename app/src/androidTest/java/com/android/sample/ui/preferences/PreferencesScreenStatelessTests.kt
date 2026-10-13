@@ -53,20 +53,9 @@ class PreferencesScreenStatelessTests {
     }
   }
 
-  //  private fun assertSelected(tag: String) {
-  //    composeTestRule.onNodeWithTag(tag).performScrollTo().assertIsSelected()
-  //  }
-
   private fun assertNotSelected(tag: String) {
     composeTestRule.onNodeWithTag(tag).performScrollTo().assertIsNotSelected()
   }
-
-  //  private fun click(tag: String) {
-  //    composeTestRule
-  //        .onNodeWithTag(tag)
-  //        .performScrollTo()
-  //        .performSemanticsAction(SemanticsActions.OnClick)
-  //  }
 
   @Test
   fun displayAllStaticComponents() {

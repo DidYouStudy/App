@@ -67,17 +67,6 @@ class PreferencesScreenTests {
     }
   }
 
-  //  private fun click(tag: String) {
-  //    composeTestRule
-  //        .onNodeWithTag(tag)
-  //        .performScrollTo()
-  //        .performSemanticsAction(SemanticsActions.OnClick)
-  //  }
-  //
-  //  private fun assertSelected(tag: String) {
-  //    composeTestRule.onNodeWithTag(tag).performScrollTo().assertIsSelected()
-  //  }
-
   private fun waitForSave(repository: FakePreferencesRepository): UserPreferences {
     composeTestRule.waitUntil(5_000) { repository.saved != null }
     return repository.saved!!
