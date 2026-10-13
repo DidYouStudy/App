@@ -1,4 +1,5 @@
-// Co-authored-by: Github Copilot
+// Co-authored-by: GitHub Copilot
+// Co-authored-by: Codex AI Agent
 package com.android.sample.model.profile
 
 import com.android.sample.model.auth.UserAccount

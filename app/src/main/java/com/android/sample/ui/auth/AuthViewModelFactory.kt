@@ -1,5 +1,5 @@
 // Co-authored-by: Codex AI Agent
-// Co-authored-by: Github Copilot
+// Co-authored-by: GitHub Copilot
 package com.android.sample.ui.auth
 
 import androidx.lifecycle.ViewModel
