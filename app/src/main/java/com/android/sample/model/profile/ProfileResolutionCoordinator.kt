@@ -79,11 +79,13 @@ class ProfileResolutionCoordinator(private val repository: ProfileRepository) {
    */
   private fun validateProfile(
       user: UserAccount,
-      resolution: ProfileResolution,
+      resolution: ProfileResolution?,
   ): Result<ProfileResolution> =
-      if (resolution.profile.uid == user.uid) {
+      if (resolution == null) {
+        Result.failure(ProfileException(ProfileError.INVALID_PROFILE_DATA))
+      } else if (resolution.profile.uid == user.uid) {
         Result.success(resolution)
       } else {
-        Result.failure(ProfileException(ProfileError.INVALID_PROFILE_DATA))
+        Result.failure(ProfileException(ProfileError.UNKNOWN))
       }
 }
