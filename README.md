@@ -27,6 +27,25 @@ To check the fingerprint yourself, run
 This key is public and for debug builds only; never register it for, or use it
 to sign, a release build.
 
+### Firestore database and rules
+The Firestore database itself is created once in the Firebase console (Build →
+Firestore Database → Create database, ID `(default)`). Until it exists, the app
+logs `NOT_FOUND: The database (default) does not exist` and Firestore stays in
+offline mode, so every read fails.
+
+Security rules live in `firestore.rules`, the source of truth: change them in a
+PR, never in the console, since the next deploy overwrites console edits. With
+the [Firebase CLI](https://firebase.google.com/docs/cli) (`npm install -g
+firebase-tools`) and access to the project, deploy them with
+
+```
+firebase deploy --only firestore:rules --project <project-id>
+```
+
+where `<project-id>` is the `project_id` in `google-services.json`.
+`firebase emulators:start` runs the Auth and Firestore emulators configured in
+`firebase.json`, and the Firestore emulator enforces the same rules.
+
 ## App name
 DidYouStudy?
 
