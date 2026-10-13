@@ -3,11 +3,16 @@
 package com.android.sample.ui.auth
 
 import androidx.annotation.MainThread
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthError
 import com.android.sample.model.auth.AuthException
 import com.android.sample.model.auth.AuthRepository
+import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.auth.UserAccount
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
@@ -118,3 +123,23 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
     }
   }
 }
+
+/** Supplies an injected repository when Android creates the authentication ViewModel. */
+class AuthViewModelFactory(private val repository: AuthRepository) : ViewModelProvider.Factory {
+  /** Creates an AuthViewModel and rejects unrelated ViewModel types rather than casting blindly. */
+  override fun <T : ViewModel> create(modelClass: Class<T>): T {
+    require(modelClass == AuthViewModel::class.java) { "Unsupported ViewModel: ${modelClass.name}" }
+    @Suppress("UNCHECKED_CAST")
+    return AuthViewModel(repository) as T
+  }
+}
+
+/**
+ * Returns the [AuthViewModel] of the current ViewModel owner (Activity or navigation entry), backed
+ * by the app's shared repository. Screens that need authentication can use this as their default.
+ */
+@Composable
+fun authViewModel(): AuthViewModel =
+    viewModel(
+        factory = AuthViewModelFactory(AuthRepositoryProvider.getRepository(LocalContext.current))
+    )
