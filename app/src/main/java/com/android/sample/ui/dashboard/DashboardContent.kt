@@ -53,6 +53,7 @@ data class DashboardStats(
     val averageFocusDuration: String? = null,
 )
 
+/** Test tags for the dashboard content, shared by the UI and its tests. */
 object DashboardContentTestTags {
   const val CONTENT = "dashboard_content"
   const val YOUR_DAY_CARD = "dashboard_yourDayCard"
@@ -66,6 +67,9 @@ object DashboardContentTestTags {
   const val STAT_AVERAGE_FOCUS = "dashboard_statAverageFocus"
   const val STATS_HINT = "dashboard_statsHint"
 
+  /**
+   * Tag of the session row at [index], one per row, so tests can target and order individual rows.
+   */
   fun sessionItem(index: Int) = "dashboard_sessionItem_$index"
 }
 
