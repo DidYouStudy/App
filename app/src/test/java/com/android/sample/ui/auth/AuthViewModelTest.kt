@@ -1,5 +1,6 @@
 // Co-authored-by: Codex AI Agent
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: GitHub Copilot
 package com.android.sample.ui.auth
 
 import androidx.lifecycle.ViewModel
@@ -8,6 +9,11 @@ import com.android.sample.model.auth.AuthError
 import com.android.sample.model.auth.AuthException
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.profile.ProfileError
+import com.android.sample.model.profile.ProfileRepository
+import com.android.sample.model.profile.ProfileResolution
+import com.android.sample.model.profile.ProfileResolutionCoordinator
+import com.android.sample.model.profile.UserProfile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +38,7 @@ import org.junit.Test
 class AuthViewModelTest {
   private val dispatcher = StandardTestDispatcher()
   private val repository = FakeAuthRepository()
+  private val profileRepository = FakeProfileRepository()
   private val store = ViewModelStore()
   private lateinit var viewModel: AuthViewModel
   private val alice = UserAccount("alice", "alice@example.com", "Alice", null)
@@ -40,7 +47,7 @@ class AuthViewModelTest {
   @Before
   fun setUp() {
     Dispatchers.setMain(dispatcher)
-    viewModel = AuthViewModel(repository)
+    viewModel = AuthViewModel(repository, ProfileResolutionCoordinator(profileRepository))
     store.put("auth", viewModel)
   }
 
@@ -76,7 +83,8 @@ class AuthViewModelTest {
       runTest(dispatcher) {
         val failsAtStartup =
             AuthViewModel(
-                SessionOnlyRepository(flow { throw IllegalStateException("private diagnostic") })
+                SessionOnlyRepository(flow { throw IllegalStateException("private diagnostic") }),
+                ProfileResolutionCoordinator(FakeProfileRepository()),
             )
         store.put("failsAtStartup", failsAtStartup)
         runCurrent()
@@ -91,7 +99,8 @@ class AuthViewModelTest {
                       emit(alice)
                       throw IllegalStateException("private diagnostic")
                     }
-                )
+                ),
+                ProfileResolutionCoordinator(FakeProfileRepository()),
             )
         store.put("failsLater", failsLater)
         runCurrent()
@@ -104,7 +113,11 @@ class AuthViewModelTest {
   @Test
   fun sessionFlowThatCompletesKeepsLastUserWithoutError() =
       runTest(dispatcher) {
-        val completed = AuthViewModel(SessionOnlyRepository(flowOf(alice)))
+        val completed =
+            AuthViewModel(
+                SessionOnlyRepository(flowOf(alice)),
+                ProfileResolutionCoordinator(FakeProfileRepository()),
+            )
         store.put("completed", completed)
         runCurrent()
         assertEquals(AuthUiState(user = alice, isInitializing = false), completed.uiState.value)
@@ -125,6 +138,176 @@ class AuthViewModelTest {
         assertEquals(AuthUiState(), viewModel.uiState.value)
         session(alice)
         assertEquals(AuthUiState(user = alice, isInitializing = false), viewModel.uiState.value)
+      }
+
+  // Publishes the resolved profile after an explicit sign-in succeeds.
+  @Test
+  fun successfulSignIn_resolvesAndPublishesProfile() =
+      runTest(dispatcher) {
+        val expected = UserProfile("alice")
+        profileRepository.getProfileAction = { Result.success(null) }
+        profileRepository.createProfileAction = {
+          Result.success(ProfileResolution.Created(expected))
+        }
+        repository.signIn = { alice }
+
+        viewModel.signInWithGoogle { "token" }
+        runCurrent()
+
+        assertEquals(ProfileUiState(profile = expected), viewModel.profileUiState.value)
+        assertEquals(listOf("alice"), profileRepository.getProfileUserIds)
+        assertEquals(listOf("alice"), profileRepository.createProfileUserIds)
+      }
+
+  // Cancels A's profile resolution and exposes only B's result after a newer sign-in.
+  @Test
+  fun newerSignIn_cancelsAndSupersedesPreviousProfileResolution() =
+      runTest(dispatcher) {
+        val aliceLookup = CompletableDeferred<Result<UserProfile?>>()
+        val bobProfile = UserProfile("bob")
+        profileRepository.getProfileAction = { userId ->
+          if (userId == "alice") {
+            try {
+              aliceLookup.await()
+            } finally {
+              profileRepository.cancelledUserIds += userId
+            }
+          } else {
+            Result.success(bobProfile)
+          }
+        }
+        repository.signIn = { token -> if (token == "alice") alice else bob }
+
+        viewModel.signInWithGoogle { "alice" }
+        runCurrent()
+        assertTrue(viewModel.profileUiState.value.isLoading)
+
+        viewModel.signInWithGoogle { "bob" }
+        runCurrent()
+
+        assertEquals(ProfileUiState(profile = bobProfile), viewModel.profileUiState.value)
+        assertEquals(listOf("alice"), profileRepository.cancelledUserIds)
+      }
+
+  // Waits for the matching session event before reading the signed-in user's profile.
+  @Test
+  fun signInResultWaitsForMatchingSessionBeforeResolvingProfile() =
+      runTest(dispatcher) {
+        repository.publishSessions = false
+        repository.signIn = { alice }
+
+        viewModel.signInWithGoogle { "token" }
+        runCurrent()
+
+        assertTrue(profileRepository.getProfileUserIds.isEmpty())
+        assertEquals(ProfileUiState(), viewModel.profileUiState.value)
+
+        session(alice)
+
+        assertEquals(listOf("alice"), profileRepository.getProfileUserIds)
+        assertEquals(ProfileUiState(profile = UserProfile("alice")), viewModel.profileUiState.value)
+      }
+
+  // Does not read account A's profile when the observed session belongs to account B.
+  @Test
+  fun mismatchedSignInResultDoesNotResolveWrongProfile() =
+      runTest(dispatcher) {
+        repository.publishSessions = false
+        repository.signIn = { alice }
+        session(bob)
+
+        viewModel.signInWithGoogle { "token" }
+        runCurrent()
+
+        assertTrue(profileRepository.getProfileUserIds.isEmpty())
+        assertEquals(ProfileUiState(), viewModel.profileUiState.value)
+      }
+
+  // Clears profile loading when the session changes during an in-flight lookup.
+  @Test
+  fun sessionChangeDuringLookupCancelsAndClearsProfileResolution() =
+      runTest(dispatcher) {
+        val lookup = CompletableDeferred<Result<UserProfile?>>()
+        profileRepository.getProfileAction = {
+          try {
+            lookup.await()
+          } finally {
+            profileRepository.cancelledUserIds += "alice"
+          }
+        }
+        repository.signIn = { alice }
+
+        viewModel.signInWithGoogle { "token" }
+        runCurrent()
+        assertTrue(viewModel.profileUiState.value.isLoading)
+
+        session(bob)
+
+        assertEquals(ProfileUiState(), viewModel.profileUiState.value)
+        assertEquals(listOf("alice"), profileRepository.cancelledUserIds)
+      }
+
+  // Clears profile loading when the session changes during profile creation.
+  @Test
+  fun sessionChangeDuringCreationCancelsAndClearsProfileResolution() =
+      runTest(dispatcher) {
+        val creation = CompletableDeferred<Result<ProfileResolution>>()
+        profileRepository.getProfileAction = { Result.success(null) }
+        profileRepository.createProfileAction = {
+          try {
+            creation.await()
+          } finally {
+            profileRepository.cancelledUserIds += "alice"
+          }
+        }
+        repository.signIn = { alice }
+
+        viewModel.signInWithGoogle { "token" }
+        runCurrent()
+        assertTrue(viewModel.profileUiState.value.isLoading)
+
+        session(bob)
+
+        assertEquals(ProfileUiState(), viewModel.profileUiState.value)
+        assertEquals(listOf("alice"), profileRepository.cancelledUserIds)
+      }
+
+  // Publishes a stable profile error when the coordinator encounters an unexpected exception.
+  @Test
+  fun unexpectedProfileExceptionBecomesProfileError() =
+      runTest(dispatcher) {
+        profileRepository.getProfileAction = { throw IllegalStateException("unexpected failure") }
+        repository.signIn = { alice }
+
+        viewModel.signInWithGoogle { "token" }
+        runCurrent()
+
+        assertEquals(ProfileUiState(error = ProfileError.UNKNOWN), viewModel.profileUiState.value)
+      }
+
+  // Cancels an in-flight profile resolution and clears profile state when signing out.
+  @Test
+  fun signOut_cancelsPendingProfileResolutionAndClearsProfileState() =
+      runTest(dispatcher) {
+        val lookup = CompletableDeferred<Result<UserProfile?>>()
+        profileRepository.getProfileAction = {
+          try {
+            lookup.await()
+          } finally {
+            profileRepository.cancelledUserIds += "alice"
+          }
+        }
+        repository.signIn = { alice }
+
+        viewModel.signInWithGoogle { "token" }
+        runCurrent()
+        assertTrue(viewModel.profileUiState.value.isLoading)
+
+        viewModel.signOut()
+        runCurrent()
+
+        assertEquals(ProfileUiState(), viewModel.profileUiState.value)
+        assertEquals(listOf("alice"), profileRepository.cancelledUserIds)
       }
 
   @Test
@@ -386,7 +569,8 @@ class AuthViewModelTest {
   @Test
   fun factoryInjectsRepositoryAndRejectsUnrelatedTypes() =
       runTest(dispatcher) {
-        val factory = AuthViewModelFactory(repository)
+        val factory =
+            AuthViewModelFactory(repository, ProfileResolutionCoordinator(profileRepository))
         val created = factory.create(AuthViewModel::class.java)
         store.put("factory", created)
         session(alice)
@@ -432,6 +616,26 @@ class AuthViewModelTest {
       signOutCalls++
       signOutAction()
       if (publishSessions) currentUser.emit(null)
+    }
+  }
+
+  private class FakeProfileRepository : ProfileRepository {
+    val getProfileUserIds = mutableListOf<String>()
+    val createProfileUserIds = mutableListOf<String>()
+    val cancelledUserIds = mutableListOf<String>()
+    var getProfileAction: suspend (String) -> Result<UserProfile?> = { Result.success(null) }
+    var createProfileAction: suspend (String) -> Result<ProfileResolution> = {
+      Result.success(ProfileResolution.Created(UserProfile(it)))
+    }
+
+    override suspend fun getProfile(userId: String): Result<UserProfile?> {
+      getProfileUserIds += userId
+      return getProfileAction(userId)
+    }
+
+    override suspend fun createProfile(userId: String): Result<ProfileResolution> {
+      createProfileUserIds += userId
+      return createProfileAction(userId)
     }
   }
 }
