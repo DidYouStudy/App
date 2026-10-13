@@ -1,6 +1,6 @@
 // Co-authored-by: Codex AI Agent
 // Co-authored-by: Claude Opus 5.5
-// Co-authored-by: Github Copilot
+// Co-authored-by: GitHub Copilot
 package com.android.sample.ui.auth
 
 import androidx.annotation.MainThread
@@ -15,6 +15,8 @@ import com.android.sample.model.profile.ProfileException
 import com.android.sample.model.profile.ProfileResolutionCoordinator
 import com.android.sample.model.profile.UserProfile
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,9 +61,8 @@ class AuthViewModel(
 ) : ViewModel() {
   private val mutableUiState = MutableStateFlow(AuthUiState())
   private val mutableProfileUiState = MutableStateFlow(ProfileUiState())
-  private var profileResolutionJob: kotlinx.coroutines.Job? = null
-  private var profileResolutionToken: Any = Any()
-  private var profileResolutionUserId: String? = null
+  private var activeProfileResolutionJob: Job? = null
+  private var activeProfileResolutionUserId: String? = null
   private var pendingProfileUser: UserAccount? = null
 
   /** Read-only state for lifecycle-aware collection by the authentication screen. */
@@ -78,13 +79,13 @@ class AuthViewModel(
           var pendingUserToResolve: UserAccount? = null
           when {
             user == null -> {
-              if (profileResolutionUserId != null) invalidateProfileResolution()
+              if (activeProfileResolutionJob != null) invalidateProfileResolution()
             }
             pendingProfileUser?.uid == user.uid -> {
               pendingUserToResolve = pendingProfileUser
               pendingProfileUser = null
             }
-            previousUser?.uid != user.uid && user.uid != profileResolutionUserId -> {
+            previousUser?.uid != user.uid && user.uid != activeProfileResolutionUserId -> {
               invalidateProfileResolution()
             }
           }
@@ -158,6 +159,7 @@ class AuthViewModel(
         // ensureActive() rethrows only in the first case; otherwise, report the
         // operation-level cancellation as an error.
         currentCoroutineContext().ensureActive()
+        onFailure()
         mutableUiState.update { it.copy(error = AuthError.UNKNOWN) }
       } catch (exception: Exception) {
         val error = (exception as? AuthException)?.error ?: AuthError.UNKNOWN
@@ -171,76 +173,83 @@ class AuthViewModel(
   /**
    * Starts the profile lookup/create operation for the currently authenticated user.
    *
-   * A new identity token marks this attempt as the current one, and any previous job is cancelled.
-   * The token and authenticated UID checks prevent an older completion from changing newer profile
-   * state. Successful resolutions publish the contained profile; known failures publish their
-   * stable [ProfileError]; operation-level cancellation publishes [ProfileError.CANCELLED] only
-   * when this attempt is still current.
+   * A new job becomes current before it starts, and any previous job is cancelled. Comparing the
+   * job identity prevents an older completion from changing newer profile state. Successful
+   * resolutions publish the contained profile; known failures publish their stable [ProfileError];
+   * operation-level cancellation publishes [ProfileError.CANCELLED] only while this job remains
+   * current.
    *
    * @param user authenticated account whose profile should be resolved.
    * @throws CancellationException only when this coroutine is cancelled by its parent or replaced
    *   by a newer resolution attempt.
    */
   private fun startProfileResolution(user: UserAccount) {
-    profileResolutionJob?.cancel()
-    val token = Any()
-    profileResolutionToken = token
-    profileResolutionUserId = user.uid
+    activeProfileResolutionJob?.cancel()
     mutableProfileUiState.update { ProfileUiState(isLoading = true) }
-    profileResolutionJob = viewModelScope.launch {
-      try {
-        val result = profileResolutionCoordinator.resolve(user)
-        // TODO-use the result to know whether the profile was just created, then do the navigation
-        if (profileResolutionToken !== token || mutableUiState.value.user?.uid != user.uid) {
-          if (profileResolutionToken === token) {
-            mutableProfileUiState.update { ProfileUiState() }
+    lateinit var resolutionJob: Job
+    val job =
+        viewModelScope.launch(start = CoroutineStart.LAZY) {
+          try {
+            val result = profileResolutionCoordinator.resolve(user)
+            // TODO-use the result to know whether the profile was just created, then do the
+            // navigation
+            if (
+                activeProfileResolutionJob !== resolutionJob ||
+                    mutableUiState.value.user?.uid != user.uid
+            ) {
+              if (activeProfileResolutionJob === resolutionJob) {
+                mutableProfileUiState.update { ProfileUiState() }
+              }
+              return@launch
+            }
+            mutableProfileUiState.update {
+              result.fold(
+                  onSuccess = { ProfileUiState(profile = it.profile) },
+                  onFailure = {
+                    ProfileUiState(error = (it as? ProfileException)?.error ?: ProfileError.UNKNOWN)
+                  },
+              )
+            }
+          } catch (exception: CancellationException) {
+            currentCoroutineContext().ensureActive()
+            if (activeProfileResolutionJob === resolutionJob) {
+              mutableProfileUiState.update {
+                ProfileUiState(error = ProfileError.CANCELLED, isLoading = false)
+              }
+            }
+          } catch (exception: ProfileException) {
+            if (activeProfileResolutionJob === resolutionJob) {
+              mutableProfileUiState.update {
+                ProfileUiState(error = exception.error, isLoading = false)
+              }
+            }
+          } catch (exception: Exception) {
+            if (activeProfileResolutionJob === resolutionJob) {
+              mutableProfileUiState.update {
+                ProfileUiState(error = ProfileError.UNKNOWN, isLoading = false)
+              }
+            }
           }
-          return@launch
         }
-        mutableProfileUiState.update {
-          result.fold(
-              onSuccess = { ProfileUiState(profile = it.profile) },
-              onFailure = {
-                ProfileUiState(error = (it as? ProfileException)?.error ?: ProfileError.UNKNOWN)
-              },
-          )
-        }
-      } catch (exception: CancellationException) {
-        currentCoroutineContext().ensureActive()
-        if (profileResolutionToken === token) {
-          mutableProfileUiState.update {
-            ProfileUiState(error = ProfileError.CANCELLED, isLoading = false)
-          }
-        }
-      } catch (exception: ProfileException) {
-        if (profileResolutionToken === token) {
-          mutableProfileUiState.update {
-            ProfileUiState(error = exception.error, isLoading = false)
-          }
-        }
-      } catch (exception: Exception) {
-        if (profileResolutionToken === token) {
-          mutableProfileUiState.update {
-            ProfileUiState(error = ProfileError.UNKNOWN, isLoading = false)
-          }
-        }
-      }
-    }
+    resolutionJob = job
+    activeProfileResolutionJob = job
+    activeProfileResolutionUserId = user.uid
+    job.start()
   }
 
   /**
    * Cancels the active profile resolution and resets all profile-resolution state.
    *
-   * Replacing the token invalidates callbacks from the cancelled job before the job is cancelled.
-   * This ordering ensures an older coroutine cannot clear or overwrite state belonging to a newer
-   * attempt. Pending sign-in users are discarded because their session is no longer confirmed.
+   * Clearing the active job invalidates callbacks from it before cancellation. This ensures an
+   * older coroutine cannot clear or overwrite state belonging to a newer attempt. Pending sign-in
+   * users are discarded because their session is no longer confirmed.
    */
   private fun invalidateProfileResolution() {
-    profileResolutionToken = Any()
-    profileResolutionUserId = null
+    val job = activeProfileResolutionJob
+    activeProfileResolutionJob = null
+    activeProfileResolutionUserId = null
     pendingProfileUser = null
-    profileResolutionJob?.cancel()
-    profileResolutionJob = null
+    job?.cancel()
     mutableProfileUiState.update { ProfileUiState() }
   }
 }
