@@ -15,14 +15,8 @@ object Spacing {
 /** Shared design tokens; use these instead of dp literals in screens. */
 object Dimens {
   val borderThin = 1.dp
-  val borderThick = 2.dp
-  val cornerSmall = 9.dp
-  val cornerMedium = 10.dp
-  val cardPadding = 14.dp
-  val dashboardCardMinHeight = 184.dp
-  val dashboardSessionMinHeight = 55.dp
-  val dashboardEmptyDayHeight = 105.dp
-  val dashboardSectionSpacing = 10.dp
-  val dashboardSessionHorizontalPadding = 10.dp
-  val addButtonSize = 50.dp
+  val cornerMedium = 12.dp
+  val cornerLarge = 16.dp
+  val sessionTimeColumnWidth = 72.dp
+  val fabClearance = 88.dp
 }

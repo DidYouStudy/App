@@ -11,9 +11,13 @@
     <string name="sign_in_error_user_disabled">This account has been disabled.</string>
     <string name="sign_in_error_no_credential">No Google account found on this device. Add one in your device settings.</string>
     <string name="sign_in_error_unknown">Something went wrong. Please try again.</string>
-    <string name="dashboard_your_day">Your Day</string>
-    <string name="dashboard_your_stats">Your stats</string>
+    <string name="dashboard_your_day">Your day</string>
+    <string name="dashboard_your_stats">Stats</string>
     <string name="dashboard_no_sessions">No study sessions planned today.</string>
-    <string name="dashboard_stats_placeholder">Your study statistics will appear here.</string>
+    <string name="dashboard_stats_placeholder">Study stats appear after your first session.</string>
+    <string name="dashboard_stat_average_daily">Average daily study time</string>
+    <string name="dashboard_stat_total_sessions">Total sessions</string>
+    <string name="dashboard_stat_average_focus">Average focus duration</string>
+    <string name="dashboard_stat_empty_value">—</string>
     <string name="dashboard_add_description">Add</string>
 </resources>
