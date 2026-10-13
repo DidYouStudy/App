@@ -185,7 +185,7 @@ class AuthRepositoryProviderTest {
   private fun setInstance(repository: AuthRepository?) {
     AuthRepositoryProvider::class.java.getDeclaredField("instance").apply {
       isAccessible = true
-      set(null, repository)
+      set(AuthRepositoryProvider, repository)
     }
   }
 
@@ -193,7 +193,7 @@ class AuthRepositoryProviderTest {
     setInstance(null)
     AuthRepositoryProvider::class.java.getDeclaredField("helper").apply {
       isAccessible = true
-      set(null, null)
+      set(AuthRepositoryProvider, null)
     }
   }
 }
