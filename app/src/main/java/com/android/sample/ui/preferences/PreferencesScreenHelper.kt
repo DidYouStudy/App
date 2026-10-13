@@ -22,9 +22,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.android.sample.R
 import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
 
 // ---------------------------------------------------------------------------
@@ -35,9 +37,9 @@ import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
    Builds the title of the screen
 */
 @Composable
-internal fun PreferenceHeader(modifier: Modifier = Modifier) {
+internal fun PreferencesHeader(modifier: Modifier = Modifier) {
   Text(
-      text = "Complete your profile",
+      text = stringResource(id = R.string.preferences_header),
       style = MaterialTheme.typography.displaySmall,
       fontWeight = FontWeight.Bold,
       modifier =

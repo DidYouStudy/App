@@ -27,9 +27,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.sample.R
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
 
@@ -49,7 +51,7 @@ fun PreferencesScreen(
   Scaffold(
       topBar = {
         TopAppBar(
-            title = { PreferenceHeader(modifier) },
+            title = { PreferencesHeader(modifier) },
             modifier = modifier.testTag(NavigationTestTags.TOP_BAR_TITLE),
         )
       },
@@ -75,7 +77,7 @@ fun PreferencesScreen(
                 Button(
                     onClick = viewModel::loadPreferences,
                 ) {
-                  Text("Retry")
+                  Text(stringResource(id = R.string.preferences_retry_button_on_error))
                 }
               }
 
@@ -152,15 +154,15 @@ fun PreferenceScreenStateless(
           verticalArrangement = Arrangement.spacedBy(8.dp),
       ) {
         // import schedule section
-        SectionLabel("Import course schedule", Tags.IMPORT_SCHEDULE_LABEL)
-        WidePillButton("Import...", onImportClick, Tags.IMPORT_SCHEDULE_BUTTON)
+        SectionLabel(stringResource(id = R.string.preferences_import_schedule_label), Tags.IMPORT_SCHEDULE_LABEL)
+        WidePillButton(stringResource(id = R.string.preferences_import_schedule_button), onImportClick, Tags.IMPORT_SCHEDULE_BUTTON)
 
         // add study locations section
-        SectionLabel("Add your study locations", Tags.STUDY_LOCATIONS_LABEL)
-        WidePillButton("Add...", onAddLocationClick, Tags.ADD_STUDY_LOCATION_BUTTON)
+        SectionLabel(stringResource(id = R.string.preferences_add_study_locations_label), Tags.STUDY_LOCATIONS_LABEL)
+        WidePillButton(stringResource(id = R.string.preferences_add_study_locations_button), onAddLocationClick, Tags.ADD_STUDY_LOCATION_BUTTON)
 
         // time_of_day preference section
-        SectionLabel("When do you prefer to study?", Tags.STUDY_TIME_LABEL)
+        SectionLabel(stringResource(id = R.string.preferences_study_time_label), Tags.STUDY_TIME_LABEL)
         MultiChoiceRow(
             options = StudyTime.entries,
             selected = selectedStudyTimes,
@@ -168,7 +170,7 @@ fun PreferenceScreenStateless(
         )
 
         // study_length preference section
-        SectionLabel("How long do you want your study sessions to be?", Tags.SESSION_LENGTH_LABEL)
+        SectionLabel(stringResource(id = R.string.preferences_session_length_label), Tags.SESSION_LENGTH_LABEL)
         SingleChoiceRow(
             options = SessionLength.entries,
             selected = selectedSessionLength,
@@ -176,7 +178,7 @@ fun PreferenceScreenStateless(
         )
 
         // break_duration preference section
-        SectionLabel("How much break time do you prefer?", Tags.BREAK_DURATION_LABEL)
+        SectionLabel(stringResource(id = R.string.preferences_break_duration_label), Tags.BREAK_DURATION_LABEL)
         SingleChoiceRow(
             options = BreakDuration.entries,
             selected = selectedBreakDuration,
@@ -184,7 +186,7 @@ fun PreferenceScreenStateless(
         )
 
         // break_frequency preference section
-        SectionLabel("How often would you like to take breaks?", Tags.BREAK_FREQUENCY_LABEL)
+        SectionLabel(stringResource(id = R.string.preferences_break_frequency_label), Tags.BREAK_FREQUENCY_LABEL)
         SingleChoiceRow(
             options = BreakFrequency.entries,
             selected = selectedBreakFrequency,
