@@ -5,9 +5,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -33,6 +36,10 @@ import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.SampleAppTheme
 import com.android.sample.ui.theme.Spacing
 
+/**
+ * One planned study slot shown in 'Your day' (display model with preformatted times, not a domain
+ * model).
+ */
 data class DashboardSession(
     val startTime: String,
     val endTime: String,
@@ -171,25 +178,28 @@ fun DashboardContent(
           color = MaterialTheme.colorScheme.onSurface,
           modifier = Modifier.testTag(DashboardContentTestTags.STATS_TITLE),
       )
-      Row(horizontalArrangement = Arrangement.spacedBy(Spacing.medium)) {
+      Row(
+          modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+          horizontalArrangement = Arrangement.spacedBy(Spacing.medium),
+      ) {
         DashboardStatTile(
             label = stringResource(R.string.dashboard_stat_average_daily),
             value = stats.averageDailyStudyTime ?: emptyValue,
-            modifier = Modifier.weight(1f),
             testTag = DashboardContentTestTags.STAT_AVERAGE_DAILY,
+            modifier = Modifier.weight(1f).fillMaxHeight(),
         )
         DashboardStatTile(
             label = stringResource(R.string.dashboard_stat_total_sessions),
             value = stats.totalSessions ?: emptyValue,
-            modifier = Modifier.weight(1f),
             testTag = DashboardContentTestTags.STAT_TOTAL_SESSIONS,
+            modifier = Modifier.weight(1f).fillMaxHeight(),
         )
       }
       DashboardStatTile(
           label = stringResource(R.string.dashboard_stat_average_focus),
           value = stats.averageFocusDuration ?: emptyValue,
-          modifier = Modifier.fillMaxWidth(),
           testTag = DashboardContentTestTags.STAT_AVERAGE_FOCUS,
+          modifier = Modifier.fillMaxWidth(),
       )
       Text(
           text = stringResource(R.string.dashboard_stats_placeholder),
@@ -205,8 +215,8 @@ fun DashboardContent(
 private fun DashboardStatTile(
     label: String,
     value: String,
-    modifier: Modifier = Modifier,
     testTag: String,
+    modifier: Modifier = Modifier,
 ) {
   Column(
       modifier =
