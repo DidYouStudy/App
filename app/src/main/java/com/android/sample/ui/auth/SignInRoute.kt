@@ -20,16 +20,16 @@ fun SignInRoute(
     onSignedIn: () -> Unit,
     getIdToken: suspend (Activity) -> String,
 ) {
-  val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
+  val authUiState = viewModel.authUiState.collectAsStateWithLifecycle().value
   // React when the session-flow user becomes non-null, including restored sessions.
   // rememberUpdatedState keeps the latest callback.
   val currentOnSignedIn by rememberUpdatedState(onSignedIn)
-  LaunchedEffect(uiState.user) { if (uiState.user != null) currentOnSignedIn() }
+  LaunchedEffect(authUiState.user) { if (authUiState.user != null) currentOnSignedIn() }
   val activity = LocalActivity.current
 
   SignInScreen(
-      isLoading = uiState.isLoading,
-      errorMessage = uiState.error?.let { stringResource(it.toMessageRes()) },
+      isLoading = authUiState.isLoading,
+      errorMessage = authUiState.error?.let { stringResource(it.toMessageRes()) },
       onSignInClick = {
         activity?.let { currentActivity ->
           viewModel.signInWithGoogle { getIdToken(currentActivity) }

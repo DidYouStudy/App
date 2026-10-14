@@ -51,11 +51,11 @@ class ProfileRepositoryFirestore(
    * unchanged.
    *
    * @param userId stable authentication identifier and profile document ID.
-   * @return [Result.success] containing the created or existing profile; [Result.failure]
-   *   containing [ProfileException] with a stable [ProfileError] category.
+   * @return [Result.success] containing whether the profile was created or already existed;
+   *   [Result.failure] containing [ProfileException] with a stable [ProfileError] category.
    * @throws CancellationException when the coroutine is cancelled.
    */
-  override suspend fun createProfile(userId: String): Result<UserProfile> {
+  override suspend fun createProfile(userId: String): Result<ProfileResolution> {
     if (userId.isBlank()) {
       return Result.failure(ProfileException(ProfileError.INVALID_USER_ID))
     }
@@ -65,17 +65,28 @@ class ProfileRepositoryFirestore(
           .runTransaction { transaction ->
             val snapshot = transaction.get(document)
             if (snapshot.exists()) {
-              snapshot.toUserProfile(userId)
+              ProfileResolution.Existing(snapshot.toUserProfile(userId))
             } else {
               val profile = UserProfile(uid = userId)
               transaction.set(document, profile)
-              profile
+              ProfileResolution.Created(profile)
             }
           }
           .await()
     }
   }
 
+  /**
+   * Executes a Firestore operation and maps persistence failures to profile-domain errors.
+   *
+   * Successful values are wrapped in [Result.success]. Coroutine cancellation is rethrown so
+   * callers retain structured-concurrency behavior. Known profile and Firestore exceptions keep
+   * their specific error categories; other exceptions become [ProfileError.UNKNOWN].
+   *
+   * @param operation suspendable Firestore operation to execute.
+   * @return successful operation value or a [ProfileException]-backed failure.
+   * @throws CancellationException when the coroutine is cancelled.
+   */
   private suspend fun <T> execute(operation: suspend () -> T): Result<T> {
     return try {
       Result.success(operation())
@@ -90,6 +101,18 @@ class ProfileRepositoryFirestore(
     }
   }
 
+  /**
+   * Converts a Firestore document into a profile and verifies document ownership.
+   *
+   * Deserialization failures and UID mismatches are reported as
+   * [ProfileError.INVALID_PROFILE_DATA]. The requested UID is checked against the stored profile
+   * UID to prevent a document from being returned for the wrong authenticated user.
+   *
+   * @param userId UID requested by the repository operation.
+   * @return deserialized profile belonging to [userId].
+   * @throws ProfileException when conversion fails, produces no profile, or the UID mismatches.
+   * @throws CancellationException when conversion is cancelled.
+   */
   private fun DocumentSnapshot.toUserProfile(userId: String): UserProfile {
     val profile =
         try {

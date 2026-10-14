@@ -19,4 +19,7 @@ enum class ProfileError {
 
   /** The operation failed for an unexpected reason. */
   UNKNOWN,
+
+  /** The profile operation was cancelled while its coroutine remained active. */
+  CANCELLED,
 }

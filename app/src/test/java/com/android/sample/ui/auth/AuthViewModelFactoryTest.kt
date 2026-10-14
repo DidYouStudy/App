@@ -10,6 +10,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.profile.ProfileRepository
+import com.android.sample.model.profile.ProfileResolution
+import com.android.sample.model.profile.ProfileResolutionCoordinator
+import com.android.sample.model.profile.UserProfile
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -33,7 +37,7 @@ class AuthViewModelFactoryTest {
 
   @Test
   fun factoryCreatesAuthViewModelAndRejectsOtherTypes() {
-    val factory = AuthViewModelFactory(repository)
+    val factory = AuthViewModelFactory(repository, testProfileResolutionCoordinator())
 
     assertTrue(factory.create(AuthViewModel::class.java) is AuthViewModel)
     assertThrows(IllegalArgumentException::class.java) {
@@ -47,7 +51,8 @@ class AuthViewModelFactoryTest {
     val received = mutableListOf<AuthViewModel>()
     composeTestRule.setContent {
       trigger.value
-      received += authViewModel()
+      received +=
+          authViewModel(AuthViewModelFactory(repository, testProfileResolutionCoordinator()))
     }
     composeTestRule.runOnIdle { trigger.value++ }
     composeTestRule.waitForIdle()
@@ -57,10 +62,21 @@ class AuthViewModelFactoryTest {
     val user = UserAccount("test-user", null, null, null)
     repository.currentUser.value = user
     composeTestRule.waitForIdle()
-    assertEquals(user, received.first().uiState.value.user)
+    assertEquals(user, received.first().authUiState.value.user)
   }
 
   private class OtherViewModel : ViewModel()
+
+  private fun testProfileResolutionCoordinator() =
+      ProfileResolutionCoordinator(
+          object : ProfileRepository {
+            override suspend fun getProfile(userId: String): Result<UserProfile?> =
+                Result.success(null)
+
+            override suspend fun createProfile(userId: String): Result<ProfileResolution> =
+                Result.success(ProfileResolution.Created(UserProfile(userId)))
+          }
+      )
 
   private fun setProviderRepository(repository: AuthRepository?) {
     AuthRepositoryProvider::class.java.getDeclaredField("instance").apply {
