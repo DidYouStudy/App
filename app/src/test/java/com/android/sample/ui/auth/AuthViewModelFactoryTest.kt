@@ -52,9 +52,7 @@ class AuthViewModelFactoryTest {
     composeTestRule.setContent {
       trigger.value
       received +=
-          authViewModel(
-              AuthViewModelFactory(repository, testProfileResolutionCoordinator())
-          )
+          authViewModel(AuthViewModelFactory(repository, testProfileResolutionCoordinator()))
     }
     composeTestRule.runOnIdle { trigger.value++ }
     composeTestRule.waitForIdle()
