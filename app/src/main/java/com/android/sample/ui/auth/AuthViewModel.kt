@@ -17,6 +17,7 @@ import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.profile.ProfileError
 import com.android.sample.model.profile.ProfileException
+import com.android.sample.model.profile.ProfileRepositoryProvider
 import com.android.sample.model.profile.ProfileResolutionCoordinator
 import com.android.sample.model.profile.UserProfile
 import kotlinx.coroutines.CancellationException
@@ -277,12 +278,15 @@ class AuthViewModel(
 }
 
 /** Supplies an injected repository when Android creates the authentication ViewModel. */
-class AuthViewModelFactory(private val repository: AuthRepository) : ViewModelProvider.Factory {
+class AuthViewModelFactory(
+    private val repository: AuthRepository,
+    private val profileResolutionCoordinator: ProfileResolutionCoordinator,
+) : ViewModelProvider.Factory {
   /** Creates an AuthViewModel and rejects unrelated ViewModel types rather than casting blindly. */
   override fun <T : ViewModel> create(modelClass: Class<T>): T {
     require(modelClass == AuthViewModel::class.java) { "Unsupported ViewModel: ${modelClass.name}" }
     @Suppress("UNCHECKED_CAST")
-    return AuthViewModel(repository) as T
+    return AuthViewModel(repository, profileResolutionCoordinator) as T
   }
 }
 
@@ -291,7 +295,14 @@ class AuthViewModelFactory(private val repository: AuthRepository) : ViewModelPr
  * by the app's shared repository. Screens that need authentication can use this as their default.
  */
 @Composable
-fun authViewModel(): AuthViewModel =
+fun authViewModel(
+    profileResolutionCoordinator: ProfileResolutionCoordinator =
+        ProfileResolutionCoordinator(ProfileRepositoryProvider.getRepository())
+): AuthViewModel =
     viewModel(
-        factory = AuthViewModelFactory(AuthRepositoryProvider.getRepository(LocalContext.current))
+        factory =
+            AuthViewModelFactory(
+                AuthRepositoryProvider.getRepository(LocalContext.current),
+                profileResolutionCoordinator,
+            )
     )
