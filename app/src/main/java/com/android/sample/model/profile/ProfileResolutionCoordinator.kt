@@ -86,6 +86,6 @@ class ProfileResolutionCoordinator(private val repository: ProfileRepository) {
       } else if (resolution.profile.uid == user.uid) {
         Result.success(resolution)
       } else {
-        Result.failure(ProfileException(ProfileError.UNKNOWN))
+        Result.failure(ProfileException(ProfileError.INVALID_PROFILE_DATA))
       }
 }
