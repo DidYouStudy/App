@@ -1,4 +1,5 @@
 // Co-authored-by: GitHub Copilot
+// Co-authored-by: Claude AI Agent
 package com.android.sample.ui.auth
 
 import androidx.compose.foundation.BorderStroke
@@ -35,8 +36,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.sample.R
+import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.DysOrange
-import com.android.sample.ui.theme.SampleAppTheme
 
 object SignInScreenTestTags {
   const val SCREEN = "signIn_screen"
@@ -142,20 +143,20 @@ fun SignInScreen(
 
 @Preview(showBackground = true)
 @Composable
-private fun SignInScreenIdlePreview() {
-  SampleAppTheme { SignInScreen(isLoading = false, errorMessage = null, onSignInClick = {}) }
+internal fun SignInScreenIdlePreview() {
+  DidYouStudyTheme { SignInScreen(isLoading = false, errorMessage = null, onSignInClick = {}) }
 }
 
 @Preview(showBackground = true)
 @Composable
-private fun SignInScreenLoadingPreview() {
-  SampleAppTheme { SignInScreen(isLoading = true, errorMessage = null, onSignInClick = {}) }
+internal fun SignInScreenLoadingPreview() {
+  DidYouStudyTheme { SignInScreen(isLoading = true, errorMessage = null, onSignInClick = {}) }
 }
 
 @Preview(showBackground = true)
 @Composable
-private fun SignInScreenErrorPreview() {
-  SampleAppTheme {
+internal fun SignInScreenErrorPreview() {
+  DidYouStudyTheme {
     SignInScreen(isLoading = false, errorMessage = "Something went wrong", onSignInClick = {})
   }
 }

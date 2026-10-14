@@ -2,9 +2,7 @@
 <!-- Co-authored-by: Claude AI Agent -->
 <!-- Co-authored-by: Claude Opus 5.5 -->
 <resources>
-    <string name="app_name">SampleApp</string>
-    <string name="title_activity_main">MainActivity</string>
-    <string name="title_activity_second">SecondActivity</string>
+    <string name="app_name">DidYouStudy</string>
     <string name="sign_in_title">Ready to study?</string>
     <string name="sign_in_google_button">Authenticate With Google</string>
     <string name="sign_in_logo_description">DidYouStudy? logo</string>

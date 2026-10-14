@@ -47,17 +47,17 @@ where `<project-id>` is the `project_id` in `google-services.json`.
 `firebase.json`, and the Firestore emulator enforces the same rules.
 
 ## App name
-DidYouStudy?
+DidYouStudy
 
 ## Pitch
-DidYouStudy? is a study companion designed primarily for EPFL Bachelor students
+DidYouStudy is a study companion designed primarily for EPFL Bachelor students
 who manage several concurrent courses with different rhythms: weekly exercises,
 projects, deadlines, and exams that may still be months away.
 
 While these students often know the individual tasks they need to complete,
 keeping an accurate overview of their progress across courses and repeatedly 
 deciding what deserves attention next can be mentally costly.
-DidYouStudy? addresses this problem by continuously connecting what the student 
+DidYouStudy addresses this problem by continuously connecting what the student 
 planned, what they actually studied, how well it went, and what they should do 
 next.
 
@@ -94,7 +94,7 @@ sessions is available in a list in which different sessions are differently
 tagged. The app would automatically show, starting from the top of the list, 
 the study sessions about the topics on which the user has struggled the most.
 
-The core insight behind DidYouStudy? is therefore that study planning and 
+The core insight behind DidYouStudy is therefore that study planning and 
 learning progress should not be treated as separate problems. The app can 
 reduce the repeated mental effort of tracking, prioritizing and replanning 
 while helping students answer three recurring questions: Where am I now? 
