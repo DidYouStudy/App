@@ -60,17 +60,28 @@ fun DidYouStudyApp() {
     when (appState) {
       AppUiState.SignIn,
       AppUiState.LogOut ->
-          if (currentNavigationActions.currentRoute() != Screen.Auth.route) {
-            currentNavigationActions.navigateTo(Screen.Auth)
-          }
+          currentNavigationActions.navigateIfAllowed(
+              screen = Screen.Auth,
+              allowed =
+                  applicationViewModel.canNavigateTo(Screen.Auth) &&
+                      currentNavigationActions.currentRoute() != Screen.Auth.route,
+          )
       AppUiState.FirstTimeSignIn ->
-          if (currentNavigationActions.currentRoute() != Screen.Preferences.route) {
-            currentNavigationActions.navigateTo(Screen.Preferences)
-          }
+          currentNavigationActions.navigateIfAllowed(
+              screen = Screen.Preferences,
+              allowed =
+                  applicationViewModel.canNavigateTo(Screen.Preferences) &&
+                      currentNavigationActions.currentRoute() != Screen.Preferences.route,
+              completedFlow = Screen.Auth,
+          )
       AppUiState.Dashboard ->
-          if (currentNavigationActions.currentRoute() != Screen.Dashboard.route) {
-            currentNavigationActions.navigateTo(Screen.Dashboard)
-          }
+          currentNavigationActions.navigateIfAllowed(
+              screen = Screen.Dashboard,
+              allowed =
+                  applicationViewModel.canNavigateTo(Screen.Dashboard) &&
+                      currentNavigationActions.currentRoute() != Screen.Dashboard.route,
+              completedFlow = Screen.Preferences,
+          )
       AppUiState.Loading,
       is AppUiState.Error -> Unit
     }
@@ -86,7 +97,7 @@ fun DidYouStudyApp() {
     ) {
       composable(Screen.Auth.route) {
         SignInRoute(
-            onSignedIn = {},
+            onSignedIn = applicationViewModel::onSignedIn,
             getIdToken = AuthRepositoryProvider::requestGoogleIdToken,
         )
       }

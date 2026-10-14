@@ -11,9 +11,11 @@ import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.PreferencesRepositoryProvider
+import com.android.sample.ui.navigation.Screen
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 sealed interface AppUiState {
@@ -56,6 +58,26 @@ class AppViewModel(
   fun onPreferencesSaved() {
     mutableUiState.value = AppUiState.Dashboard
   }
+
+  /** Re-evaluates the destination after SignInRoute reports a successful sign-in. */
+  fun onSignedIn() {
+    mutableUiState.value = AppUiState.Loading
+    viewModelScope.launch {
+      val user = authRepository.currentUser.first { it != null } ?: return@launch
+      loadDestination(user.uid)
+    }
+  }
+
+  /** Allows only destinations valid for the current app authentication state. */
+  fun canNavigateTo(screen: Screen): Boolean =
+      when (val state = mutableUiState.value) {
+        AppUiState.Loading,
+        is AppUiState.Error -> false
+        AppUiState.SignIn,
+        AppUiState.LogOut -> screen == Screen.Auth
+        AppUiState.FirstTimeSignIn -> screen == Screen.Preferences
+        AppUiState.Dashboard -> screen != Screen.Auth && screen != Screen.Preferences
+      }
 
   private suspend fun loadDestination(userId: String) {
     preferencesRepository
