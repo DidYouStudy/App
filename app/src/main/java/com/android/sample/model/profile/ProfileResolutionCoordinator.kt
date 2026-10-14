@@ -22,6 +22,13 @@ class ProfileResolutionCoordinator(private val repository: ProfileRepository) {
    * failures are returned unchanged, directly thrown profile exceptions and coroutine cancellation
    * are propagated, and other implementation exceptions become failed results.
    *
+   * The repository contract normally reports lookup and creation failures through [Result]. Its
+   * implementation or a dependency may still throw while performing either operation: a thrown
+   * [CancellationException] is rethrown so the caller's coroutine can stop, a thrown
+   * [ProfileException] is rethrown unchanged, and any other [Exception] is wrapped in a failed
+   * result with [ProfileError.UNKNOWN]. A cancellation exception stored in a failed [Result] is
+   * also rethrown rather than returned as an ordinary repository failure.
+   *
    * @param user authenticated account whose UID identifies the profile document.
    * @return a successful result containing the existing or newly created profile, or the original
    *   repository failure.
@@ -31,6 +38,8 @@ class ProfileResolutionCoordinator(private val repository: ProfileRepository) {
       return Result.failure(ProfileException(ProfileError.INVALID_USER_ID))
     }
     return try {
+      // Look up first so an existing profile is reused and creation is only attempted when the
+      // repository successfully confirms that no profile exists.
       val existingProfile =
           repository
               .getProfile(user.uid)
@@ -45,6 +54,8 @@ class ProfileResolutionCoordinator(private val repository: ProfileRepository) {
         return validateProfile(user, ProfileResolution.Existing(existingProfile))
       }
 
+      // A null lookup result is the only path that creates a profile. The repository may find that
+      // another operation created it in the meantime and return that existing resolution instead.
       val resolution =
           repository
               .createProfile(user.uid)
@@ -57,10 +68,14 @@ class ProfileResolutionCoordinator(private val repository: ProfileRepository) {
               )
       validateProfile(user, resolution)
     } catch (exception: CancellationException) {
+      // Repository calls can throw cancellation directly (rather than return it in Result); keep
+      // coroutine cancellation observable instead of wrapping it as an unknown profile failure.
       throw exception
     } catch (exception: ProfileException) {
+      // Preserve known profile errors thrown directly by a repository implementation.
       throw exception
     } catch (exception: Exception) {
+      // Convert unexpected implementation failures to an unknown error.
       Result.failure(ProfileException(ProfileError.UNKNOWN, exception))
     }
   }
