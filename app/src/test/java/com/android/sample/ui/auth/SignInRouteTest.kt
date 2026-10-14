@@ -20,6 +20,10 @@ import com.android.sample.R
 import com.android.sample.model.auth.AuthError
 import com.android.sample.model.auth.AuthException
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.profile.ProfileRepository
+import com.android.sample.model.profile.ProfileResolution
+import com.android.sample.model.profile.ProfileResolutionCoordinator
+import com.android.sample.model.profile.UserProfile
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -210,7 +214,7 @@ class SignInRouteTest {
   ) {
     val testRepository = repositoryForTest()
     recompositionTrigger = mutableStateOf(0)
-    viewModel = AuthViewModel(testRepository)
+    viewModel = AuthViewModel(testRepository, testProfileResolutionCoordinator())
     viewModelStore.put("auth", viewModel)
     composeTestRule.setContent {
       SignInRoute(
@@ -222,4 +226,15 @@ class SignInRouteTest {
     }
     composeTestRule.waitForIdle()
   }
+
+  private fun testProfileResolutionCoordinator() =
+      ProfileResolutionCoordinator(
+          object : ProfileRepository {
+            override suspend fun getProfile(userId: String): Result<UserProfile?> =
+                Result.success(null)
+
+            override suspend fun createProfile(userId: String): Result<ProfileResolution> =
+                Result.success(ProfileResolution.Created(UserProfile(userId)))
+          }
+      )
 }

@@ -16,7 +16,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.sample.R
-import com.android.sample.ui.theme.SampleAppTheme
+import com.android.sample.ui.theme.DidYouStudyTheme
 
 object ProfileButtonTestTags {
   const val PROFILE_BUTTON = "profileButton"
@@ -54,5 +54,5 @@ fun ProfileButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
 @Preview(showBackground = true)
 @Composable
 fun ProfileButtonPreview() {
-  SampleAppTheme(dynamicColor = false) { ProfileButton(onClick = {}) }
+  DidYouStudyTheme(dynamicColor = false) { ProfileButton(onClick = {}) }
 }

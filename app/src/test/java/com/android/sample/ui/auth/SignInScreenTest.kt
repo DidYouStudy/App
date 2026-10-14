@@ -1,4 +1,5 @@
 // Co-authored-by: GitHub Copilot
+// Co-authored-by: Claude AI Agent
 package com.android.sample.ui.auth
 
 import android.content.Context
@@ -170,5 +171,34 @@ class SignInScreenTest {
     composeTestRule.runOnUiThread { errorMessage.value = null }
 
     composeTestRule.onNodeWithTag(SignInScreenTestTags.ERROR).assertDoesNotExist()
+  }
+
+  /** The idle preview renders the screen without a spinner or an error. */
+  @Test
+  fun idlePreviewShowsNeitherLoadingNorError() {
+    composeTestRule.setContent { SignInScreenIdlePreview() }
+
+    composeTestRule.onNodeWithTag(SignInScreenTestTags.SCREEN).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(SignInScreenTestTags.LOADING).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(SignInScreenTestTags.ERROR).assertDoesNotExist()
+  }
+
+  /** The loading preview shows the progress indicator. */
+  @Test
+  fun loadingPreviewShowsLoadingIndicator() {
+    composeTestRule.setContent { SignInScreenLoadingPreview() }
+
+    composeTestRule.onNodeWithTag(SignInScreenTestTags.LOADING).assertIsDisplayed()
+  }
+
+  /** The error preview shows its sample error message. */
+  @Test
+  fun errorPreviewShowsErrorMessage() {
+    composeTestRule.setContent { SignInScreenErrorPreview() }
+
+    composeTestRule
+        .onNodeWithTag(SignInScreenTestTags.ERROR)
+        .performScrollTo()
+        .assertTextEquals("Something went wrong")
   }
 }
