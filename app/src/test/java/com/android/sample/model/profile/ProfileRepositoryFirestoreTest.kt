@@ -221,6 +221,7 @@ class ProfileRepositoryFirestoreTest {
 
     assertTrue(result.isSuccess)
     assertEquals(ProfileResolution.Created(expected), result.getOrNull())
+    verify(transaction).get(document)
     verify(transaction).set(document, expected)
     verify(collection).document("user123")
   }
@@ -240,6 +241,7 @@ class ProfileRepositoryFirestoreTest {
 
     assertTrue(result.isSuccess)
     assertEquals(ProfileResolution.Existing(existing), result.getOrNull())
+    verify(transaction).get(document)
     verify(transaction, never()).set(any(), any())
     verify(collection).document("user123")
   }

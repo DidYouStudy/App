@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot
+// Co-authored-by: Codex AI Agent
 package com.android.sample.model.profile
 
 import com.android.sample.model.auth.UserAccount
@@ -43,6 +44,26 @@ class ProfileResolutionCoordinatorTest {
     assertEquals(ProfileResolution.Created(createdProfile), result.getOrNull())
     assertEquals(listOf("user123"), repository.getProfileUserIds)
     assertEquals(listOf("user123"), repository.createProfileUserIds)
+  }
+
+  // Rejects a malformed successful create result instead of reporting an unknown exception.
+  @Test
+  @Suppress("UNCHECKED_CAST")
+  fun resolve_rejectsNullCreatedResolutionAsInvalidProfileData() = runTest {
+    val malformedResult = Result.success(null) as Result<ProfileResolution>
+    val repository =
+        FakeProfileRepository(
+            getProfileResult = Result.success(null),
+            createProfileResult = malformedResult,
+        )
+
+    val result = ProfileResolutionCoordinator(repository).resolve(user)
+
+    assertTrue(result.isFailure)
+    assertEquals(
+        ProfileError.INVALID_PROFILE_DATA,
+        (result.exceptionOrNull() as ProfileException).error,
+    )
   }
 
   // Preserves a lookup failure and does not attempt profile creation.
