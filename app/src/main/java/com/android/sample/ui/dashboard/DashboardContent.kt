@@ -1,4 +1,5 @@
 // Co-authored-by: GitHub Copilot
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.dashboard
 
 import androidx.compose.foundation.background
@@ -112,6 +113,7 @@ private fun DashboardDayCard(sessions: List<DashboardSession>, modifier: Modifie
         color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.testTag(DashboardContentTestTags.YOUR_DAY_TITLE),
     )
+    // Empty day: a centred message instead of session rows.
     if (sessions.isEmpty()) {
       Text(
           text = stringResource(R.string.dashboard_no_sessions),
@@ -121,6 +123,7 @@ private fun DashboardDayCard(sessions: List<DashboardSession>, modifier: Modifie
           modifier = Modifier.fillMaxWidth().testTag(DashboardContentTestTags.EMPTY_DAY),
       )
     } else {
+      // One outlined row per session, in the order received.
       Column(verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
         sessions.forEachIndexed { index, session -> DashboardSessionRow(session, index) }
       }
@@ -169,6 +172,7 @@ private fun DashboardSessionRow(
       horizontalArrangement = Arrangement.spacedBy(Spacing.medium),
       verticalAlignment = Alignment.CenterVertically,
   ) {
+    // Left: fixed-width time column, start time in bold above the end time.
     Column(
         modifier = Modifier.width(Dimens.sessionTimeColumnWidth),
         verticalArrangement = Arrangement.spacedBy(Spacing.extraExtraSmall),
@@ -186,6 +190,7 @@ private fun DashboardSessionRow(
           color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
     }
+    // Right: the subject takes the remaining width and wraps if it is long.
     Text(
         text = session.subject,
         modifier = Modifier.weight(1f),
@@ -212,7 +217,7 @@ private fun DashboardStatsCard(stats: DashboardStats, modifier: Modifier = Modif
         color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.testTag(DashboardContentTestTags.STATS_TITLE),
     )
-    // Intrinsic height keeps the two side-by-side tiles equally tall.
+    // Top: two tiles side by side; intrinsic height keeps them equally tall.
     Row(
         modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
         horizontalArrangement = Arrangement.spacedBy(Spacing.medium),
@@ -230,12 +235,14 @@ private fun DashboardStatsCard(stats: DashboardStats, modifier: Modifier = Modif
           modifier = Modifier.weight(1f).fillMaxHeight(),
       )
     }
+    // Below: one full-width tile.
     DashboardStatTile(
         label = stringResource(R.string.dashboard_stat_average_focus),
         value = stats.averageFocusDuration ?: emptyValue,
         testTag = DashboardContentTestTags.STAT_AVERAGE_FOCUS,
         modifier = Modifier.fillMaxWidth(),
     )
+    // Hint explaining why the values are still empty (no session data yet).
     Text(
         text = stringResource(R.string.dashboard_stats_placeholder),
         fontSize = 14.sp,
@@ -269,6 +276,7 @@ private fun DashboardStatTile(
               .testTag(testTag),
       verticalArrangement = Arrangement.spacedBy(Spacing.extraSmall),
   ) {
+    // What the statistic is, then its value (or an em dash when missing).
     Text(
         text = label,
         fontSize = 14.sp,
