@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -80,10 +81,6 @@ fun DashboardContent(
     modifier: Modifier = Modifier,
     stats: DashboardStats = DashboardStats(),
 ) {
-  val cardShape = RoundedCornerShape(Dimens.cornerLarge)
-  val tileShape = RoundedCornerShape(Dimens.cornerMedium)
-  val emptyValue = stringResource(R.string.dashboard_stat_empty_value)
-
   Column(
       modifier =
           modifier
@@ -91,18 +88,13 @@ fun DashboardContent(
               .background(MaterialTheme.colorScheme.surface)
               .verticalScroll(rememberScrollState())
               .padding(horizontal = Spacing.large, vertical = Spacing.large)
+              // Keep the last scrollable content clear of the overlaid add button.
               .padding(bottom = Dimens.fabClearance)
               .testTag(DashboardContentTestTags.CONTENT),
       verticalArrangement = Arrangement.spacedBy(Spacing.large),
   ) {
-    Column(
-        modifier =
-            Modifier.fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceContainerLowest, cardShape)
-                .border(Dimens.borderThin, MaterialTheme.colorScheme.outlineVariant, cardShape)
-                .padding(Spacing.large)
-                .testTag(DashboardContentTestTags.YOUR_DAY_CARD),
-        verticalArrangement = Arrangement.spacedBy(Spacing.medium),
+    DashboardCard(
+        testTag = DashboardContentTestTags.YOUR_DAY_CARD,
     ) {
       Text(
           text = stringResource(R.string.dashboard_your_day),
@@ -121,97 +113,129 @@ fun DashboardContent(
         )
       } else {
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
-          sessions.forEachIndexed { index, session ->
-            Row(
-                modifier =
-                    Modifier.fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceContainer, tileShape)
-                        .border(
-                            Dimens.borderThin,
-                            MaterialTheme.colorScheme.outlineVariant,
-                            tileShape,
-                        )
-                        .padding(Spacing.medium)
-                        .testTag(DashboardContentTestTags.sessionItem(index)),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.medium),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-              Column(
-                  modifier = Modifier.width(Dimens.sessionTimeColumnWidth),
-                  verticalArrangement = Arrangement.spacedBy(Spacing.extraSmall / 2),
-              ) {
-                Text(
-                    text = session.startTime,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = session.endTime,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-              }
-              Text(
-                  text = session.subject,
-                  modifier = Modifier.weight(1f),
-                  fontSize = 16.sp,
-                  fontWeight = FontWeight.SemiBold,
-                  color = MaterialTheme.colorScheme.onSurface,
-              )
-            }
-          }
+          sessions.forEachIndexed { index, session -> DashboardSessionRow(session, index) }
         }
       }
     }
 
+    DashboardStatsCard(stats)
+  }
+}
+
+/** Applies the shared dashboard card surface and content spacing. */
+@Composable
+private fun DashboardCard(
+    testTag: String,
+    modifier: Modifier = Modifier,
+    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(Spacing.medium),
+    content: @Composable ColumnScope.() -> Unit,
+) {
+  val cardShape = RoundedCornerShape(Dimens.cornerLarge)
+  Column(
+      modifier =
+          modifier
+              .fillMaxWidth()
+              .background(MaterialTheme.colorScheme.surfaceContainerLowest, cardShape)
+              .border(Dimens.borderThin, MaterialTheme.colorScheme.outlineVariant, cardShape)
+              .padding(Spacing.large)
+              .testTag(testTag),
+      verticalArrangement = verticalArrangement,
+      content = content,
+  )
+}
+
+/** Shows one planned session with its times and subject. */
+@Composable
+private fun DashboardSessionRow(
+    session: DashboardSession,
+    index: Int,
+    modifier: Modifier = Modifier,
+) {
+  val tileShape = RoundedCornerShape(Dimens.cornerMedium)
+  Row(
+      modifier =
+          modifier
+              .fillMaxWidth()
+              .background(MaterialTheme.colorScheme.surfaceContainer, tileShape)
+              .border(Dimens.borderThin, MaterialTheme.colorScheme.outlineVariant, tileShape)
+              .padding(Spacing.medium)
+              .testTag(DashboardContentTestTags.sessionItem(index)),
+      horizontalArrangement = Arrangement.spacedBy(Spacing.medium),
+      verticalAlignment = Alignment.CenterVertically,
+  ) {
     Column(
-        modifier =
-            Modifier.fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceContainerLowest, cardShape)
-                .border(Dimens.borderThin, MaterialTheme.colorScheme.outlineVariant, cardShape)
-                .padding(Spacing.large)
-                .testTag(DashboardContentTestTags.STATS_CARD),
-        verticalArrangement = Arrangement.spacedBy(Spacing.large),
+        modifier = Modifier.width(Dimens.sessionTimeColumnWidth),
+        verticalArrangement = Arrangement.spacedBy(Spacing.extraSmall / 2),
     ) {
       Text(
-          text = stringResource(R.string.dashboard_your_stats),
-          fontSize = 18.sp,
-          fontWeight = FontWeight.SemiBold,
-          color = MaterialTheme.colorScheme.onSurface,
-          modifier = Modifier.testTag(DashboardContentTestTags.STATS_TITLE),
-      )
-      Row(
-          modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-          horizontalArrangement = Arrangement.spacedBy(Spacing.medium),
-      ) {
-        DashboardStatTile(
-            label = stringResource(R.string.dashboard_stat_average_daily),
-            value = stats.averageDailyStudyTime ?: emptyValue,
-            testTag = DashboardContentTestTags.STAT_AVERAGE_DAILY,
-            modifier = Modifier.weight(1f).fillMaxHeight(),
-        )
-        DashboardStatTile(
-            label = stringResource(R.string.dashboard_stat_total_sessions),
-            value = stats.totalSessions ?: emptyValue,
-            testTag = DashboardContentTestTags.STAT_TOTAL_SESSIONS,
-            modifier = Modifier.weight(1f).fillMaxHeight(),
-        )
-      }
-      DashboardStatTile(
-          label = stringResource(R.string.dashboard_stat_average_focus),
-          value = stats.averageFocusDuration ?: emptyValue,
-          testTag = DashboardContentTestTags.STAT_AVERAGE_FOCUS,
-          modifier = Modifier.fillMaxWidth(),
+          text = session.startTime,
+          fontSize = 14.sp,
+          fontWeight = FontWeight.Bold,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
       Text(
-          text = stringResource(R.string.dashboard_stats_placeholder),
+          text = session.endTime,
           fontSize = 14.sp,
+          fontWeight = FontWeight.Normal,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
-          modifier = Modifier.testTag(DashboardContentTestTags.STATS_HINT),
       )
     }
+    Text(
+        text = session.subject,
+        modifier = Modifier.weight(1f),
+        fontSize = 16.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurface,
+    )
+  }
+}
+
+/** Displays the dashboard's study statistics and placeholder hint. */
+@Composable
+private fun DashboardStatsCard(stats: DashboardStats, modifier: Modifier = Modifier) {
+  val emptyValue = stringResource(R.string.dashboard_stat_empty_value)
+  DashboardCard(
+      testTag = DashboardContentTestTags.STATS_CARD,
+      modifier = modifier,
+      verticalArrangement = Arrangement.spacedBy(Spacing.large),
+  ) {
+    Text(
+        text = stringResource(R.string.dashboard_your_stats),
+        fontSize = 18.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.testTag(DashboardContentTestTags.STATS_TITLE),
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.medium),
+    ) {
+      // Intrinsic height keeps the two side-by-side tiles equally tall.
+      DashboardStatTile(
+          label = stringResource(R.string.dashboard_stat_average_daily),
+          value = stats.averageDailyStudyTime ?: emptyValue,
+          testTag = DashboardContentTestTags.STAT_AVERAGE_DAILY,
+          modifier = Modifier.weight(1f).fillMaxHeight(),
+      )
+      DashboardStatTile(
+          label = stringResource(R.string.dashboard_stat_total_sessions),
+          value = stats.totalSessions ?: emptyValue,
+          testTag = DashboardContentTestTags.STAT_TOTAL_SESSIONS,
+          modifier = Modifier.weight(1f).fillMaxHeight(),
+      )
+    }
+    DashboardStatTile(
+        label = stringResource(R.string.dashboard_stat_average_focus),
+        value = stats.averageFocusDuration ?: emptyValue,
+        testTag = DashboardContentTestTags.STAT_AVERAGE_FOCUS,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Text(
+        text = stringResource(R.string.dashboard_stats_placeholder),
+        fontSize = 14.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.testTag(DashboardContentTestTags.STATS_HINT),
+    )
   }
 }
 
@@ -267,6 +291,7 @@ fun DashboardAddButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
   }
 }
 
+/** Previews the dashboard populated with two planned sessions. */
 @Preview(showBackground = true)
 @Composable
 private fun DashboardContentWithSessionsPreview() {
@@ -282,12 +307,14 @@ private fun DashboardContentWithSessionsPreview() {
   }
 }
 
+/** Previews the dashboard with no planned sessions. */
 @Preview(showBackground = true)
 @Composable
 private fun DashboardContentWithoutSessionsPreview() {
   SampleAppTheme { DashboardContent(sessions = emptyList()) }
 }
 
+/** Previews the dashboard add-session button. */
 @Preview(showBackground = true)
 @Composable
 private fun DashboardAddButtonPreview() {
