@@ -22,14 +22,14 @@ object PreferenceDefaults {
   const val DEFAULT_SESSION_MINUTES = 60
   const val DEFAULT_BREAK_MINUTES = 10
   const val DEFAULT_FREQUENCY_MINUTES = 45
-  val DEFAULT_TIMES = setOf(TimeOfDay.MORNING, TimeOfDay.AFTERNOON)
+  val DEFAULT_TIMES = listOf(TimeOfDay.MORNING, TimeOfDay.AFTERNOON)
 }
 
 /**
  * Data class holding a user's study environment and session length preferences.
  *
  * @property userId The unique ID of the user owning these preferences.
- * @property preferredStudyTimes Set of preferred times of day for studying.
+ * @property preferredStudyTimes List of preferred times of day for studying.
  * @property preferredLocations List of preferred physical locations (e.g., "Library", "Home").
  * @property sessionLengthMinutes Target length of a single study session in minutes.
  * @property breakLengthMinutes Duration of break periods in minutes.
@@ -37,7 +37,7 @@ object PreferenceDefaults {
  */
 data class UserPreferences(
     val userId: String = "",
-    val preferredStudyTimes: Set<TimeOfDay> =
+    val preferredStudyTimes: List<TimeOfDay> =
         PreferenceDefaults.DEFAULT_TIMES, // can have multiple times
     val preferredLocations: List<String> = emptyList(),
     val sessionLengthMinutes: Int = PreferenceDefaults.DEFAULT_SESSION_MINUTES,

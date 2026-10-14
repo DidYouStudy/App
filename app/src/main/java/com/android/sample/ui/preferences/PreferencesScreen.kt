@@ -92,7 +92,7 @@ fun PreferencesScreen(
           is PreferencesUiState.Success -> {
             var draft by remember(state.preferences) { mutableStateOf(state.preferences) }
             PreferenceScreenStateless(
-                selectedStudyTimes = draft.preferredStudyTimes.map { StudyTime.from(it) }.toSet(),
+                selectedStudyTimes = draft.preferredStudyTimes.map { StudyTime.from(it) },
                 selectedSessionLength = SessionLength.fromMinutes(draft.sessionLengthMinutes),
                 selectedBreakDuration = BreakDuration.fromMinutes(draft.breakLengthMinutes),
                 selectedBreakFrequency = BreakFrequency.fromMinutes(draft.breakFrequencyMinutes),
@@ -141,7 +141,7 @@ fun PreferencesScreen(
 @Composable
 fun PreferenceScreenStateless(
     modifier: Modifier = Modifier,
-    selectedStudyTimes: Set<StudyTime>,
+    selectedStudyTimes: List<StudyTime>,
     selectedSessionLength: SessionLength,
     selectedBreakDuration: BreakDuration,
     selectedBreakFrequency: BreakFrequency,
@@ -203,7 +203,7 @@ fun PreferenceScreenStateless(
         )
         MultiChoiceRow(
             options = StudyTime.entries,
-            selected = selectedStudyTimes,
+            selected = selectedStudyTimes.toSet(),
             onToggle = onStudyTimeToggle,
         )
 
@@ -264,7 +264,7 @@ fun PreferenceScreenStateless(
 private fun PreferencesScreenPreview() {
   MaterialTheme {
     PreferenceScreenStateless(
-        selectedStudyTimes = setOf(StudyTime.MORNING, StudyTime.AFTERNOON),
+        selectedStudyTimes = listOf(StudyTime.MORNING, StudyTime.AFTERNOON),
         selectedSessionLength = SessionLength.ONE_HOUR,
         selectedBreakDuration = BreakDuration.TEN_MIN,
         selectedBreakFrequency = BreakFrequency.EVERY_45_MIN,
