@@ -117,7 +117,6 @@ class AuthViewModel(
    */
   @MainThread
   fun signInWithGoogle(getIdToken: suspend () -> String) {
-    if (mutableUiState.value.isLoading) return
     runOperation(
         operation = { repository.signInWithGoogle(getIdToken()) },
         onFailure = ::invalidateProfileResolution,
