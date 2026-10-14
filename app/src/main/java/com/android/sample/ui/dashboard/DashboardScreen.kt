@@ -1,16 +1,22 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.dashboard
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import com.android.sample.R
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -33,8 +39,18 @@ fun DashboardScreen(
       topBar = {
         TopAppBar(
             title = {
-              Text("Dashboard", modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE))
+              Text(
+                  text = stringResource(R.string.dashboard_title),
+                  fontWeight = FontWeight.Bold,
+                  modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE),
+              )
             },
+            // Mockup app bar: surfaceContainer band with a bold onSurface title.
+            colors =
+                TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                ),
             actions = {
               ProfileButton(onClick = { navigationActions?.navigateTo(Screen.Settings) })
             },

@@ -1,5 +1,6 @@
 <!-- Co-authored-by: GitHub Copilot -->
 <!-- Co-authored-by: Claude AI Agent -->
+<!-- Co-authored-by: Claude Opus 5.5 -->
 <resources>
     <string name="app_name">SampleApp</string>
     <string name="title_activity_main">MainActivity</string>
@@ -12,6 +13,7 @@
     <string name="sign_in_error_user_disabled">This account has been disabled.</string>
     <string name="sign_in_error_no_credential">No Google account found on this device. Add one in your device settings.</string>
     <string name="sign_in_error_unknown">Something went wrong. Please try again.</string>
+    <string name="dashboard_title">Dashboard</string>
     <string name="dashboard_your_day">Your day</string>
     <string name="dashboard_your_stats">Stats</string>
     <string name="dashboard_no_sessions">No study sessions planned today.</string>
