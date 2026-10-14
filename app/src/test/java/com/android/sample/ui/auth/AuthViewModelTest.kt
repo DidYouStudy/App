@@ -18,6 +18,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
@@ -28,6 +29,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -189,6 +191,47 @@ class AuthViewModelTest {
         assertEquals(listOf("alice"), profileRepository.cancelledUserIds)
       }
 
+  // A late sign-in result for another user cannot cancel the current user's profile lookup.
+  @Test
+  fun staleSignInResult_doesNotCancelCurrentUsersProfileResolution() =
+      runTest(dispatcher) {
+        val bobLookup = CompletableDeferred<Result<UserProfile?>>()
+        profileRepository.getProfileAction = { userId ->
+          if (userId == "bob") {
+            try {
+              bobLookup.await()
+            } catch (exception: CancellationException) {
+              profileRepository.cancelledUserIds += userId
+              throw exception
+            }
+          } else {
+            Result.success(null)
+          }
+        }
+        session(bob)
+        repository.signIn = { bob }
+
+        viewModel.signInWithGoogle { "establish-bob" }
+        runCurrent()
+        assertTrue(viewModel.profileUiState.value.isLoading)
+
+        val delayedAlice = CompletableDeferred<UserAccount>()
+        repository.signIn = { delayedAlice.await() }
+        repository.publishSessions = false
+        viewModel.signInWithGoogle { "delayed-alice" }
+        runCurrent()
+        delayedAlice.complete(alice)
+        runCurrent()
+
+        assertTrue(viewModel.profileUiState.value.isLoading)
+        assertTrue(profileRepository.cancelledUserIds.isEmpty())
+
+        val expected = UserProfile("bob")
+        bobLookup.complete(Result.success(expected))
+        runCurrent()
+        assertEquals(ProfileUiState(profile = expected), viewModel.profileUiState.value)
+      }
+
   // Waits for the matching session event before reading the signed-in user's profile.
   @Test
   fun signInResultWaitsForMatchingSessionBeforeResolvingProfile() =
@@ -231,8 +274,9 @@ class AuthViewModelTest {
         profileRepository.getProfileAction = {
           try {
             lookup.await()
-          } finally {
+          } catch (exception: CancellationException) {
             profileRepository.cancelledUserIds += "alice"
+            throw exception
           }
         }
         repository.signIn = { alice }
@@ -283,6 +327,217 @@ class AuthViewModelTest {
         runCurrent()
 
         assertEquals(ProfileUiState(error = ProfileError.UNKNOWN), viewModel.profileUiState.value)
+      }
+
+  // Keeps a loaded profile when a later sign-in request fails without changing the session.
+  @Test
+  fun failedSignIn_preservesLoadedProfile() =
+      runTest(dispatcher) {
+        session(alice)
+        profileRepository.getProfileAction = { Result.success(UserProfile("alice")) }
+        repository.signIn = { alice }
+
+        viewModel.signInWithGoogle { "initial" }
+        runCurrent()
+        assertEquals(ProfileUiState(profile = UserProfile("alice")), viewModel.profileUiState.value)
+
+        repository.signIn = { throw AuthException(AuthError.NETWORK) }
+        viewModel.signInWithGoogle { "retry" }
+        runCurrent()
+
+        assertEquals(ProfileUiState(profile = UserProfile("alice")), viewModel.profileUiState.value)
+      }
+
+  // Keeps an active profile lookup when a later sign-in request fails.
+  @Test
+  fun failedSignIn_preservesProfileLookupInProgress() =
+      runTest(dispatcher) {
+        val lookup = CompletableDeferred<Result<UserProfile?>>()
+        profileRepository.getProfileAction = {
+          try {
+            lookup.await()
+          } catch (exception: CancellationException) {
+            profileRepository.cancelledUserIds += "alice"
+            throw exception
+          }
+        }
+        session(alice)
+        repository.signIn = { alice }
+
+        viewModel.signInWithGoogle { "initial" }
+        runCurrent()
+        assertTrue(viewModel.profileUiState.value.isLoading)
+
+        repository.signIn = { throw AuthException(AuthError.NETWORK) }
+        viewModel.signInWithGoogle { "retry" }
+        runCurrent()
+
+        assertEquals(ProfileUiState(isLoading = true), viewModel.profileUiState.value)
+        assertTrue(profileRepository.cancelledUserIds.isEmpty())
+
+        lookup.complete(Result.success(UserProfile("alice")))
+        runCurrent()
+        assertEquals(ProfileUiState(profile = UserProfile("alice")), viewModel.profileUiState.value)
+      }
+
+  // Reports operation-level lookup cancellation while keeping the authenticated session.
+  @Test
+  fun lookupCancellationWithUnchangedSession_reportsCancelledProfileError() =
+      runTest(dispatcher) {
+        profileRepository.getProfileAction = { throw CancellationException("lookup cancelled") }
+        repository.signIn = { alice }
+
+        viewModel.signInWithGoogle { "token" }
+        runCurrent()
+
+        assertEquals(
+            ProfileUiState(error = ProfileError.CANCELLED),
+            viewModel.profileUiState.value,
+        )
+      }
+
+  // Reports operation-level creation cancellation while keeping the authenticated session.
+  @Test
+  fun creationCancellationWithUnchangedSession_reportsCancelledProfileError() =
+      runTest(dispatcher) {
+        profileRepository.getProfileAction = { Result.success(null) }
+        profileRepository.createProfileAction = {
+          throw CancellationException("creation cancelled")
+        }
+        repository.signIn = { alice }
+
+        viewModel.signInWithGoogle { "token" }
+        runCurrent()
+
+        assertEquals(
+            ProfileUiState(error = ProfileError.CANCELLED),
+            viewModel.profileUiState.value,
+        )
+      }
+
+  // Preserves an active profile lookup when the same user signs in again.
+  @Test
+  fun duplicateSignInDuringProfileLookup_preservesActiveResolution() =
+      runTest(dispatcher) {
+        val lookup = CompletableDeferred<Result<UserProfile?>>()
+        profileRepository.getProfileAction = {
+          try {
+            lookup.await()
+          } catch (exception: CancellationException) {
+            profileRepository.cancelledUserIds += "alice"
+            throw exception
+          }
+        }
+        repository.publishSessions = false
+        repository.signIn = { token ->
+          assertTrue(token == "first" || token == "second")
+          alice
+        }
+        val expectedProfile = UserProfile("alice")
+
+        viewModel.signInWithGoogle { "first" }
+        runCurrent()
+        session(alice)
+        assertTrue(viewModel.profileUiState.value.isLoading)
+
+        viewModel.signInWithGoogle { "second" }
+        runCurrent()
+
+        assertEquals(listOf("first", "second"), repository.tokens)
+        assertTrue(viewModel.profileUiState.value.isLoading)
+        assertTrue(profileRepository.cancelledUserIds.isEmpty())
+
+        lookup.complete(Result.success(expectedProfile))
+        runCurrent()
+
+        assertEquals(ProfileUiState(profile = expectedProfile), viewModel.profileUiState.value)
+        assertTrue(profileRepository.cancelledUserIds.isEmpty())
+      }
+
+  // Does not publish a profile when the lookup completes after sign-out.
+  @Test
+  fun lateProfileResolutionAfterSignOut_doesNotPublishStaleProfile() =
+      runTest(dispatcher) {
+        val lookup = CompletableDeferred<Result<UserProfile?>>()
+        profileRepository.getProfileAction = { withContext(NonCancellable) { lookup.await() } }
+        repository.signIn = { alice }
+
+        viewModel.signInWithGoogle { "token" }
+        runCurrent()
+        assertTrue(viewModel.profileUiState.value.isLoading)
+
+        viewModel.signOut()
+        runCurrent()
+        val stateAfterSignOut = viewModel.profileUiState.value
+        assertEquals(ProfileUiState(), stateAfterSignOut)
+
+        lookup.complete(Result.success(UserProfile("alice")))
+        runCurrent()
+
+        assertEquals(stateAfterSignOut, viewModel.profileUiState.value)
+      }
+
+  // Does not publish account A's profile after account B replaces the session.
+  @Test
+  fun lateProfileResolutionAfterDifferentUserSignIn_doesNotPublishStaleProfile() =
+      runTest(dispatcher) {
+        val aliceLookup = CompletableDeferred<Result<UserProfile?>>()
+        profileRepository.getProfileAction = { userId ->
+          if (userId == "alice") {
+            withContext(NonCancellable) { aliceLookup.await() }
+          } else {
+            Result.success(UserProfile("bob"))
+          }
+        }
+        repository.publishSessions = false
+        repository.signIn = { token -> if (token == "alice") alice else bob }
+
+        viewModel.signInWithGoogle { "alice" }
+        runCurrent()
+        session(alice)
+        assertTrue(viewModel.profileUiState.value.isLoading)
+
+        viewModel.signInWithGoogle { "bob" }
+        runCurrent()
+        session(bob)
+        val stateAfterAccountSwitch = viewModel.profileUiState.value
+        assertEquals(ProfileUiState(), stateAfterAccountSwitch)
+
+        aliceLookup.complete(Result.success(UserProfile("alice")))
+        runCurrent()
+
+        assertEquals(stateAfterAccountSwitch, viewModel.profileUiState.value)
+      }
+
+  // Clears profile resolution when the session observer fails after resolution starts.
+  @Test
+  fun sessionFlowFailureAfterProfileResolution_cancelsAndClearsProfileState() =
+      runTest(dispatcher) {
+        val sessionFailure = CompletableDeferred<Unit>()
+        val sessionRepository =
+            SessionFailureRepository(
+                flow {
+                  emit(alice)
+                  sessionFailure.await()
+                  throw IllegalStateException("session flow failed")
+                }
+            )
+        val failingSessionViewModel =
+            AuthViewModel(sessionRepository, ProfileResolutionCoordinator(profileRepository))
+        store.put("session-failure", failingSessionViewModel)
+        runCurrent()
+
+        val lookup = CompletableDeferred<Result<UserProfile?>>()
+        profileRepository.getProfileAction = { lookup.await() }
+        failingSessionViewModel.signInWithGoogle { "token" }
+        runCurrent()
+        assertTrue(failingSessionViewModel.profileUiState.value.isLoading)
+
+        sessionFailure.complete(Unit)
+        runCurrent()
+
+        assertEquals(ProfileUiState(), failingSessionViewModel.profileUiState.value)
+        assertEquals(AuthError.UNKNOWN, failingSessionViewModel.uiState.value.error)
       }
 
   // Cancels an in-flight profile resolution and clears profile state when signing out.
@@ -595,6 +850,20 @@ class AuthViewModelTest {
     override suspend fun signInWithGoogle(idToken: String): UserAccount = error("Not used")
 
     override suspend fun signOut() = error("Not used")
+  }
+
+  /** A session repository whose sign-in succeeds while its session flow can fail independently. */
+  private class SessionFailureRepository(override val currentUser: Flow<UserAccount?>) :
+      AuthRepository {
+    override suspend fun signInWithGoogle(idToken: String): UserAccount =
+        UserAccount(
+            uid = "alice",
+            email = "alice@example.com",
+            displayName = "Alice",
+            photoUrl = null,
+        )
+
+    override suspend fun signOut() = Unit
   }
 
   private class FakeAuthRepository : AuthRepository {
