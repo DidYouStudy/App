@@ -71,13 +71,13 @@ open class NavigationActions(
     }
   }
 
-  /** Performs a navigation only when the app state allows the destination. */
+  /** Performs a navigation only when the destination is allowed by the current app state. */
   open fun navigateIfAllowed(
       screen: Screen,
-      allowed: Boolean,
+      isAllowed: (Screen) -> Boolean,
       completedFlow: Screen? = null,
   ) {
-    if (!allowed) return
+    if (!isAllowed(screen) || currentRoute() == screen.route) return
     if (completedFlow == null) navigateTo(screen) else navigateToAndClear(screen, completedFlow)
   }
 

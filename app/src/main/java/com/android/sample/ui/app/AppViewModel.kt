@@ -60,11 +60,16 @@ class AppViewModel(
   }
 
   /** Re-evaluates the destination after SignInRoute reports a successful sign-in. */
-  fun onSignedIn() {
+  fun onSignedIn(onDestinationReady: (Screen) -> Unit = {}) {
     mutableUiState.value = AppUiState.Loading
     viewModelScope.launch {
       val user = authRepository.currentUser.first { it != null } ?: return@launch
       loadDestination(user.uid)
+      when (mutableUiState.value) {
+        AppUiState.FirstTimeSignIn -> onDestinationReady(Screen.Preferences)
+        AppUiState.Dashboard -> onDestinationReady(Screen.Dashboard)
+        else -> Unit
+      }
     }
   }
 

@@ -9,17 +9,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
 import com.android.sample.model.auth.AuthRepositoryProvider
-import com.android.sample.ui.app.AppUiState
 import com.android.sample.ui.app.appViewModel
 import com.android.sample.ui.auth.SignInRoute
 import com.android.sample.ui.calendar.CalendarScreen
@@ -53,40 +48,6 @@ fun DidYouStudyApp() {
   val navController = rememberNavController()
   val navigationActions = NavigationActions(navController)
   val applicationViewModel = appViewModel()
-  val appState = applicationViewModel.uiState.collectAsStateWithLifecycle().value
-  val currentNavigationActions by rememberUpdatedState(navigationActions)
-
-  LaunchedEffect(appState) {
-    when (appState) {
-      AppUiState.SignIn,
-      AppUiState.LogOut ->
-          currentNavigationActions.navigateIfAllowed(
-              screen = Screen.Auth,
-              allowed =
-                  applicationViewModel.canNavigateTo(Screen.Auth) &&
-                      currentNavigationActions.currentRoute() != Screen.Auth.route,
-          )
-      AppUiState.FirstTimeSignIn ->
-          currentNavigationActions.navigateIfAllowed(
-              screen = Screen.Preferences,
-              allowed =
-                  applicationViewModel.canNavigateTo(Screen.Preferences) &&
-                      currentNavigationActions.currentRoute() != Screen.Preferences.route,
-              completedFlow = Screen.Auth,
-          )
-      AppUiState.Dashboard ->
-          currentNavigationActions.navigateIfAllowed(
-              screen = Screen.Dashboard,
-              allowed =
-                  applicationViewModel.canNavigateTo(Screen.Dashboard) &&
-                      currentNavigationActions.currentRoute() != Screen.Dashboard.route,
-              completedFlow = Screen.Preferences,
-          )
-      AppUiState.Loading,
-      is AppUiState.Error -> Unit
-    }
-  }
-
   NavHost(
       navController = navController,
       startDestination = Screen.Auth.name,
@@ -97,7 +58,15 @@ fun DidYouStudyApp() {
     ) {
       composable(Screen.Auth.route) {
         SignInRoute(
-            onSignedIn = applicationViewModel::onSignedIn,
+            onSignedIn = {
+              applicationViewModel.onSignedIn { destination ->
+                navigationActions.navigateIfAllowed(
+                    destination,
+                    applicationViewModel::canNavigateTo,
+                    completedFlow = Screen.Auth,
+                )
+              }
+            },
             getIdToken = AuthRepositoryProvider::requestGoogleIdToken,
         )
       }
@@ -111,7 +80,14 @@ fun DidYouStudyApp() {
         PreferencesScreen(
             onImportClick = {},
             onAddLocationClick = {},
-            onSaved = applicationViewModel::onPreferencesSaved,
+            onSaved = {
+              applicationViewModel.onPreferencesSaved()
+              navigationActions.navigateIfAllowed(
+                  Screen.Dashboard,
+                  applicationViewModel::canNavigateTo,
+                  completedFlow = Screen.Preferences,
+              )
+            },
         )
       }
     }
