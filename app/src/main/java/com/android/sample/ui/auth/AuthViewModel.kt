@@ -293,7 +293,8 @@ class AuthViewModel(
 /** Supplies an injected repository when Android creates the authentication ViewModel. */
 class AuthViewModelFactory(
     private val repository: AuthRepository,
-    private val profileResolutionCoordinator: ProfileResolutionCoordinator,
+    private val profileResolutionCoordinator: ProfileResolutionCoordinator =
+        ProfileResolutionCoordinator(ProfileRepositoryProvider.getRepository()),
 ) : ViewModelProvider.Factory {
   /** Creates an AuthViewModel and rejects unrelated ViewModel types rather than casting blindly. */
   override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -309,13 +310,8 @@ class AuthViewModelFactory(
  */
 @Composable
 fun authViewModel(
-    profileResolutionCoordinator: ProfileResolutionCoordinator =
-        ProfileResolutionCoordinator(ProfileRepositoryProvider.getRepository())
-): AuthViewModel =
-    viewModel(
-        factory =
-            AuthViewModelFactory(
-                AuthRepositoryProvider.getRepository(LocalContext.current),
-                profileResolutionCoordinator,
-            )
-    )
+    factory: ViewModelProvider.Factory =
+        AuthViewModelFactory(
+            repository = AuthRepositoryProvider.getRepository(LocalContext.current)
+        )
+): AuthViewModel = viewModel(factory = factory)
