@@ -51,7 +51,10 @@ class AuthViewModelFactoryTest {
     val received = mutableListOf<AuthViewModel>()
     composeTestRule.setContent {
       trigger.value
-      received += authViewModel(testProfileResolutionCoordinator())
+      received +=
+          authViewModel(
+              AuthViewModelFactory(repository, testProfileResolutionCoordinator())
+          )
     }
     composeTestRule.runOnIdle { trigger.value++ }
     composeTestRule.waitForIdle()
