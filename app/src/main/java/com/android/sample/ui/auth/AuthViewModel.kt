@@ -84,13 +84,18 @@ class AuthViewModel(
           val previousUser = mutableUiState.value.user
           var pendingUserToResolve: UserAccount? = null
           when {
+            // Case 1: A null session invalidates an active lookup; repeated null emissions need no
+            // action.
             user == null -> {
               if (activeProfileResolutionJob != null) invalidateProfileResolution()
             }
+            // Case 2: Sign-in can finish before currentUser emits; defer lookup until it emits this
+            // UID.
             pendingProfileUser?.uid == user.uid -> {
               pendingUserToResolve = pendingProfileUser
               pendingProfileUser = null
             }
+            // Case 3: A different UID invalidates old work. Ignore the current/resolving UID;
             previousUser?.uid != user.uid && user.uid != activeProfileResolutionUserId -> {
               invalidateProfileResolution()
             }
@@ -156,6 +161,7 @@ class AuthViewModel(
       try {
         val signedInUser = operation()
         if (signedInUser is UserAccount) {
+          // The session flow may already have started this user's lookup; avoid starting it twice.
           if (
               activeProfileResolutionUserId == signedInUser.uid &&
                   mutableProfileUiState.value.isLoading
@@ -164,13 +170,16 @@ class AuthViewModel(
           }
           when (mutableUiState.value.user?.uid) {
             null -> {
+              // Defer lookup until currentUser confirms the newly signed-in session.
               invalidateProfileResolution()
               pendingProfileUser = signedInUser
             }
             signedInUser.uid -> {
+              // The session already matches, so resolve this user's profile now.
               invalidateProfileResolution()
               startProfileResolution(signedInUser)
             }
+            // A different session arrived while sign-in was running; discard this stale result.
             else -> return@launch
           }
         }
@@ -210,8 +219,10 @@ class AuthViewModel(
     mutableProfileUiState.update { ProfileUiState(isLoading = true) }
     lateinit var resolutionJob: Job
     val job =
+        // LAZY lets us record this job as current before its completion can update the UI.
         viewModelScope.launch(start = CoroutineStart.LAZY) {
           try {
+            // The coordinator looks up the profile and creates it only when no profile exists.
             val result = profileResolutionCoordinator.resolve(user)
             // TODO-use the result to know whether the profile was just created, then do the
             // navigation
@@ -219,11 +230,14 @@ class AuthViewModel(
                 activeProfileResolutionJob !== resolutionJob ||
                     mutableUiState.value.user?.uid != user.uid
             ) {
+              // Ignore stale results; if this job is still active, clear its loading state and
+              // data.
               if (activeProfileResolutionJob === resolutionJob) {
                 mutableProfileUiState.update { ProfileUiState() }
               }
               return@launch
             }
+            // Publish either the resolved profile or its typed failure for the current job only.
             mutableProfileUiState.update {
               result.fold(
                   onSuccess = { ProfileUiState(profile = it.profile) },
