@@ -34,8 +34,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
 import com.android.sample.R
+import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
-import com.android.sample.ui.theme.SampleAppTheme
 import com.android.sample.ui.theme.Spacing
 
 /**
@@ -310,7 +310,7 @@ fun DashboardAddButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
 @Preview(showBackground = true)
 @Composable
 private fun DashboardContentWithSessionsPreview() {
-  SampleAppTheme {
+  DidYouStudyTheme {
     DashboardContent(
         sessions =
             listOf(
@@ -326,12 +326,12 @@ private fun DashboardContentWithSessionsPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun DashboardContentWithoutSessionsPreview() {
-  SampleAppTheme { DashboardContent(sessions = emptyList()) }
+  DidYouStudyTheme { DashboardContent(sessions = emptyList()) }
 }
 
 /** Previews the dashboard add-session button. */
 @Preview(showBackground = true)
 @Composable
 private fun DashboardAddButtonPreview() {
-  SampleAppTheme { DashboardAddButton(onClick = {}) }
+  DidYouStudyTheme { DashboardAddButton(onClick = {}) }
 }
