@@ -5,6 +5,7 @@ import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.ui.auth.TestAuthRepository
+import com.android.sample.ui.navigation.Screen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -76,5 +77,27 @@ class AppViewModelTest {
     authRepository.currentUser.value = null
 
     assertEquals(AppUiState.LogOut, viewModel.uiState.value)
+  }
+
+  @Test
+  fun signingInEmitsPreferencesDestinationForFirstTimeUser() = runTest {
+    val user = UserAccount("user-1", null, null, null)
+    `when`(preferencesRepository.getPreferences(user.uid)).thenReturn(Result.success(null))
+    val viewModel = AppViewModel(authRepository, preferencesRepository)
+    val destinations = mutableListOf<Screen>()
+
+    authRepository.currentUser.value = user
+    viewModel.onSignedIn(destinations::add)
+
+    assertEquals(listOf(Screen.Preferences), destinations)
+  }
+
+  @Test
+  fun savingPreferencesSetsDashboardState() = runTest {
+    val viewModel = AppViewModel(authRepository, preferencesRepository)
+
+    viewModel.onPreferencesSaved()
+
+    assertEquals(AppUiState.Dashboard, viewModel.uiState.value)
   }
 }
