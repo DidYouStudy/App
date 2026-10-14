@@ -1,8 +1,10 @@
 // Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.preferences
 
+import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.UserPreferences
+import com.android.sample.ui.auth.TestAuthRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -23,12 +25,15 @@ class PreferencesViewModelTest {
 
   private val testDispatcher = UnconfinedTestDispatcher()
   private lateinit var repository: PreferencesRepository
+  private lateinit var authRepository: TestAuthRepository
   private val userId = "testUser123"
 
   @Before
   fun setUp() {
     Dispatchers.setMain(testDispatcher)
     repository = mock(PreferencesRepository::class.java)
+    authRepository = TestAuthRepository()
+    authRepository.currentUser.value = UserAccount(userId, null, null, null)
   }
 
   @After
@@ -41,7 +46,7 @@ class PreferencesViewModelTest {
     val existingPrefs = UserPreferences(userId = userId, sessionLengthMinutes = 60)
     `when`(repository.getPreferences(userId)).thenReturn(Result.success(existingPrefs))
 
-    val viewModel = PreferencesViewModel(repository, userId)
+    val viewModel = PreferencesViewModel(repository, authRepository)
 
     val state = viewModel.uiState.value
     assertTrue(state is PreferencesUiState.Success)
@@ -52,7 +57,7 @@ class PreferencesViewModelTest {
   fun init_loadsPreferences_successWithNullPreferences_fallsBackToDefault() = runTest {
     `when`(repository.getPreferences(userId)).thenReturn(Result.success(null))
 
-    val viewModel = PreferencesViewModel(repository, userId)
+    val viewModel = PreferencesViewModel(repository, authRepository)
 
     val state = viewModel.uiState.value
     assertTrue(state is PreferencesUiState.Success)
@@ -65,7 +70,7 @@ class PreferencesViewModelTest {
     `when`(repository.getPreferences(userId))
         .thenReturn(Result.failure(RuntimeException("Network error")))
 
-    val viewModel = PreferencesViewModel(repository, userId)
+    val viewModel = PreferencesViewModel(repository, authRepository)
 
     val state = viewModel.uiState.value
     assertTrue(state is PreferencesUiState.Error)
@@ -80,7 +85,7 @@ class PreferencesViewModelTest {
     `when`(repository.getPreferences(userId)).thenReturn(Result.success(initialPrefs))
     `when`(repository.savePreferences(updatedPrefs)).thenReturn(Result.success(Unit))
 
-    val viewModel = PreferencesViewModel(repository, userId)
+    val viewModel = PreferencesViewModel(repository, authRepository)
 
     viewModel.updatePreferences(updatedPrefs)
 
@@ -99,7 +104,7 @@ class PreferencesViewModelTest {
     `when`(repository.savePreferences(updatedPrefs))
         .thenReturn(Result.failure(RuntimeException("Save failed")))
 
-    val viewModel = PreferencesViewModel(repository, userId)
+    val viewModel = PreferencesViewModel(repository, authRepository)
 
     viewModel.updatePreferences(updatedPrefs)
 

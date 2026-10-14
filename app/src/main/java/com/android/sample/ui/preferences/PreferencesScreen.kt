@@ -30,7 +30,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.R
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
@@ -52,8 +51,7 @@ import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
 @Composable
 fun PreferencesScreen(
     modifier: Modifier = Modifier,
-    // TODO FIX VM INSTANCE NOT BEING ABLE TO BE CREATED AS DEFAULT PARAMETER
-    viewModel: PreferencesViewModel = viewModel(),
+    viewModel: PreferencesViewModel = preferencesViewModel(),
     onImportClick: () -> Unit,
     onAddLocationClick: () -> Unit,
     onSaved: () -> Unit,
@@ -112,10 +110,7 @@ fun PreferencesScreen(
                 onSessionLengthSelect = { draft = draft.copy(sessionLengthMinutes = it.minutes) },
                 onBreakDurationSelect = { draft = draft.copy(breakLengthMinutes = it.minutes) },
                 onBreakFrequencySelect = { draft = draft.copy(breakFrequencyMinutes = it.minutes) },
-                onSaveClick = {
-                  viewModel.updatePreferences(draft)
-                  onSaved()
-                },
+                onSaveClick = { viewModel.updatePreferences(draft, onSaved) },
                 modifier = modifier.padding(pd),
             )
           }
