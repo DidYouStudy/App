@@ -9,21 +9,28 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.resources.C
+import com.android.sample.ui.app.AppUiState
+import com.android.sample.ui.app.appViewModel
 import com.android.sample.ui.auth.SignInRoute
 import com.android.sample.ui.calendar.CalendarScreen
 import com.android.sample.ui.dashboard.DashboardScreen
 import com.android.sample.ui.groupsession.GroupSessionScreen
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.Screen
+import com.android.sample.ui.preferences.PreferencesScreen
 import com.android.sample.ui.settings.SettingsScreen
 import com.android.sample.ui.theme.SampleAppTheme
 
@@ -48,13 +55,33 @@ class MainActivity : ComponentActivity() {
 fun DidYouStudyApp() {
   val navController = rememberNavController()
   val navigationActions = NavigationActions(navController)
-  val isSignedIn = true // TODO REMEMBER FIREBASE AUTH
+  val applicationViewModel = appViewModel()
+  val appState = applicationViewModel.uiState.collectAsStateWithLifecycle().value
+  val currentNavigationActions by rememberUpdatedState(navigationActions)
 
-  val startDestination = if (isSignedIn) Screen.Dashboard.route else Screen.Auth.name
+  LaunchedEffect(appState) {
+    when (appState) {
+      AppUiState.SignIn,
+      AppUiState.LogOut ->
+          if (currentNavigationActions.currentRoute() != Screen.Auth.route) {
+            currentNavigationActions.navigateTo(Screen.Auth)
+          }
+      AppUiState.FirstTimeSignIn ->
+          if (currentNavigationActions.currentRoute() != Screen.Preferences.route) {
+            currentNavigationActions.navigateTo(Screen.Preferences)
+          }
+      AppUiState.Dashboard ->
+          if (currentNavigationActions.currentRoute() != Screen.Dashboard.route) {
+            currentNavigationActions.navigateTo(Screen.Dashboard)
+          }
+      AppUiState.Loading,
+      is AppUiState.Error -> Unit
+    }
+  }
 
   NavHost(
       navController = navController,
-      startDestination = startDestination,
+      startDestination = Screen.Auth.name,
   ) {
     navigation(
         startDestination = Screen.Auth.route,
@@ -62,8 +89,21 @@ fun DidYouStudyApp() {
     ) {
       composable(Screen.Auth.route) {
         SignInRoute(
-            onSignedIn = { navigationActions.navigateTo(Screen.Dashboard) },
+            onSignedIn = {},
             getIdToken = AuthRepositoryProvider::requestGoogleIdToken,
+        )
+      }
+    }
+
+    navigation(
+        startDestination = Screen.Preferences.route,
+        route = Screen.Preferences.name,
+    ) {
+      composable(Screen.Preferences.route) {
+        PreferencesScreen(
+            onImportClick = {},
+            onAddLocationClick = {},
+            onSaved = applicationViewModel::onPreferencesSaved,
         )
       }
     }
