@@ -143,19 +143,19 @@ fun SignInScreen(
 
 @Preview(showBackground = true)
 @Composable
-private fun SignInScreenIdlePreview() {
+internal fun SignInScreenIdlePreview() {
   DidYouStudyTheme { SignInScreen(isLoading = false, errorMessage = null, onSignInClick = {}) }
 }
 
 @Preview(showBackground = true)
 @Composable
-private fun SignInScreenLoadingPreview() {
+internal fun SignInScreenLoadingPreview() {
   DidYouStudyTheme { SignInScreen(isLoading = true, errorMessage = null, onSignInClick = {}) }
 }
 
 @Preview(showBackground = true)
 @Composable
-private fun SignInScreenErrorPreview() {
+internal fun SignInScreenErrorPreview() {
   DidYouStudyTheme {
     SignInScreen(isLoading = false, errorMessage = "Something went wrong", onSignInClick = {})
   }
