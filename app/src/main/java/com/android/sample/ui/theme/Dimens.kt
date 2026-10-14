@@ -5,6 +5,7 @@ import androidx.compose.ui.unit.dp
 
 /** Shared design tokens; use these instead of dp literals in screens. */
 object Spacing {
+  val extraExtraSmall = 2.dp
   val extraSmall = 4.dp
   val small = 8.dp
   val medium = 12.dp

@@ -93,32 +93,38 @@ fun DashboardContent(
               .testTag(DashboardContentTestTags.CONTENT),
       verticalArrangement = Arrangement.spacedBy(Spacing.large),
   ) {
-    DashboardCard(
-        testTag = DashboardContentTestTags.YOUR_DAY_CARD,
-    ) {
+    DashboardDayCard(sessions)
+    DashboardStatsCard(stats)
+  }
+}
+
+/** Displays the planned sessions for the day. */
+@Composable
+private fun DashboardDayCard(sessions: List<DashboardSession>, modifier: Modifier = Modifier) {
+  DashboardCard(
+      testTag = DashboardContentTestTags.YOUR_DAY_CARD,
+      modifier = modifier,
+  ) {
+    Text(
+        text = stringResource(R.string.dashboard_your_day),
+        fontSize = 18.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.testTag(DashboardContentTestTags.YOUR_DAY_TITLE),
+    )
+    if (sessions.isEmpty()) {
       Text(
-          text = stringResource(R.string.dashboard_your_day),
-          fontSize = 18.sp,
-          fontWeight = FontWeight.SemiBold,
-          color = MaterialTheme.colorScheme.onSurface,
-          modifier = Modifier.testTag(DashboardContentTestTags.YOUR_DAY_TITLE),
+          text = stringResource(R.string.dashboard_no_sessions),
+          fontSize = 14.sp,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          textAlign = TextAlign.Center,
+          modifier = Modifier.fillMaxWidth().testTag(DashboardContentTestTags.EMPTY_DAY),
       )
-      if (sessions.isEmpty()) {
-        Text(
-            text = stringResource(R.string.dashboard_no_sessions),
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().testTag(DashboardContentTestTags.EMPTY_DAY),
-        )
-      } else {
-        Column(verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
-          sessions.forEachIndexed { index, session -> DashboardSessionRow(session, index) }
-        }
+    } else {
+      Column(verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
+        sessions.forEachIndexed { index, session -> DashboardSessionRow(session, index) }
       }
     }
-
-    DashboardStatsCard(stats)
   }
 }
 
@@ -165,7 +171,7 @@ private fun DashboardSessionRow(
   ) {
     Column(
         modifier = Modifier.width(Dimens.sessionTimeColumnWidth),
-        verticalArrangement = Arrangement.spacedBy(Spacing.extraSmall / 2),
+        verticalArrangement = Arrangement.spacedBy(Spacing.extraExtraSmall),
     ) {
       Text(
           text = session.startTime,
@@ -206,11 +212,11 @@ private fun DashboardStatsCard(stats: DashboardStats, modifier: Modifier = Modif
         color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.testTag(DashboardContentTestTags.STATS_TITLE),
     )
+    // Intrinsic height keeps the two side-by-side tiles equally tall.
     Row(
         modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
         horizontalArrangement = Arrangement.spacedBy(Spacing.medium),
     ) {
-      // Intrinsic height keeps the two side-by-side tiles equally tall.
       DashboardStatTile(
           label = stringResource(R.string.dashboard_stat_average_daily),
           value = stats.averageDailyStudyTime ?: emptyValue,
@@ -239,6 +245,7 @@ private fun DashboardStatsCard(stats: DashboardStats, modifier: Modifier = Modif
   }
 }
 
+/** Displays one dashboard statistic. */
 @Composable
 private fun DashboardStatTile(
     label: String,
