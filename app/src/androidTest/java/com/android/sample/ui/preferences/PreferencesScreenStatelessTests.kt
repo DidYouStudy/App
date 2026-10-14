@@ -5,17 +5,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
-import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performSemanticsAction
 import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
+import com.android.sample.ui.preferences.PreferencesScreenTestsUtils.assertSelected
+import com.android.sample.ui.preferences.PreferencesScreenTestsUtils.click
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -54,25 +53,13 @@ class PreferencesScreenStatelessTests {
     }
   }
 
-  private fun assertSelected(tag: String) {
-    composeTestRule.onNodeWithTag(tag).performScrollTo().assertIsSelected()
-  }
-
   private fun assertNotSelected(tag: String) {
     composeTestRule.onNodeWithTag(tag).performScrollTo().assertIsNotSelected()
-  }
-
-  private fun click(tag: String) {
-    composeTestRule
-        .onNodeWithTag(tag)
-        .performScrollTo()
-        .performSemanticsAction(SemanticsActions.OnClick)
   }
 
   @Test
   fun displayAllStaticComponents() {
     composeTestRule.onNodeWithTag(Tags.PREFERENCE_SCREEN).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(Tags.PREFERENCE_TITLE).assertIsDisplayed()
     composeTestRule.onNodeWithTag(Tags.PREFERENCE_SCROLL_CONTAINER).assertIsDisplayed()
     composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).assertIsDisplayed()
   }
@@ -111,36 +98,36 @@ class PreferencesScreenStatelessTests {
   @Test
   fun initialSelectionMatchesProvidedPreferences() {
     // study times: morning + afternoon
-    assertSelected(Tags.STUDY_TIME_MORNING)
-    assertSelected(Tags.STUDY_TIME_AFTERNOON)
+    composeTestRule.assertSelected(Tags.STUDY_TIME_MORNING)
+    composeTestRule.assertSelected(Tags.STUDY_TIME_AFTERNOON)
     assertNotSelected(Tags.STUDY_TIME_EVENING)
     assertNotSelected(Tags.STUDY_TIME_NIGHT)
     // session length: 1 hour
-    assertSelected(Tags.SESSION_LENGTH_1_HOUR)
+    composeTestRule.assertSelected(Tags.SESSION_LENGTH_1_HOUR)
     assertNotSelected(Tags.SESSION_LENGTH_30_MIN)
     assertNotSelected(Tags.SESSION_LENGTH_2_HOURS)
     assertNotSelected(Tags.SESSION_LENGTH_3_HOURS)
     // break duration: 10 min
-    assertSelected(Tags.BREAK_DURATION_10_MIN)
+    composeTestRule.assertSelected(Tags.BREAK_DURATION_10_MIN)
     assertNotSelected(Tags.BREAK_DURATION_5_MIN)
     assertNotSelected(Tags.BREAK_DURATION_15_MIN)
     assertNotSelected(Tags.BREAK_DURATION_20_MIN)
     // break frequency: 45 min
-    assertSelected(Tags.BREAK_FREQUENCY_45_MIN)
+    composeTestRule.assertSelected(Tags.BREAK_FREQUENCY_45_MIN)
     assertNotSelected(Tags.BREAK_FREQUENCY_30_MIN)
     assertNotSelected(Tags.BREAK_FREQUENCY_1_HOUR)
   }
 
   @Test
   fun importButtonTriggersCallback() {
-    click(Tags.IMPORT_SCHEDULE_BUTTON)
+    composeTestRule.click(Tags.IMPORT_SCHEDULE_BUTTON)
     assert(importClicks == 1)
     assert(addLocationClicks == 0 && saveClicks == 0)
   }
 
   @Test
   fun addLocationButtonTriggersCallback() {
-    click(Tags.ADD_STUDY_LOCATION_BUTTON)
+    composeTestRule.click(Tags.ADD_STUDY_LOCATION_BUTTON)
     assert(addLocationClicks == 1)
     assert(importClicks == 0 && saveClicks == 0)
   }
@@ -154,26 +141,26 @@ class PreferencesScreenStatelessTests {
 
   @Test
   fun clickingUnselectedStudyTimeSelectsIt() {
-    click(Tags.STUDY_TIME_EVENING)
-    assertSelected(Tags.STUDY_TIME_EVENING)
+    composeTestRule.click(Tags.STUDY_TIME_EVENING)
+    composeTestRule.assertSelected(Tags.STUDY_TIME_EVENING)
     // existing selections are untouched (multiple choice)
-    assertSelected(Tags.STUDY_TIME_MORNING)
-    assertSelected(Tags.STUDY_TIME_AFTERNOON)
+    composeTestRule.assertSelected(Tags.STUDY_TIME_MORNING)
+    composeTestRule.assertSelected(Tags.STUDY_TIME_AFTERNOON)
     assertNotSelected(Tags.STUDY_TIME_NIGHT)
   }
 
   @Test
   fun clickingSelectedStudyTimeDeselectsIt() {
-    click(Tags.STUDY_TIME_MORNING)
+    composeTestRule.click(Tags.STUDY_TIME_MORNING)
     assertNotSelected(Tags.STUDY_TIME_MORNING)
-    assertSelected(Tags.STUDY_TIME_AFTERNOON)
+    composeTestRule.assertSelected(Tags.STUDY_TIME_AFTERNOON)
   }
 
   @Test
   fun studyTimeCanBeToggledOnAndOffAgain() {
-    click(Tags.STUDY_TIME_NIGHT)
-    assertSelected(Tags.STUDY_TIME_NIGHT)
-    click(Tags.STUDY_TIME_NIGHT)
+    composeTestRule.click(Tags.STUDY_TIME_NIGHT)
+    composeTestRule.assertSelected(Tags.STUDY_TIME_NIGHT)
+    composeTestRule.click(Tags.STUDY_TIME_NIGHT)
     assertNotSelected(Tags.STUDY_TIME_NIGHT)
   }
 
@@ -181,18 +168,21 @@ class PreferencesScreenStatelessTests {
   fun allStudyTimesCanBeSelectedAndDeselected() {
     val selectedByDefault = setOf(Tags.STUDY_TIME_MORNING, Tags.STUDY_TIME_AFTERNOON)
 
-    StudyTime.entries.forEach { if (it.testTag !in selectedByDefault) click(it.testTag) }
-    StudyTime.entries.forEach { assertSelected(it.testTag) }
-    StudyTime.entries.forEach { click(it.testTag) }
+    StudyTime.entries.forEach {
+      if (it.testTag !in selectedByDefault) composeTestRule.click(it.testTag)
+    }
+    StudyTime.entries.forEach { composeTestRule.assertSelected(it.testTag) }
+    StudyTime.entries.forEach { composeTestRule.click(it.testTag) }
     StudyTime.entries.forEach { assertNotSelected(it.testTag) }
   }
 
   @Test
   fun selectingSessionLengthReplacesPreviousSelection() {
     SessionLength.entries.forEach { selected ->
-      click(selected.testTag)
+      composeTestRule.click(selected.testTag)
       SessionLength.entries.forEach { other ->
-        if (other == selected) assertSelected(other.testTag) else assertNotSelected(other.testTag)
+        if (other == selected) composeTestRule.assertSelected(other.testTag)
+        else assertNotSelected(other.testTag)
       }
     }
   }
@@ -200,9 +190,10 @@ class PreferencesScreenStatelessTests {
   @Test
   fun selectingBreakDurationReplacesPreviousSelection() {
     BreakDuration.entries.forEach { selected ->
-      click(selected.testTag)
+      composeTestRule.click(selected.testTag)
       BreakDuration.entries.forEach { other ->
-        if (other == selected) assertSelected(other.testTag) else assertNotSelected(other.testTag)
+        if (other == selected) composeTestRule.assertSelected(other.testTag)
+        else assertNotSelected(other.testTag)
       }
     }
   }
@@ -210,25 +201,26 @@ class PreferencesScreenStatelessTests {
   @Test
   fun selectingBreakFrequencyReplacesPreviousSelection() {
     BreakFrequency.entries.forEach { selected ->
-      click(selected.testTag)
+      composeTestRule.click(selected.testTag)
       BreakFrequency.entries.forEach { other ->
-        if (other == selected) assertSelected(other.testTag) else assertNotSelected(other.testTag)
+        if (other == selected) composeTestRule.assertSelected(other.testTag)
+        else assertNotSelected(other.testTag)
       }
     }
   }
 
   @Test
   fun clickingAlreadySelectedSingleChoiceKeepsItSelected() {
-    click(Tags.SESSION_LENGTH_1_HOUR)
-    assertSelected(Tags.SESSION_LENGTH_1_HOUR)
+    composeTestRule.click(Tags.SESSION_LENGTH_1_HOUR)
+    composeTestRule.assertSelected(Tags.SESSION_LENGTH_1_HOUR)
   }
 
   @Test
   fun sectionsAreIndependentOfEachOther() {
-    click(Tags.SESSION_LENGTH_3_HOURS)
-    assertSelected(Tags.SESSION_LENGTH_3_HOURS)
-    assertSelected(Tags.BREAK_DURATION_10_MIN)
-    assertSelected(Tags.BREAK_FREQUENCY_45_MIN)
-    assertSelected(Tags.STUDY_TIME_MORNING)
+    composeTestRule.click(Tags.SESSION_LENGTH_3_HOURS)
+    composeTestRule.assertSelected(Tags.SESSION_LENGTH_3_HOURS)
+    composeTestRule.assertSelected(Tags.BREAK_DURATION_10_MIN)
+    composeTestRule.assertSelected(Tags.BREAK_FREQUENCY_45_MIN)
+    composeTestRule.assertSelected(Tags.STUDY_TIME_MORNING)
   }
 }

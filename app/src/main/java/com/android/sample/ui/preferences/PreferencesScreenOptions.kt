@@ -32,6 +32,12 @@ enum class StudyTime(
     get() = timeOfDay.displayName
 
   companion object {
+    /**
+     * Returns the study-time option associated with the given time of day.
+     *
+     * @param timeOfDay Domain time-of-day value to look up.
+     * @return The matching study-time option.
+     */
     fun from(timeOfDay: TimeOfDay): StudyTime = entries.first { it.timeOfDay == timeOfDay }
   }
 }
@@ -47,7 +53,14 @@ enum class SessionLength(
   THREE_HOURS(180, "3 hours", Tags.SESSION_LENGTH_3_HOURS);
 
   companion object {
-    // Falls back to the default if the stored value isn't one of the options
+    /**
+     * Returns the session-length option for the given number of minutes.
+     *
+     * If the value does not match an option, returns the configured default session length.
+     *
+     * @param minutes Session length in minutes.
+     * @return The matching option or the configured default.
+     */
     fun fromMinutes(minutes: Int): SessionLength =
         entries.firstOrNull { it.minutes == minutes }
             ?: entries.first { it.minutes == PreferenceDefaults.DEFAULT_SESSION_MINUTES }
@@ -65,6 +78,14 @@ enum class BreakDuration(
   TWENTY_MIN(20, "20 minutes", Tags.BREAK_DURATION_20_MIN);
 
   companion object {
+    /**
+     * Returns the break-duration option for the given number of minutes.
+     *
+     * If the value does not match an option, returns the configured default break duration.
+     *
+     * @param minutes Break duration in minutes.
+     * @return The matching option or the configured default.
+     */
     fun fromMinutes(minutes: Int): BreakDuration =
         entries.firstOrNull { it.minutes == minutes }
             ?: entries.first { it.minutes == PreferenceDefaults.DEFAULT_BREAK_MINUTES }
@@ -81,6 +102,14 @@ enum class BreakFrequency(
   EVERY_HOUR(60, "Every hour", Tags.BREAK_FREQUENCY_1_HOUR);
 
   companion object {
+    /**
+     * Returns the break-frequency option for the given interval in minutes.
+     *
+     * If the value does not match an option, returns the configured default break frequency.
+     *
+     * @param minutes Break interval in minutes.
+     * @return The matching option or the configured default.
+     */
     fun fromMinutes(minutes: Int): BreakFrequency =
         entries.firstOrNull { it.minutes == minutes }
             ?: entries.first { it.minutes == PreferenceDefaults.DEFAULT_FREQUENCY_MINUTES }

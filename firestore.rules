@@ -1,0 +1,25 @@
+// Co-authored-by: Claude Opus 5.5
+//
+// Cloud Firestore security rules. This file is the source of truth: deploy it with
+// `firebase deploy --only firestore:rules` instead of editing rules in the console, or the next
+// deploy silently overwrites the console changes. The Firestore emulator loads it too.
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Documents keyed by the Firebase Auth uid belong to that user only.
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    match /profiles/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /preferences/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Anything not matched above is denied by default.
+  }
+}

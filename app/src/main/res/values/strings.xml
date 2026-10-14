@@ -1,4 +1,5 @@
 <!-- Co-authored-by: GitHub Copilot -->
+<!-- Co-authored-by: Claude AI Agent -->
 <resources>
     <string name="app_name">SampleApp</string>
     <string name="title_activity_main">MainActivity</string>
@@ -11,4 +12,19 @@
     <string name="sign_in_error_user_disabled">This account has been disabled.</string>
     <string name="sign_in_error_no_credential">No Google account found on this device. Add one in your device settings.</string>
     <string name="sign_in_error_unknown">Something went wrong. Please try again.</string>
+    <string name="default_username">User</string>
+    <string name="settings_error_failed_to_load_profile">Failed to load user profile.</string>
+    <string name="settings_error_failed_to_sign_out">Failed to sign out.</string>
+    <string name="profile_button_description">Open profile</string>
+    <string name="preferences_header">Complete your profile</string>
+    <string name="preferences_retry_button_on_error">Retry</string>
+    <string name="preferences_import_schedule_label">Import course schedule</string>
+    <string name="preferences_import_schedule_button">Import...</string>
+    <string name="preferences_add_study_locations_label">Add your study locations</string>
+    <string name="preferences_add_study_locations_button">Add...</string>
+    <string name="preferences_study_time_label">When do you prefer to study?</string>
+    <string name="preferences_session_length_label">How long do you want your study sessions to be?</string>"
+    <string name="preferences_break_duration_label">How much break time do you prefer?</string>
+    <string name="preferences_break_frequency_label">How often would you like to take breaks?</string>
+    <string name="preferences_save_button">Save</string>
 </resources>

@@ -1,21 +1,19 @@
 // Co-authored-by: Claude AI Agent
 package com.android.sample.ui.preferences
 
-import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performSemanticsAction
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.TimeOfDay
 import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
+import com.android.sample.ui.preferences.PreferencesScreenTestsUtils.assertSelected
+import com.android.sample.ui.preferences.PreferencesScreenTestsUtils.click
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Rule
 import org.junit.Test
@@ -54,7 +52,7 @@ class PreferencesScreenTests {
     savedCallbacks = 0
     val viewModel = PreferencesViewModel(repository, userId)
     composeTestRule.setContent {
-      PreferenceScreen(
+      PreferencesScreen(
           viewModel = viewModel,
           onImportClick = { importClicks++ },
           onAddLocationClick = { addLocationClicks++ },
@@ -67,17 +65,6 @@ class PreferencesScreenTests {
     composeTestRule.waitUntil(5_000) {
       composeTestRule.onAllNodesWithTag(Tags.PREFERENCE_SCREEN).fetchSemanticsNodes().isNotEmpty()
     }
-  }
-
-  private fun click(tag: String) {
-    composeTestRule
-        .onNodeWithTag(tag)
-        .performScrollTo()
-        .performSemanticsAction(SemanticsActions.OnClick)
-  }
-
-  private fun assertSelected(tag: String) {
-    composeTestRule.onNodeWithTag(tag).performScrollTo().assertIsSelected()
   }
 
   private fun waitForSave(repository: FakePreferencesRepository): UserPreferences {
@@ -101,11 +88,11 @@ class PreferencesScreenTests {
     waitForSuccess()
 
     composeTestRule.onNodeWithTag(Tags.PREFERENCE_TITLE).assertIsDisplayed()
-    assertSelected(Tags.STUDY_TIME_MORNING)
-    assertSelected(Tags.STUDY_TIME_AFTERNOON)
-    assertSelected(Tags.SESSION_LENGTH_1_HOUR)
-    assertSelected(Tags.BREAK_DURATION_10_MIN)
-    assertSelected(Tags.BREAK_FREQUENCY_45_MIN)
+    composeTestRule.assertSelected(Tags.STUDY_TIME_MORNING)
+    composeTestRule.assertSelected(Tags.STUDY_TIME_AFTERNOON)
+    composeTestRule.assertSelected(Tags.SESSION_LENGTH_1_HOUR)
+    composeTestRule.assertSelected(Tags.BREAK_DURATION_10_MIN)
+    composeTestRule.assertSelected(Tags.BREAK_FREQUENCY_45_MIN)
   }
 
   @Test
@@ -121,10 +108,10 @@ class PreferencesScreenTests {
     launch(FakePreferencesRepository(getResult = Result.success(stored)))
     waitForSuccess()
 
-    assertSelected(Tags.STUDY_TIME_NIGHT)
-    assertSelected(Tags.SESSION_LENGTH_3_HOURS)
-    assertSelected(Tags.BREAK_DURATION_20_MIN)
-    assertSelected(Tags.BREAK_FREQUENCY_30_MIN)
+    composeTestRule.assertSelected(Tags.STUDY_TIME_NIGHT)
+    composeTestRule.assertSelected(Tags.SESSION_LENGTH_3_HOURS)
+    composeTestRule.assertSelected(Tags.BREAK_DURATION_20_MIN)
+    composeTestRule.assertSelected(Tags.BREAK_FREQUENCY_30_MIN)
   }
 
   @Test
@@ -139,9 +126,9 @@ class PreferencesScreenTests {
     launch(FakePreferencesRepository(getResult = Result.success(stored)))
     waitForSuccess()
 
-    assertSelected(Tags.SESSION_LENGTH_1_HOUR)
-    assertSelected(Tags.BREAK_DURATION_10_MIN)
-    assertSelected(Tags.BREAK_FREQUENCY_45_MIN)
+    composeTestRule.assertSelected(Tags.SESSION_LENGTH_1_HOUR)
+    composeTestRule.assertSelected(Tags.BREAK_DURATION_10_MIN)
+    composeTestRule.assertSelected(Tags.BREAK_FREQUENCY_45_MIN)
   }
 
   @Test
@@ -188,9 +175,9 @@ class PreferencesScreenTests {
     launch(FakePreferencesRepository())
     waitForSuccess()
 
-    click(Tags.IMPORT_SCHEDULE_BUTTON)
+    composeTestRule.click(Tags.IMPORT_SCHEDULE_BUTTON)
     assert(importClicks == 1 && addLocationClicks == 0)
-    click(Tags.ADD_STUDY_LOCATION_BUTTON)
+    composeTestRule.click(Tags.ADD_STUDY_LOCATION_BUTTON)
     assert(importClicks == 1 && addLocationClicks == 1)
   }
 
@@ -213,11 +200,11 @@ class PreferencesScreenTests {
     launch(repository)
     waitForSuccess()
 
-    click(Tags.STUDY_TIME_MORNING) // deselect
-    click(Tags.STUDY_TIME_NIGHT) // select
-    click(Tags.SESSION_LENGTH_2_HOURS)
-    click(Tags.BREAK_DURATION_15_MIN)
-    click(Tags.BREAK_FREQUENCY_1_HOUR)
+    composeTestRule.click(Tags.STUDY_TIME_MORNING) // deselect
+    composeTestRule.click(Tags.STUDY_TIME_NIGHT) // select
+    composeTestRule.click(Tags.SESSION_LENGTH_2_HOURS)
+    composeTestRule.click(Tags.BREAK_DURATION_15_MIN)
+    composeTestRule.click(Tags.BREAK_FREQUENCY_1_HOUR)
     composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).performClick()
 
     val saved = waitForSave(repository)
@@ -235,8 +222,8 @@ class PreferencesScreenTests {
     launch(repository)
     waitForSuccess()
 
-    click(Tags.STUDY_TIME_EVENING)
-    click(Tags.STUDY_TIME_EVENING)
+    composeTestRule.click(Tags.STUDY_TIME_EVENING)
+    composeTestRule.click(Tags.STUDY_TIME_EVENING)
     composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).performClick()
 
     val saved = waitForSave(repository)
@@ -256,15 +243,15 @@ class PreferencesScreenTests {
     }
 
     SessionLength.entries.forEach { option ->
-      click(option.testTag)
+      composeTestRule.click(option.testTag)
       assert(saveAndGet().sessionLengthMinutes == option.minutes)
     }
     BreakDuration.entries.forEach { option ->
-      click(option.testTag)
+      composeTestRule.click(option.testTag)
       assert(saveAndGet().breakLengthMinutes == option.minutes)
     }
     BreakFrequency.entries.forEach { option ->
-      click(option.testTag)
+      composeTestRule.click(option.testTag)
       assert(saveAndGet().breakFrequencyMinutes == option.minutes)
     }
   }

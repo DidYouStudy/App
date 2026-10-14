@@ -1,3 +1,5 @@
+// Co-authored-by: Codex AI Agent
+// Co-authored-by: Claude AI Agent
 package com.android.sample
 
 import android.os.Bundle
@@ -6,13 +8,23 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navigation
+import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.resources.C
+import com.android.sample.ui.auth.SignInRoute
+import com.android.sample.ui.calendar.CalendarScreen
+import com.android.sample.ui.dashboard.DashboardScreen
+import com.android.sample.ui.groupsession.GroupSessionScreen
+import com.android.sample.ui.navigation.NavigationActions
+import com.android.sample.ui.navigation.Screen
+import com.android.sample.ui.settings.SettingsScreen
 import com.android.sample.ui.theme.SampleAppTheme
 
 class MainActivity : ComponentActivity() {
@@ -25,7 +37,7 @@ class MainActivity : ComponentActivity() {
             modifier = Modifier.fillMaxSize().semantics { testTag = C.Tag.main_screen_container },
             color = MaterialTheme.colorScheme.background,
         ) {
-          Greeting("Android")
+          DidYouStudyApp()
         }
       }
     }
@@ -33,12 +45,71 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-  Text(text = "Hello $name!", modifier = modifier.semantics { testTag = C.Tag.greeting })
-}
+fun DidYouStudyApp() {
+  val navController = rememberNavController()
+  val navigationActions = NavigationActions(navController)
+  val isSignedIn = true // TODO REMEMBER FIREBASE AUTH
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-  SampleAppTheme { Greeting("Android") }
+  val startDestination = if (isSignedIn) Screen.Dashboard.route else Screen.Auth.name
+
+  NavHost(
+      navController = navController,
+      startDestination = startDestination,
+  ) {
+    navigation(
+        startDestination = Screen.Auth.route,
+        route = Screen.Auth.name,
+    ) {
+      composable(Screen.Auth.route) {
+        SignInRoute(
+            onSignedIn = { navigationActions.navigateTo(Screen.Dashboard) },
+            getIdToken = AuthRepositoryProvider::requestGoogleIdToken,
+        )
+      }
+    }
+
+    navigation(
+        startDestination = Screen.Dashboard.route,
+        route = Screen.Dashboard.name,
+    ) {
+      composable(Screen.Dashboard.route) {
+        DashboardScreen(
+            navigationActions = navigationActions,
+        )
+      }
+    }
+
+    navigation(
+        startDestination = Screen.Calendar.route,
+        route = Screen.Calendar.name,
+    ) {
+      composable(Screen.Calendar.route) {
+        CalendarScreen(
+            navigationActions = navigationActions,
+        )
+      }
+    }
+
+    navigation(
+        startDestination = Screen.GroupSession.route,
+        route = Screen.GroupSession.name,
+    ) {
+      composable(Screen.GroupSession.route) {
+        GroupSessionScreen(
+            navigationActions = navigationActions,
+        )
+      }
+    }
+
+    navigation(
+        startDestination = Screen.Settings.route,
+        route = Screen.Settings.name,
+    ) {
+      composable(Screen.Settings.route) {
+        SettingsScreen(
+            navigationActions = navigationActions,
+        )
+      }
+    }
+  }
 }
