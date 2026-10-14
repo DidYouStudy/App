@@ -254,6 +254,34 @@ class DashboardContentTest {
   }
 
   @Test
+  fun mixedStatsShowEmDashOnlyForMissingValues() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val emptyValue = context.getString(R.string.dashboard_stat_empty_value)
+    val stats =
+        DashboardStats(
+            averageDailyStudyTime = "1h 20m",
+            totalSessions = null,
+            averageFocusDuration = "35m",
+        )
+    val tileValues =
+        listOf(
+            DashboardContentTestTags.STAT_AVERAGE_DAILY to "1h 20m",
+            DashboardContentTestTags.STAT_TOTAL_SESSIONS to emptyValue,
+            DashboardContentTestTags.STAT_AVERAGE_FOCUS to "35m",
+        )
+    composeTestRule.setContent { DashboardContent(sessions = emptyList(), stats = stats) }
+
+    tileValues.forEach { (tileTag, value) ->
+      val tile = composeTestRule.onNodeWithTag(tileTag)
+      tile.onChildren().assertCountEquals(2)
+      tile.assert(hasAnyDescendant(hasText(value, substring = false)))
+      (tileValues.map { it.second } - value).forEach { otherValue ->
+        tile.assert(hasAnyDescendant(hasText(otherValue, substring = false)).not())
+      }
+    }
+  }
+
+  @Test
   @GraphicsMode(GraphicsMode.Mode.NATIVE)
   fun sideBySideStatTilesHaveEqualHeightWhenLabelsWrap() {
     val context = ApplicationProvider.getApplicationContext<Context>()
