@@ -1,7 +1,7 @@
+// Co-authored-by: Codex AI Agent
 // Co-authored-by: Claude AI Agent
 package com.android.sample
 
-import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,14 +10,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
-import androidx.credentials.CredentialManager
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
+import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.resources.C
 import com.android.sample.ui.auth.SignInRoute
 import com.android.sample.ui.calendar.CalendarScreen
@@ -46,10 +45,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun DidYouStudyApp(
-    context: Context = LocalContext.current,
-    credentialManager: CredentialManager = CredentialManager.create(context),
-) {
+fun DidYouStudyApp() {
   val navController = rememberNavController()
   val navigationActions = NavigationActions(navController)
   val isSignedIn = true // TODO REMEMBER FIREBASE AUTH
@@ -65,7 +61,10 @@ fun DidYouStudyApp(
         route = Screen.Auth.name,
     ) {
       composable(Screen.Auth.route) {
-        SignInRoute(onSignedIn = { navigationActions.navigateTo(Screen.Dashboard) })
+        SignInRoute(
+            onSignedIn = { navigationActions.navigateTo(Screen.Dashboard) },
+            getIdToken = AuthRepositoryProvider::requestGoogleIdToken,
+        )
       }
     }
 
