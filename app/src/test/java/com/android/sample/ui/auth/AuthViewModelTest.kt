@@ -62,22 +62,22 @@ class AuthViewModelTest {
   @Test
   fun waitsForFirstSessionBeforeReportingSignedOut() =
       runTest(dispatcher) {
-        assertEquals(AuthUiState(), viewModel.uiState.value)
+        assertEquals(AuthUiState(), viewModel.authUiState.value)
         runCurrent()
-        assertTrue(viewModel.uiState.value.isInitializing)
+        assertTrue(viewModel.authUiState.value.isInitializing)
         session(null)
-        assertEquals(AuthUiState(isInitializing = false), viewModel.uiState.value)
+        assertEquals(AuthUiState(isInitializing = false), viewModel.authUiState.value)
       }
 
   @Test
   fun observesRestoredSessionAccountChangesAndExternalSignOut() =
       runTest(dispatcher) {
         session(alice)
-        assertEquals(AuthUiState(user = alice, isInitializing = false), viewModel.uiState.value)
+        assertEquals(AuthUiState(user = alice, isInitializing = false), viewModel.authUiState.value)
         session(bob)
-        assertEquals(bob, viewModel.uiState.value.user)
+        assertEquals(bob, viewModel.authUiState.value.user)
         session(null)
-        assertEquals(AuthUiState(isInitializing = false), viewModel.uiState.value)
+        assertEquals(AuthUiState(isInitializing = false), viewModel.authUiState.value)
       }
 
   @Test
@@ -92,7 +92,7 @@ class AuthViewModelTest {
         runCurrent()
         assertEquals(
             AuthUiState(isInitializing = false, error = AuthError.UNKNOWN),
-            failsAtStartup.uiState.value,
+            failsAtStartup.authUiState.value,
         )
         val failsLater =
             AuthViewModel(
@@ -108,7 +108,7 @@ class AuthViewModelTest {
         runCurrent()
         assertEquals(
             AuthUiState(user = alice, isInitializing = false, error = AuthError.UNKNOWN),
-            failsLater.uiState.value,
+            failsLater.authUiState.value,
         )
       }
 
@@ -122,7 +122,7 @@ class AuthViewModelTest {
             )
         store.put("completed", completed)
         runCurrent()
-        assertEquals(AuthUiState(user = alice, isInitializing = false), completed.uiState.value)
+        assertEquals(AuthUiState(user = alice, isInitializing = false), completed.authUiState.value)
       }
 
   @Test
@@ -132,14 +132,14 @@ class AuthViewModelTest {
         repository.publishSessions = false
         repository.signIn = { result.await() }
         viewModel.signInWithGoogle { "google-token" }
-        assertTrue(viewModel.uiState.value.isLoading)
+        assertTrue(viewModel.authUiState.value.isLoading)
         runCurrent()
         assertEquals(listOf("google-token"), repository.tokens)
         result.complete(alice)
         runCurrent()
-        assertEquals(AuthUiState(), viewModel.uiState.value)
+        assertEquals(AuthUiState(), viewModel.authUiState.value)
         session(alice)
-        assertEquals(AuthUiState(user = alice, isInitializing = false), viewModel.uiState.value)
+        assertEquals(AuthUiState(user = alice, isInitializing = false), viewModel.authUiState.value)
       }
 
   // Publishes the resolved profile after an explicit sign-in succeeds.
@@ -537,7 +537,7 @@ class AuthViewModelTest {
         runCurrent()
 
         assertEquals(ProfileUiState(), failingSessionViewModel.profileUiState.value)
-        assertEquals(AuthError.UNKNOWN, failingSessionViewModel.uiState.value.error)
+        assertEquals(AuthError.UNKNOWN, failingSessionViewModel.authUiState.value.error)
       }
 
   // Cancels an in-flight profile resolution and clears profile state when signing out.
@@ -574,14 +574,14 @@ class AuthViewModelTest {
         repository.signOutAction = { completion.await() }
         viewModel.signOut()
         runCurrent()
-        assertTrue(viewModel.uiState.value.isLoading)
-        assertEquals(alice, viewModel.uiState.value.user)
+        assertTrue(viewModel.authUiState.value.isLoading)
+        assertEquals(alice, viewModel.authUiState.value.user)
         completion.complete(Unit)
         runCurrent()
         assertEquals(1, repository.signOutCalls)
-        assertEquals(AuthUiState(user = alice, isInitializing = false), viewModel.uiState.value)
+        assertEquals(AuthUiState(user = alice, isInitializing = false), viewModel.authUiState.value)
         session(null)
-        assertEquals(AuthUiState(isInitializing = false), viewModel.uiState.value)
+        assertEquals(AuthUiState(isInitializing = false), viewModel.authUiState.value)
       }
 
   @Test
@@ -594,7 +594,7 @@ class AuthViewModelTest {
         session(bob)
         result.complete(alice)
         runCurrent()
-        assertEquals(AuthUiState(user = bob, isInitializing = false), viewModel.uiState.value)
+        assertEquals(AuthUiState(user = bob, isInitializing = false), viewModel.authUiState.value)
       }
 
   @Test
@@ -609,7 +609,7 @@ class AuthViewModelTest {
         session(bob)
         completion.complete(Unit)
         runCurrent()
-        assertEquals(AuthUiState(user = bob, isInitializing = false), viewModel.uiState.value)
+        assertEquals(AuthUiState(user = bob, isInitializing = false), viewModel.authUiState.value)
       }
 
   @Test
@@ -649,7 +649,7 @@ class AuthViewModelTest {
         assertTrue(repository.tokens.isEmpty())
         completion.complete(Unit)
         runCurrent()
-        assertFalse(viewModel.uiState.value.isLoading)
+        assertFalse(viewModel.authUiState.value.isLoading)
       }
 
   @Test
@@ -663,14 +663,14 @@ class AuthViewModelTest {
           runCurrent()
           assertEquals(
               AuthUiState(user = alice, isInitializing = false, error = error),
-              viewModel.uiState.value,
+              viewModel.authUiState.value,
           )
           repository.signOutAction = { throw AuthException(error) }
           viewModel.signOut()
           runCurrent()
           assertEquals(
               AuthUiState(user = alice, isInitializing = false, error = error),
-              viewModel.uiState.value,
+              viewModel.authUiState.value,
           )
         }
       }
@@ -681,12 +681,12 @@ class AuthViewModelTest {
         session(alice)
         viewModel.signInWithGoogle { throw AuthException(AuthError.CANCELLED) }
         runCurrent()
-        assertEquals(AuthUiState(user = alice, isInitializing = false), viewModel.uiState.value)
+        assertEquals(AuthUiState(user = alice, isInitializing = false), viewModel.authUiState.value)
         viewModel.signInWithGoogle { throw AuthException(AuthError.NO_CREDENTIAL) }
         runCurrent()
         assertEquals(
             AuthUiState(user = alice, isInitializing = false, error = AuthError.NO_CREDENTIAL),
-            viewModel.uiState.value,
+            viewModel.authUiState.value,
         )
         // The repository is never called without a token.
         assertTrue(repository.tokens.isEmpty())
@@ -698,13 +698,13 @@ class AuthViewModelTest {
         repository.signIn = { throw IllegalStateException("private diagnostic") }
         viewModel.signInWithGoogle { "token" }
         runCurrent()
-        assertEquals(AuthError.UNKNOWN, viewModel.uiState.value.error)
-        assertFalse(viewModel.uiState.value.isLoading)
+        assertEquals(AuthError.UNKNOWN, viewModel.authUiState.value.error)
+        assertFalse(viewModel.authUiState.value.isLoading)
         repository.signOutAction = { throw IllegalStateException("private diagnostic") }
         viewModel.signOut()
         runCurrent()
-        assertEquals(AuthError.UNKNOWN, viewModel.uiState.value.error)
-        assertFalse(viewModel.uiState.value.isLoading)
+        assertEquals(AuthError.UNKNOWN, viewModel.authUiState.value.error)
+        assertFalse(viewModel.authUiState.value.isLoading)
       }
 
   @Test
@@ -716,13 +716,13 @@ class AuthViewModelTest {
         val result = CompletableDeferred<UserAccount>()
         repository.signIn = { result.await() }
         viewModel.signInWithGoogle { "retry" }
-        assertNull(viewModel.uiState.value.error)
-        assertTrue(viewModel.uiState.value.isLoading)
+        assertNull(viewModel.authUiState.value.error)
+        assertTrue(viewModel.authUiState.value.isLoading)
         runCurrent()
         result.complete(alice)
         runCurrent()
         assertEquals(listOf("first", "retry"), repository.tokens)
-        assertEquals(AuthUiState(user = alice, isInitializing = false), viewModel.uiState.value)
+        assertEquals(AuthUiState(user = alice, isInitializing = false), viewModel.authUiState.value)
       }
 
   @Test
@@ -734,14 +734,14 @@ class AuthViewModelTest {
         session(alice)
         assertEquals(
             AuthUiState(user = alice, isInitializing = false, isLoading = true),
-            viewModel.uiState.value,
+            viewModel.authUiState.value,
         )
         result.completeExceptionally(AuthException(AuthError.NETWORK))
         runCurrent()
         session(bob)
         assertEquals(
             AuthUiState(user = bob, isInitializing = false, error = AuthError.NETWORK),
-            viewModel.uiState.value,
+            viewModel.authUiState.value,
         )
       }
 
@@ -753,14 +753,14 @@ class AuthViewModelTest {
         repository.signIn = { throw AuthException(AuthError.NETWORK) }
         viewModel.signInWithGoogle { "token" }
         runCurrent()
-        assertEquals(AuthError.NETWORK, viewModel.uiState.value.error)
+        assertEquals(AuthError.NETWORK, viewModel.authUiState.value.error)
         repository.signOutAction = {
           repository.currentUser.emit(null)
           throw AuthException(AuthError.CREDENTIAL_STATE_CLEAR_FAILED)
         }
         viewModel.signOut()
         runCurrent()
-        assertEquals(AuthUiState(isInitializing = false), viewModel.uiState.value)
+        assertEquals(AuthUiState(isInitializing = false), viewModel.authUiState.value)
       }
 
   @Test
@@ -770,10 +770,10 @@ class AuthViewModelTest {
         repository.signIn = { throw AuthException(AuthError.NETWORK) }
         viewModel.signInWithGoogle { "token" }
         runCurrent()
-        val expected = viewModel.uiState.value.copy(error = null)
+        val expected = viewModel.authUiState.value.copy(error = null)
         viewModel.clearError()
         viewModel.clearError()
-        assertEquals(expected, viewModel.uiState.value)
+        assertEquals(expected, viewModel.authUiState.value)
       }
 
   @Test
@@ -783,19 +783,19 @@ class AuthViewModelTest {
         val unknown = AuthUiState(user = alice, isInitializing = false, error = AuthError.UNKNOWN)
         viewModel.signInWithGoogle { throw CancellationException("picker cancelled") }
         runCurrent()
-        assertEquals(unknown, viewModel.uiState.value)
+        assertEquals(unknown, viewModel.authUiState.value)
         repository.signIn = { throw CancellationException("task cancelled") }
         viewModel.signInWithGoogle { "token" }
         runCurrent()
-        assertEquals(unknown, viewModel.uiState.value)
+        assertEquals(unknown, viewModel.authUiState.value)
         repository.signOutAction = { throw CancellationException("task cancelled") }
         viewModel.signOut()
         runCurrent()
-        assertEquals(unknown, viewModel.uiState.value)
+        assertEquals(unknown, viewModel.authUiState.value)
         repository.signIn = { bob }
         viewModel.signInWithGoogle { "retry" }
         runCurrent()
-        assertEquals(bob, viewModel.uiState.value.user)
+        assertEquals(bob, viewModel.authUiState.value.user)
       }
 
   @Test
@@ -817,8 +817,8 @@ class AuthViewModelTest {
         runCurrent()
         assertTrue(cancelled)
         assertEquals(0, repository.currentUser.subscriptionCount.value)
-        assertFalse(viewModel.uiState.value.isLoading)
-        assertNull(viewModel.uiState.value.error)
+        assertFalse(viewModel.authUiState.value.isLoading)
+        assertNull(viewModel.authUiState.value.error)
       }
 
   @Test
@@ -829,7 +829,7 @@ class AuthViewModelTest {
         val created = factory.create(AuthViewModel::class.java)
         store.put("factory", created)
         session(alice)
-        assertEquals(alice, created.uiState.value.user)
+        assertEquals(alice, created.authUiState.value.user)
         assertThrows(IllegalArgumentException::class.java) {
           factory.create(OtherViewModel::class.java)
         }

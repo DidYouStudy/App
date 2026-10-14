@@ -61,7 +61,7 @@ class AuthViewModelFactoryTest {
     val user = UserAccount("test-user", null, null, null)
     repository.currentUser.value = user
     composeTestRule.waitForIdle()
-    assertEquals(user, received.first().uiState.value.user)
+    assertEquals(user, received.first().authUiState.value.user)
   }
 
   private class OtherViewModel : ViewModel()

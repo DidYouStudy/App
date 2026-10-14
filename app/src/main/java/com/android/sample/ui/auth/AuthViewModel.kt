@@ -65,14 +65,14 @@ class AuthViewModel(
     private val repository: AuthRepository,
     private val profileResolutionCoordinator: ProfileResolutionCoordinator,
 ) : ViewModel() {
-  private val mutableUiState = MutableStateFlow(AuthUiState())
+  private val mutableAuthUiState = MutableStateFlow(AuthUiState())
   private val mutableProfileUiState = MutableStateFlow(ProfileUiState())
   private var activeProfileResolutionJob: Job? = null
   private var activeProfileResolutionUserId: String? = null
   private var pendingProfileUser: UserAccount? = null
 
   /** Read-only state for lifecycle-aware collection by the authentication screen. */
-  val uiState: StateFlow<AuthUiState> = mutableUiState.asStateFlow()
+  val authUiState: StateFlow<AuthUiState> = mutableAuthUiState.asStateFlow()
 
   /** Read-only state for profile resolution after an explicit sign-in. */
   val profileUiState: StateFlow<ProfileUiState> = mutableProfileUiState.asStateFlow()
@@ -81,7 +81,7 @@ class AuthViewModel(
     viewModelScope.launch {
       try {
         repository.currentUser.collect { user ->
-          val previousUser = mutableUiState.value.user
+          val previousUser = mutableAuthUiState.value.user
           var pendingUserToResolve: UserAccount? = null
           when {
             // Case 1: A null session invalidates an active lookup; repeated null emissions need no
@@ -100,7 +100,7 @@ class AuthViewModel(
               invalidateProfileResolution()
             }
           }
-          mutableUiState.update { it.copy(user = user, isInitializing = false) }
+          mutableAuthUiState.update { it.copy(user = user, isInitializing = false) }
           pendingUserToResolve?.let { startProfileResolution(it) }
         }
       } catch (exception: CancellationException) {
@@ -109,7 +109,7 @@ class AuthViewModel(
         invalidateProfileResolution()
         // The session flow broke: end startup so the screen is not stuck, keep the last known
         // user, and report it rather than crashing the app.
-        mutableUiState.update { it.copy(isInitializing = false, error = AuthError.UNKNOWN) }
+        mutableAuthUiState.update { it.copy(isInitializing = false, error = AuthError.UNKNOWN) }
       }
     }
   }
@@ -134,7 +134,7 @@ class AuthViewModel(
    */
   @MainThread
   fun signOut() {
-    if (mutableUiState.value.isLoading) return
+    if (mutableAuthUiState.value.isLoading) return
     invalidateProfileResolution()
     runOperation(operation = { repository.signOut() })
   }
@@ -142,7 +142,7 @@ class AuthViewModel(
   /** Dismisses an error after the screen has displayed it, without changing the current session. */
   @MainThread
   fun clearError() {
-    mutableUiState.update { it.copy(error = null) }
+    mutableAuthUiState.update { it.copy(error = null) }
   }
 
   /**
@@ -155,8 +155,8 @@ class AuthViewModel(
       onFailure: () -> Unit = {},
   ) {
     // Ignore another sign-in/sign-out tap while the current request is still running.
-    if (mutableUiState.value.isLoading) return
-    mutableUiState.update { it.copy(isLoading = true, error = null) }
+    if (mutableAuthUiState.value.isLoading) return
+    mutableAuthUiState.update { it.copy(isLoading = true, error = null) }
     viewModelScope.launch {
       try {
         val signedInUser = operation()
@@ -168,7 +168,7 @@ class AuthViewModel(
           ) {
             return@launch
           }
-          when (mutableUiState.value.user?.uid) {
+          when (mutableAuthUiState.value.user?.uid) {
             null -> {
               // Defer lookup until currentUser confirms the newly signed-in session.
               invalidateProfileResolution()
@@ -191,12 +191,12 @@ class AuthViewModel(
         // operation-level cancellation as an error.
         currentCoroutineContext().ensureActive()
         onFailure()
-        mutableUiState.update { it.copy(error = AuthError.UNKNOWN) }
+        mutableAuthUiState.update { it.copy(error = AuthError.UNKNOWN) }
       } catch (exception: Exception) {
         val error = (exception as? AuthException)?.error ?: AuthError.UNKNOWN
-        if (error !in silentErrors) mutableUiState.update { it.copy(error = error) }
+        if (error !in silentErrors) mutableAuthUiState.update { it.copy(error = error) }
       } finally {
-        mutableUiState.update { it.copy(isLoading = false) }
+        mutableAuthUiState.update { it.copy(isLoading = false) }
       }
     }
   }
@@ -228,7 +228,7 @@ class AuthViewModel(
             // navigation
             if (
                 activeProfileResolutionJob !== resolutionJob ||
-                    mutableUiState.value.user?.uid != user.uid
+                    mutableAuthUiState.value.user?.uid != user.uid
             ) {
               // Ignore stale results; if this job is still active, clear its loading state and
               // data.
