@@ -208,15 +208,21 @@ class AuthViewModel(
       } catch (exception: CancellationException) {
         currentCoroutineContext().ensureActive()
         if (profileResolutionToken === token) {
-          mutableProfileUiState.update { ProfileUiState(error = ProfileError.CANCELLED) }
+          mutableProfileUiState.update {
+            ProfileUiState(error = ProfileError.CANCELLED, isLoading = false)
+          }
         }
       } catch (exception: ProfileException) {
         if (profileResolutionToken === token) {
-          mutableProfileUiState.update { ProfileUiState(error = exception.error) }
+          mutableProfileUiState.update {
+            ProfileUiState(error = exception.error, isLoading = false)
+          }
         }
       } catch (exception: Exception) {
         if (profileResolutionToken === token) {
-          mutableProfileUiState.update { ProfileUiState(error = ProfileError.UNKNOWN) }
+          mutableProfileUiState.update {
+            ProfileUiState(error = ProfileError.UNKNOWN, isLoading = false)
+          }
         }
       }
     }
