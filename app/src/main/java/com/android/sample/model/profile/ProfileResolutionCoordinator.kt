@@ -18,8 +18,8 @@ class ProfileResolutionCoordinator(private val repository: ProfileRepository) {
    * Returns the existing profile or creates one when the user has no profile yet.
    *
    * Profile creation is attempted only after a successful lookup that returns `null`. Repository
-   * failures are returned unchanged, ordinary implementation exceptions become failed results, and
-   * coroutine cancellation is propagated.
+   * failures are returned unchanged, directly thrown profile exceptions and coroutine cancellation
+   * are propagated, and other implementation exceptions become failed results.
    *
    * @param user authenticated account whose UID identifies the profile document.
    * @return a successful result containing the existing or newly created profile, or the original
@@ -58,7 +58,7 @@ class ProfileResolutionCoordinator(private val repository: ProfileRepository) {
     } catch (exception: CancellationException) {
       throw exception
     } catch (exception: ProfileException) {
-      Result.failure(exception)
+      throw exception
     } catch (exception: Exception) {
       Result.failure(ProfileException(ProfileError.UNKNOWN, exception))
     }
