@@ -21,7 +21,7 @@ class UserPreferencesTest {
 
   @Test
   fun customUserPreferences_storesCorrectValues() {
-    val times = setOf(TimeOfDay.EVENING, TimeOfDay.NIGHT)
+    val times = listOf(TimeOfDay.EVENING, TimeOfDay.NIGHT)
     val locations = listOf("Library", "Home")
     val preferences =
         UserPreferences(
