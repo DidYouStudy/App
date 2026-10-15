@@ -1,3 +1,4 @@
+# Co-authored-by: OpenAI Codex
 /.idea/
 .DS_Store
 .gradle
@@ -9,6 +10,11 @@
 local.properties
 # Firebase config, injected in CI from the GOOGLE_SERVICES_JSON secret
 app/google-services.json
+
+# Signing keys stay local and must never be committed.
+.local/
+app/private-debug.keystore
+app/debug.keystore
 
 # Firebase CLI and emulator output
 .firebase/

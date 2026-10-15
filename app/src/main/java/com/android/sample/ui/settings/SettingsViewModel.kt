@@ -1,10 +1,16 @@
 // Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.settings
 
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
+import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.profile.ProfileRepository
+import com.android.sample.model.profile.ProfileRepositoryProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -102,3 +108,34 @@ class SettingsViewModel(
     const val FAILED_TO_SIGN_OUT_ERROR = "Failed to sign out"
   }
 }
+
+/** Supplies an injected repository when Android creates the settings ViewModel. */
+class SettingsViewModelFactory(
+    private val authRepository: AuthRepository,
+    private val profileRepository: ProfileRepository,
+) : ViewModelProvider.Factory {
+  /**
+   * Creates a SettingsViewModel and rejects unrelated ViewModel types rather than casting blindly.
+   */
+  override fun <T : ViewModel> create(modelClass: Class<T>): T {
+    require(modelClass == SettingsViewModel::class.java) {
+      "Unsupported ViewModel: ${modelClass.name}"
+    }
+    @Suppress("UNCHECKED_CAST")
+    return SettingsViewModel(authRepository, profileRepository) as T
+  }
+}
+
+/**
+ * Returns the [SettingsViewModel] of the current ViewModel owner (Activity or navigation entry),
+ * backed by the app's shared repository. The SettingsScreen uses this as their default.
+ */
+@Composable
+fun settingsViewModel(): SettingsViewModel =
+    viewModel(
+        factory =
+            SettingsViewModelFactory(
+                authRepository = AuthRepositoryProvider.getRepository(LocalContext.current),
+                profileRepository = ProfileRepositoryProvider.getRepository(),
+            )
+    )

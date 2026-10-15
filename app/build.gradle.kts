@@ -27,10 +27,10 @@ android {
   }
 
   signingConfigs {
-    // Shared debug key, committed so every teammate and CI build has the SHA-1 registered in
-    // Firebase for Google sign-in. Debug only: never use this key for release builds.
+    // All debug builds use the shared private team key, supplied locally or through CI secrets.
+    // This key must never sign a release build.
     getByName("debug") {
-      storeFile = file("debug.keystore")
+      storeFile = file("private-debug.keystore")
       storePassword = "android"
       keyAlias = "androiddebugkey"
       keyPassword = "android"
@@ -181,6 +181,11 @@ dependencies {
   implementation(libs.androidx.credentials)
   implementation(libs.androidx.credentials.play.services.auth)
   implementation(libs.googleid)
+
+  // Coil3 library which handles image loading through URL's ---- currently are untrusted artifacts
+  // but they will be needed for future implementations
+  //  implementation(libs.coil.compose)
+  //  implementation(libs.coil.network.okhttp)
 }
 
 tasks.withType<Test> {
