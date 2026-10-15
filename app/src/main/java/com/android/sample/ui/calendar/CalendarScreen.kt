@@ -45,7 +45,9 @@ fun CalendarScreen(
             modifier = Modifier.testTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU),
         )
       },
-      content = { pd -> Text("Calendar screen", modifier = Modifier.padding(pd)) },
+      content = { pd ->
+        Text("Calendar screen (Not implemented)", modifier = Modifier.padding(pd))
+      },
   )
 }
 
