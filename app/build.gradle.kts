@@ -187,6 +187,11 @@ dependencies {
   implementation(libs.androidx.credentials)
   implementation(libs.androidx.credentials.play.services.auth)
   implementation(libs.googleid)
+
+  // Coil3 library which handles image loading through URL's ---- currently are untrusted artifacts
+  // but they will be needed for future implementations
+  //  implementation(libs.coil.compose)
+  //  implementation(libs.coil.network.okhttp)
 }
 
 tasks.withType<Test> {

@@ -131,7 +131,11 @@ fun DidYouStudyApp() {
     ) {
       composable(Screen.Settings.route) {
         SettingsScreen(
-            navigationActions = navigationActions,
+            onBackClick = navigationActions::goBack,
+            onEditUsernameClick = { /* TODO */ },
+            onChangeProfilePictureClick = { /* TODO */ },
+            onModifyPreferencesClick = { /* TODO */ },
+            onManageFriendsClick = { /* TODO */ },
         )
       }
     }
