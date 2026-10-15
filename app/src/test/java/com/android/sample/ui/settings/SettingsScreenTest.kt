@@ -33,7 +33,7 @@ class SettingsScreenTest {
   @Test
   fun backButtonGoesBack() {
     val navigationActions = mock<NavigationActions>()
-    composeTestRule.setContent { SettingsScreen(navigationActions = navigationActions) }
+    composeTestRule.setContent { SettingsScreen() }
 
     composeTestRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).performClick()
 
