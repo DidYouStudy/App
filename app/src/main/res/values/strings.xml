@@ -4,7 +4,7 @@
 <resources>
     <string name="app_name">DidYouStudy</string>
     <string name="sign_in_title">Ready to study?</string>
-    <string name="sign_in_google_button">Authenticate With Google</string>
+    <string name="sign_in_google_button">Sign in with Google</string>
     <string name="sign_in_logo_description">DidYouStudy? logo</string>
     <string name="sign_in_error_network">No internet connection. Check your network and try again.</string>
     <string name="sign_in_error_invalid_credential">Google sign-in failed. Please try again.</string>

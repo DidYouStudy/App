@@ -20,4 +20,14 @@ object Dimens {
   val cornerLarge = 16.dp
   val sessionTimeColumnWidth = 72.dp
   val fabClearance = 88.dp
+  val signInLogoSize = 281.dp
+  val signInTopSpacing = 88.dp
+  val signInLogoToTitleSpacing = 24.dp
+  val signInTitleToButtonSpacing = 172.dp
+  val signInLoadingIndicatorSize = 24.dp
+  val signInErrorHorizontalPadding = 24.dp
+  val googleButtonWidth = 250.dp
+  val googleButtonHeight = 40.dp
+  val googleButtonHorizontalPadding = 12.dp
+  val googleLogoSize = 20.dp
 }

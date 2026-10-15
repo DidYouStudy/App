@@ -5,10 +5,9 @@ package com.android.sample.ui.auth
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -17,15 +16,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
@@ -33,21 +33,26 @@ import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.sample.R
 import com.android.sample.ui.theme.DidYouStudyTheme
-import com.android.sample.ui.theme.DysOrange
+import com.android.sample.ui.theme.Dimens
+import com.android.sample.ui.theme.GoogleButtonBorder
+import com.android.sample.ui.theme.GoogleButtonText
+import com.android.sample.ui.theme.Spacing
 
+/** Test tags for the sign-in screen, shared by the UI and its tests. */
 object SignInScreenTestTags {
   const val SCREEN = "signIn_screen"
   const val APP_LOGO = "signIn_appLogo"
   const val TITLE = "signIn_title"
   const val GOOGLE_BUTTON = "signIn_googleButton"
+  const val GOOGLE_LOGO = "signIn_googleLogo"
   const val LOADING = "signIn_loading"
   const val ERROR = "signIn_error"
 }
 
+/** Displays sign-in branding and the Google sign-in action with loading and error feedback. */
 @Composable
 fun SignInScreen(
     isLoading: Boolean,
@@ -55,6 +60,7 @@ fun SignInScreen(
     onSignInClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+  // The opaque logo requires a white screen and black title until a transparent asset exists.
   Column(
       modifier =
           modifier
@@ -65,24 +71,22 @@ fun SignInScreen(
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.Top,
   ) {
-    Spacer(modifier = Modifier.height(84.dp))
+    Spacer(modifier = Modifier.height(Dimens.signInTopSpacing))
 
-    Box(
+    // The unframed app logo provides the screen's visual identity.
+    Image(
+        painter = painterResource(R.drawable.app_logo),
+        contentDescription = stringResource(R.string.sign_in_logo_description),
+        contentScale = ContentScale.Fit,
         modifier =
-            Modifier.size(189.dp)
-                .border(2.dp, Color.Black, RoundedCornerShape(10.dp))
-                .background(Color.White, RoundedCornerShape(10.dp))
-                .semantics { this.testTag = SignInScreenTestTags.APP_LOGO },
-    ) {
-      Image(
-          painter = painterResource(R.drawable.ic_launcher_foreground),
-          contentDescription = stringResource(R.string.sign_in_logo_description),
-          modifier = Modifier.align(Alignment.Center).size(150.dp),
-      )
-    }
+            Modifier.size(Dimens.signInLogoSize).semantics {
+              this.testTag = SignInScreenTestTags.APP_LOGO
+            },
+    )
 
-    Spacer(modifier = Modifier.height(64.dp))
+    Spacer(modifier = Modifier.height(Dimens.signInLogoToTitleSpacing))
 
+    // The bold black title introduces the sign-in action.
     Text(
         text = stringResource(R.string.sign_in_title),
         fontSize = 36.sp,
@@ -92,48 +96,72 @@ fun SignInScreen(
         modifier = Modifier.semantics { this.testTag = SignInScreenTestTags.TITLE },
     )
 
-    Spacer(modifier = Modifier.height(74.dp))
+    Spacer(modifier = Modifier.height(Dimens.signInTitleToButtonSpacing))
 
-    OutlinedButton(
+    // The Google-branded button stays visible but dims its contents while loading.
+    Surface(
         onClick = onSignInClick,
         enabled = !isLoading,
-        shape = RoundedCornerShape(10.dp),
-        border = BorderStroke(2.dp, DysOrange),
-        colors =
-            ButtonDefaults.outlinedButtonColors(
-                containerColor = Color.White,
-                contentColor = DysOrange,
-                disabledContainerColor = Color.White,
-                disabledContentColor = DysOrange.copy(alpha = 0.6f),
-            ),
+        shape = RoundedCornerShape(50),
+        color = Color.White,
+        contentColor = GoogleButtonText,
+        border = BorderStroke(Dimens.borderThin, GoogleButtonBorder),
         modifier =
-            Modifier.size(width = 236.dp, height = 52.dp).semantics {
-              this.testTag = SignInScreenTestTags.GOOGLE_BUTTON
-            },
+            Modifier.size(
+                    width = Dimens.googleButtonWidth,
+                    height = Dimens.googleButtonHeight,
+                )
+                .semantics { this.testTag = SignInScreenTestTags.GOOGLE_BUTTON },
     ) {
-      Text(
-          text = stringResource(R.string.sign_in_google_button),
-          fontSize = 15.sp,
-          fontWeight = FontWeight.Medium,
-      )
+      val contentAlpha = if (isLoading) 0.38f else 1f
+      Row(
+          modifier =
+              Modifier.fillMaxSize().padding(horizontal = Dimens.googleButtonHorizontalPadding),
+          verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Image(
+            painter = painterResource(R.drawable.ic_google_logo),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier =
+                Modifier.padding(end = Spacing.small)
+                    .size(Dimens.googleLogoSize)
+                    .alpha(contentAlpha)
+                    .semantics { this.testTag = SignInScreenTestTags.GOOGLE_LOGO },
+        )
+        Text(
+            text = stringResource(R.string.sign_in_google_button),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            letterSpacing = 0.25.sp,
+            color = GoogleButtonText,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.weight(1f).alpha(contentAlpha),
+        )
+      }
     }
 
+    // The themed progress indicator communicates the in-flight sign-in state.
     if (isLoading) {
-      Spacer(modifier = Modifier.height(12.dp))
+      Spacer(modifier = Modifier.height(Spacing.medium))
       CircularProgressIndicator(
-          color = DysOrange,
-          modifier = Modifier.size(24.dp).semantics { this.testTag = SignInScreenTestTags.LOADING },
+          color = MaterialTheme.colorScheme.primary,
+          modifier =
+              Modifier.size(Dimens.signInLoadingIndicatorSize).semantics {
+                this.testTag = SignInScreenTestTags.LOADING
+              },
       )
     }
 
+    // The supplied error message remains visible below the sign-in action.
     if (errorMessage != null) {
-      Spacer(modifier = Modifier.height(8.dp))
+      Spacer(modifier = Modifier.height(Spacing.small))
       Text(
           text = errorMessage,
           color = MaterialTheme.colorScheme.error,
           textAlign = TextAlign.Center,
           modifier =
-              Modifier.padding(horizontal = 24.dp).semantics {
+              Modifier.padding(horizontal = Dimens.signInErrorHorizontalPadding).semantics {
                 this.testTag = SignInScreenTestTags.ERROR
               },
       )
@@ -141,21 +169,24 @@ fun SignInScreen(
   }
 }
 
+/** Previews the sign-in screen before any action. */
 @Preview(showBackground = true)
 @Composable
-internal fun SignInScreenIdlePreview() {
+private fun SignInScreenIdlePreview() {
   DidYouStudyTheme { SignInScreen(isLoading = false, errorMessage = null, onSignInClick = {}) }
 }
 
+/** Previews the sign-in screen while authentication is loading. */
 @Preview(showBackground = true)
 @Composable
-internal fun SignInScreenLoadingPreview() {
+private fun SignInScreenLoadingPreview() {
   DidYouStudyTheme { SignInScreen(isLoading = true, errorMessage = null, onSignInClick = {}) }
 }
 
+/** Previews the sign-in screen with an authentication error. */
 @Preview(showBackground = true)
 @Composable
-internal fun SignInScreenErrorPreview() {
+private fun SignInScreenErrorPreview() {
   DidYouStudyTheme {
     SignInScreen(isLoading = false, errorMessage = "Something went wrong", onSignInClick = {})
   }
