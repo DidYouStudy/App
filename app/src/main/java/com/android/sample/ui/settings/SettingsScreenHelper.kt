@@ -170,11 +170,21 @@ internal fun ProfileCard(
             onClick = onEditUsernameClick,
             testTag = SettingsScreenTestTags.EDIT_USERNAME_BUTTON,
         )
+        Text(
+            text = "(Not implemented)",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         // Opens the flow for choosing a profile picture.
         SmallEditButton(
             text = stringResource(R.string.settings_change_profile_picture),
             onClick = onChangeProfilePictureClick,
             testTag = SettingsScreenTestTags.CHANGE_PROFILE_PICTURE_BUTTON,
+        )
+        Text(
+            text = "(Not implemented)",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
       }
     }

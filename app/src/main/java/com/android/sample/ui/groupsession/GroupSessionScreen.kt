@@ -45,7 +45,9 @@ fun GroupSessionScreen(
             modifier = Modifier.testTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU),
         )
       },
-      content = { pd -> Text("Group sessions screen", modifier = Modifier.padding(pd)) },
+      content = { pd ->
+        Text("Group sessions screen (Not implemented)", modifier = Modifier.padding(pd))
+      },
   )
 }
 

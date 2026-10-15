@@ -122,6 +122,11 @@ private fun DashboardDayCard(sessions: List<DashboardSession>, modifier: Modifie
           textAlign = TextAlign.Center,
           modifier = Modifier.fillMaxWidth().testTag(DashboardContentTestTags.EMPTY_DAY),
       )
+      Text(
+          text = "(Not implemented)",
+          style = MaterialTheme.typography.labelSmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
     } else {
       // One outlined row per session, in the order received.
       Column(verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
@@ -248,6 +253,11 @@ private fun DashboardStatsCard(stats: DashboardStats, modifier: Modifier = Modif
         fontSize = 14.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.testTag(DashboardContentTestTags.STATS_HINT),
+    )
+    Text(
+        text = "(Not implemented)",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
   }
 }
