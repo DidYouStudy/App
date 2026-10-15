@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -143,6 +144,11 @@ fun SettingsScreenStateless(
           onClick = onModifyPreferencesClick,
           testTag = SettingsScreenTestTags.PREFERENCES_BUTTON,
       )
+      Text(
+          text = "(Not implemented)",
+          style = MaterialTheme.typography.labelSmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
 
       Spacer(Modifier.height(16.dp))
 
@@ -152,6 +158,11 @@ fun SettingsScreenStateless(
           text = stringResource(R.string.settings_friends_button),
           onClick = onManageFriendsClick,
           testTag = SettingsScreenTestTags.FRIENDS_BUTTON,
+      )
+      Text(
+          text = "(Not implemented)",
+          style = MaterialTheme.typography.labelSmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
 
       // Pushes the logout button to the bottom
