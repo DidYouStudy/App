@@ -4,11 +4,17 @@ package com.android.sample.ui.auth
 
 import android.content.Context
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -64,6 +70,58 @@ class SignInScreenTest {
     composeTestRule.onNodeWithTag(SignInScreenTestTags.GOOGLE_BUTTON).performClick()
     org.junit.Assert.assertEquals(2, callbackCount)
     composeTestRule.onNodeWithTag(SignInScreenTestTags.LOADING).assertDoesNotExist()
+  }
+
+  /** The Google mark is shown inside the button without a redundant description. */
+  @Test
+  fun googleLogoIsDisplayedInsideButtonWithoutContentDescription() {
+    composeTestRule.setContent {
+      SignInScreen(isLoading = false, errorMessage = null, onSignInClick = {})
+    }
+
+    composeTestRule
+        .onNodeWithTag(SignInScreenTestTags.GOOGLE_BUTTON, useUnmergedTree = true)
+        .assert(hasAnyDescendant(hasTestTag(SignInScreenTestTags.GOOGLE_LOGO)))
+    composeTestRule
+        .onNodeWithTag(SignInScreenTestTags.GOOGLE_LOGO, useUnmergedTree = true)
+        .assertIsDisplayed()
+        .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
+  }
+
+  /** The idle Google button exposes its localized label and click action. */
+  @Test
+  fun idleGoogleButtonHasLocalizedLabelAndClickAction() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    composeTestRule.setContent {
+      SignInScreen(isLoading = false, errorMessage = null, onSignInClick = {})
+    }
+
+    composeTestRule
+        .onNodeWithTag(SignInScreenTestTags.GOOGLE_BUTTON)
+        .assertTextEquals(context.getString(R.string.sign_in_google_button))
+        .assert(hasClickAction())
+  }
+
+  /** Loading disables the Google action but keeps its brand mark visible. */
+  @Test
+  fun loadingGoogleButtonIsDisabledAndKeepsLogoDisplayed() {
+    var callbackCount = 0
+    composeTestRule.setContent {
+      SignInScreen(
+          isLoading = true,
+          errorMessage = null,
+          onSignInClick = { callbackCount++ },
+      )
+    }
+
+    composeTestRule
+        .onNodeWithTag(SignInScreenTestTags.GOOGLE_BUTTON)
+        .assertIsNotEnabled()
+        .performClick()
+    org.junit.Assert.assertEquals(0, callbackCount)
+    composeTestRule
+        .onNodeWithTag(SignInScreenTestTags.GOOGLE_LOGO, useUnmergedTree = true)
+        .assertIsDisplayed()
   }
 
   @Test
