@@ -43,14 +43,20 @@ class MainActivity : ComponentActivity() {
   }
 }
 
+/**
+ * Root composable holding the app's navigation graph.
+ *
+ * @param startDestination name of the nested graph to start on. Defaults to the authentication
+ *   graph; instrumented navigation tests override it to skip Google sign-in.
+ */
 @Composable
-fun DidYouStudyApp() {
+fun DidYouStudyApp(startDestination: String = Screen.Auth.name) {
   val navController = rememberNavController()
   val navigationActions = NavigationActions(navController)
   val applicationViewModel = appViewModel()
   NavHost(
       navController = navController,
-      startDestination = Screen.Auth.name,
+      startDestination = startDestination,
   ) {
     navigation(
         startDestination = Screen.Auth.route,

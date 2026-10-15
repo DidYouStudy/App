@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import com.android.sample.DidYouStudyApp
 import com.android.sample.ui.navigation.NavigationTestTags
+import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.profile.ProfileButtonTestTags
 import junit.framework.TestCase.assertEquals
 import org.junit.Assert.assertFalse
@@ -62,7 +63,8 @@ class NavigationTests {
 
   @Before
   fun setUp() {
-    composeTestRule.setContent { DidYouStudyApp() }
+    // Start past the Google sign-in gate, which cannot be completed in an instrumented test
+    composeTestRule.setContent { DidYouStudyApp(startDestination = Screen.Dashboard.name) }
   }
 
   @Test
