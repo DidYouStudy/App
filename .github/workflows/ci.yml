@@ -47,6 +47,12 @@ jobs:
           distribution: "temurin"
           java-version: "17" # Match gradle/gradle-daemon-jvm.properties.
 
+      # Keep the legacy key until the optional migration secret is configured.
+      - name: Restore optional private debug key
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+        run: bash scripts/restore-debug-keystore.sh app/private-debug.keystore
+
       # Caching is a very useful part of a CI, as a workflow is executed in a clean environment every time,
       # this means that one would need to re-download and re-process gradle files for every run. Which is very time consuming.
       #
@@ -82,6 +88,9 @@ jobs:
       - name: Grant execute permission for gradlew
         run: |
           chmod +x ./gradlew
+
+      - name: Test debug key restoration
+        run: python3 -B -m unittest discover -s scripts/tests -p 'test_*.py'
 
       # Configure Gradle once for formatting, debug assembly, lint, and unit tests.
       - name: Check formatting, build debug, and verify
@@ -173,6 +182,12 @@ jobs:
         with:
           path: ~/.cache/firebase/emulators
           key: firebase-emulators-15.31.0
+
+      # Keep the legacy key until the optional migration secret is configured.
+      - name: Restore optional private debug key
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+        run: bash scripts/restore-debug-keystore.sh app/private-debug.keystore
 
       - name: Gradle cache
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6

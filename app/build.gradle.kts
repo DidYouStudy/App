@@ -27,10 +27,10 @@ android {
   }
 
   signingConfigs {
-    // Shared debug key, committed so every teammate and CI build has the SHA-1 registered in
-    // Firebase for Google sign-in. Debug only: never use this key for release builds.
+    // Opt in to the private team key when installed; retain the shared key during migration.
+    // Both keys are for debug builds only and must never sign a release build.
     getByName("debug") {
-      storeFile = file("debug.keystore")
+      storeFile = file("private-debug.keystore").takeIf { it.isFile } ?: file("debug.keystore")
       storePassword = "android"
       keyAlias = "androiddebugkey"
       keyPassword = "android"

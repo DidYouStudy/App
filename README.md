@@ -1,3 +1,4 @@
+<!-- Co-authored-by: OpenAI Codex -->
 # App description
 
 ## Building locally
@@ -45,6 +46,56 @@ firebase deploy --only firestore:rules --project <project-id>
 where `<project-id>` is the `project_id` in `google-services.json`.
 `firebase emulators:start` runs the Auth and Firestore emulators configured in
 `firebase.json`, and the Firestore emulator enforces the same rules.
+
+### Optional private debug key migration
+
+The existing shared key stays active unless `app/private-debug.keystore` is installed.
+This preparation does not require teammates to change their setup. Never use either
+debug key for release signing. The legacy key is still public in Git history.
+
+The maintainer generates one replacement key, keeps a backup in the restricted team
+vault, and adds its SHA-1 and SHA-256 fingerprints to Firebase for `com.android.sample`
+**alongside the existing fingerprint**. Download the updated `google-services.json`
+and update the existing `GOOGLE_SERVICES_JSON` Actions secret with its Base64 contents.
+Keep the Google provider enabled. Do not remove the old fingerprint during ongoing tests.
+
+For CI, add a repository Actions secret named `DEBUG_KEYSTORE_BASE64` containing the
+Base64-encoded replacement keystore. The restoration script validates the alias
+`androiddebugkey` and password `android`, writes the key with owner-only permissions,
+and fails on malformed input. An absent secret preserves legacy signing. Base64 is
+encoding, not encryption; never paste its contents into a PR, chat, or build logs.
+The private key is not uploaded as an artifact or included in the configured caches.
+
+On macOS, copy the replacement key into the clipboard for the GitHub secret field:
+
+```bash
+base64 -i .local/signing/didyoustudy-debug-v2.keystore | tr -d '\n' | pbcopy
+```
+
+Copy the updated config separately for `GOOGLE_SERVICES_JSON` (use the downloaded file):
+
+```bash
+base64 -i /path/to/updated/google-services.json | tr -d '\n' | pbcopy
+```
+
+After end-to-end tests finish, announce the switch. The maintainer shares the V2 key
+and updated JSON as attachments in the private team WhatsApp group, retaining a
+restricted backup. Teammates first pull this change, save the V2 key as
+`app/private-debug.keystore`, and place the JSON at `app/google-services.json`.
+Both files are ignored by Git. Share the config while both fingerprints remain
+registered; adding a fingerprint does not invalidate existing config copies.
+Check `./gradlew :app:signingReport`, then test Google sign-in on a device with Google
+Play services and on a CI-built APK. A certificate change normally requires uninstalling
+the old debug app first, which erases its local data. Teammates who have not opted in
+can keep using the old key while its fingerprint remains registered.
+
+After teammates and CI switch and confirm Google sign-in works, remove the old
+fingerprints in Firebase and verify the corresponding Android OAuth client is gone.
+Old config copies cannot preserve sign-in access for a retired certificate. A fresh
+config snapshot after certificate cleanup is optional; a stale old Android OAuth entry
+does not prevent use of the new registered certificate. Remove the tracked legacy
+key in a follow-up change. Until then, this is a migration path, not completed
+key revocation.
 
 ## App name
 DidYouStudy
