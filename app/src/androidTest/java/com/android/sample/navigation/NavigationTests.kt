@@ -9,9 +9,17 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import com.android.sample.DidYouStudyApp
+import com.android.sample.model.auth.AuthRepository
+import com.android.sample.model.auth.AuthRepositoryProvider
+import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.preferences.PreferencesRepository
+import com.android.sample.model.preferences.PreferencesRepositoryProvider
+import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.profile.ProfileButtonTestTags
 import junit.framework.TestCase.assertEquals
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Rule
@@ -22,6 +30,31 @@ import org.junit.Test
 // TODO state management tests for the new screens
 class NavigationTests {
   @get:Rule val composeTestRule = createAndroidComposeRule<ComponentActivity>()
+
+  @Before
+  fun setUp() {
+    installFakeRepositories()
+    composeTestRule.setContent { DidYouStudyApp() }
+  }
+
+  private fun installFakeRepositories() {
+    val user = UserAccount("navigation-test-user", null, null, null)
+    setProviderInstance(
+        AuthRepositoryProvider,
+        FakeAuthRepository(user),
+    )
+    setProviderInstance(
+        PreferencesRepositoryProvider,
+        FakePreferencesRepository(UserPreferences(userId = user.uid)),
+    )
+  }
+
+  private fun setProviderInstance(provider: Any, repository: Any) {
+    provider.javaClass.getDeclaredField("instance").apply {
+      isAccessible = true
+      set(provider, repository)
+    }
+  }
 
   private fun checkDashboardScreenIsDisplayed() {
     composeTestRule
@@ -60,11 +93,6 @@ class NavigationTests {
     assertEquals(shouldFinish, composeTestRule.activity.isFinishing)
   }
 
-  @Before
-  fun setUp() {
-    composeTestRule.setContent { DidYouStudyApp() }
-  }
-
   @Test
   fun testTagsAreCorrectlySet() {
     composeTestRule.onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE).assertIsDisplayed()
@@ -72,6 +100,24 @@ class NavigationTests {
     composeTestRule.onNodeWithTag(NavigationTestTags.DASHBOARD_TAB).assertIsDisplayed()
     composeTestRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).assertIsDisplayed()
     composeTestRule.onNodeWithTag(NavigationTestTags.GROUP_SESSION_TAB).assertIsDisplayed()
+  }
+
+  private class FakeAuthRepository(private val user: UserAccount) : AuthRepository {
+    override val currentUser: StateFlow<UserAccount?> = MutableStateFlow(user)
+
+    override suspend fun signInWithGoogle(idToken: String): UserAccount = user
+
+    override suspend fun signOut() = Unit
+  }
+
+  private class FakePreferencesRepository(
+      private val preferences: UserPreferences,
+  ) : PreferencesRepository {
+    override suspend fun getPreferences(userId: String): Result<UserPreferences?> =
+        Result.success(preferences.takeIf { it.userId == userId })
+
+    override suspend fun savePreferences(preferences: UserPreferences): Result<Unit> =
+        Result.success(Unit)
   }
 
   @Test
