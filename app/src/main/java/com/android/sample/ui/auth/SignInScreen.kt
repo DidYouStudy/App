@@ -1,5 +1,6 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.auth
 
 import androidx.compose.foundation.BorderStroke
@@ -172,21 +173,21 @@ fun SignInScreen(
 /** Previews the sign-in screen before any action. */
 @Preview(showBackground = true)
 @Composable
-private fun SignInScreenIdlePreview() {
+internal fun SignInScreenIdlePreview() {
   DidYouStudyTheme { SignInScreen(isLoading = false, errorMessage = null, onSignInClick = {}) }
 }
 
 /** Previews the sign-in screen while authentication is loading. */
 @Preview(showBackground = true)
 @Composable
-private fun SignInScreenLoadingPreview() {
+internal fun SignInScreenLoadingPreview() {
   DidYouStudyTheme { SignInScreen(isLoading = true, errorMessage = null, onSignInClick = {}) }
 }
 
 /** Previews the sign-in screen with an authentication error. */
 @Preview(showBackground = true)
 @Composable
-private fun SignInScreenErrorPreview() {
+internal fun SignInScreenErrorPreview() {
   DidYouStudyTheme {
     SignInScreen(isLoading = false, errorMessage = "Something went wrong", onSignInClick = {})
   }
