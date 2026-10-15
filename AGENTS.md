@@ -1,4 +1,3 @@
-<!-- Co-authored-by: OpenAI Codex -->
 # AGENTS.md
 
 Durable rules for any AI agent working in this repository. Read this before acting.
@@ -25,7 +24,6 @@ A Kotlin/Android Study planner app (`com.android.sample`), built with an **MVVM*
 
 ## How to work
 
-- Name branches by purpose, such as `chore/` or `config/` for maintenance and configuration. Do not use the `codex/` prefix.
 - Make one **bounded, reviewable** change per PR. If it sprawls across unrelated files, split it.
 - Read the failing tests carefully and iterate until `./gradlew check` passes.
 - Stage only the files you changed; never `git add .` or `git add -A` (it can pull in local config like `local.properties`).
