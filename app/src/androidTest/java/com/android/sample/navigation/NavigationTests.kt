@@ -272,6 +272,12 @@ class MainActivityNavigationTests {
     }
     composeTestRule.onNodeWithTag(SignInScreenTestTags.SCREEN).assertIsDisplayed()
     composeTestRule.onNodeWithTag(SettingsScreenTestTags.SCREEN).assertDoesNotExist()
+
+    composeTestRule.activityRule.scenario.onActivity { activity ->
+      activity.onBackPressedDispatcher.onBackPressed()
+    }
+    composeTestRule.waitUntil(timeoutMillis = 20_000) { composeTestRule.activity.isFinishing }
+    assertEquals(true, composeTestRule.activity.isFinishing)
   }
 
   companion object {

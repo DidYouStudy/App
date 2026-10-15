@@ -137,7 +137,7 @@ fun DidYouStudyApp() {
             onModifyPreferencesClick = { /* TODO */ },
             onManageFriendsClick = { /* TODO */ },
             onLogoutSuccess = {
-              navigationActions.navigateToAndClear(Screen.Auth, Screen.Settings)
+              navigationActions.navigateToAndClear(Screen.Auth, Screen.Auth, clearAll = true)
             },
         )
       }

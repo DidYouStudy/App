@@ -49,7 +49,11 @@ class NavigationActionsTest {
       navigatedTo += screen
     }
 
-    override fun navigateToAndClear(screen: Screen, completedFlow: Screen) {
+    override fun navigateToAndClear(
+        screen: Screen,
+        completedFlow: Screen,
+        clearAll: Boolean,
+    ) {
       clearedFlows += screen to completedFlow
     }
   }

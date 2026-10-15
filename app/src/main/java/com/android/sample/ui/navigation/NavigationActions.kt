@@ -61,7 +61,17 @@ open class NavigationActions(
   }
 
   /** Navigates forward and removes the completed flow from the back stack. */
-  open fun navigateToAndClear(screen: Screen, completedFlow: Screen) {
+  open fun navigateToAndClear(
+      screen: Screen,
+      completedFlow: Screen,
+      clearAll: Boolean = false,
+  ) {
+    if (clearAll) {
+      while (navController.popBackStack()) {}
+      navController.navigate(screen.route) { launchSingleTop = true }
+      return
+    }
+
     navController.navigate(screen.route) {
       popUpTo(completedFlow.name) {
         inclusive = true
