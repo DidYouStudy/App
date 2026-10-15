@@ -3,6 +3,7 @@
 <!-- Co-authored-by: Claude Opus 5.5 -->
 <resources>
     <string name="app_name">DidYouStudy</string>
+    <string name="button_go_back">Back</string>
     <string name="sign_in_title">Ready to study?</string>
     <string name="sign_in_google_button">Authenticate With Google</string>
     <string name="sign_in_logo_description">DidYouStudy? logo</string>
@@ -36,4 +37,12 @@
     <string name="preferences_break_duration_label">How much break time do you prefer?</string>
     <string name="preferences_break_frequency_label">How often would you like to take breaks?</string>
     <string name="preferences_save_button">Save</string>
+    <string name="settings_header">Settings</string>
+    <string name="settings_profile_picture">Profile picture</string>
+    <string name="settings_greeting">Hello, %1$s!</string>
+    <string name="settings_edit_username">Edit username</string>
+    <string name="settings_change_profile_picture">Change profile picture</string>
+    <string name="settings_preferences_button">Modify your preferences</string>
+    <string name="settings_friends_button">Manage friends list</string>
+    <string name="settings_logout_button">Log out</string>
 </resources>
