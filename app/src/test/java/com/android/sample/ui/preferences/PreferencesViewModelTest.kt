@@ -1,6 +1,7 @@
 // Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.preferences
 
+import androidx.lifecycle.ViewModel
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.UserPreferences
@@ -13,6 +14,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -78,6 +80,28 @@ class PreferencesViewModelTest {
   }
 
   @Test
+  fun init_withoutSignedInUser_setsErrorState() = runTest {
+    authRepository.currentUser.value = null
+
+    val viewModel = PreferencesViewModel(repository, authRepository)
+
+    assertEquals(PreferencesUiState.Error("No signed-in user"), viewModel.uiState.value)
+  }
+
+  @Test
+  fun init_loadsPreferences_failureWithoutMessage_usesFallback() = runTest {
+    val exception = RuntimeException(null as String?)
+    `when`(repository.getPreferences(userId)).thenReturn(Result.failure(exception))
+
+    val viewModel = PreferencesViewModel(repository, authRepository)
+
+    assertEquals(
+        PreferencesUiState.Error("Failed to load preferences"),
+        viewModel.uiState.value,
+    )
+  }
+
+  @Test
   fun updatePreferences_success_updatesUiStateToSuccess() = runTest {
     val initialPrefs = UserPreferences(userId = userId)
     val updatedPrefs = initialPrefs.copy(sessionLengthMinutes = 90)
@@ -93,6 +117,19 @@ class PreferencesViewModelTest {
     assertTrue(state is PreferencesUiState.Success)
     assertEquals(updatedPrefs, (state as PreferencesUiState.Success).preferences)
     verify(repository).savePreferences(updatedPrefs)
+  }
+
+  @Test
+  fun updatePreferences_success_invokesCallback() = runTest {
+    val updatedPrefs = UserPreferences(userId = userId)
+    `when`(repository.getPreferences(userId)).thenReturn(Result.success(null))
+    `when`(repository.savePreferences(updatedPrefs)).thenReturn(Result.success(Unit))
+    var callbackCalls = 0
+    val viewModel = PreferencesViewModel(repository, authRepository)
+
+    viewModel.updatePreferences(updatedPrefs) { callbackCalls++ }
+
+    assertEquals(1, callbackCalls)
   }
 
   @Test
@@ -112,4 +149,16 @@ class PreferencesViewModelTest {
     assertTrue(state is PreferencesUiState.Error)
     assertEquals("Save failed", (state as PreferencesUiState.Error).message)
   }
+
+  @Test
+  fun factory_createsPreferencesViewModel_andRejectsOtherTypes() {
+    val factory = PreferencesViewModelFactory(repository, authRepository)
+
+    assertTrue(factory.create(PreferencesViewModel::class.java) is PreferencesViewModel)
+    assertThrows(IllegalArgumentException::class.java) {
+      factory.create(OtherViewModel::class.java)
+    }
+  }
+
+  private class OtherViewModel : ViewModel()
 }

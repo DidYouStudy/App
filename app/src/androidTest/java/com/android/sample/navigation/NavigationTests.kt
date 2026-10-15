@@ -9,6 +9,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import com.android.sample.DidYouStudyApp
+import com.android.sample.MainActivity
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.auth.UserAccount
@@ -20,8 +21,10 @@ import com.android.sample.ui.profile.ProfileButtonTestTags
 import junit.framework.TestCase.assertEquals
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import org.junit.AfterClass
 import org.junit.Assert.assertFalse
 import org.junit.Before
+import org.junit.BeforeClass
 import org.junit.Rule
 import org.junit.Test
 
@@ -100,24 +103,6 @@ class NavigationTests {
     composeTestRule.onNodeWithTag(NavigationTestTags.DASHBOARD_TAB).assertIsDisplayed()
     composeTestRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).assertIsDisplayed()
     composeTestRule.onNodeWithTag(NavigationTestTags.GROUP_SESSION_TAB).assertIsDisplayed()
-  }
-
-  private class FakeAuthRepository(private val user: UserAccount) : AuthRepository {
-    override val currentUser: StateFlow<UserAccount?> = MutableStateFlow(user)
-
-    override suspend fun signInWithGoogle(idToken: String): UserAccount = user
-
-    override suspend fun signOut() = Unit
-  }
-
-  private class FakePreferencesRepository(
-      private val preferences: UserPreferences,
-  ) : PreferencesRepository {
-    override suspend fun getPreferences(userId: String): Result<UserPreferences?> =
-        Result.success(preferences.takeIf { it.userId == userId })
-
-    override suspend fun savePreferences(preferences: UserPreferences): Result<Unit> =
-        Result.success(Unit)
   }
 
   @Test
@@ -256,4 +241,62 @@ class NavigationTests {
     pressBack(shouldFinish = false)
     checkCalendarScreenIsDisplayed()
   }
+}
+
+/** Verifies that the real activity hosts the Compose navigation graph. */
+class MainActivityNavigationTests {
+  @get:Rule val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+  @Test
+  fun activityStartsOnDashboardForAnAuthenticatedUser() {
+    composeTestRule
+        .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
+        .assertIsDisplayed()
+        .assertTextContains("Dashboard")
+  }
+
+  companion object {
+    @JvmStatic
+    @BeforeClass
+    fun installFakeRepositories() {
+      val user = UserAccount("main-activity-test-user", null, null, null)
+      setProviderInstance(AuthRepositoryProvider, FakeAuthRepository(user))
+      setProviderInstance(
+          PreferencesRepositoryProvider,
+          FakePreferencesRepository(UserPreferences(userId = user.uid)),
+      )
+    }
+
+    @JvmStatic
+    @AfterClass
+    fun clearFakeRepositories() {
+      setProviderInstance(AuthRepositoryProvider, null)
+      setProviderInstance(PreferencesRepositoryProvider, null)
+    }
+
+    private fun setProviderInstance(provider: Any, repository: Any?) {
+      provider.javaClass.getDeclaredField("instance").apply {
+        isAccessible = true
+        set(provider, repository)
+      }
+    }
+  }
+}
+
+private class FakeAuthRepository(private val user: UserAccount) : AuthRepository {
+  override val currentUser: StateFlow<UserAccount?> = MutableStateFlow(user)
+
+  override suspend fun signInWithGoogle(idToken: String): UserAccount = user
+
+  override suspend fun signOut() = Unit
+}
+
+private class FakePreferencesRepository(
+    private val preferences: UserPreferences,
+) : PreferencesRepository {
+  override suspend fun getPreferences(userId: String): Result<UserPreferences?> =
+      Result.success(preferences.takeIf { it.userId == userId })
+
+  override suspend fun savePreferences(preferences: UserPreferences): Result<Unit> =
+      Result.success(Unit)
 }
