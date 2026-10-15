@@ -40,6 +40,7 @@ import com.android.sample.R
  * @param onChangeProfilePictureClick Called when the user requests to change their profile picture.
  * @param onModifyPreferencesClick Called when the user opens preference settings.
  * @param onManageFriendsClick Called when the user opens friend management.
+ * @param onLogoutSuccess Called after the user is successfully signed out.
  */
 @Composable
 fun SettingsScreen(
@@ -50,6 +51,7 @@ fun SettingsScreen(
     onChangeProfilePictureClick: () -> Unit = {},
     onModifyPreferencesClick: () -> Unit = {},
     onManageFriendsClick: () -> Unit = {},
+    onLogoutSuccess: () -> Unit = {},
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val snackbarHostState = remember { SnackbarHostState() }
@@ -74,7 +76,7 @@ fun SettingsScreen(
       onChangeProfilePictureClick = onChangeProfilePictureClick,
       onModifyPreferencesClick = onModifyPreferencesClick,
       onManageFriendsClick = onManageFriendsClick,
-      onLogoutClick = viewModel::signOut,
+      onLogoutClick = { viewModel.signOut(onLogoutSuccess) },
   )
 }
 

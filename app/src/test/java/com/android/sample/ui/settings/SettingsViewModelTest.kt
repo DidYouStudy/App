@@ -168,10 +168,12 @@ class SettingsViewModelTest {
   @Test
   fun signOut_invokesAuthRepositorySignOut() = runTest {
     val viewModel = SettingsViewModel(authRepository, profileRepository)
+    var signOutSucceeded = false
 
-    viewModel.signOut()
+    viewModel.signOut { signOutSucceeded = true }
 
     verify(authRepository).signOut()
+    assertEquals(true, signOutSucceeded)
   }
 
   @Test

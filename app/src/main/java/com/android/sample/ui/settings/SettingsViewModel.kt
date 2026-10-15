@@ -84,11 +84,12 @@ class SettingsViewModel(
     }
   }
 
-  /** Initiates sign-out via the authentication repository. */
-  fun signOut() {
+  /** Initiates sign-out via the authentication repository and reports successful completion. */
+  fun signOut(onSuccess: () -> Unit = {}) {
     viewModelScope.launch {
       try {
         authRepository.signOut()
+        onSuccess()
       } catch (exception: CancellationException) {
         throw exception
       } catch (exception: Exception) {

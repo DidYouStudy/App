@@ -136,6 +136,9 @@ fun DidYouStudyApp() {
             onChangeProfilePictureClick = { /* TODO */ },
             onModifyPreferencesClick = { /* TODO */ },
             onManageFriendsClick = { /* TODO */ },
+            onLogoutSuccess = {
+              navigationActions.navigateToAndClear(Screen.Auth, Screen.Settings)
+            },
         )
       }
     }

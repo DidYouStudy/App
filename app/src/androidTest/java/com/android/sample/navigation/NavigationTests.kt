@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import com.android.sample.DidYouStudyApp
@@ -16,7 +17,10 @@ import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.PreferencesRepositoryProvider
 import com.android.sample.model.preferences.UserPreferences
+import com.android.sample.ui.auth.SignInScreenTestTags
 import com.android.sample.ui.navigation.NavigationTestTags
+import com.android.sample.ui.profile.ProfileButtonTestTags
+import com.android.sample.ui.settings.SettingsScreenTestTags
 import junit.framework.TestCase.assertEquals
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -255,6 +259,21 @@ class MainActivityNavigationTests {
         .assertTextContains("Dashboard")
   }
 
+  @Test
+  fun loggingOutFromSettingsSignsOutAndNavigatesToSignIn() {
+    composeTestRule.onNodeWithTag(ProfileButtonTestTags.PROFILE_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(SettingsScreenTestTags.LOGOUT_BUTTON).performClick()
+
+    composeTestRule.waitUntil(timeoutMillis = 20_000) {
+      composeTestRule
+          .onAllNodesWithTag(SignInScreenTestTags.SCREEN)
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    composeTestRule.onNodeWithTag(SignInScreenTestTags.SCREEN).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(SettingsScreenTestTags.SCREEN).assertDoesNotExist()
+  }
+
   companion object {
     @JvmStatic
     @BeforeClass
@@ -284,11 +303,14 @@ class MainActivityNavigationTests {
 }
 
 private class FakeAuthRepository(private val user: UserAccount) : AuthRepository {
-  override val currentUser: StateFlow<UserAccount?> = MutableStateFlow(user)
+  private val currentUserState = MutableStateFlow<UserAccount?>(user)
+  override val currentUser: StateFlow<UserAccount?> = currentUserState
 
   override suspend fun signInWithGoogle(idToken: String): UserAccount = user
 
-  override suspend fun signOut() = Unit
+  override suspend fun signOut() {
+    currentUserState.value = null
+  }
 }
 
 private class FakePreferencesRepository(
