@@ -11,9 +11,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.profile.ProfileRepository
-import com.android.sample.R
 import com.android.sample.ui.navigation.NavigationTestTags
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
@@ -48,37 +48,37 @@ class SettingsScreenTest {
 
   /** Shows the stateless screen; every callback records its name in [events]. */
   private fun setStatelessContent(
-    events: MutableList<String>,
-    username: String = "Alice",
-    isLoading: Boolean = false,
+      events: MutableList<String>,
+      username: String = "Alice",
+      isLoading: Boolean = false,
   ) {
     composeTestRule.setContent {
       SettingsScreenStateless(
-        username = username,
-        isLoading = isLoading,
-        onBackClick = { events += "back" },
-        onEditUsernameClick = { events += "editUsername" },
-        onChangeProfilePictureClick = { events += "changeProfilePicture" },
-        onModifyPreferencesClick = { events += "preferences" },
-        onManageFriendsClick = { events += "friends" },
-        onLogoutClick = { events += "logout" },
+          username = username,
+          isLoading = isLoading,
+          onBackClick = { events += "back" },
+          onEditUsernameClick = { events += "editUsername" },
+          onChangeProfilePictureClick = { events += "changeProfilePicture" },
+          onModifyPreferencesClick = { events += "preferences" },
+          onManageFriendsClick = { events += "friends" },
+          onLogoutClick = { events += "logout" },
       )
     }
   }
 
   /** Shows the stateful screen; every navigation callback records its name in [events]. */
   private fun setStatefulContent(
-    viewModel: SettingsViewModel,
-    events: MutableList<String> = mutableListOf(),
+      viewModel: SettingsViewModel,
+      events: MutableList<String> = mutableListOf(),
   ) {
     composeTestRule.setContent {
       SettingsScreen(
-        viewModel = viewModel,
-        onBackClick = { events += "back" },
-        onEditUsernameClick = { events += "editUsername" },
-        onChangeProfilePictureClick = { events += "changeProfilePicture" },
-        onModifyPreferencesClick = { events += "preferences" },
-        onManageFriendsClick = { events += "friends" },
+          viewModel = viewModel,
+          onBackClick = { events += "back" },
+          onEditUsernameClick = { events += "editUsername" },
+          onChangeProfilePictureClick = { events += "changeProfilePicture" },
+          onModifyPreferencesClick = { events += "preferences" },
+          onManageFriendsClick = { events += "friends" },
       )
     }
   }
@@ -102,7 +102,6 @@ class SettingsScreenTest {
     }
   }
 
-
   @Before
   fun setUp() {
     authRepository = mock()
@@ -120,9 +119,9 @@ class SettingsScreenTest {
     setStatelessContent(mutableListOf())
 
     composeTestRule
-      .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
-      .assertIsDisplayed()
-      .assertTextEquals(context.getString(R.string.settings_header))
+        .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.settings_header))
     composeTestRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).assertIsDisplayed()
   }
 
@@ -133,12 +132,12 @@ class SettingsScreenTest {
     composeTestRule.onNodeWithTag(SettingsScreenTestTags.PROFILE_CARD).assertIsDisplayed()
     composeTestRule.onNodeWithTag(SettingsScreenTestTags.AVATAR).assertIsDisplayed()
     composeTestRule
-      .onNodeWithContentDescription(context.getString(R.string.settings_profile_picture))
-      .assertIsDisplayed()
+        .onNodeWithContentDescription(context.getString(R.string.settings_profile_picture))
+        .assertIsDisplayed()
     composeTestRule
-      .onNodeWithTag(SettingsScreenTestTags.GREETING)
-      .assertIsDisplayed()
-      .assertTextEquals(context.getString(R.string.settings_greeting, "Alice"))
+        .onNodeWithTag(SettingsScreenTestTags.GREETING)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.settings_greeting, "Alice"))
     composeTestRule.onNodeWithTag(SettingsScreenTestTags.LOADING_INDICATOR).assertDoesNotExist()
   }
 
@@ -157,13 +156,13 @@ class SettingsScreenTest {
     composeTestRule.setContent { SettingsScreenStateless(isLoading = false) }
 
     composeTestRule
-      .onNodeWithTag(SettingsScreenTestTags.GREETING)
-      .assertTextEquals(
-        context.getString(
-          R.string.settings_greeting,
-          context.getString(R.string.default_username),
+        .onNodeWithTag(SettingsScreenTestTags.GREETING)
+        .assertTextEquals(
+            context.getString(
+                R.string.settings_greeting,
+                context.getString(R.string.default_username),
+            )
         )
-      )
   }
 
   @Test
@@ -171,25 +170,25 @@ class SettingsScreenTest {
     setStatelessContent(mutableListOf())
 
     composeTestRule
-      .onNodeWithTag(SettingsScreenTestTags.EDIT_USERNAME_BUTTON)
-      .assertIsDisplayed()
-      .assertTextEquals(context.getString(R.string.settings_edit_username))
+        .onNodeWithTag(SettingsScreenTestTags.EDIT_USERNAME_BUTTON)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.settings_edit_username))
     composeTestRule
-      .onNodeWithTag(SettingsScreenTestTags.CHANGE_PROFILE_PICTURE_BUTTON)
-      .assertIsDisplayed()
-      .assertTextEquals(context.getString(R.string.settings_change_profile_picture))
+        .onNodeWithTag(SettingsScreenTestTags.CHANGE_PROFILE_PICTURE_BUTTON)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.settings_change_profile_picture))
     composeTestRule
-      .onNodeWithTag(SettingsScreenTestTags.PREFERENCES_BUTTON)
-      .assertIsDisplayed()
-      .assertTextEquals(context.getString(R.string.settings_preferences_button))
+        .onNodeWithTag(SettingsScreenTestTags.PREFERENCES_BUTTON)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.settings_preferences_button))
     composeTestRule
-      .onNodeWithTag(SettingsScreenTestTags.FRIENDS_BUTTON)
-      .assertIsDisplayed()
-      .assertTextEquals(context.getString(R.string.settings_friends_button))
+        .onNodeWithTag(SettingsScreenTestTags.FRIENDS_BUTTON)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.settings_friends_button))
     composeTestRule
-      .onNodeWithTag(SettingsScreenTestTags.LOGOUT_BUTTON)
-      .assertIsDisplayed()
-      .assertTextEquals(context.getString(R.string.settings_logout_button))
+        .onNodeWithTag(SettingsScreenTestTags.LOGOUT_BUTTON)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.settings_logout_button))
   }
 
   // ---------------------------------------------------------------------------
@@ -222,8 +221,8 @@ class SettingsScreenTest {
     setStatelessContent(events)
 
     composeTestRule
-      .onNodeWithTag(SettingsScreenTestTags.CHANGE_PROFILE_PICTURE_BUTTON)
-      .performClick()
+        .onNodeWithTag(SettingsScreenTestTags.CHANGE_PROFILE_PICTURE_BUTTON)
+        .performClick()
 
     assertEquals(listOf("changeProfilePicture"), events)
   }
@@ -263,14 +262,14 @@ class SettingsScreenTest {
     composeTestRule.setContent { SettingsScreenStateless(isLoading = false) }
 
     listOf(
-      NavigationTestTags.GO_BACK_BUTTON,
-      SettingsScreenTestTags.EDIT_USERNAME_BUTTON,
-      SettingsScreenTestTags.CHANGE_PROFILE_PICTURE_BUTTON,
-      SettingsScreenTestTags.PREFERENCES_BUTTON,
-      SettingsScreenTestTags.FRIENDS_BUTTON,
-      SettingsScreenTestTags.LOGOUT_BUTTON,
-    )
-      .forEach { tag -> composeTestRule.onNodeWithTag(tag).performClick() }
+            NavigationTestTags.GO_BACK_BUTTON,
+            SettingsScreenTestTags.EDIT_USERNAME_BUTTON,
+            SettingsScreenTestTags.CHANGE_PROFILE_PICTURE_BUTTON,
+            SettingsScreenTestTags.PREFERENCES_BUTTON,
+            SettingsScreenTestTags.FRIENDS_BUTTON,
+            SettingsScreenTestTags.LOGOUT_BUTTON,
+        )
+        .forEach { tag -> composeTestRule.onNodeWithTag(tag).performClick() }
 
     composeTestRule.onNodeWithTag(SettingsScreenTestTags.SCREEN).assertIsDisplayed()
   }
@@ -287,14 +286,14 @@ class SettingsScreenTest {
     composeTestRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).performClick()
     composeTestRule.onNodeWithTag(SettingsScreenTestTags.EDIT_USERNAME_BUTTON).performClick()
     composeTestRule
-      .onNodeWithTag(SettingsScreenTestTags.CHANGE_PROFILE_PICTURE_BUTTON)
-      .performClick()
+        .onNodeWithTag(SettingsScreenTestTags.CHANGE_PROFILE_PICTURE_BUTTON)
+        .performClick()
     composeTestRule.onNodeWithTag(SettingsScreenTestTags.PREFERENCES_BUTTON).performClick()
     composeTestRule.onNodeWithTag(SettingsScreenTestTags.FRIENDS_BUTTON).performClick()
 
     assertEquals(
-      listOf("back", "editUsername", "changeProfilePicture", "preferences", "friends"),
-      events,
+        listOf("back", "editUsername", "changeProfilePicture", "preferences", "friends"),
+        events,
     )
   }
 
@@ -304,9 +303,9 @@ class SettingsScreenTest {
 
     composeTestRule.waitUntil(timeoutMillis = 5_000) {
       composeTestRule
-        .onAllNodesWithTag(SettingsScreenTestTags.LOADING_INDICATOR)
-        .fetchSemanticsNodes()
-        .isEmpty()
+          .onAllNodesWithTag(SettingsScreenTestTags.LOADING_INDICATOR)
+          .fetchSemanticsNodes()
+          .isEmpty()
     }
 
     composeTestRule.onNodeWithTag(SettingsScreenTestTags.LOADING_INDICATOR).assertDoesNotExist()
@@ -343,8 +342,8 @@ class SettingsScreenTest {
 
     waitForText(SettingsViewModel.FAILED_TO_SIGN_OUT_ERROR)
     composeTestRule
-      .onAllNodesWithText(SettingsViewModel.FAILED_TO_SIGN_OUT_ERROR)[0]
-      .assertIsDisplayed()
+        .onAllNodesWithText(SettingsViewModel.FAILED_TO_SIGN_OUT_ERROR)[0]
+        .assertIsDisplayed()
   }
 
   @Test
@@ -366,5 +365,4 @@ class SettingsScreenTest {
   private companion object {
     const val SIGN_OUT_ERROR = "Sign out failed (test)"
   }
-
 }

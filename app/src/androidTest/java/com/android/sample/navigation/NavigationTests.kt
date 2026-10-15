@@ -202,13 +202,13 @@ class NavigationTests {
     checkDashboardScreenIsDisplayed()
   }
 
-//  @Test
-//  fun profileButtonOpensSettingsFromCalendarAndSystemBackReturnsToCalendar() {
-//    composeTestRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
-//    checkCalendarScreenIsDisplayed()
-//    composeTestRule.onNodeWithTag(ProfileButtonTestTags.PROFILE_BUTTON).performClick()
-//    checkSettingsScreenIsDisplayed()
-//    pressBack(shouldFinish = false)
-//    checkCalendarScreenIsDisplayed()
-//  }
+  //  @Test
+  //  fun profileButtonOpensSettingsFromCalendarAndSystemBackReturnsToCalendar() {
+  //    composeTestRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
+  //    checkCalendarScreenIsDisplayed()
+  //    composeTestRule.onNodeWithTag(ProfileButtonTestTags.PROFILE_BUTTON).performClick()
+  //    checkSettingsScreenIsDisplayed()
+  //    pressBack(shouldFinish = false)
+  //    checkCalendarScreenIsDisplayed()
+  //  }
 }
