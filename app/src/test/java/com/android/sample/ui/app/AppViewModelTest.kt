@@ -9,7 +9,9 @@ import com.android.sample.ui.navigation.Screen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -90,6 +92,24 @@ class AppViewModelTest {
     viewModel.onSignedIn(destinations::add)
 
     assertEquals(listOf(Screen.Preferences), destinations)
+  }
+
+  @Test
+  fun signingInTimeoutReturnsToAuthenticationWithErrorState() = runTest {
+    val viewModel = AppViewModel(authRepository, preferencesRepository)
+    val destinations = mutableListOf<Screen>()
+
+    viewModel.onSignedIn(destinations::add)
+    advanceTimeBy(10_001)
+    runCurrent()
+
+    assertEquals(
+        AppUiState.Error("Timed out waiting for signed-in user"),
+        viewModel.uiState.value,
+    )
+    assertEquals(listOf(Screen.Auth), destinations)
+    assertEquals(true, viewModel.canNavigateTo(Screen.Auth))
+    assertEquals(false, viewModel.canNavigateTo(Screen.Dashboard))
   }
 
   @Test
