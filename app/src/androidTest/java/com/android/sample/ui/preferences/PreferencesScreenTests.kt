@@ -8,6 +8,8 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.android.sample.model.auth.AuthRepository
+import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.TimeOfDay
 import com.android.sample.model.preferences.UserPreferences
@@ -15,6 +17,8 @@ import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
 import com.android.sample.ui.preferences.PreferencesScreenTestsUtils.assertSelected
 import com.android.sample.ui.preferences.PreferencesScreenTestsUtils.click
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Rule
 import org.junit.Test
 
@@ -38,6 +42,15 @@ private class FakePreferencesRepository(
   }
 }
 
+private class FakeAuthRepository(userId: String) : AuthRepository {
+  override val currentUser: Flow<UserAccount?> =
+      MutableStateFlow(UserAccount(userId, null, null, null))
+
+  override suspend fun signInWithGoogle(idToken: String): UserAccount = throw NotImplementedError()
+
+  override suspend fun signOut() {}
+}
+
 class PreferencesScreenTests {
   @get:Rule val composeTestRule = createComposeRule()
 
@@ -50,7 +63,8 @@ class PreferencesScreenTests {
     importClicks = 0
     addLocationClicks = 0
     savedCallbacks = 0
-    val viewModel = PreferencesViewModel(repository, userId)
+    val authRepository = FakeAuthRepository(userId)
+    val viewModel = PreferencesViewModel(repository, authRepository)
     composeTestRule.setContent {
       PreferencesScreen(
           viewModel = viewModel,
@@ -100,7 +114,7 @@ class PreferencesScreenTests {
     val stored =
         UserPreferences(
             userId = userId,
-            preferredStudyTimes = setOf(TimeOfDay.NIGHT),
+            preferredStudyTimes = listOf(TimeOfDay.NIGHT),
             sessionLengthMinutes = 180,
             breakLengthMinutes = 20,
             breakFrequencyMinutes = 30,

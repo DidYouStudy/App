@@ -68,7 +68,7 @@ class UserPreferencesTest {
     assertEquals(10, PreferenceDefaults.DEFAULT_BREAK_MINUTES)
     assertEquals(45, PreferenceDefaults.DEFAULT_FREQUENCY_MINUTES)
     assertEquals(
-        setOf(TimeOfDay.MORNING, TimeOfDay.AFTERNOON),
+        listOf(TimeOfDay.MORNING, TimeOfDay.AFTERNOON),
         PreferenceDefaults.DEFAULT_TIMES,
     )
   }
