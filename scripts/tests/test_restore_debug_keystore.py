@@ -11,10 +11,26 @@ import unittest
 
 
 class RestoreDebugKeystoreTest(unittest.TestCase):
-    """Check opt-in behavior, validation failures, and private file permissions."""
+    """Check required secrets, validation failures, and private file permissions."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Generate a disposable signing key instead of depending on a committed secret."""
+        cls.fixture_directory = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(cls.fixture_directory.cleanup)
+        fixture = Path(cls.fixture_directory.name) / "fixture.keystore"
+        subprocess.run(
+            ["keytool", "-genkeypair", "-keystore", str(fixture),
+             "-storetype", "PKCS12", "-alias", "androiddebugkey",
+             "-keyalg", "RSA", "-keysize", "2048", "-validity", "1",
+             "-dname", "CN=Disposable Test Key", "-storepass", "android",
+             "-keypass", "android"],
+            check=True, capture_output=True,
+        )
+        cls.fixture_bytes = fixture.read_bytes()
 
     def setUp(self):
-        """Give each test its own output file and the repository's public fixture key."""
+        """Give each test its own output file."""
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.destination = Path(self.directory.name) / "private-debug.keystore"
@@ -28,15 +44,22 @@ class RestoreDebugKeystoreTest(unittest.TestCase):
             env=env, capture_output=True, text=True,
         )
 
-    def test_missing_secret_preserves_existing_setup(self):
-        """No secret must leave an already installed key untouched."""
+    def test_missing_secret_fails_without_replacing_existing_key(self):
+        """A required secret must not be bypassed by an existing output file."""
         self.destination.write_bytes(b"existing")
-        self.assertEqual(self.restore("").returncode, 0)
+        self.assertNotEqual(self.restore("").returncode, 0)
         self.assertEqual(self.destination.read_bytes(), b"existing")
+
+    def test_missing_secret_does_not_create_key(self):
+        """Missing secrets must produce an actionable failure without creating a key."""
+        result = self.restore("")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("DEBUG_KEYSTORE_BASE64 is required", result.stderr)
+        self.assertFalse(self.destination.exists())
 
     def test_valid_key_is_restored_privately(self):
         """A valid key must survive encoding and have private file permissions."""
-        original = (self.root / "app/debug.keystore").read_bytes()
+        original = self.fixture_bytes
         result = self.restore(base64.b64encode(original).decode())
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.destination.read_bytes(), original)

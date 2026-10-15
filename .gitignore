@@ -11,9 +11,10 @@ local.properties
 # Firebase config, injected in CI from the GOOGLE_SERVICES_JSON secret
 app/google-services.json
 
-# Local signing material; the legacy shared debug key remains tracked during migration.
+# Signing keys stay local and must never be committed.
 .local/
 app/private-debug.keystore
+app/debug.keystore
 
 # Firebase CLI and emulator output
 .firebase/

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Co-authored-by: OpenAI Codex
-# Restore and validate the optional team debug key without exposing its contents in logs.
+# Restore and validate the required team debug key without exposing its contents in logs.
 set -euo pipefail
 
 destination="${1:?Pass the destination keystore path}"
 if [[ -z "${DEBUG_KEYSTORE_BASE64:-}" ]]; then
-  echo 'Private debug key not configured; keeping current signing setup.'
-  exit 0
+  echo '::error::DEBUG_KEYSTORE_BASE64 is required for debug signing.' >&2
+  exit 1
 fi
 
 umask 077

@@ -27,10 +27,10 @@ android {
   }
 
   signingConfigs {
-    // Opt in to the private team key when installed; retain the shared key during migration.
-    // Both keys are for debug builds only and must never sign a release build.
+    // All debug builds use the shared private team key, supplied locally or through CI secrets.
+    // This key must never sign a release build.
     getByName("debug") {
-      storeFile = file("private-debug.keystore").takeIf { it.isFile } ?: file("debug.keystore")
+      storeFile = file("private-debug.keystore")
       storePassword = "android"
       keyAlias = "androiddebugkey"
       keyPassword = "android"

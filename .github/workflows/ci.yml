@@ -47,8 +47,8 @@ jobs:
           distribution: "temurin"
           java-version: "17" # Match gradle/gradle-daemon-jvm.properties.
 
-      # Keep the legacy key until the optional migration secret is configured.
-      - name: Restore optional private debug key
+      # Restore the required shared debug key before building signed APKs.
+      - name: Restore private debug key
         env:
           DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
         run: bash scripts/restore-debug-keystore.sh app/private-debug.keystore
@@ -183,8 +183,8 @@ jobs:
           path: ~/.cache/firebase/emulators
           key: firebase-emulators-15.31.0
 
-      # Keep the legacy key until the optional migration secret is configured.
-      - name: Restore optional private debug key
+      # Restore the required shared debug key before building signed APKs.
+      - name: Restore private debug key
         env:
           DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
         run: bash scripts/restore-debug-keystore.sh app/private-debug.keystore
