@@ -125,6 +125,12 @@ fun DependencyHandlerScope.globalTestImplementation(dep: Any) {
   testImplementation(dep)
 }
 
+// Kaspresso -> espresso-contrib -> accessibility-test-framework pulls protobuf-lite 3.0.1, whose
+// GeneratedMessageLite shadows protobuf-javalite and crashes Firestore in instrumented tests.
+configurations
+    .matching { it.name.contains("AndroidTest", ignoreCase = true) }
+    .configureEach { exclude(group = "com.google.protobuf", module = "protobuf-lite") }
+
 dependencies {
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.appcompat)

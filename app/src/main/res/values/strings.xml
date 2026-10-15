@@ -33,7 +33,7 @@
     <string name="preferences_add_study_locations_label">Add your study locations</string>
     <string name="preferences_add_study_locations_button">Add...</string>
     <string name="preferences_study_time_label">When do you prefer to study?</string>
-    <string name="preferences_session_length_label">How long do you want your study sessions to be?</string>"
+    <string name="preferences_session_length_label">How long do you want your study sessions to be?</string>
     <string name="preferences_break_duration_label">How much break time do you prefer?</string>
     <string name="preferences_break_frequency_label">How often would you like to take breaks?</string>
     <string name="preferences_save_button">Save</string>

@@ -35,6 +35,7 @@ open class NavigationActions(
       // If the user is already on the top-level destination, do nothing
       return
     }
+
     // Forward to another tab: fresh screen state (no restore)
     navController.navigate(screen.route) {
       if (screen.isTopLevelDestination) {
@@ -57,6 +58,37 @@ open class NavigationActions(
         restoreState = true
       }
     }
+  }
+
+  /** Navigates forward and removes the completed flow from the back stack. */
+  open fun navigateToAndClear(
+      screen: Screen,
+      completedFlow: Screen,
+      clearAll: Boolean = false,
+  ) {
+    if (clearAll) {
+      while (navController.popBackStack()) {}
+      navController.navigate(screen.route) { launchSingleTop = true }
+      return
+    }
+
+    navController.navigate(screen.route) {
+      popUpTo(completedFlow.name) {
+        inclusive = true
+        saveState = false
+      }
+      launchSingleTop = true
+    }
+  }
+
+  /** Performs a navigation only when the destination is allowed by the current app state. */
+  open fun navigateIfAllowed(
+      screen: Screen,
+      isAllowed: (Screen) -> Boolean,
+      completedFlow: Screen? = null,
+  ) {
+    if (!isAllowed(screen) || currentRoute() == screen.route) return
+    if (completedFlow == null) navigateTo(screen) else navigateToAndClear(screen, completedFlow)
   }
 
   /** Navigate back to the previous screen. */

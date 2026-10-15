@@ -15,12 +15,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
 import com.android.sample.model.auth.AuthRepositoryProvider
+import com.android.sample.ui.app.appViewModel
 import com.android.sample.ui.auth.SignInRoute
 import com.android.sample.ui.calendar.CalendarScreen
 import com.android.sample.ui.dashboard.DashboardScreen
 import com.android.sample.ui.groupsession.GroupSessionScreen
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.Screen
+import com.android.sample.ui.preferences.PreferencesScreen
 import com.android.sample.ui.settings.SettingsScreen
 import com.android.sample.ui.theme.DidYouStudyTheme
 
@@ -45,13 +47,10 @@ class MainActivity : ComponentActivity() {
 fun DidYouStudyApp() {
   val navController = rememberNavController()
   val navigationActions = NavigationActions(navController)
-  val isSignedIn = true // TODO REMEMBER FIREBASE AUTH
-
-  val startDestination = if (isSignedIn) Screen.Dashboard.route else Screen.Auth.name
-
+  val applicationViewModel = appViewModel()
   NavHost(
       navController = navController,
-      startDestination = startDestination,
+      startDestination = Screen.Auth.name,
   ) {
     navigation(
         startDestination = Screen.Auth.route,
@@ -59,8 +58,36 @@ fun DidYouStudyApp() {
     ) {
       composable(Screen.Auth.route) {
         SignInRoute(
-            onSignedIn = { navigationActions.navigateTo(Screen.Dashboard) },
+            onSignedIn = {
+              applicationViewModel.onSignedIn { destination ->
+                navigationActions.navigateIfAllowed(
+                    destination,
+                    applicationViewModel::canNavigateTo,
+                    completedFlow = Screen.Auth,
+                )
+              }
+            },
             getIdToken = AuthRepositoryProvider::requestGoogleIdToken,
+        )
+      }
+    }
+
+    navigation(
+        startDestination = Screen.Preferences.route,
+        route = Screen.Preferences.name,
+    ) {
+      composable(Screen.Preferences.route) {
+        PreferencesScreen(
+            onImportClick = {},
+            onAddLocationClick = {},
+            onSaved = {
+              applicationViewModel.onPreferencesSaved()
+              navigationActions.navigateIfAllowed(
+                  Screen.Dashboard,
+                  applicationViewModel::canNavigateTo,
+                  completedFlow = Screen.Preferences,
+              )
+            },
         )
       }
     }
@@ -109,6 +136,9 @@ fun DidYouStudyApp() {
             onChangeProfilePictureClick = { /* TODO */ },
             onModifyPreferencesClick = { /* TODO */ },
             onManageFriendsClick = { /* TODO */ },
+            onLogoutSuccess = {
+              navigationActions.navigateToAndClear(Screen.Auth, Screen.Auth, clearAll = true)
+            },
         )
       }
     }
