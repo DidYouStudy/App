@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Opus 5.5
 pluginManagement {
     repositories {
         google {
@@ -19,6 +20,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "SampleApp"
+rootProject.name = "DidYouStudy"
 include(":app")
  

@@ -33,3 +33,9 @@ A Kotlin/Android Study planner app (`com.android.sample`), built with an **MVVM*
 ## Your role
 
 You provide the goal, the context, the acceptance criteria and the permissions. The agent plans, acts and observes. **You review the diff, and you own every line you submit.** "The agent wrote it" is not a defence.
+
+
+## Trivial
+
+- When referring to code, always specify the line number
+- During code generation, add clear and appropriate comments to new classes and functions created

@@ -57,4 +57,12 @@ class ProfileButtonTest {
 
     assertEquals(1, clicks)
   }
+
+  /** The preview renders the profile button. */
+  @Test
+  fun previewShowsProfileButton() {
+    composeTestRule.setContent { ProfileButtonPreview() }
+
+    composeTestRule.onNodeWithTag(ProfileButtonTestTags.PROFILE_BUTTON).assertIsDisplayed()
+  }
 }

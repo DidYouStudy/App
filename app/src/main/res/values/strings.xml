@@ -1,9 +1,8 @@
 <!-- Co-authored-by: GitHub Copilot -->
 <!-- Co-authored-by: Claude AI Agent -->
+<!-- Co-authored-by: Claude Opus 5.5 -->
 <resources>
-    <string name="app_name">SampleApp</string>
-    <string name="title_activity_main">MainActivity</string>
-    <string name="title_activity_second">SecondActivity</string>
+    <string name="app_name">DidYouStudy</string>
     <string name="button_go_back">Back</string>
     <string name="sign_in_title">Ready to study?</string>
     <string name="sign_in_google_button">Authenticate With Google</string>
@@ -13,6 +12,16 @@
     <string name="sign_in_error_user_disabled">This account has been disabled.</string>
     <string name="sign_in_error_no_credential">No Google account found on this device. Add one in your device settings.</string>
     <string name="sign_in_error_unknown">Something went wrong. Please try again.</string>
+    <string name="dashboard_title">Dashboard</string>
+    <string name="dashboard_your_day">Your day</string>
+    <string name="dashboard_your_stats">Stats</string>
+    <string name="dashboard_no_sessions">No study sessions planned today.</string>
+    <string name="dashboard_stats_placeholder">Study stats appear after your first session.</string>
+    <string name="dashboard_stat_average_daily">Average daily study time</string>
+    <string name="dashboard_stat_total_sessions">Total sessions</string>
+    <string name="dashboard_stat_average_focus">Average focus duration</string>
+    <string name="dashboard_stat_empty_value">—</string>
+    <string name="dashboard_add_description">Add</string>
     <string name="default_username">User</string>
     <string name="settings_error_failed_to_load_profile">Failed to load user profile.</string>
     <string name="settings_error_failed_to_sign_out">Failed to sign out.</string>
