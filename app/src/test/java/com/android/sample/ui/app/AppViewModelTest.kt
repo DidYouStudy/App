@@ -100,4 +100,38 @@ class AppViewModelTest {
 
     assertEquals(AppUiState.Dashboard, viewModel.uiState.value)
   }
+
+  @Test
+  fun authenticationStateOnlyAllowsAuthenticationDestination() = runTest {
+    val viewModel = AppViewModel(authRepository, preferencesRepository)
+
+    assertEquals(true, viewModel.canNavigateTo(Screen.Auth))
+    assertEquals(false, viewModel.canNavigateTo(Screen.Preferences))
+    assertEquals(false, viewModel.canNavigateTo(Screen.Dashboard))
+  }
+
+  @Test
+  fun firstTimeStateOnlyAllowsPreferencesDestination() = runTest {
+    val user = UserAccount("user-1", null, null, null)
+    authRepository.currentUser.value = user
+    `when`(preferencesRepository.getPreferences(user.uid)).thenReturn(Result.success(null))
+    val viewModel = AppViewModel(authRepository, preferencesRepository)
+
+    assertEquals(true, viewModel.canNavigateTo(Screen.Preferences))
+    assertEquals(false, viewModel.canNavigateTo(Screen.Auth))
+    assertEquals(false, viewModel.canNavigateTo(Screen.Dashboard))
+  }
+
+  @Test
+  fun returningUserOnlyAllowsAuthenticatedDestinations() = runTest {
+    val user = UserAccount("user-1", null, null, null)
+    authRepository.currentUser.value = user
+    `when`(preferencesRepository.getPreferences(user.uid))
+        .thenReturn(Result.success(UserPreferences(userId = user.uid)))
+    val viewModel = AppViewModel(authRepository, preferencesRepository)
+
+    assertEquals(true, viewModel.canNavigateTo(Screen.Dashboard))
+    assertEquals(false, viewModel.canNavigateTo(Screen.Auth))
+    assertEquals(false, viewModel.canNavigateTo(Screen.Preferences))
+  }
 }
