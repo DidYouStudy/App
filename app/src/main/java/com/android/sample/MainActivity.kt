@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -107,7 +108,11 @@ fun DidYouStudyApp() {
     ) {
       composable(Screen.Settings.route) {
         SettingsScreen(
-            navigationActions = navigationActions,
+            onBackClick = navigationActions::goBack,
+            onEditUsernameClick = { /* TODO */ },
+            onChangeProfilePictureClick = { /* TODO */ },
+            onModifyPreferencesClick = { /* TODO */ },
+            onManageFriendsClick = { /* TODO */ },
         )
       }
     }

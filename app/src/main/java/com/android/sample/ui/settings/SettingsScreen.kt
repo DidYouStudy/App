@@ -43,8 +43,8 @@ import com.android.sample.R
  */
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel,
     modifier: Modifier = Modifier,
+    viewModel: SettingsViewModel = settingsViewModel(),
     onBackClick: () -> Unit = {},
     onEditUsernameClick: () -> Unit = {},
     onChangeProfilePictureClick: () -> Unit = {},
