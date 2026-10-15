@@ -10,6 +10,7 @@ import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.ProfileRepositoryProvider
+import com.android.sample.model.profile.ProfileResolution
 import com.android.sample.model.profile.UserProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.After
@@ -167,7 +168,7 @@ class SettingsViewModelFactoryTest {
       ProfileRepository {
     override suspend fun getProfile(userId: String): Result<UserProfile?> = Result.success(profile)
 
-    override suspend fun createProfile(userId: String): Result<UserProfile> =
-        Result.success(UserProfile(uid = userId))
+    override suspend fun createProfile(userId: String): Result<ProfileResolution> =
+      Result.success(ProfileResolution.Created(UserProfile(uid = userId)))
   }
 }
