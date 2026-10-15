@@ -223,7 +223,7 @@ class PreferencesScreenTests {
 
     val saved = waitForSave(repository)
     assert(saved.userId == userId)
-    assert(saved.preferredStudyTimes == setOf(TimeOfDay.AFTERNOON, TimeOfDay.NIGHT))
+    assert(saved.preferredStudyTimes == listOf(TimeOfDay.AFTERNOON, TimeOfDay.NIGHT))
     assert(saved.sessionLengthMinutes == 120)
     assert(saved.breakLengthMinutes == 15)
     assert(saved.breakFrequencyMinutes == 60)
@@ -241,7 +241,7 @@ class PreferencesScreenTests {
     composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).performClick()
 
     val saved = waitForSave(repository)
-    assert(saved.preferredStudyTimes == setOf(TimeOfDay.MORNING, TimeOfDay.AFTERNOON))
+    assert(saved.preferredStudyTimes == listOf(TimeOfDay.MORNING, TimeOfDay.AFTERNOON))
   }
 
   @Test

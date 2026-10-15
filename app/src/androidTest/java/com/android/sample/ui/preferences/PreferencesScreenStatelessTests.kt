@@ -38,7 +38,7 @@ class PreferencesScreenStatelessTests {
       var breakFrequency by remember { mutableStateOf(BreakFrequency.EVERY_45_MIN) }
 
       PreferenceScreenStateless(
-          selectedStudyTimes = times,
+          selectedStudyTimes = times.toList(),
           selectedSessionLength = session,
           selectedBreakDuration = breakDuration,
           selectedBreakFrequency = breakFrequency,
