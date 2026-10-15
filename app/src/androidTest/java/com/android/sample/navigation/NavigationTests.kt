@@ -10,7 +10,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import com.android.sample.DidYouStudyApp
 import com.android.sample.ui.navigation.NavigationTestTags
-import com.android.sample.ui.profile.ProfileButtonTestTags
 import junit.framework.TestCase.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Before
@@ -194,13 +193,13 @@ class NavigationTests {
     pressBack(shouldFinish = true)
   }
 
-//  @Test
-//  fun profileButtonOpensSettingsAndBackButtonReturnsToDashboard() {
-//    composeTestRule.onNodeWithTag(ProfileButtonTestTags.PROFILE_BUTTON).performClick()
-//    checkSettingsScreenIsDisplayed()
-//    composeTestRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).performClick()
-//    checkDashboardScreenIsDisplayed()
-//  }
+  //  @Test
+  //  fun profileButtonOpensSettingsAndBackButtonReturnsToDashboard() {
+  //    composeTestRule.onNodeWithTag(ProfileButtonTestTags.PROFILE_BUTTON).performClick()
+  //    checkSettingsScreenIsDisplayed()
+  //    composeTestRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).performClick()
+  //    checkDashboardScreenIsDisplayed()
+  //  }
 
   //  @Test
   //  fun profileButtonOpensSettingsFromCalendarAndSystemBackReturnsToCalendar() {
