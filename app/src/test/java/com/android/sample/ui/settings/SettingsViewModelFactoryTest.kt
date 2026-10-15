@@ -169,6 +169,6 @@ class SettingsViewModelFactoryTest {
     override suspend fun getProfile(userId: String): Result<UserProfile?> = Result.success(profile)
 
     override suspend fun createProfile(userId: String): Result<ProfileResolution> =
-      Result.success(ProfileResolution.Created(UserProfile(uid = userId)))
+        Result.success(ProfileResolution.Created(UserProfile(uid = userId)))
   }
 }
