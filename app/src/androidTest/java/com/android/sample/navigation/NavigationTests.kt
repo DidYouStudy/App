@@ -16,7 +16,6 @@ import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.PreferencesRepositoryProvider
 import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.ui.navigation.NavigationTestTags
-import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.profile.ProfileButtonTestTags
 import junit.framework.TestCase.assertEquals
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -92,12 +91,6 @@ class NavigationTests {
     }
     composeTestRule.waitUntil { composeTestRule.activity.isFinishing == shouldFinish }
     assertEquals(shouldFinish, composeTestRule.activity.isFinishing)
-  }
-
-  @Before
-  fun setUp() {
-    // Start past the Google sign-in gate, which cannot be completed in an instrumented test
-    composeTestRule.setContent { DidYouStudyApp(startDestination = Screen.Dashboard.name) }
   }
 
   @Test
