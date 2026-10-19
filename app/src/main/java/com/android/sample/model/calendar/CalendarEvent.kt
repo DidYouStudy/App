@@ -11,34 +11,33 @@ import java.time.Instant
  *
  * @property id stable event identifier assigned by the caller before saving.
  * @property ownerId identifier of the user owning this private entry.
- * @property title nonblank event title.
+ * @property type activity kind selected in the calendar form; independent of its subject.
+ * @property subject nonblank selected or custom subject label, such as a course name.
  * @property startsAt planned start, inclusive.
  * @property endsAt planned end, exclusive; must be after [startsAt].
  * @property createdAt creation time supplied by the caller; no clock is read by this model.
  * @property updatedAt last-edit time, initially [createdAt]; copying does not advance it
  *   automatically.
- * @property categoryId optional reference to a user-created [Category], not its display name.
  * @property location optional nonblank place label; contains no geographic coordinates.
  * @property description optional free-form details.
  */
 data class CalendarEvent(
     val id: String,
     val ownerId: String,
-    val title: String,
+    val type: EventType,
+    val subject: String,
     val startsAt: Instant,
     val endsAt: Instant,
     val createdAt: Instant,
     val updatedAt: Instant = createdAt,
-    val categoryId: String? = null,
     val location: String? = null,
     val description: String? = null,
 ) {
   init {
     require(id.isNotBlank()) { "Event ID must not be blank" }
     require(ownerId.isNotBlank()) { "Owner ID must not be blank" }
-    require(title.isNotBlank()) { "Title must not be blank" }
+    require(subject.isNotBlank()) { "Subject must not be blank" }
     require(endsAt.isAfter(startsAt)) { "End must be after start" }
-    require(categoryId == null || categoryId.isNotBlank()) { "Category ID must not be blank" }
     require(location == null || location.isNotBlank()) { "Location must not be blank" }
   }
 }

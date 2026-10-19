@@ -20,7 +20,8 @@ class CalendarEventTest {
       CalendarEvent(
           id = "event-1",
           ownerId = "user-1",
-          title = "Revision",
+          type = EventType.STUDY_SESSION,
+          subject = "Analysis",
           startsAt = start,
           endsAt = end,
           createdAt = created,
@@ -28,33 +29,30 @@ class CalendarEventTest {
 
   /** Scheduling across midnight is valid, and absent optional data needs no placeholder strings. */
   @Test
-  fun crossMidnightEvent_allowsUncategorizedEntryAndDefaultsEditTime() {
+  fun crossMidnightEvent_defaultsOptionalDetailsAndEditTime() {
     val event = event()
 
     assertEquals(start, event.startsAt)
     assertEquals(end, event.endsAt)
     assertEquals(created, event.updatedAt)
-    assertNull(event.categoryId)
     assertNull(event.location)
     assertNull(event.description)
   }
 
-  /**
-   * Multiple tags are unnecessary: an event can reference one category alongside manual details.
-   */
+  /** Selected or custom subject/place labels retain their text without a category lookup. */
   @Test
-  fun categorizedEvent_retainsLocationDescriptionAndExplicitEditTime() {
+  fun event_retainsSubjectLocationDescriptionAndExplicitEditTime() {
     val edited = created.plusSeconds(60)
     val event =
         event()
             .copy(
-                categoryId = "analysis",
+                subject = "Analysis II",
                 location = "Library",
                 description = "Review integration exercises",
                 updatedAt = edited,
             )
 
-    assertEquals("analysis", event.categoryId)
+    assertEquals("Analysis II", event.subject)
     assertEquals("Library", event.location)
     assertEquals("Review integration exercises", event.description)
     assertEquals(created, event.createdAt)
@@ -67,7 +65,7 @@ class CalendarEventTest {
     for (blank in listOf("", " \t\n")) {
       assertThrows(IllegalArgumentException::class.java) { event().copy(id = blank) }
       assertThrows(IllegalArgumentException::class.java) { event().copy(ownerId = blank) }
-      assertThrows(IllegalArgumentException::class.java) { event().copy(title = blank) }
+      assertThrows(IllegalArgumentException::class.java) { event().copy(subject = blank) }
     }
   }
 
@@ -81,26 +79,34 @@ class CalendarEventTest {
     assertThrows(IllegalArgumentException::class.java) { event().copy(startsAt = end) }
   }
 
-  /**
-   * Null means absent; blank labels and references are invalid instead of acting as missing data.
-   */
+  /** Null means absent; a blank place label is invalid instead of acting as missing data. */
   @Test
-  fun blankCategoryOrLocation_isRejected() {
+  fun blankLocation_isRejected() {
     for (blank in listOf("", " \t\n")) {
-      assertThrows(IllegalArgumentException::class.java) { event().copy(categoryId = blank) }
       assertThrows(IllegalArgumentException::class.java) { event().copy(location = blank) }
     }
   }
 
   /** Editing remains explicit: the model never generates IDs or reads a wall clock. */
   @Test
-  fun editingTitle_keepsIdentityAndTimestampsUntilCallerUpdatesThem() {
+  fun editingSubject_keepsIdentityAndTimestampsUntilCallerUpdatesThem() {
     val initial = event()
-    val edited = initial.copy(title = "Exam revision")
+    val edited = initial.copy(subject = "Physics")
 
     assertEquals(initial.id, edited.id)
     assertEquals(initial.ownerId, edited.ownerId)
     assertEquals(initial.createdAt, edited.createdAt)
     assertEquals(initial.updatedAt, edited.updatedAt)
+  }
+
+  /** A subject is independent of activity kind: its course and study block can share one label. */
+  @Test
+  fun sameSubject_canBeUsedForCourseAndStudySession() {
+    val studySession = event()
+    val course = studySession.copy(id = "course-1", type = EventType.COURSE)
+
+    assertEquals(EventType.STUDY_SESSION, studySession.type)
+    assertEquals(EventType.COURSE, course.type)
+    assertEquals(studySession.subject, course.subject)
   }
 }
