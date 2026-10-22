@@ -20,9 +20,9 @@ object Dimens {
   val cornerLarge = 16.dp
   val sessionTimeColumnWidth = 72.dp
   val fabClearance = 88.dp
-  val signInLogoSize = 281.dp
-  val signInTopSpacing = 88.dp
-  val signInLogoToTitleSpacing = 24.dp
+  val signInLogoSize = 200.dp
+  val signInTopSpacing = 125.dp
+  val signInLogoToTitleSpacing = 75.dp
   val signInTitleToButtonSpacing = 172.dp
   val signInLoadingIndicatorSize = 24.dp
   val signInErrorHorizontalPadding = 24.dp
