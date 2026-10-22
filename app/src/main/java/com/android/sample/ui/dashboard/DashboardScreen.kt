@@ -23,6 +23,7 @@ import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.profile.ProfileButton
+import com.android.sample.ui.theme.Dimens
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,6 +42,7 @@ fun DashboardScreen(
             title = {
               Text(
                   text = stringResource(R.string.dashboard_title),
+                  style = MaterialTheme.typography.headlineLarge,
                   fontWeight = FontWeight.Bold,
                   modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE),
               )
@@ -52,7 +54,10 @@ fun DashboardScreen(
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
                 ),
             actions = {
-              ProfileButton(onClick = { navigationActions?.navigateTo(Screen.Settings) })
+              ProfileButton(
+                  onClick = { navigationActions?.navigateTo(Screen.Settings) },
+                  modifier = Modifier.padding(end = Dimens.profileButtonPadding),
+              )
             },
         )
       },

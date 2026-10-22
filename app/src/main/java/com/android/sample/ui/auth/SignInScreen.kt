@@ -66,7 +66,7 @@ fun SignInScreen(
       modifier =
           modifier
               .fillMaxSize()
-              .background(Color.White)
+              .background(MaterialTheme.colorScheme.background)
               .verticalScroll(rememberScrollState())
               .semantics { this.testTag = SignInScreenTestTags.SCREEN },
       horizontalAlignment = Alignment.CenterHorizontally,
@@ -92,7 +92,7 @@ fun SignInScreen(
         text = stringResource(R.string.sign_in_title),
         fontSize = 36.sp,
         fontWeight = FontWeight.Bold,
-        color = Color.Black,
+        color = MaterialTheme.colorScheme.onBackground,
         textAlign = TextAlign.Center,
         modifier = Modifier.semantics { this.testTag = SignInScreenTestTags.TITLE },
     )

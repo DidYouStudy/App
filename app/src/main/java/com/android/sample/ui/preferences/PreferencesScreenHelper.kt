@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerSize
@@ -44,13 +43,7 @@ internal fun PreferencesHeader(modifier: Modifier = Modifier) {
       text = stringResource(id = R.string.preferences_header),
       style = MaterialTheme.typography.displaySmall,
       fontWeight = FontWeight.Bold,
-      modifier =
-          modifier
-              .fillMaxWidth()
-              .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f))
-              .statusBarsPadding()
-              .padding(horizontal = 16.dp, vertical = 16.dp)
-              .testTag(Tags.PREFERENCE_TITLE),
+      modifier = modifier.fillMaxWidth().testTag(Tags.PREFERENCE_TITLE),
   )
 }
 
