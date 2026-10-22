@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.android.sample.R
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
@@ -41,6 +42,7 @@ fun DashboardScreen(
             title = {
               Text(
                   text = stringResource(R.string.dashboard_title),
+                  style = MaterialTheme.typography.headlineLarge,
                   fontWeight = FontWeight.Bold,
                   modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE),
               )
@@ -52,7 +54,10 @@ fun DashboardScreen(
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
                 ),
             actions = {
-              ProfileButton(onClick = { navigationActions?.navigateTo(Screen.Settings) })
+              ProfileButton(
+                  onClick = { navigationActions?.navigateTo(Screen.Settings) },
+                  modifier = Modifier.padding(end = 12.dp),
+              )
             },
         )
       },

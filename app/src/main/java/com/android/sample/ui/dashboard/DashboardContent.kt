@@ -86,7 +86,7 @@ fun DashboardContent(
       modifier =
           modifier
               .fillMaxSize()
-              .background(MaterialTheme.colorScheme.surface)
+              .background(MaterialTheme.colorScheme.background)
               .verticalScroll(rememberScrollState())
               .padding(horizontal = Spacing.large, vertical = Spacing.large)
               // Keep the last scrollable content clear of the overlaid add button.
