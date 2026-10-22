@@ -51,6 +51,19 @@ abstract class EventsRepositoryContractTest {
   private suspend fun current(from: Instant = monday, to: Instant = wednesday) =
       repository.observeEvents(owner, from, to).first().getOrThrow()
 
+  /** Builds a valid event with [subject], last saved [minute] minutes after creation. */
+  private fun withSubject(id: String, subject: String?, minute: Long, ownerId: String = owner) =
+      event(id, 9, 10, ownerId)
+          .copy(
+              type = if (subject == null) EventType.OTHER else EventType.COURSE,
+              subject = subject,
+              updatedAt = created.plusSeconds(minute * 60),
+          )
+
+  /** Reads the owner's subjects once. */
+  private suspend fun subjects(ownerId: String = owner) =
+      repository.observeSubjects(ownerId).first().getOrThrow()
+
   /** Returns the error category of a failed result. */
   private fun Result<*>.error() = (exceptionOrNull() as EventsException).error
 
@@ -144,6 +157,60 @@ abstract class EventsRepositoryContractTest {
     assertEquals(listOf(emptyList(), listOf(event), emptyList()), emissions)
   }
 
+  /** Subjects come most recently used first; ties are sorted by name. */
+  @Test
+  fun observeSubjects_ordersByLastUse() = runTest {
+    repository.saveEvent(withSubject("a", "Analysis", minute = 1)).getOrThrow()
+    repository.saveEvent(withSubject("b", "Physics", minute = 3)).getOrThrow()
+    repository.saveEvent(withSubject("c", "Chemistry", minute = 1)).getOrThrow()
+
+    assertEquals(listOf("Physics", "Analysis", "Chemistry"), subjects())
+  }
+
+  /** Spelling variants count as one subject, shown with the spelling of the latest save. */
+  @Test
+  fun observeSubjects_mergesCaseAndSpaceVariants() = runTest {
+    repository.saveEvent(withSubject("a", "analysis", minute = 1)).getOrThrow()
+    repository.saveEvent(withSubject("b", " Analysis ", minute = 2)).getOrThrow()
+
+    assertEquals(listOf("Analysis"), subjects())
+  }
+
+  /** Suggestions outlive their events, and events without a subject add nothing. */
+  @Test
+  fun observeSubjects_keepsDeletedAndIgnoresMissingSubjects() = runTest {
+    repository.saveEvent(withSubject("a", "Analysis", minute = 1)).getOrThrow()
+    repository.saveEvent(withSubject("b", null, minute = 2)).getOrThrow()
+
+    repository.deleteEvent(owner, "a").getOrThrow()
+
+    assertEquals(listOf("Analysis"), subjects())
+  }
+
+  /** One user never sees another user's subjects. */
+  @Test
+  fun observeSubjects_isIsolatedPerOwner() = runTest {
+    repository.saveEvent(withSubject("a", "Analysis", minute = 1)).getOrThrow()
+    repository.saveEvent(withSubject("b", "Physics", minute = 1, ownerId = otherOwner)).getOrThrow()
+
+    assertEquals(listOf("Analysis"), subjects())
+    assertEquals(listOf("Physics"), subjects(otherOwner))
+  }
+
+  /** The flow emits the current list, then again when a new subject is used. */
+  @OptIn(ExperimentalCoroutinesApi::class)
+  @Test
+  fun observeSubjects_reEmitsOnNewSubject() = runTest {
+    val emissions = mutableListOf<List<String>>()
+    backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+      repository.observeSubjects(owner).collect { emissions += it.getOrThrow() }
+    }
+
+    repository.saveEvent(withSubject("a", "Analysis", minute = 1)).getOrThrow()
+
+    assertEquals(listOf(emptyList(), listOf("Analysis")), emissions)
+  }
+
   /** Blank IDs and empty ranges are rejected before reaching the storage. */
   @Test
   fun invalidArguments_areRejected() = runTest {
@@ -151,6 +218,7 @@ abstract class EventsRepositoryContractTest {
     assertEquals(invalid, repository.observeEvents(" ", monday, tuesday).first().error())
     assertEquals(invalid, repository.observeEvents(owner, tuesday, tuesday).first().error())
     assertEquals(invalid, repository.observeEvents(owner, tuesday, monday).first().error())
+    assertEquals(invalid, repository.observeSubjects(" ").first().error())
     assertEquals(invalid, repository.getEvent(owner, " ").error())
     assertEquals(invalid, repository.getEvent("", "a").error())
     assertEquals(invalid, repository.deleteEvent(owner, "").error())
