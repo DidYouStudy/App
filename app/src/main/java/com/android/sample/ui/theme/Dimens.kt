@@ -30,4 +30,5 @@ object Dimens {
   val googleButtonHeight = 40.dp
   val googleButtonHorizontalPadding = 12.dp
   val googleLogoSize = 20.dp
+  val profileButtonPadding = 12.dp
 }
