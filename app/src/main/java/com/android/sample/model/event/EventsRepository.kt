@@ -40,7 +40,19 @@ interface EventsRepository {
    */
   suspend fun getEvent(ownerId: String, eventId: String): Result<Event>
 
-  /** Creates the event, or replaces the owner's event with the same ID. */
+  /**
+   * Observes the subjects the owner has used, most recently used first, for the form's suggestions.
+   *
+   * Subjects are trimmed and compared ignoring case; the spelling of the latest save is kept, and
+   * its [Event.updatedAt] decides the order. Deleting events does not remove their subjects. The
+   * flow emits the current list, then again after every change.
+   *
+   * @return a flow emitting [Result.failure] with [EventsError.INVALID_ARGUMENT] when [ownerId] is
+   *   blank.
+   */
+  fun observeSubjects(ownerId: String): Flow<Result<List<String>>>
+
+  /** Creates the event, or replaces the owner's event with the same ID, and records its subject. */
   suspend fun saveEvent(event: Event): Result<Unit>
 
   /** Deletes the owner's event; deleting an event that does not exist also succeeds. */
