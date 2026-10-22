@@ -15,9 +15,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,8 +59,12 @@ fun PreferencesScreen(
 ) {
   Scaffold(
       topBar = {
-        TopAppBar(
-            title = { PreferencesHeader(modifier) },
+        MediumTopAppBar(
+            title = { PreferencesHeader() },
+            colors =
+                TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
             modifier = modifier.testTag(NavigationTestTags.TOP_BAR_TITLE),
         )
       },
@@ -158,7 +163,7 @@ fun PreferenceScreenStateless(
       modifier =
           modifier
               .fillMaxSize()
-              .background(MaterialTheme.colorScheme.surface)
+              .background(MaterialTheme.colorScheme.background)
               .testTag(Tags.PREFERENCE_SCREEN),
   ) {
 
