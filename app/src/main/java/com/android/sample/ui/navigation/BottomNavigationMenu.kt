@@ -39,7 +39,7 @@ fun BottomNavigationMenu(
 ) {
   NavigationBar(
       modifier = modifier.fillMaxWidth(),
-      containerColor = MaterialTheme.colorScheme.surface,
+      containerColor = MaterialTheme.colorScheme.surfaceContainer,
       content = {
         tabs.forEach { tab ->
           val selected = tab == selectedTab
