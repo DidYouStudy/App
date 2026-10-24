@@ -25,6 +25,8 @@ import java.time.Instant
  * @property location optional nonblank place label; contains no geographic coordinates.
  * @property description optional free-form details.
  * @property tasks planned checklist for this event, in display order; allowed for every type.
+ *   Callers should pass a stable list and not mutate it after creating the event. The list is
+ *   exposed as read-only but is not defensively copied.
  */
 data class Event(
     val id: String,

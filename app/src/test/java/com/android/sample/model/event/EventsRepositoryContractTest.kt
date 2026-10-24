@@ -159,7 +159,7 @@ abstract class EventsRepositoryContractTest {
 
   /** Subjects come most recently used first; ties are sorted by name. */
   @Test
-  fun observeSubjects_ordersByLastUse() = runTest {
+  fun observeSubjects_ordersByLastUseThenAlphabetically() = runTest {
     repository.saveEvent(withSubject("a", "Analysis", minute = 1)).getOrThrow()
     repository.saveEvent(withSubject("b", "Physics", minute = 3)).getOrThrow()
     repository.saveEvent(withSubject("c", "Chemistry", minute = 1)).getOrThrow()
@@ -174,6 +174,24 @@ abstract class EventsRepositoryContractTest {
     repository.saveEvent(withSubject("b", " Analysis ", minute = 2)).getOrThrow()
 
     assertEquals(listOf("Analysis"), subjects())
+  }
+
+  /** Updating an event to have no subject leaves the existing subject suggestions unchanged. */
+  @Test
+  fun observeSubjects_keepsExistingSubjectsWhenEventIsUpdatedWithoutSubject() = runTest {
+    val original = withSubject("a", "Analysis", minute = 1)
+    repository.saveEvent(original).getOrThrow()
+    repository.saveEvent(withSubject("b", "Physics", minute = 2)).getOrThrow()
+
+    val updated =
+        original.copy(
+            type = EventType.OTHER,
+            subject = null,
+            updatedAt = created.plusSeconds(180),
+        )
+    repository.saveEvent(updated).getOrThrow()
+
+    assertEquals(listOf("Physics", "Analysis"), subjects())
   }
 
   /** Suggestions outlive their events, and events without a subject add nothing. */
