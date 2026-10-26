@@ -10,5 +10,11 @@ object GroupSessionsRepositoryProvider {
    *
    * Subsequent calls return the same repository instance.
    */
-  @Synchronized fun getRepository(): GroupSessionsRepository = TODO("Not implemented")
+  @Synchronized
+  fun getRepository(): GroupSessionsRepository {
+    instance?.let {
+      return it
+    }
+    return InMemoryGroupSessionsRepository().also { instance = it }
+  }
 }
