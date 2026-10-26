@@ -150,4 +150,29 @@ class EventFirestoreMapperTest {
       SubjectCatalogFirestoreMapper.decode(mapOf("subjects" to mapOf("bad" to "entry")))
     }
   }
+
+  /** A malformed subject invalidates the catalog instead of exposing partial suggestions. */
+  @Test
+  fun rejectsInvalidSubjectSpellingsAndKeys() {
+    val usedAt = EventFirestoreMapper.timestamp(time)
+    val valid = SubjectCatalogFirestoreMapper.encode(event)!!["subjects"] as Map<*, *>
+    val invalidEntries =
+        listOf(
+            SubjectCatalogFirestoreMapper.key("") to "",
+            SubjectCatalogFirestoreMapper.key(" ") to " ",
+            SubjectCatalogFirestoreMapper.key("Physics") to " Physics ",
+            SubjectCatalogFirestoreMapper.key("Chemistry") to "Physics",
+        )
+    invalidEntries.forEach { (key, spelling) ->
+      val data =
+          mapOf("subjects" to (valid + (key to mapOf("spelling" to spelling, "usedAt" to usedAt))))
+      val error =
+          assertThrows(EventsException::class.java) { SubjectCatalogFirestoreMapper.decode(data) }
+      assertEquals(
+          "Invalid spelling '$spelling' with key '$key'",
+          EventsError.INVALID_EVENT_DATA,
+          error.error,
+      )
+    }
+  }
 }

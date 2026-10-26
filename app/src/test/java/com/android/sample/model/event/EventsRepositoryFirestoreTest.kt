@@ -77,6 +77,22 @@ class EventsRepositoryFirestoreTest {
     assertEquals(EventsError.STORAGE_FAILURE, repository.getEvent("owner", "id").error())
   }
 
+  /** Non-Firebase failures retain their domain category and original diagnostic cause. */
+  @Test
+  fun mapsUnexpectedReadFailures() = runTest {
+    val failures =
+        listOf(
+            IllegalArgumentException("invalid query") to EventsError.INVALID_ARGUMENT,
+            IllegalStateException("unexpected failure") to EventsError.UNKNOWN,
+        )
+    failures.forEach { (cause, expected) ->
+      whenever(document.get()).thenReturn(Tasks.forException(cause))
+      val result = repository.getEvent("owner", "id")
+      assertEquals(expected, result.error())
+      assertSame(cause, result.exceptionOrNull()?.cause)
+    }
+  }
+
   /** Cancellation is propagated instead of converted to an ordinary failure result. */
   @Test
   fun propagatesCancellation() = runTest {
@@ -102,6 +118,32 @@ class EventsRepositoryFirestoreTest {
     listener.cancelAndJoin()
     verify(registration).remove()
     verify(auth).removeAuthStateListener(any())
+  }
+
+  /** Signing out terminates an active subscription and removes both registered listeners. */
+  @Test
+  fun signOutClosesObservationAndRemovesListeners() = runTest {
+    val meta: CollectionReference = mock()
+    val subjects: DocumentReference = mock()
+    val registration: ListenerRegistration = mock()
+    whenever(owner.collection("meta")).thenReturn(meta)
+    whenever(meta.document("subjects")).thenReturn(subjects)
+    whenever(subjects.addSnapshotListener(any<EventListener<DocumentSnapshot>>()))
+        .thenReturn(registration)
+    val collected = async { repository.observeSubjects("owner").toList() }
+    runCurrent()
+    val callback = argumentCaptor<FirebaseAuth.AuthStateListener>()
+    verify(auth).addAuthStateListener(callback.capture())
+    callback.firstValue.onAuthStateChanged(auth)
+    runCurrent()
+    assertFalse(collected.isCompleted)
+    whenever(auth.currentUser).thenReturn(null)
+    callback.firstValue.onAuthStateChanged(auth)
+    runCurrent()
+    assertTrue(collected.isCompleted)
+    assertEquals(listOf(EventsError.PERMISSION_DENIED), collected.await().map { it.error() })
+    verify(registration).remove()
+    verify(auth).removeAuthStateListener(callback.firstValue)
   }
 
   /** An SDK terminal error completes collection and releases both listeners. */
@@ -153,6 +195,33 @@ class EventsRepositoryFirestoreTest {
       verify(batch).commit()
       verify(query).get(Source.CACHE)
     }
+  }
+
+  /** A rejected server write is reported after local processing instead of returning success. */
+  @Test
+  fun deleteReportsFailedAcknowledgementAfterCacheBarrier() = runTest {
+    val batch: WriteBatch = mock()
+    val query: Query = mock()
+    val snapshot: QuerySnapshot = mock()
+    val server = TaskCompletionSource<Void>()
+    val cache = TaskCompletionSource<QuerySnapshot>()
+    val rejection =
+        FirebaseFirestoreException("denied", FirebaseFirestoreException.Code.PERMISSION_DENIED)
+    whenever(db.batch()).thenReturn(batch)
+    whenever(batch.delete(document)).thenReturn(batch)
+    whenever(batch.commit()).thenReturn(server.task)
+    whenever(events.whereEqualTo(FieldPath.documentId(), "id")).thenReturn(query)
+    whenever(query.get(Source.CACHE)).thenReturn(cache.task)
+    val deletion = async { repository.deleteEvent("owner", "id") }
+    runCurrent()
+    server.setException(rejection)
+    runCurrent()
+    assertFalse(deletion.isCompleted)
+    cache.setResult(snapshot)
+    runCurrent()
+    val result = deletion.await()
+    assertEquals(EventsError.PERMISSION_DENIED, result.error())
+    assertSame(rejection, result.exceptionOrNull()?.cause)
   }
 
   /** Extracts the public domain category without depending on SDK messages. */
