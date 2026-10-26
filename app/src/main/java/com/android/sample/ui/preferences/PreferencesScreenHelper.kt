@@ -22,11 +22,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.android.sample.R
 import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
 
 // ---------------------------------------------------------------------------
@@ -37,13 +35,10 @@ import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
  * Displays the preferences screen title.
  *
  * @param modifier Modifier applied to the title.
- * @param title Text of the title; defaults to the onboarding title.
+ * @param title Text of the title (onboarding or edit-mode wording).
  */
 @Composable
-internal fun PreferencesHeader(
-    modifier: Modifier = Modifier,
-    title: String = stringResource(id = R.string.preferences_header),
-) {
+internal fun PreferencesHeader(title: String, modifier: Modifier = Modifier) {
   Text(
       text = title,
       style = MaterialTheme.typography.displaySmall,
