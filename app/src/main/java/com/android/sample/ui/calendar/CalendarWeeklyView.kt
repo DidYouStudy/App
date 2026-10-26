@@ -76,17 +76,39 @@ object CalendarTestTags {
   const val TIME_GRID = "calendar_timeGrid"
   const val ADD_BUTTON = "calendar_addButton"
 
-  /** Creates a stable test tag for the date number in a day header. */
+  /**
+   * Creates the test tag used to identify a date number in a weekly day header.
+   *
+   * @param date The calendar date represented by the date number.
+   * @return A stable tag containing the supplied date.
+   */
   fun dayNumber(date: LocalDate): String = "calendar_dayNumber_${date}"
 
-  /** Creates a stable test tag for the day name in a day header. */
+  /**
+   * Creates the test tag used to identify a weekday name in a weekly day header.
+   *
+   * @param date The calendar date whose weekday name is displayed.
+   * @return A stable tag containing the supplied date.
+   */
   fun dayName(date: LocalDate): String = "calendar_dayName_${date}"
 
-  /** Creates a stable test tag for an hour label on the time axis. */
+  /**
+   * Creates the test tag used to identify an hour label on the time axis.
+   *
+   * @param hour The hour of day represented by the label, from 0 through 23.
+   * @return A stable tag containing the supplied hour.
+   */
   fun hourLabel(hour: Int): String = "calendar_hourLabel_$hour"
 }
 
-/** Displays a navigable week header and the empty weekly time grid. */
+/**
+ * Displays the weekly calendar, including a navigable date range, seven day headings, and a
+ * vertically scrollable empty timeline. The initial week is the Monday-to-Sunday week containing
+ * [today], and the selected week is retained across supported saved-state recreation.
+ *
+ * @param today The date used to choose the initial week and highlight today in its day heading.
+ * @param modifier The modifier applied to the weekly calendar's root column.
+ */
 @Composable
 internal fun CalendarWeeklyView(
     today: LocalDate,
@@ -113,7 +135,15 @@ internal fun CalendarWeeklyView(
   }
 }
 
-/** Shows the visible week range and controls for moving one week at a time. */
+/**
+ * Shows a formatted date range with controls that request the preceding or following week.
+ * The caller owns the displayed week and supplies callbacks that update it.
+ *
+ * @param weekDates The seven consecutive Monday-through-Sunday dates currently displayed.
+ * @param onPreviousWeek Callback invoked when the previous-week control is clicked.
+ * @param onNextWeek Callback invoked when the next-week control is clicked.
+ * @param modifier The modifier applied to the header row.
+ */
 @Composable
 fun CalendarWeekRangeHeader(
     weekDates: List<LocalDate>,
@@ -181,7 +211,14 @@ fun CalendarWeekRangeHeader(
   }
 }
 
-/** Shows seven weekday initials and date numbers, highlighting [today]. */
+/**
+ * Renders one heading for each supplied date, with a weekday initial and day-of-month number.
+ * The date matching [today] receives the selected visual treatment and selected semantics.
+ *
+ * @param weekDates The dates to display, normally the seven dates of the visible calendar week.
+ * @param today The date to highlight when it is included in [weekDates].
+ * @param modifier The modifier applied to the row of day headings.
+ */
 @Composable
 fun CalendarDayHeader(
     weekDates: List<LocalDate>,
@@ -250,7 +287,13 @@ fun CalendarDayHeader(
   }
 }
 
-/** Shows an empty 24-hour timeline with seven aligned day columns. */
+/**
+ * Renders the empty weekly timeline with hour labels and seven equally sized day columns.
+ * The timeline scrolls vertically as one unit and initially positions the view around 8 AM when
+ * the measured viewport has enough scroll range.
+ *
+ * @param modifier The modifier applied to the timeline container.
+ */
 @Composable
 fun CalendarTimeGrid(
     modifier: Modifier = Modifier,
@@ -316,7 +359,14 @@ fun CalendarTimeGrid(
   }
 }
 
-/** Draws the horizontal hour boundaries and vertical day boundary for an empty grid cell. */
+/**
+ * Draws the grid lines for one empty day-and-hour cell. Every cell has a top and right boundary;
+ * the first day adds the left edge, and the final hour adds the bottom edge.
+ *
+ * @param hourHeight The measured height shared by every hour row.
+ * @param isLastHour Whether this cell belongs to the final hour and should close the grid bottom.
+ * @param isFirstDay Whether this cell belongs to the first day and should draw the grid left edge.
+ */
 @Composable
 private fun CalendarEmptyHourCell(
     hourHeight: Dp,
@@ -366,7 +416,15 @@ private fun CalendarEmptyHourCell(
   )
 }
 
-/** Formats the week range in the English style shown in the calendar design. */
+/**
+ * Formats a validated Monday-through-Sunday week as a compact English date range.
+ * It omits repeated month and year text where possible, while showing both years when the week
+ * crosses a year boundary. Throws [IllegalArgumentException] if the input is not exactly one
+ * ordered week.
+ *
+ * @param weekDates Seven consecutive dates beginning on Monday.
+ * @return The human-readable date range for the week.
+ */
 internal fun formatWeekRange(weekDates: List<LocalDate>): String {
   require(weekDates.size == DAYS_PER_WEEK) { "A calendar week must contain seven dates" }
   val first = weekDates.first()
@@ -385,5 +443,10 @@ internal fun formatWeekRange(weekDates: List<LocalDate>): String {
   }
 }
 
-/** Formats an hour on the 12-hour clock used by the design. */
+/**
+ * Formats a 24-hour clock value as an English 12-hour label such as `12 AM` or `3 PM`.
+ *
+ * @param hour The hour of day to format, from 0 through 23.
+ * @return The hour label displayed beside the corresponding timeline row.
+ */
 private fun formatHour(hour: Int): String = LocalTime.of(hour, 0).format(HOUR_FORMAT)
