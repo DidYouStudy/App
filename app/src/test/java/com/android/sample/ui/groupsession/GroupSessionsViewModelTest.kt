@@ -1,4 +1,5 @@
 // Co-authored-by: GitHub Copilot
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.groupsession
 
 import com.android.sample.model.auth.UserAccount
@@ -262,6 +263,22 @@ class GroupSessionsViewModelTest {
 
     assertFalse(viewModel.uiState.value.isLoading)
     assertEquals(GroupSessionsError.LOAD_FAILED, viewModel.uiState.value.error)
+  }
+
+  /** A failure after a successful load keeps the last list and exposes LOAD_FAILED. */
+  @Test
+  fun loadFailureAfterSuccessKeepsLastListAndShowsError() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val shown = session("shown", ALICE)
+    emissions.emit(Result.success(listOf(shown)))
+
+    emissions.emit(Result.failure(EventsException(EventsError.STORAGE_FAILURE)))
+
+    assertEquals(listOf(shown), viewModel.uiState.value.sessions.map { it.session })
+    assertEquals(GroupSessionsError.LOAD_FAILED, viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isLoading)
   }
 
   /**
