@@ -132,6 +132,20 @@ abstract class GroupSessionsRepositoryContractTest {
     assertEquals(original, repository.getSession("a").getOrThrow())
   }
 
+  /** The creator cannot transfer a session by saving it with another creator identity. */
+  @Test
+  fun saveSession_creatorCannotTransferSession() = runTest {
+    val original = session("a")
+    repository.saveSession(creator, original).getOrThrow()
+    val transferred = original.copy(createdBy = other, memberIds = listOf(creator, other))
+
+    assertEquals(
+        EventsError.PERMISSION_DENIED,
+        repository.saveSession(creator, transferred).error(),
+    )
+    assertEquals(original, repository.getSession("a").getOrThrow())
+  }
+
   /** Looking up an unknown ID returns NOT_FOUND. */
   @Test
   fun getSession_missingIsNotFound() = runTest {
@@ -271,6 +285,21 @@ abstract class GroupSessionsRepositoryContractTest {
         listOf(emptyList(), listOf(original), listOf(joined), listOf(left), emptyList()),
         emissions,
     )
+  }
+
+  /** Saving an ended session does not re-emit an unchanged visible list. */
+  @OptIn(ExperimentalCoroutinesApi::class)
+  @Test
+  fun observeSessions_doesNotReEmitWhenVisibleListIsUnchanged() = runTest {
+    val threshold = monday.plusSeconds(11 * 3600)
+    val emissions = mutableListOf<List<GroupSession>>()
+    backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+      repository.observeSessions(threshold).collect { emissions += it.getOrThrow() }
+    }
+
+    repository.saveSession(creator, session("ended")).getOrThrow()
+
+    assertEquals(listOf(emptyList<GroupSession>()), emissions)
   }
 
   /** Generated IDs are nonblank and distinct. */
