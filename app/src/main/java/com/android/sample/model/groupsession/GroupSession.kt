@@ -1,4 +1,5 @@
 // Co-authored-by: GitHub Copilot
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.model.groupsession
 
 import com.android.sample.model.event.EventType
@@ -10,7 +11,9 @@ import java.time.Instant
  *
  * @property id stable session identifier assigned by the caller before saving.
  * @property createdBy identifier of the user who created the session and must remain a member.
- * @property memberIds unique identifiers of members, including [createdBy].
+ * @property memberIds unique identifiers of members, including [createdBy]. Callers should pass a
+ *   stable list and not mutate it afterwards; it is exposed as read-only but not defensively
+ *   copied.
  * @property type activity kind, independent of its subject.
  * @property subject selected or custom subject label; required except for [EventType.OTHER].
  * @property startsAt planned start, inclusive.

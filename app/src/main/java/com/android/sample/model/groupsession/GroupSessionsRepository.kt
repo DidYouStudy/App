@@ -1,4 +1,5 @@
 // Co-authored-by: GitHub Copilot
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.model.groupsession
 
 import java.time.Instant
@@ -18,7 +19,9 @@ interface GroupSessionsRepository {
    * Observes every session whose end is after [endingAfter], sorted by start, end, then ID.
    *
    * A session that ends exactly at [endingAfter] is excluded. The flow emits its current list and
-   * emits again when a save, join, leave, or delete changes the list.
+   * emits again when a save, join, leave, or delete changes the list. [endingAfter] is fixed for
+   * the flow's lifetime: a session is not removed when its end time passes, so callers that need
+   * that observe again with a later instant or filter the list themselves.
    */
   fun observeSessions(endingAfter: Instant): Flow<Result<List<GroupSession>>>
 
