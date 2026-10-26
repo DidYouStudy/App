@@ -1,21 +1,12 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.ui.calendar
 
-import java.time.Clock
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
 
-/** Calculates the dates and today status used by the calendar's weekly UI. */
-class CalendarDateHelper(
-    private val clock: Clock = Clock.systemDefaultZone(),
-) {
-  /**
-   * Checks whether [date] is today according to this helper's clock. Avoids calling now()
-   * repeatedly. -check whether this is actually needed
-   */
-  fun isToday(date: LocalDate): Boolean = date == LocalDate.now(clock)
-
+/** Calculates the week dates used by the calendar's weekly UI. */
+class CalendarDateHelper {
   /** Returns the Monday-through-Sunday dates for the week containing [date]. */
   fun weekDates(date: LocalDate): List<LocalDate> {
     val monday = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))

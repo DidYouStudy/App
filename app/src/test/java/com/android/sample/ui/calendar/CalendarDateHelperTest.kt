@@ -1,13 +1,8 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.ui.calendar
 
-import java.time.Clock
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneOffset
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Tests calendar week calculations and today detection. */
@@ -91,15 +86,5 @@ class CalendarDateHelperTest {
         LocalDate.of(2027, 1, 4),
         helper.nextWeek(LocalDate.of(2026, 12, 31)).first(),
     )
-  }
-
-  /** Detects today using the injected clock and its time zone. */
-  @Test
-  fun isTodayUsesInjectedClock() {
-    val clock = Clock.fixed(Instant.parse("2026-10-21T12:00:00Z"), ZoneOffset.UTC)
-    val helper = CalendarDateHelper(clock)
-
-    assertTrue(helper.isToday(LocalDate.of(2026, 10, 21)))
-    assertFalse(helper.isToday(LocalDate.of(2026, 10, 22)))
   }
 }
