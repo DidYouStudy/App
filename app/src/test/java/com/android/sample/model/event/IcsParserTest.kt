@@ -245,4 +245,75 @@ class IcsParserTest {
 
     assertEquals("custom_prefix_original_uid_123", events.first().id)
   }
+
+  @Test
+  fun parsesUtcTimestampWithTrailingZSuffixCorrectly() {
+    val ics =
+        """
+        BEGIN:VCALENDAR
+        BEGIN:VEVENT
+        UID:utc_event_123
+        SUMMARY:UTC Timed Lecture
+        DTSTART:20261013T080000Z
+        DTEND:20261013T093000Z
+        CATEGORIES:Cours
+        END:VEVENT
+        END:VCALENDAR
+        """
+            .trimIndent()
+
+    val events = IcsParser.parseCalendar(stringToStream(ics), defaultOwnerId)
+
+    assertEquals(1, events.size)
+    val event = events.first()
+    assertEquals(Instant.parse("2026-10-13T08:00:00Z"), event.startsAt)
+    assertEquals(Instant.parse("2026-10-13T09:30:00Z"), event.endsAt)
+  }
+
+  @Test
+  fun fallsBackToDefaultZoneWhenTzidIsInvalid() {
+    // Passes an invalid time zone to trigger the catch block inside extractZoneId
+    val ics =
+        """
+        BEGIN:VCALENDAR
+        BEGIN:VEVENT
+        UID:invalid_tz_uid
+        SUMMARY:Unknown Zone Event
+        DTSTART;TZID=Invalid/Unknown_Zone:20261013T101500
+        DURATION:PT45M
+        CATEGORIES:Exercices
+        END:VEVENT
+        END:VCALENDAR
+        """
+            .trimIndent()
+
+    val events = IcsParser.parseCalendar(stringToStream(ics), defaultOwnerId)
+
+    assertEquals(1, events.size)
+    // When using DEFAULT_ZONE (Europe/Zurich), 10:15 CEST corresponds to 08:15 UTC
+    assertEquals(Instant.parse("2026-10-13T08:15:00Z"), events.first().startsAt)
+  }
+
+  @Test
+  fun skipsEventWhenDateTimeStringIsMalformedToTriggerParseCatchBlock() {
+    // Passes unparseable malformed text in DTSTART to trigger the catch block in parseIcsDateTime
+    val ics =
+        """
+        BEGIN:VCALENDAR
+        BEGIN:VEVENT
+        UID:malformed_date_uid
+        SUMMARY:Corrupted Date Event
+        DTSTART;TZID=Europe/Berlin:NOT_A_VALID_DATE_TIME
+        DURATION:PT45M
+        CATEGORIES:Cours
+        END:VEVENT
+        END:VCALENDAR
+        """
+            .trimIndent()
+
+    val events = IcsParser.parseCalendar(stringToStream(ics), defaultOwnerId)
+
+    // parseIcsDateTime catches the exception, returns null, and parseVEvent discards the event
+    assertTrue(events.isEmpty())
+  }
 }
