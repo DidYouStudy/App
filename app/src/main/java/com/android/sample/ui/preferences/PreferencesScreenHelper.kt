@@ -1,4 +1,5 @@
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.preferences
 
 import androidx.compose.foundation.background
@@ -36,11 +37,15 @@ import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
  * Displays the preferences screen title.
  *
  * @param modifier Modifier applied to the title.
+ * @param title Text of the title; defaults to the onboarding title.
  */
 @Composable
-internal fun PreferencesHeader(modifier: Modifier = Modifier) {
+internal fun PreferencesHeader(
+    modifier: Modifier = Modifier,
+    title: String = stringResource(id = R.string.preferences_header),
+) {
   Text(
-      text = stringResource(id = R.string.preferences_header),
+      text = title,
       style = MaterialTheme.typography.displaySmall,
       fontWeight = FontWeight.Bold,
       modifier = modifier.fillMaxWidth().testTag(Tags.PREFERENCE_TITLE),
