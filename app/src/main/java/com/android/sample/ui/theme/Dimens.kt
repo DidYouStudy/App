@@ -31,4 +31,6 @@ object Dimens {
   val googleButtonHorizontalPadding = 12.dp
   val googleLogoSize = 20.dp
   val profileButtonPadding = 12.dp
+
+  val calendarWeekSwitchHeaderHeight = 52.dp
 }

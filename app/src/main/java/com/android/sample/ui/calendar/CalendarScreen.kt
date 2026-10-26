@@ -1,14 +1,21 @@
-// Co-authored-by: Claude AI Agent
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.ui.calendar
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -21,17 +28,16 @@ import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.profile.ProfileButton
+import java.time.LocalDate
 
+/** Shows the calendar weekly view inside the app's standard navigation scaffold. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarScreen(
-    // TODO add VM as parameter
-    // TODO: add credentialManager as parameter
-    // credentialManager: CredentialManager = CredentialManager.create(LocalContext.current),
-    // TODO: add onSignedOut as parameter
-    // onSignedOut: () -> Unit = {},
     navigationActions: NavigationActions? = null,
 ) {
+  val today = remember { LocalDate.now() }
+
   Scaffold(
       topBar = {
         TopAppBar(
@@ -60,12 +66,24 @@ fun CalendarScreen(
             modifier = Modifier.testTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU),
         )
       },
-      content = { pd ->
-        Text("Calendar screen (Not implemented)", modifier = Modifier.padding(pd))
+      floatingActionButton = {
+        FloatingActionButton(
+            onClick = {},
+            modifier = Modifier.testTag(CalendarTestTags.ADD_BUTTON),
+        ) {
+          Icon(imageVector = Icons.Default.Add, contentDescription = "Add calendar event")
+        }
+      },
+      content = { paddingValues ->
+        CalendarWeeklyView(
+            today = today,
+            modifier = Modifier.padding(paddingValues),
+        )
       },
   )
 }
 
+/** Renders a preview of the calendar screen. */
 @Preview(showBackground = true)
 @Composable
 fun CalendarScreenPreview() {
