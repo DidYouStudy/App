@@ -55,6 +55,14 @@ interface EventsRepository {
   /** Creates the event, or replaces the owner's event with the same ID, and records its subject. */
   suspend fun saveEvent(event: Event): Result<Unit>
 
+  /**
+   * Saves multiple events atomically or in batch, recording their subjects.
+   *
+   * @return [Result.success] when all events are saved, or [Result.failure] if validation or
+   *   writing fails.
+   */
+  suspend fun saveEvents(events: List<Event>): Result<Unit>
+
   /** Deletes the owner's event; deleting an event that does not exist also succeeds. */
   suspend fun deleteEvent(ownerId: String, eventId: String): Result<Unit>
 }
