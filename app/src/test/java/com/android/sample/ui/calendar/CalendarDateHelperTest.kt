@@ -5,7 +5,7 @@ import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** Tests calendar week calculations and today detection. */
+/** Tests calendar week calculations and navigation. */
 class CalendarDateHelperTest {
 
   /** Returns Monday through Sunday when the input date is a Monday. */
@@ -37,6 +37,17 @@ class CalendarDateHelperTest {
         CalendarDateHelper().weekDates(sunday).first(),
     )
     assertEquals(sunday, CalendarDateHelper().weekDates(sunday).last())
+  }
+
+  /** Finds the containing Monday-to-Sunday week for a date in the middle of the week. */
+  @Test
+  fun weekDatesFromMidweekReturnsContainingWeek() {
+    val wednesday = LocalDate.of(2026, 10, 14)
+    val dates = CalendarDateHelper().weekDates(wednesday)
+
+    assertEquals(LocalDate.of(2026, 10, 12), dates.first())
+    assertEquals(wednesday, dates[2])
+    assertEquals(LocalDate.of(2026, 10, 18), dates.last())
   }
 
   /** Returns the previous Monday-to-Sunday week for a date in the current week. */
@@ -85,6 +96,21 @@ class CalendarDateHelperTest {
     assertEquals(
         LocalDate.of(2027, 1, 4),
         helper.nextWeek(LocalDate.of(2026, 12, 31)).first(),
+    )
+  }
+
+  /** Navigates from the first week of a year to the final week of the previous year. */
+  @Test
+  fun previousWeekCrossesYearBoundary() {
+    val helper = CalendarDateHelper()
+
+    assertEquals(
+        LocalDate.of(2026, 12, 28),
+        helper.previousWeek(LocalDate.of(2027, 1, 6)).first(),
+    )
+    assertEquals(
+        LocalDate.of(2027, 1, 3),
+        helper.previousWeek(LocalDate.of(2027, 1, 6)).last(),
     )
   }
 }
