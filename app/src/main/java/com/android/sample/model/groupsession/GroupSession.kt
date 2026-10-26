@@ -34,7 +34,19 @@ data class GroupSession(
     val description: String? = null,
 ) {
   init {
-    TODO("Not implemented")
+    require(id.isNotBlank()) { "Group session ID must not be blank" }
+    require(createdBy.isNotBlank()) { "Creator ID must not be blank" }
+    require(memberIds.all { it.isNotBlank() }) { "Member IDs must not be blank" }
+    require(createdBy in memberIds) { "Creator must be a member" }
+    require(memberIds.distinct().size == memberIds.size) { "Member IDs must be unique" }
+    require(subject?.isNotBlank() ?: (type == EventType.OTHER)) {
+      "Subject must not be blank, and may only be absent for OTHER"
+    }
+    require(endsAt.isAfter(startsAt)) { "End must be after start" }
+    require(Duration.between(startsAt, endsAt) <= MAX_DURATION) {
+      "Group session must not last longer than $MAX_DURATION"
+    }
+    require(location == null || location.isNotBlank()) { "Location must not be blank" }
   }
 
   companion object {
