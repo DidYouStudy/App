@@ -1,6 +1,8 @@
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.settings
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -364,5 +366,13 @@ class SettingsScreenTest {
 
   private companion object {
     const val SIGN_OUT_ERROR = "Sign out failed (test)"
+  }
+
+  @Test
+  fun preferencesButtonIsNotMarkedAsNotImplemented() {
+    setStatelessContent(mutableListOf())
+
+    // Username, picture and friends are still stubs; preferences is now wired up.
+    composeTestRule.onAllNodesWithText("(Not implemented)").assertCountEquals(3)
   }
 }
