@@ -48,19 +48,23 @@ object IcsParser {
       val trimmed = line.trim()
       if (trimmed.isEmpty()) continue
 
-      if (trimmed == "BEGIN:VEVENT") {
-        currentBlock = mutableMapOf()
-      } else if (trimmed == "END:VEVENT") {
-        currentBlock?.let { block ->
-          parseVEvent(block, ownerId, idGenerator)?.let { events.add(it) }
+      when {
+        trimmed == "BEGIN:VEVENT" -> {
+          currentBlock = mutableMapOf()
         }
-        currentBlock = null
-      } else if (currentBlock != null) {
-        val colonIndex = trimmed.indexOf(':')
-        if (colonIndex != -1) {
-          val key = trimmed.substring(0, colonIndex).trim()
-          val value = trimmed.substring(colonIndex + 1).trim()
-          currentBlock.getOrPut(key) { mutableListOf() }.add(value)
+        trimmed == "END:VEVENT" -> {
+          currentBlock?.let { block ->
+            parseVEvent(block, ownerId, idGenerator)?.let { events.add(it) }
+          }
+          currentBlock = null
+        }
+        currentBlock != null -> {
+          val colonIndex = trimmed.indexOf(':')
+          if (colonIndex != -1) {
+            val key = trimmed.substring(0, colonIndex).trim()
+            val value = trimmed.substring(colonIndex + 1).trim()
+            currentBlock.getOrPut(key) { mutableListOf() }.add(value)
+          }
         }
       }
     }
