@@ -327,7 +327,7 @@ fun CalendarTimeGrid(
   val density = LocalDensity.current
   var initialScrollApplied by remember { androidx.compose.runtime.mutableStateOf(false) }
 
-  // Use the available height to size rows so nine hours fit in the viewport.
+  // Use the available height to size rows so ten hours fit in the viewport.
   BoxWithConstraints(modifier = modifier.fillMaxSize().testTag(CalendarTestTags.TIME_GRID)) {
     val hourHeight = maxHeight / DEFAULT_VISIBLE_HOURS
 

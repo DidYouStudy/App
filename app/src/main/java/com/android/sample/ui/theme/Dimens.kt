@@ -42,6 +42,6 @@ object Dimens {
   val calendarHourLabelVerticalOffset = (-8).dp
   val calendarTimeAxisWidth = 48.dp
   val calendarInitialLabelClearance = 6.dp
-  val calenderTodayChipHorizontalPadding = 8.dp
+  val calendarTodayChipHorizontalPadding = 8.dp
   val calendarTodayChipVerticalPadding = 4.dp
 }

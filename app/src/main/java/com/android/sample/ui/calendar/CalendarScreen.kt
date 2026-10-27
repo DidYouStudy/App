@@ -75,7 +75,7 @@ fun CalendarScreen(
                       text = stringResource(R.string.calendar_today_label),
                       modifier =
                           Modifier.padding(
-                              horizontal = Dimens.calenderTodayChipHorizontalPadding,
+                              horizontal = Dimens.calendarTodayChipHorizontalPadding,
                               vertical = Dimens.calendarTodayChipVerticalPadding,
                           ),
                       style = MaterialTheme.typography.labelMedium,
