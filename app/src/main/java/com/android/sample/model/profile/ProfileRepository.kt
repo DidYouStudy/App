@@ -25,8 +25,8 @@ interface ProfileRepository {
    * Implementations must preserve a profile that already exists rather than replacing its data.
    *
    * @param userId stable authentication identifier used as the Firestore document ID.
-   * @return [Result.success] containing the existing or newly created profile;
-   *   [Result.failure] containing a [ProfileException].
+   * @return [Result.success] containing the existing or newly created profile; [Result.failure]
+   *   containing a [ProfileException].
    * @throws kotlinx.coroutines.CancellationException when the coroutine is cancelled. Cancellation
    *   is propagated rather than converted into a failed [Result].
    */

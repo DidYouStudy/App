@@ -282,8 +282,7 @@ class ProfileRepositoryFirestoreTest {
   @Test
   fun createProfile_returnsFirestoreFailure_whenTransactionTaskFails() = runTest {
     val exception = firestoreException("Transaction failed")
-    `when`(firestore.runTransaction<UserProfile>(any()))
-        .thenReturn(Tasks.forException(exception))
+    `when`(firestore.runTransaction<UserProfile>(any())).thenReturn(Tasks.forException(exception))
 
     val result = repository.createProfile("user123")
 
@@ -395,8 +394,7 @@ class ProfileRepositoryFirestoreTest {
   fun createProfile_returnsUnknownFailure_whenTransactionTaskWrapsCancellation() = runTest {
     val cancellation = CancellationException("Cancelled")
     val wrapped = IllegalStateException("Firestore wrapper", cancellation)
-    `when`(firestore.runTransaction<UserProfile>(any()))
-        .thenReturn(Tasks.forException(wrapped))
+    `when`(firestore.runTransaction<UserProfile>(any())).thenReturn(Tasks.forException(wrapped))
 
     val result = repository.createProfile("user123")
 

@@ -162,8 +162,7 @@ class ProfileResolutionCoordinatorTest {
     val repository =
         FakeProfileRepository(
             getProfileResult = Result.success(null),
-            createProfileResult =
-                Result.success(UserProfile("different-user")),
+            createProfileResult = Result.success(UserProfile("different-user")),
         )
 
     val result = ProfileResolutionCoordinator(repository).resolve(user)
@@ -182,8 +181,7 @@ class ProfileResolutionCoordinatorTest {
       val repository =
           FakeProfileRepository(
               getProfileResult = Result.success(null),
-              createProfileResult =
-                  Result.success(UserProfile(blankUid)),
+              createProfileResult = Result.success(UserProfile(blankUid)),
           )
 
       val result = ProfileResolutionCoordinator(repository).resolve(user)

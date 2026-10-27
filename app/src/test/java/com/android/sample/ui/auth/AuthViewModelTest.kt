@@ -147,9 +147,7 @@ class AuthViewModelTest {
       runTest(dispatcher) {
         val expected = UserProfile("alice")
         profileRepository.getProfileAction = { Result.success(null) }
-        profileRepository.createProfileAction = {
-          Result.success(expected)
-        }
+        profileRepository.createProfileAction = { Result.success(expected) }
         repository.signIn = { alice }
 
         viewModel.signInWithGoogle { "token" }

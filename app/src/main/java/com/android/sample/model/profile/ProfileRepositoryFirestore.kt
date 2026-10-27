@@ -51,8 +51,8 @@ class ProfileRepositoryFirestore(
    * unchanged.
    *
    * @param userId stable authentication identifier and profile document ID.
-   * @return [Result.success] containing the existing or newly created profile;
-   *   [Result.failure] containing [ProfileException] with a stable [ProfileError] category.
+   * @return [Result.success] containing the existing or newly created profile; [Result.failure]
+   *   containing [ProfileException] with a stable [ProfileError] category.
    * @throws CancellationException when the coroutine is cancelled.
    */
   override suspend fun createProfile(userId: String): Result<UserProfile> {
