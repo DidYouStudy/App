@@ -3,6 +3,7 @@
 package com.android.sample.ui.preferences
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -126,9 +127,55 @@ class PreferencesScreenEditModeTest {
       )
     }
 
+    composeTestRule.onNodeWithTag(PreferencesScreenTestTags.SESSION_LENGTH_2_HOURS).performClick()
     composeTestRule.onNodeWithTag(PreferencesScreenTestTags.SAVE_BUTTON).performClick()
 
     assertEquals(1, savedCalls)
+  }
+
+  @Test
+  fun editModeDisablesSaveUntilSomethingChanges() {
+    setEditModeContent()
+    val save = composeTestRule.onNodeWithTag(PreferencesScreenTestTags.SAVE_BUTTON)
+
+    save.assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(PreferencesScreenTestTags.SESSION_LENGTH_2_HOURS).performClick()
+    save.assertIsEnabled()
+    // Going back to the loaded value is no change either.
+    composeTestRule.onNodeWithTag(PreferencesScreenTestTags.SESSION_LENGTH_1_HOUR).performClick()
+    save.assertIsNotEnabled()
+  }
+
+  @Test
+  fun onboardingAllowsSavingTheDefaults() {
+    composeTestRule.setContent {
+      PreferencesScreen(
+          viewModel = viewModel,
+          onImportClick = {},
+          onAddLocationClick = {},
+          onSaved = {},
+      )
+    }
+
+    composeTestRule.onNodeWithTag(PreferencesScreenTestTags.SAVE_BUTTON).assertIsEnabled()
+  }
+
+  @Test
+  fun deselectingEveryStudyTimeDisablesSave() {
+    composeTestRule.setContent {
+      PreferencesScreen(
+          viewModel = viewModel,
+          onImportClick = {},
+          onAddLocationClick = {},
+          onSaved = {},
+      )
+    }
+
+    // Defaults select morning and afternoon.
+    composeTestRule.onNodeWithTag(PreferencesScreenTestTags.STUDY_TIME_MORNING).performClick()
+    composeTestRule.onNodeWithTag(PreferencesScreenTestTags.STUDY_TIME_AFTERNOON).performClick()
+
+    composeTestRule.onNodeWithTag(PreferencesScreenTestTags.SAVE_BUTTON).assertIsNotEnabled()
   }
 
   @Test

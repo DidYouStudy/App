@@ -54,8 +54,9 @@ import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
  * @param onAddLocationClick Called when the user requests to add study locations.
  * @param onSaved Called after the user saves the edited preferences.
  * @param onBack Called when the user taps the back button. When non-null the screen is in edit mode
- *   (opened from Settings): it shows a back button and the "Preferences" title instead of the
- *   onboarding title. When null (first-time onboarding) there is no way back.
+ *   (opened from Settings): it shows a back button and the edit title instead of the onboarding
+ *   title, and Save stays disabled until something changes. When null (first-time onboarding) there
+ *   is no way back.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -150,7 +151,9 @@ fun PreferencesScreen(
                 onBreakDurationSelect = { draft = draft.copy(breakLengthMinutes = it.minutes) },
                 onBreakFrequencySelect = { draft = draft.copy(breakFrequencyMinutes = it.minutes) },
                 onSaveClick = { viewModel.updatePreferences(draft, onSaved) },
-                saveEnabled = !isSaving,
+                saveEnabled =
+                    !isSaving &&
+                        canSavePreferences(draft, state.preferences, isEditing = onBack != null),
                 modifier = modifier.padding(pd),
             )
           }
@@ -177,7 +180,8 @@ fun PreferencesScreen(
  * @param onBreakDurationSelect Called when a break duration is selected.
  * @param onBreakFrequencySelect Called when a break frequency is selected.
  * @param onSaveClick Called when the user saves the selected preferences.
- * @param saveEnabled Whether the Save button accepts taps (false while a save is in flight).
+ * @param saveEnabled Whether the Save button accepts taps (false while saving or when the current
+ *   selection cannot be saved).
  */
 @Composable
 fun PreferenceScreenStateless(
