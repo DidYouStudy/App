@@ -27,6 +27,7 @@
     <string name="settings_error_failed_to_sign_out">Failed to sign out.</string>
     <string name="profile_button_description">Open profile</string>
     <string name="preferences_header">Complete your profile</string>
+    <string name="preferences_edit_header">Modify your preferences</string>
     <string name="preferences_retry_button_on_error">Retry</string>
     <string name="preferences_import_schedule_label">Import course schedule</string>
     <string name="preferences_import_schedule_button">Import...</string>
