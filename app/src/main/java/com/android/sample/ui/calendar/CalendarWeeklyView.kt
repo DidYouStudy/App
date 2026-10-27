@@ -65,6 +65,7 @@ private const val DAYS_PER_WEEK = 7
 private const val FIRST_VISIBLE_HOUR = 8
 private const val DEFAULT_VISIBLE_HOURS = 10
 private val TIME_AXIS_WIDTH = 48.dp
+private val INITIAL_LABEL_CLEARANCE = 6.dp
 private val WEEK_RANGE_FORMAT = DateTimeFormatter.ofPattern("MMM d", Locale.US)
 private val HOUR_FORMAT = DateTimeFormatter.ofPattern("h a", Locale.US)
 
@@ -241,7 +242,7 @@ fun CalendarDayHeader(
     // Build one equally sized heading for each date in the week.
     weekDates.forEach { date ->
       val isToday = date == today
-      val dateTopSpacing = if (isToday) Spacing.extraSmall else Dp.Hairline
+      val dateTopSpacing = if (isToday) 4.dp else 8.dp
 
       // Center the weekday name and date number within this day's column.
       Column(
@@ -252,39 +253,50 @@ fun CalendarDayHeader(
         // Show the weekday as a single English initial, matching the design.
         Text(
             text = date.dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.US),
-            modifier = Modifier.testTag(CalendarTestTags.dayName(date)),
+            modifier = Modifier.testTag(CalendarTestTags.dayName(date))
+                .offset(y = dateTopSpacing),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 10.sp,
         )
+        Spacer(modifier = Modifier.height(Spacing.extraExtraSmall))
 
         // Highlight today's date with a filled circle; leave other dates unfilled.
-        Box(
-            modifier =
-                Modifier.padding(top = dateTopSpacing)
-                    .size(20.dp)
-                    .then(
-                        if (isToday) {
-                          Modifier
-                              .background(MaterialTheme.colorScheme.primary, CircleShape)
-                        } else {
-                          Modifier
-                        }
-                    ),
-            contentAlignment = Alignment.Center,
-        ) {
+        Box(modifier = Modifier.size(20.dp)) {
+          if (isToday) {
+            CalendarTodayCircle(
+                modifier = Modifier.align(Alignment.Center).offset(y = (-4).dp)
+            )
+          }
           Text(
               text = date.dayOfMonth.toString(),
-              modifier = Modifier.testTag(CalendarTestTags.dayNumber(date)).semantics { selected = isToday },
+              modifier =
+                  Modifier.align(Alignment.Center)
+                      .testTag(CalendarTestTags.dayNumber(date))
+                      .semantics { selected = isToday }
+                      .offset(y = (-4).dp),
               color =
                   if (isToday) MaterialTheme.colorScheme.onPrimary
                   else MaterialTheme.colorScheme.onSurface,
               fontWeight = FontWeight.Bold,
-              fontSize = 12.sp,
+              fontSize = 10.sp,
           )
         }
       }
     }
   }
+}
+
+/**
+ * Draws the circular highlight behind today's date number.
+ *
+ * @param modifier The modifier used to align and position the highlight.
+ */
+@Composable
+private fun CalendarTodayCircle(modifier: Modifier = Modifier) {
+  Box(
+      modifier =
+          modifier.size(22.dp).background(MaterialTheme.colorScheme.primary, CircleShape)
+  )
 }
 
 /**
@@ -311,8 +323,11 @@ fun CalendarTimeGrid(
     LaunchedEffect(hourHeight) {
       if (!initialScrollApplied) {
         withFrameNanos {}
-        val initialOffset = with(density) { (hourHeight * FIRST_VISIBLE_HOUR).roundToPx() }
-        scrollState.scrollTo(initialOffset.coerceAtMost(scrollState.maxValue))
+        val initialOffset =
+            with(density) {
+              (hourHeight * FIRST_VISIBLE_HOUR - INITIAL_LABEL_CLEARANCE).roundToPx()
+            }
+        scrollState.scrollTo(initialOffset.coerceIn(0, scrollState.maxValue))
         initialScrollApplied = true
       }
     }
@@ -326,17 +341,16 @@ fun CalendarTimeGrid(
       Column(modifier = Modifier.width(TIME_AXIS_WIDTH)) {
         repeat(HOURS_PER_DAY) { hour ->
           Box(
-              modifier = Modifier.fillMaxWidth().height(hourHeight).offset(-4.dp),
-              contentAlignment = Alignment.TopEnd,
+              modifier = Modifier.fillMaxWidth().height(hourHeight).offset(y = -10.dp),
+              contentAlignment = Alignment.TopCenter,
           ) {
             Text(
                 text = formatHour(hour),
                 modifier =
-                    Modifier.padding(start = 6.dp, top = Spacing.extraSmall)
-                        .testTag(CalendarTestTags.hourLabel(hour)),
+                    Modifier.testTag(CalendarTestTags.hourLabel(hour)),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 8.sp,
-                textAlign = TextAlign.End,
+                textAlign = TextAlign.Center,
             )
           }
         }

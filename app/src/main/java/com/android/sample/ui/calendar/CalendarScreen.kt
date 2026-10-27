@@ -28,6 +28,7 @@ import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.profile.ProfileButton
+import com.android.sample.ui.theme.DidYouStudyTheme
 import java.time.LocalDate
 
 /** Shows the calendar weekly view inside the app's standard navigation scaffold. */
@@ -87,5 +88,5 @@ fun CalendarScreen(
 @Preview(showBackground = true)
 @Composable
 fun CalendarScreenPreview() {
-  CalendarScreen()
+    DidYouStudyTheme { CalendarScreen() }
 }
