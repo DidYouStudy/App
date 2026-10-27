@@ -1,4 +1,5 @@
 // Co-authored-by: GitHub Copilot
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.model.groupsession
 
 import com.android.sample.model.event.EventsError
@@ -42,7 +43,8 @@ class InMemoryGroupSessionsRepository : GroupSessionsRepository {
   }
 
   /**
-   * Creates a creator-owned session or updates one without changing its stored membership.
+   * Creates a creator-owned session or updates one without changing its stored membership or
+   * creation time.
    *
    * Invalid arguments fail with INVALID_ARGUMENT; unauthorized writes fail with PERMISSION_DENIED.
    */
@@ -57,8 +59,8 @@ class InMemoryGroupSessionsRepository : GroupSessionsRepository {
         if (userId != existing.createdBy || session.createdBy != existing.createdBy) {
           return@withLock permissionDenied()
         }
-        sessions.value =
-            sessions.value + (session.id to session.copy(memberIds = existing.memberIds))
+        val updated = session.copy(memberIds = existing.memberIds, createdAt = existing.createdAt)
+        sessions.value = sessions.value + (session.id to updated)
       }
       Result.success(Unit)
     }

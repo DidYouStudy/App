@@ -1,15 +1,19 @@
 // Co-authored-by: GitHub Copilot
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.model.groupsession
 
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
 import java.time.Instant
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -95,6 +99,26 @@ abstract class GroupSessionsRepositoryContractTest {
 
     assertEquals(
         replacement.copy(memberIds = original.memberIds),
+        repository.getSession("a").getOrThrow(),
+    )
+  }
+
+  /** Replacing cannot rewrite the creation time: the stored createdAt is kept. */
+  @Test
+  fun saveSession_replacementKeepsStoredCreationTime() = runTest {
+    val original = session("a")
+    val replacement =
+        original.copy(
+            subject = "Physics",
+            createdAt = created.minusSeconds(3600),
+            updatedAt = created.plusSeconds(300),
+        )
+    repository.saveSession(creator, original).getOrThrow()
+
+    repository.saveSession(creator, replacement).getOrThrow()
+
+    assertEquals(
+        replacement.copy(createdAt = original.createdAt),
         repository.getSession("a").getOrThrow(),
     )
   }
@@ -203,6 +227,34 @@ abstract class GroupSessionsRepositoryContractTest {
     repository.joinSession(third, "a").getOrThrow()
 
     assertEquals(listOf(creator, other, third), repository.getSession("a").getOrThrow().memberIds)
+  }
+
+  /** Many joins running in parallel are all kept; no concurrent update is lost. */
+  @Test
+  fun joinSession_concurrentJoinsAreAllKept() = runTest {
+    repository.saveSession(creator, session("a")).getOrThrow()
+    val joiners = (1..200).map { "user$it" }
+
+    withContext(Dispatchers.Default) {
+      joiners.map { user -> launch { repository.joinSession(user, "a").getOrThrow() } }.joinAll()
+    }
+
+    assertEquals(
+        (listOf(creator, other) + joiners).toSet(),
+        repository.getSession("a").getOrThrow().memberIds.toSet(),
+    )
+  }
+
+  /** Membership changes do not touch the caller-supplied edit time. */
+  @Test
+  fun joinAndLeave_keepUpdatedAt() = runTest {
+    val original = session("a")
+    repository.saveSession(creator, original).getOrThrow()
+
+    repository.joinSession(third, "a").getOrThrow()
+    repository.leaveSession(other, "a").getOrThrow()
+
+    assertEquals(original.updatedAt, repository.getSession("a").getOrThrow().updatedAt)
   }
 
   /** A join against a missing session reports NOT_FOUND. */
