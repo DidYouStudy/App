@@ -73,6 +73,7 @@ object CalendarTestTags {
   const val NEXT_WEEK = "calendar_nextWeek"
   const val TIME_GRID = "calendar_timeGrid"
   const val ADD_BUTTON = "calendar_addButton"
+  const val TODAY_CHIP = "calendar_todayChip"
 
   /**
    * Creates the test tag used to identify a date number in a weekly day header.
@@ -105,11 +106,13 @@ object CalendarTestTags {
  * [today], and the selected week is retained across supported saved-state recreation.
  *
  * @param today The date used to choose the initial week and highlight today in its day heading.
+ * @param onWeekContainsToday Callback reporting whether the displayed week contains [today].
  * @param modifier The modifier applied to the weekly calendar's root column.
  */
 @Composable
 internal fun CalendarWeeklyView(
     today: LocalDate,
+    onWeekContainsToday: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
   val dateHelper = remember { CalendarDateHelper() }
@@ -119,6 +122,8 @@ internal fun CalendarWeeklyView(
       }
   val weekStart = LocalDate.ofEpochDay(weekStartEpochDay)
   val weekDates = remember(weekStartEpochDay) { dateHelper.weekDates(weekStart) }
+
+  LaunchedEffect(weekStartEpochDay, today) { onWeekContainsToday(today in weekDates) }
 
   Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
     CalendarWeekRangeHeader(

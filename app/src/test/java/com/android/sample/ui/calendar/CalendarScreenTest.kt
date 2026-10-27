@@ -4,11 +4,13 @@ package com.android.sample.ui.calendar
 import android.content.Context
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -41,11 +43,30 @@ class CalendarScreenTest {
         .assertTextEquals(context.getString(R.string.calendar_title))
     composeTestRule.onNodeWithTag(NavigationTestTags.getTabTestTag(Tab.Calendar)).assertIsSelected()
     composeTestRule
+        .onNodeWithTag(CalendarTestTags.TODAY_CHIP)
+        .assertIsDisplayed()
+        .assertHasNoClickAction()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.calendar_today_label))
+        .assertIsDisplayed()
+    composeTestRule
         .onNodeWithTag(CalendarTestTags.ADD_BUTTON)
         .assertHasClickAction()
         .assertContentDescriptionEquals("Add calendar event")
 
     composeTestRule.onNodeWithTag(NavigationTestTags.getTabTestTag(Tab.Dashboard)).performClick()
     verify(navigationActions).navigateTo(Screen.Dashboard)
+  }
+
+  /** Shows the Today chip only while the visible week contains the current date. */
+  @Test
+  fun todayChipHidesOutsideCurrentWeekAndReturnsWhenNavigatingBack() {
+    composeTestRule.setContent { CalendarScreen() }
+
+    composeTestRule.onNodeWithTag(CalendarTestTags.TODAY_CHIP).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(CalendarTestTags.NEXT_WEEK).performClick()
+    composeTestRule.onNodeWithTag(CalendarTestTags.TODAY_CHIP).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(CalendarTestTags.PREVIOUS_WEEK).performClick()
+    composeTestRule.onNodeWithTag(CalendarTestTags.TODAY_CHIP).assertIsDisplayed()
   }
 }

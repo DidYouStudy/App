@@ -1,7 +1,10 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.ui.calendar
 
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -9,11 +12,15 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -27,6 +34,8 @@ import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.profile.ProfileButton
 import com.android.sample.ui.theme.DidYouStudyTheme
+import com.android.sample.ui.theme.Dimens
+import com.android.sample.ui.theme.Spacing
 import java.time.LocalDate
 
 /** Shows the calendar weekly view inside the app's standard navigation scaffold. */
@@ -36,6 +45,7 @@ fun CalendarScreen(
     navigationActions: NavigationActions? = null,
 ) {
   val today = remember { LocalDate.now() }
+  var showTodayChip by remember { mutableStateOf(true) }
 
   Scaffold(
       topBar = {
@@ -54,6 +64,27 @@ fun CalendarScreen(
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
                 ),
             actions = {
+              if (showTodayChip) {
+                Surface(
+                    modifier = Modifier.testTag(CalendarTestTags.TODAY_CHIP),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ) {
+                  Text(
+                      text = stringResource(R.string.calendar_today_label),
+                      modifier =
+                          Modifier.padding(
+                              horizontal = Dimens.calenderTodayChipHorizontalPadding,
+                              vertical = Dimens.calendarTodayChipVerticalPadding,
+                          ),
+                      style = MaterialTheme.typography.labelMedium,
+                      fontWeight = FontWeight.Bold,
+                  )
+                }
+
+                Spacer(Modifier.width(Spacing.small))
+              }
               ProfileButton(onClick = { navigationActions?.navigateTo(Screen.Settings) })
             },
         )
@@ -76,6 +107,7 @@ fun CalendarScreen(
       content = { paddingValues ->
         CalendarWeeklyView(
             today = today,
+            onWeekContainsToday = { showTodayChip = it },
             modifier = Modifier.padding(paddingValues),
         )
       },
