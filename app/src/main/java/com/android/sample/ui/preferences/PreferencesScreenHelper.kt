@@ -1,4 +1,6 @@
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.preferences
 
 import androidx.compose.foundation.background
@@ -21,11 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.android.sample.R
 import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
 
 // ---------------------------------------------------------------------------
@@ -36,11 +36,12 @@ import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
  * Displays the preferences screen title.
  *
  * @param modifier Modifier applied to the title.
+ * @param title Text of the title (onboarding or edit-mode wording).
  */
 @Composable
-internal fun PreferencesHeader(modifier: Modifier = Modifier) {
+internal fun PreferencesHeader(title: String, modifier: Modifier = Modifier) {
   Text(
-      text = stringResource(id = R.string.preferences_header),
+      text = title,
       style = MaterialTheme.typography.displaySmall,
       fontWeight = FontWeight.Bold,
       modifier = modifier.fillMaxWidth().testTag(Tags.PREFERENCE_TITLE),
@@ -78,9 +79,11 @@ internal fun WidePillButton(
     onClick: () -> Unit,
     testTag: String,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
   FilledTonalButton(
       onClick = onClick,
+      enabled = enabled,
       shape = CircleShape,
       modifier = modifier.fillMaxWidth().height(56.dp).testTag(testTag),
   ) {

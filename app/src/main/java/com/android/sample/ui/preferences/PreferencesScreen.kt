@@ -1,4 +1,6 @@
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.preferences
 
 import androidx.compose.foundation.background
@@ -11,9 +13,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
@@ -47,6 +53,10 @@ import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
  * @param onImportClick Called when the user requests to import a schedule.
  * @param onAddLocationClick Called when the user requests to add study locations.
  * @param onSaved Called after the user saves the edited preferences.
+ * @param onBack Called when the user taps the back button. When non-null the screen is in edit mode
+ *   (opened from Settings): it shows a back button and the edit title instead of the onboarding
+ *   title, and Save stays disabled until something changes. When null (first-time onboarding) there
+ *   is no way back.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,11 +66,35 @@ fun PreferencesScreen(
     onImportClick: () -> Unit,
     onAddLocationClick: () -> Unit,
     onSaved: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
   Scaffold(
       topBar = {
         MediumTopAppBar(
-            title = { PreferencesHeader() },
+            title = {
+              PreferencesHeader(
+                  title =
+                      stringResource(
+                          id =
+                              if (onBack == null) R.string.preferences_header
+                              else R.string.preferences_edit_header
+                      )
+              )
+            },
+            // Edit mode only: returns to Settings without saving.
+            navigationIcon = {
+              if (onBack != null) {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier.testTag(NavigationTestTags.GO_BACK_BUTTON),
+                ) {
+                  Icon(
+                      imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                      contentDescription = stringResource(id = R.string.button_go_back),
+                  )
+                }
+              }
+            },
             colors =
                 TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -71,6 +105,7 @@ fun PreferencesScreen(
       modifier = modifier.fillMaxSize(),
       content = { pd ->
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+        val isSaving by viewModel.isSaving.collectAsStateWithLifecycle()
 
         when (val state = uiState) {
           // if the screen should be loading
@@ -116,6 +151,9 @@ fun PreferencesScreen(
                 onBreakDurationSelect = { draft = draft.copy(breakLengthMinutes = it.minutes) },
                 onBreakFrequencySelect = { draft = draft.copy(breakFrequencyMinutes = it.minutes) },
                 onSaveClick = { viewModel.updatePreferences(draft, onSaved) },
+                saveEnabled =
+                    !isSaving &&
+                        canSavePreferences(draft, state.preferences, isEditing = onBack != null),
                 modifier = modifier.padding(pd),
             )
           }
@@ -142,6 +180,8 @@ fun PreferencesScreen(
  * @param onBreakDurationSelect Called when a break duration is selected.
  * @param onBreakFrequencySelect Called when a break frequency is selected.
  * @param onSaveClick Called when the user saves the selected preferences.
+ * @param saveEnabled Whether the Save button accepts taps (false while saving or when the current
+ *   selection cannot be saved).
  */
 @Composable
 fun PreferenceScreenStateless(
@@ -157,6 +197,7 @@ fun PreferenceScreenStateless(
     onBreakDurationSelect: (BreakDuration) -> Unit,
     onBreakFrequencySelect: (BreakFrequency) -> Unit,
     onSaveClick: () -> Unit,
+    saveEnabled: Boolean = true,
 ) {
   // outer box which contains the full screen content
   Box(
@@ -256,6 +297,7 @@ fun PreferenceScreenStateless(
         onClick = onSaveClick,
         testTag = Tags.SAVE_BUTTON,
         modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+        enabled = saveEnabled,
     )
   }
 }

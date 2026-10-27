@@ -1,4 +1,6 @@
 // Co-authored-by: GitHub Copilot
+// Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.app
 
 import androidx.compose.runtime.Composable
@@ -60,7 +62,11 @@ class AppViewModel(
     }
   }
 
-  /** Moves to the dashboard after PreferencesViewModel confirms a successful save. */
+  /**
+   * Moves to the dashboard after PreferencesViewModel confirms the first-time (onboarding) save.
+   * Not called when a returning user edits preferences from Settings: they are already in
+   * [AppUiState.Dashboard].
+   */
   fun onPreferencesSaved() {
     mutableUiState.value = AppUiState.Dashboard
   }
@@ -87,7 +93,12 @@ class AppViewModel(
     }
   }
 
-  /** Allows only destinations valid for the current app authentication state. */
+  /**
+   * Allows only destinations valid for the current app authentication state.
+   *
+   * A returning user ([AppUiState.Dashboard]) may open [Screen.Preferences] from Settings to edit
+   * their saved preferences; only [Screen.Auth] stays off-limits once signed in.
+   */
   fun canNavigateTo(screen: Screen): Boolean =
       when (val state = mutableUiState.value) {
         AppUiState.Loading -> false
@@ -95,7 +106,7 @@ class AppViewModel(
         AppUiState.SignIn,
         AppUiState.LogOut -> screen == Screen.Auth
         AppUiState.FirstTimeSignIn -> screen == Screen.Preferences
-        AppUiState.Dashboard -> screen != Screen.Auth && screen != Screen.Preferences
+        AppUiState.Dashboard -> screen != Screen.Auth
       }
 
   private suspend fun loadDestination(userId: String) {
