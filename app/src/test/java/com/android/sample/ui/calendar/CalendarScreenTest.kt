@@ -39,17 +39,13 @@ class CalendarScreenTest {
         .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
         .assertIsDisplayed()
         .assertTextEquals(context.getString(R.string.calendar_title))
-    composeTestRule
-        .onNodeWithTag(NavigationTestTags.getTabTestTag(Tab.Calendar))
-        .assertIsSelected()
+    composeTestRule.onNodeWithTag(NavigationTestTags.getTabTestTag(Tab.Calendar)).assertIsSelected()
     composeTestRule
         .onNodeWithTag(CalendarTestTags.ADD_BUTTON)
         .assertHasClickAction()
         .assertContentDescriptionEquals("Add calendar event")
 
-    composeTestRule
-        .onNodeWithTag(NavigationTestTags.getTabTestTag(Tab.Dashboard))
-        .performClick()
+    composeTestRule.onNodeWithTag(NavigationTestTags.getTabTestTag(Tab.Dashboard)).performClick()
     verify(navigationActions).navigateTo(Screen.Dashboard)
   }
 }

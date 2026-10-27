@@ -22,6 +22,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
@@ -134,8 +136,8 @@ internal fun CalendarWeeklyView(
 }
 
 /**
- * Shows a formatted date range with controls that request the preceding or following week.
- * The caller owns the displayed week and supplies callbacks that update it.
+ * Shows a formatted date range with controls that request the preceding or following week. The
+ * caller owns the displayed week and supplies callbacks that update it.
  *
  * @param weekDates The seven consecutive Monday-through-Sunday dates currently displayed.
  * @param onPreviousWeek Callback invoked when the previous-week control is clicked.
@@ -176,7 +178,7 @@ fun CalendarWeekRangeHeader(
           contentAlignment = Alignment.Center,
       ) {
         Icon(
-            imageVector = Icons.Default.KeyboardArrowLeft,
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
             contentDescription = stringResource(R.string.calendar_previous_week_description),
         )
       }
@@ -205,7 +207,7 @@ fun CalendarWeekRangeHeader(
           contentAlignment = Alignment.Center,
       ) {
         Icon(
-            imageVector = Icons.Default.KeyboardArrowRight,
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = stringResource(R.string.calendar_next_week_description),
         )
       }
@@ -214,8 +216,8 @@ fun CalendarWeekRangeHeader(
 }
 
 /**
- * Renders one heading for each supplied date, with a weekday initial and day-of-month number.
- * The date matching [today] receives the selected visual treatment and selected semantics.
+ * Renders one heading for each supplied date, with a weekday initial and day-of-month number. The
+ * date matching [today] receives the selected visual treatment and selected semantics.
  *
  * @param weekDates The dates to display, normally the seven dates of the visible calendar week.
  * @param today The date to highlight when it is included in [weekDates].
@@ -257,8 +259,7 @@ fun CalendarDayHeader(
         // Show the weekday as a single English initial, matching the design.
         Text(
             text = date.dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.US),
-            modifier = Modifier.testTag(CalendarTestTags.dayName(date))
-                .offset(y = dateTopSpacing),
+            modifier = Modifier.testTag(CalendarTestTags.dayName(date)).offset(y = dateTopSpacing),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 10.sp,
         )
@@ -269,7 +270,8 @@ fun CalendarDayHeader(
           if (isToday) {
             CalendarTodayCircle(
                 modifier =
-                    Modifier.align(Alignment.Center).offset(y = Dimens.calendarDayLabelVerticalOffset)
+                    Modifier.align(Alignment.Center)
+                        .offset(y = Dimens.calendarDayLabelVerticalOffset)
             )
           }
           Text(
@@ -307,9 +309,9 @@ private fun CalendarTodayCircle(modifier: Modifier = Modifier) {
 }
 
 /**
- * Renders the empty weekly timeline with hour labels and seven equally sized day columns.
- * The timeline scrolls vertically as one unit and initially positions the view around 8 AM when
- * the measured viewport has enough scroll range.
+ * Renders the empty weekly timeline with hour labels and seven equally sized day columns. The
+ * timeline scrolls vertically as one unit and initially positions the view around 8 AM when the
+ * measured viewport has enough scroll range.
  *
  * @param modifier The modifier applied to the timeline container.
  */
@@ -356,8 +358,7 @@ fun CalendarTimeGrid(
           ) {
             Text(
                 text = formatHour(hour),
-                modifier =
-                    Modifier.testTag(CalendarTestTags.hourLabel(hour)),
+                modifier = Modifier.testTag(CalendarTestTags.hourLabel(hour)),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 8.sp,
                 textAlign = TextAlign.Center,
@@ -441,10 +442,9 @@ private fun CalendarEmptyHourCell(
 }
 
 /**
- * Formats a validated Monday-through-Sunday week as a compact English date range.
- * It omits repeated month and year text where possible, while showing both years when the week
- * crosses a year boundary. Throws [IllegalArgumentException] if the input is not exactly one
- * ordered week.
+ * Formats a validated Monday-through-Sunday week as a compact English date range. It omits repeated
+ * month and year text where possible, while showing both years when the week crosses a year
+ * boundary. Throws [IllegalArgumentException] if the input is not exactly one ordered week.
  *
  * @param weekDates Seven consecutive dates beginning on Monday.
  * @return The human-readable date range for the week.

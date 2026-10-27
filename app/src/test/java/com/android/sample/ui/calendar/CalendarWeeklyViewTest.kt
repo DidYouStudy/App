@@ -1,6 +1,7 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.ui.calendar
 
+// import androidx.compose.ui.test.onAllNodes
 import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,7 +16,6 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.createComposeRule
-//import androidx.compose.ui.test.onAllNodes
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -70,7 +70,9 @@ class CalendarWeeklyViewTest {
 
     composeTestRule.onNodeWithTag(CalendarTestTags.WEEK_RANGE).assertTextEquals("Jan 4–10, 2027")
     composeTestRule.onNodeWithTag(CalendarTestTags.PREVIOUS_WEEK).performClick()
-    composeTestRule.onNodeWithTag(CalendarTestTags.WEEK_RANGE).assertTextEquals("Dec 28, 2026–Jan 3, 2027")
+    composeTestRule
+        .onNodeWithTag(CalendarTestTags.WEEK_RANGE)
+        .assertTextEquals("Dec 28, 2026–Jan 3, 2027")
     composeTestRule.onNodeWithTag(CalendarTestTags.NEXT_WEEK).performClick()
     composeTestRule.onNodeWithTag(CalendarTestTags.WEEK_RANGE).assertTextEquals("Jan 4–10, 2027")
     composeTestRule.onNodeWithTag(CalendarTestTags.NEXT_WEEK).performClick()
@@ -136,10 +138,7 @@ class CalendarWeeklyViewTest {
     }
 
     val expectedLabels =
-        listOf("12 AM") +
-            (1..11).map { "$it AM" } +
-            listOf("12 PM") +
-            (1..11).map { "$it PM" }
+        listOf("12 AM") + (1..11).map { "$it AM" } + listOf("12 PM") + (1..11).map { "$it PM" }
     expectedLabels.forEachIndexed { hour, label ->
       composeTestRule.onNodeWithTag(CalendarTestTags.hourLabel(hour)).assertTextEquals(label)
     }
@@ -194,8 +193,7 @@ class CalendarWeeklyViewTest {
     }
     assertThrows(IllegalArgumentException::class.java) {
       val unorderedWeek =
-          listOf(monday, monday.plusDays(2), monday.plusDays(1)) +
-              (3L..6L).map(monday::plusDays)
+          listOf(monday, monday.plusDays(2), monday.plusDays(1)) + (3L..6L).map(monday::plusDays)
       formatWeekRange(unorderedWeek)
     }
   }
