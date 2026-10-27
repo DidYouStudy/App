@@ -38,8 +38,8 @@ object Dimens {
   val calendarDayHeaderBorderWidth = 0.5.dp
   val calendarDayNumberSlotSize = 20.dp
   val calendarTodayCircleSize = 22.dp
-  val calendarDayLabelVerticalOffset = (-4).dp
-  val calendarHourLabelVerticalOffset = (-10).dp
+  val calendarDayLabelVerticalOffset = (-5).dp
+  val calendarHourLabelVerticalOffset = (-8).dp
   val calendarTimeAxisWidth = 48.dp
   val calendarInitialLabelClearance = 6.dp
 }
