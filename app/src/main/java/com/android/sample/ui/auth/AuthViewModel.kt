@@ -224,8 +224,6 @@ class AuthViewModel(
           try {
             // The coordinator looks up the profile and creates it only when no profile exists.
             val result = profileResolutionCoordinator.resolve(user)
-            // TODO-use the result to know whether the profile was just created, then do the
-            // navigation
             if (
                 activeProfileResolutionJob !== resolutionJob ||
                     mutableAuthUiState.value.user?.uid != user.uid
@@ -240,7 +238,7 @@ class AuthViewModel(
             // Publish either the resolved profile or its typed failure for the current job only.
             mutableProfileUiState.update {
               result.fold(
-                  onSuccess = { ProfileUiState(profile = it.profile) },
+                  onSuccess = { ProfileUiState(profile = it) },
                   onFailure = {
                     ProfileUiState(error = (it as? ProfileException)?.error ?: ProfileError.UNKNOWN)
                   },

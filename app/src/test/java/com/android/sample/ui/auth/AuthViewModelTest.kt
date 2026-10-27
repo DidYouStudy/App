@@ -11,7 +11,6 @@ import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.profile.ProfileError
 import com.android.sample.model.profile.ProfileRepository
-import com.android.sample.model.profile.ProfileResolution
 import com.android.sample.model.profile.ProfileResolutionCoordinator
 import com.android.sample.model.profile.UserProfile
 import kotlinx.coroutines.CancellationException
@@ -149,7 +148,7 @@ class AuthViewModelTest {
         val expected = UserProfile("alice")
         profileRepository.getProfileAction = { Result.success(null) }
         profileRepository.createProfileAction = {
-          Result.success(ProfileResolution.Created(expected))
+          Result.success(expected)
         }
         repository.signIn = { alice }
 
@@ -295,7 +294,7 @@ class AuthViewModelTest {
   @Test
   fun sessionChangeDuringCreationCancelsAndClearsProfileResolution() =
       runTest(dispatcher) {
-        val creation = CompletableDeferred<Result<ProfileResolution>>()
+        val creation = CompletableDeferred<Result<UserProfile>>()
         profileRepository.getProfileAction = { Result.success(null) }
         profileRepository.createProfileAction = {
           try {
@@ -893,8 +892,8 @@ class AuthViewModelTest {
     val createProfileUserIds = mutableListOf<String>()
     val cancelledUserIds = mutableListOf<String>()
     var getProfileAction: suspend (String) -> Result<UserProfile?> = { Result.success(null) }
-    var createProfileAction: suspend (String) -> Result<ProfileResolution> = {
-      Result.success(ProfileResolution.Created(UserProfile(it)))
+    var createProfileAction: suspend (String) -> Result<UserProfile> = {
+      Result.success(UserProfile(it))
     }
 
     override suspend fun getProfile(userId: String): Result<UserProfile?> {
@@ -902,7 +901,7 @@ class AuthViewModelTest {
       return getProfileAction(userId)
     }
 
-    override suspend fun createProfile(userId: String): Result<ProfileResolution> {
+    override suspend fun createProfile(userId: String): Result<UserProfile> {
       createProfileUserIds += userId
       return createProfileAction(userId)
     }
