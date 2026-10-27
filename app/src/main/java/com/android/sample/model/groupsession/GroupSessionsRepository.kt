@@ -10,9 +10,9 @@ import kotlinx.coroutines.flow.Flow
  *
  * Any signed-in user can observe and join sessions. Only the creator can save changes or delete;
  * creator identity cannot change, and the creator cannot leave. Existing-session saves retain the
- * stored members, so membership changes only through join and leave. Failures are [Result.failure]
- * values containing [com.android.sample.model.event.EventsException], and cancellation is
- * propagated.
+ * stored members and creation time, so membership changes only through join and leave. The
+ * repository never reads a clock: callers supply timestamps. Failures are [Result.failure] values
+ * containing [com.android.sample.model.event.EventsException], and cancellation is propagated.
  */
 interface GroupSessionsRepository {
   /**
@@ -40,8 +40,12 @@ interface GroupSessionsRepository {
    *
    * Creation requires [userId] to equal [GroupSession.createdBy]. Updates require [userId] to be
    * that stored session's creator and cannot change its creator. Updating never changes the stored
-   * members; incoming member IDs are ignored. Blank user IDs fail with INVALID_ARGUMENT, and
-   * permission violations fail with PERMISSION_DENIED.
+   * members or [GroupSession.createdAt]; incoming values for them are ignored. Blank user IDs fail
+   * with INVALID_ARGUMENT, and permission violations fail with PERMISSION_DENIED.
+   *
+   * Timestamps are the caller's responsibility: set [GroupSession.updatedAt] to the edit time
+   * before saving an update; the repository stores it as given and never reads a clock. Joining and
+   * leaving do not change [GroupSession.updatedAt].
    */
   suspend fun saveSession(userId: String, session: GroupSession): Result<Unit>
 
