@@ -1,13 +1,19 @@
 // Co-authored-by: GitHub Copilot
 package com.android.sample.ui.eventplanning
 
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
+import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsRepository
+import com.android.sample.model.event.InMemoryEventsRepository
 import java.time.Instant
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -164,3 +170,35 @@ class EventPlanningViewModel(
         const val FAILED_TO_ADD_EVENT_ERROR = "Failed to add event"
     }
 }
+
+/** Supplies an injected repository when Android creates the settings ViewModel. */
+class EventPlanningViewModelFactory(
+    private val authRepository: AuthRepository,
+    private val eventsRepository: EventsRepository,
+) : ViewModelProvider.Factory {
+    /**
+     * Creates an EventsPlanningViewModel and rejects unrelated ViewModel types rather than casting blindly.
+     */
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        require(modelClass == EventPlanningViewModel::class.java) {
+            "Unsupported ViewModel: ${modelClass.name}"
+        }
+        @Suppress("UNCHECKED_CAST")
+        return EventPlanningViewModel(authRepository, eventsRepository) as T
+    }
+}
+
+/**
+ * Returns the [EventPlanningViewModel] of the current ViewModel owner (Activity or navigation entry),
+ * backed by the app's in memory repository. The Add new ... and Edit ... screens use this as their default.
+ */
+@Composable
+fun eventsPlanningViewModel(): EventPlanningViewModel =
+    viewModel(
+        factory =
+            EventPlanningViewModelFactory(
+                authRepository = AuthRepositoryProvider.getRepository(LocalContext.current),
+                eventsRepository = InMemoryEventsRepository(),
+            )
+    )
+
