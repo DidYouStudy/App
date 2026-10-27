@@ -47,7 +47,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.sample.R
 import com.android.sample.ui.theme.Dimens
@@ -64,8 +63,6 @@ private const val HOURS_PER_DAY = 24
 private const val DAYS_PER_WEEK = 7
 private const val FIRST_VISIBLE_HOUR = 8
 private const val DEFAULT_VISIBLE_HOURS = 10
-private val TIME_AXIS_WIDTH = 48.dp
-private val INITIAL_LABEL_CLEARANCE = 6.dp
 private val WEEK_RANGE_FORMAT = DateTimeFormatter.ofPattern("MMM d", Locale.US)
 private val HOUR_FORMAT = DateTimeFormatter.ofPattern("h a", Locale.US)
 
@@ -166,7 +163,9 @@ fun CalendarWeekRangeHeader(
     // This square surface invokes the callback to show the previous week.
     Surface(
         onClick = onPreviousWeek,
-        modifier = Modifier.size(36.dp).testTag(CalendarTestTags.PREVIOUS_WEEK),
+        modifier =
+            Modifier.size(Dimens.calendarWeekNavigationButtonSize)
+                .testTag(CalendarTestTags.PREVIOUS_WEEK),
         shape = RoundedCornerShape(Dimens.cornerMedium),
         color = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -193,7 +192,9 @@ fun CalendarWeekRangeHeader(
     // This square surface invokes the callback to show the next week.
     Surface(
         onClick = onNextWeek,
-        modifier = Modifier.size(36.dp).testTag(CalendarTestTags.NEXT_WEEK),
+        modifier =
+            Modifier.size(Dimens.calendarWeekNavigationButtonSize)
+                .testTag(CalendarTestTags.NEXT_WEEK),
         shape = RoundedCornerShape(Dimens.cornerMedium),
         color = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -231,18 +232,21 @@ fun CalendarDayHeader(
       modifier =
           modifier
               .fillMaxWidth()
-              .height(54.dp)
+              .height(Dimens.calendarDayHeaderHeight)
               .background(MaterialTheme.colorScheme.surface)
-              .border(width = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant),
+              .border(
+                  width = Dimens.calendarDayHeaderBorderWidth,
+                  color = MaterialTheme.colorScheme.outlineVariant,
+              ),
       verticalAlignment = Alignment.CenterVertically,
   ) {
     // Leave room for the time labels so the dates align with the day columns below.
-    Spacer(modifier = Modifier.width(TIME_AXIS_WIDTH))
+    Spacer(modifier = Modifier.width(Dimens.calendarTimeAxisWidth))
 
     // Build one equally sized heading for each date in the week.
     weekDates.forEach { date ->
       val isToday = date == today
-      val dateTopSpacing = if (isToday) 4.dp else 8.dp
+      val dateTopSpacing = if (isToday) Spacing.extraSmall else Spacing.small
 
       // Center the weekday name and date number within this day's column.
       Column(
@@ -261,10 +265,11 @@ fun CalendarDayHeader(
         Spacer(modifier = Modifier.height(Spacing.extraExtraSmall))
 
         // Highlight today's date with a filled circle; leave other dates unfilled.
-        Box(modifier = Modifier.size(20.dp)) {
+        Box(modifier = Modifier.size(Dimens.calendarDayNumberSlotSize)) {
           if (isToday) {
             CalendarTodayCircle(
-                modifier = Modifier.align(Alignment.Center).offset(y = (-4).dp)
+                modifier =
+                    Modifier.align(Alignment.Center).offset(y = Dimens.calendarDayLabelVerticalOffset)
             )
           }
           Text(
@@ -273,7 +278,7 @@ fun CalendarDayHeader(
                   Modifier.align(Alignment.Center)
                       .testTag(CalendarTestTags.dayNumber(date))
                       .semantics { selected = isToday }
-                      .offset(y = (-4).dp),
+                      .offset(y = Dimens.calendarDayLabelVerticalOffset),
               color =
                   if (isToday) MaterialTheme.colorScheme.onPrimary
                   else MaterialTheme.colorScheme.onSurface,
@@ -295,7 +300,9 @@ fun CalendarDayHeader(
 private fun CalendarTodayCircle(modifier: Modifier = Modifier) {
   Box(
       modifier =
-          modifier.size(22.dp).background(MaterialTheme.colorScheme.primary, CircleShape)
+          modifier
+              .size(Dimens.calendarTodayCircleSize)
+              .background(MaterialTheme.colorScheme.primary, CircleShape)
   )
 }
 
@@ -325,7 +332,7 @@ fun CalendarTimeGrid(
         withFrameNanos {}
         val initialOffset =
             with(density) {
-              (hourHeight * FIRST_VISIBLE_HOUR - INITIAL_LABEL_CLEARANCE).roundToPx()
+              (hourHeight * FIRST_VISIBLE_HOUR - Dimens.calendarInitialLabelClearance).roundToPx()
             }
         scrollState.scrollTo(initialOffset.coerceIn(0, scrollState.maxValue))
         initialScrollApplied = true
@@ -338,10 +345,13 @@ fun CalendarTimeGrid(
         verticalAlignment = Alignment.Top,
     ) {
       // Label each hour from midnight through 11 PM.
-      Column(modifier = Modifier.width(TIME_AXIS_WIDTH)) {
+      Column(modifier = Modifier.width(Dimens.calendarTimeAxisWidth)) {
         repeat(HOURS_PER_DAY) { hour ->
           Box(
-              modifier = Modifier.fillMaxWidth().height(hourHeight).offset(y = -10.dp),
+              modifier =
+                  Modifier.fillMaxWidth()
+                      .height(hourHeight)
+                      .offset(y = Dimens.calendarHourLabelVerticalOffset),
               contentAlignment = Alignment.TopCenter,
           ) {
             Text(
@@ -387,8 +397,8 @@ private fun CalendarEmptyHourCell(
     isLastHour: Boolean,
     isFirstDay: Boolean,
 ) {
-  // Use the theme's divider color for the grid lines.
   val lineColor = MaterialTheme.colorScheme.outlineVariant
+
   // Draw this hour cell's borders behind its empty content.
   Box(
       modifier =

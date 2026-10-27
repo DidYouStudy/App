@@ -33,4 +33,13 @@ object Dimens {
   val profileButtonPadding = 12.dp
 
   val calendarWeekSwitchHeaderHeight = 52.dp
+  val calendarWeekNavigationButtonSize = 36.dp
+  val calendarDayHeaderHeight = 54.dp
+  val calendarDayHeaderBorderWidth = 0.5.dp
+  val calendarDayNumberSlotSize = 20.dp
+  val calendarTodayCircleSize = 22.dp
+  val calendarDayLabelVerticalOffset = (-4).dp
+  val calendarHourLabelVerticalOffset = (-10).dp
+  val calendarTimeAxisWidth = 48.dp
+  val calendarInitialLabelClearance = 6.dp
 }
