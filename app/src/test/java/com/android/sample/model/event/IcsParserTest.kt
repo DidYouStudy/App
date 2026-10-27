@@ -316,4 +316,124 @@ class IcsParserTest {
     // parseIcsDateTime catches the exception, returns null, and parseVEvent discards the event
     assertTrue(events.isEmpty())
   }
+
+  @Test
+  fun discardsEventWhenSummaryIsPresentButEmptyForNonOtherType() {
+    // Matches blank-summary.ics
+    val ics =
+        """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        BEGIN:VEVENT
+        UID:blank_summary
+        SUMMARY:
+        DURATION:PT60M
+        DTSTART;TZID=Europe/Berlin:20261013T101500
+        CATEGORIES:Cours
+        END:VEVENT
+        END:VCALENDAR
+        """
+            .trimIndent()
+
+    val events = IcsParser.parseCalendar(stringToStream(ics), defaultOwnerId)
+    // Non-OTHER events require a non-blank subject; event must be gracefully dropped
+    assertTrue(events.isEmpty())
+  }
+
+  @Test
+  fun parsesSummaryWithParametersCorrectly() {
+    // Matches summary-with-param.ics
+    val ics =
+        """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        BEGIN:VEVENT
+        UID:param_summary
+        SUMMARY;LANGUAGE=fr:Algebra
+        DURATION:PT60M
+        DTSTART;TZID=Europe/Berlin:20261013T101500
+        CATEGORIES:Cours
+        END:VEVENT
+        END:VCALENDAR
+        """
+            .trimIndent()
+
+    val events = IcsParser.parseCalendar(stringToStream(ics), defaultOwnerId)
+    assertEquals(1, events.size)
+    assertEquals("Algebra", events.first().subject)
+  }
+
+  @Test
+  fun handlesWeekDurationGracefullyWithoutCrashing() {
+    // Matches week-duration.ics (P1W exceeds 24-hour MAX_DURATION)
+    val ics =
+        """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        BEGIN:VEVENT
+        UID:week_duration
+        SUMMARY:Algebra
+        DURATION:P1W
+        DTSTART;TZID=Europe/Berlin:20261013T101500
+        CATEGORIES:Cours
+        END:VEVENT
+        END:VCALENDAR
+        """
+            .trimIndent()
+
+    // Does not throw DateTimeParseException; properly rejected by MAX_DURATION invariant
+    val events = IcsParser.parseCalendar(stringToStream(ics), defaultOwnerId)
+    assertTrue(events.isEmpty())
+  }
+
+  @Test
+  fun fallsBackToOneHourWhenDurationIsCompletelyUnparseable() {
+    // Tests the 'else -> null' branch in parseSafeDuration
+    val ics =
+        """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        BEGIN:VEVENT
+        UID:bad_duration_fallback
+        SUMMARY:Fallback Course
+        DURATION:GARBAGE_NOT_A_DURATION
+        DTSTART;TZID=Europe/Berlin:20261013T101500
+        CATEGORIES:Cours
+        END:VEVENT
+        END:VCALENDAR
+        """
+            .trimIndent()
+
+    val events = IcsParser.parseCalendar(stringToStream(ics), defaultOwnerId)
+
+    // Falls back safely to 1 hour instead of crashing
+    assertEquals(1, events.size)
+    val event = events.first()
+    assertEquals(Duration.ofHours(1), Duration.between(event.startsAt, event.endsAt))
+  }
+
+  @Test
+  fun allowsBlankSummaryWhenEventTypeIsOther() {
+    // Tests the (summary == null && type == EventType.OTHER) branch
+    val ics =
+        """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        BEGIN:VEVENT
+        UID:other_without_summary
+        SUMMARY:
+        DURATION:PT45M
+        DTSTART;TZID=Europe/Berlin:20261013T101500
+        CATEGORIES:UnknownCategory
+        END:VEVENT
+        END:VCALENDAR
+        """
+            .trimIndent()
+
+    val events = IcsParser.parseCalendar(stringToStream(ics), defaultOwnerId)
+
+    assertEquals(1, events.size)
+    assertEquals(EventType.OTHER, events.first().type)
+    assertEquals(null, events.first().subject)
+  }
 }

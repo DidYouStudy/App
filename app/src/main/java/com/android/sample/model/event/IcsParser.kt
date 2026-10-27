@@ -19,6 +19,7 @@ object IcsParser {
 
   private val ICS_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")
   private val DEFAULT_ZONE = ZoneId.of("Europe/Zurich")
+  private val WEEK_DURATION_REGEX = Regex("^([+-]?)P([0-9]+)W$", RegexOption.IGNORE_CASE)
 
   /**
    * Parses an iCalendar (.ics) input stream and maps its `VEVENT` entries to [Event] instances.
@@ -42,7 +43,8 @@ object IcsParser {
     val lines = unfoldedContent.lines()
 
     val events = mutableListOf<Event>()
-    var currentBlock: MutableMap<String, MutableList<String>>? = null
+    // Store property name -> list of (rawKeyWithParams, value) pairs
+    var currentBlock: MutableMap<String, MutableList<Pair<String, String>>>? = null
 
     for (line in lines) {
       val trimmed = line.trim()
@@ -61,9 +63,11 @@ object IcsParser {
         currentBlock != null -> {
           val colonIndex = trimmed.indexOf(':')
           if (colonIndex != -1) {
-            val key = trimmed.substring(0, colonIndex).trim()
+            val rawKey = trimmed.substring(0, colonIndex).trim()
             val value = trimmed.substring(colonIndex + 1).trim()
-            currentBlock.getOrPut(key) { mutableListOf() }.add(value)
+            // Normalize property name by stripping parameters after ';'
+            val propName = rawKey.substringBefore(';').uppercase()
+            currentBlock.getOrPut(propName) { mutableListOf() }.add(rawKey to value)
           }
         }
       }
@@ -81,46 +85,52 @@ object IcsParser {
    * @return The parsed [Event], or `null` if required fields are missing or invalid.
    */
   private fun parseVEvent(
-      properties: Map<String, List<String>>,
+      properties: Map<String, List<Pair<String, String>>>,
       ownerId: String,
       idGenerator: (String?) -> String,
   ): Event? {
     val uid = properties.firstValue("UID")
-    val summary = properties.firstValue("SUMMARY") ?: return null
 
-    // 1. Parse Start Time & Zone
-    val (dtStartKey, dtStartValues) =
-        properties.entries.find { it.key.startsWith("DTSTART") } ?: return null
-    val dtStartRaw = dtStartValues.firstOrNull() ?: return null
+    // 1. Validate Subject / Summary (reject blank strings)
+    val summary = properties.firstValue("SUMMARY")?.takeIf { it.isNotBlank() }
 
-    val zoneId = extractZoneId(dtStartKey) ?: DEFAULT_ZONE
-    val startsAt = parseIcsDateTime(dtStartRaw, zoneId) ?: return null
+    // 2. Extract Categories and Map to EventType first
+    val categories = properties["CATEGORIES"].orEmpty().map { it.second }
+    val type = mapCategoryToEventType(categories)
 
-    // 2. Parse Duration or DTEND
+    // Enforce Event domain invariant: non-OTHER types require a non-blank subject
+    if (summary == null && type != EventType.OTHER) {
+      return null
+    }
+
+    // 3. Parse Start Time & Zone
+    val dtStartEntry = properties["DTSTART"]?.firstOrNull() ?: return null
+    val (dtStartRawKey, dtStartRawVal) = dtStartEntry
+    val zoneId = extractZoneId(dtStartRawKey) ?: DEFAULT_ZONE
+    val startsAt = parseIcsDateTime(dtStartRawVal, zoneId) ?: return null
+
+    // 4. Parse Duration or DTEND with safe fallback
     val durationRaw = properties.firstValue("DURATION")
-    // Find DTEND even if it contains parameters like DTEND;TZID=Europe/Berlin
-    val dtEndEntry = properties.entries.find { it.key.startsWith("DTEND") }
-    val dtEndRaw = dtEndEntry?.value?.firstOrNull()
-    val dtEndZoneId = dtEndEntry?.key?.let { extractZoneId(it) } ?: zoneId
+    val dtEndEntry = properties["DTEND"]?.firstOrNull()
+
+    val parsedDuration = durationRaw?.let { parseSafeDuration(it) }
 
     val endsAt =
         when {
-          durationRaw != null -> startsAt.plus(Duration.parse(durationRaw))
-          dtEndRaw != null ->
-              parseIcsDateTime(dtEndRaw, dtEndZoneId) ?: startsAt.plus(Duration.ofHours(1))
+          parsedDuration != null -> startsAt.plus(parsedDuration)
+          dtEndEntry != null -> {
+            val dtEndZoneId = extractZoneId(dtEndEntry.first) ?: zoneId
+            parseIcsDateTime(dtEndEntry.second, dtEndZoneId) ?: startsAt.plus(Duration.ofHours(1))
+          }
           else -> startsAt.plus(Duration.ofHours(1))
         }
 
-    // Validate basic constraints
+    // Validate Duration constraints: must end after start, and duration <= MAX_DURATION (24h)
     if (!endsAt.isAfter(startsAt) || Duration.between(startsAt, endsAt) > Event.MAX_DURATION) {
       return null
     }
 
-    // 3. Extract Categories and Map to EventType
-    val categories = properties.filterKeys { it.startsWith("CATEGORIES") }.values.flatten()
-    val type = mapCategoryToEventType(categories)
-
-    // 4. Metadata and Fields
+    // 5. Metadata and Fields
     val location = properties.firstValue("LOCATION")?.takeIf { it.isNotBlank() }
     val description = properties.firstValue("DESCRIPTION")?.takeIf { it.isNotBlank() }
 
@@ -140,6 +150,32 @@ object IcsParser {
         description = description,
         tasks = emptyList(),
     )
+  }
+
+  /**
+   * Safely parses an RFC 5545 duration string into a [Duration].
+   *
+   * Supports standard ISO-8601 duration representations (e.g., `PT105M`, `PT1H30M`, `P1D`) via
+   * [Duration.parse], as well as RFC 5545 week-based durations (e.g., `P1W`, `P2W`) which standard
+   * Java [Duration] parsers do not natively handle.
+   *
+   * @param raw The raw duration string extracted from the `DURATION` property.
+   * @return The parsed [Duration], or `null` if the string cannot be parsed or represents an
+   *   invalid value.
+   */
+  private fun parseSafeDuration(raw: String): Duration? {
+    return try {
+      Duration.parse(raw)
+    } catch (e: Exception) {
+      // Check for week notation (e.g., P1W, P2W)
+      val weekMatch = WEEK_DURATION_REGEX.matchEntire(raw.trim())
+      if (weekMatch != null) {
+        val weeks = weekMatch.groupValues[2].toLongOrNull() ?: return null
+        Duration.ofDays(weeks * 7)
+      } else {
+        null
+      }
+    }
   }
 
   /**
@@ -164,11 +200,11 @@ object IcsParser {
   /**
    * Extracts the timezone ID (`TZID`) parameter from a property key string.
    *
-   * @param dtStartKey Property key string (e.g. `DTSTART;TZID=Europe/Zurich`).
+   * @param rawKey Property key string (e.g. `DTSTART;TZID=Europe/Zurich`).
    * @return Extracted [ZoneId], or [DEFAULT_ZONE] if unparseable or missing.
    */
-  private fun extractZoneId(dtStartKey: String): ZoneId? {
-    val match = Regex("TZID=([^;:]+)").find(dtStartKey)
+  private fun extractZoneId(rawKey: String): ZoneId? {
+    val match = Regex("TZID=([^;:]+)", RegexOption.IGNORE_CASE).find(rawKey)
     return match?.groupValues?.get(1)?.let {
       try {
         ZoneId.of(it)
@@ -189,8 +225,8 @@ object IcsParser {
    */
   private fun parseIcsDateTime(value: String, zoneId: ZoneId): Instant? {
     return try {
-      if (value.endsWith("Z")) {
-        val clean = value.removeSuffix("Z")
+      if (value.endsWith("Z", ignoreCase = true)) {
+        val clean = value.dropLast(1)
         LocalDateTime.parse(clean, ICS_DATE_TIME_FORMATTER).atZone(ZoneId.of("UTC")).toInstant()
       } else {
         LocalDateTime.parse(value, ICS_DATE_TIME_FORMATTER).atZone(zoneId).toInstant()
@@ -206,7 +242,7 @@ object IcsParser {
    * @param key Property key to look up.
    * @return First value string for the key, or `null` if absent.
    */
-  private fun Map<String, List<String>>.firstValue(key: String): String? {
-    return this[key]?.firstOrNull()
+  private fun Map<String, List<Pair<String, String>>>.firstValue(key: String): String? {
+    return this[key]?.firstOrNull()?.second
   }
 }
