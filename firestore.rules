@@ -1,3 +1,4 @@
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Claude Opus 5.5
 //
 // Cloud Firestore security rules. This file is the source of truth: deploy it with
@@ -18,6 +19,43 @@ service cloud.firestore {
 
     match /preferences/{userId} {
       allow read, write: if isOwner(userId);
+    }
+
+    // Top-level schema checks complement the domain mapper's nested task validation.
+    function optionalText(data, field, nonblank) {
+      return data.get(field, null) == null
+        || (data[field] is string && (!nonblank || data[field].matches('.*[^\\s].*')));
+    }
+
+    function validEvent(userId) {
+      let d = request.resource.data;
+      return d.keys().hasAll(['ownerId', 'type', 'startsAt', 'endsAt', 'createdAt', 'updatedAt'])
+        && d.keys().hasOnly(['ownerId', 'type', 'subject', 'startsAt', 'endsAt',
+                            'createdAt', 'updatedAt', 'location', 'description', 'tasks'])
+        && d.ownerId == userId
+        && d.type in ['STUDY_SESSION', 'COURSE', 'EXERCISE_SESSION', 'LAB', 'PROJECT', 'EXAM', 'OTHER']
+        && optionalText(d, 'subject', true)
+        && (d.type == 'OTHER' || d.get('subject', null) != null)
+        && optionalText(d, 'location', true)
+        && optionalText(d, 'description', false)
+        && d.startsAt is timestamp && d.endsAt is timestamp
+        && d.endsAt > d.startsAt && d.endsAt - d.startsAt <= duration.value(24, 'h')
+        && d.createdAt is timestamp && d.updatedAt is timestamp
+        && d.get('tasks', []) is list;
+    }
+
+    match /users/{userId}/events/{eventId} {
+      allow read, delete: if isOwner(userId);
+      allow create, update: if isOwner(userId) && validEvent(userId);
+    }
+
+    // Dynamic map entries and task list members are validated by the Android mapper, not
+    // exhaustively by rules. These are private owner-controlled values, never shared data.
+    match /users/{userId}/meta/subjects {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId)
+        && request.resource.data.keys().hasOnly(['subjects'])
+        && request.resource.data.subjects is map;
     }
 
     // Anything not matched above is denied by default.
