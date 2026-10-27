@@ -109,9 +109,9 @@ object CalendarTestTags {
  */
 @Composable
 internal fun CalendarWeeklyView(
+    modifier: Modifier = Modifier,
     today: LocalDate,
     onWeekContainsToday: (Boolean) -> Unit = {},
-    modifier: Modifier = Modifier,
 ) {
   val dateHelper = remember { CalendarDateHelper() }
   var weekStartEpochDay by
