@@ -8,13 +8,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
-import androidx.compose.ui.test.assertIsNotSelected
-import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
-import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -85,7 +81,7 @@ class CalendarWeeklyViewTest {
     composeTestRule.onNodeWithTag(CalendarTestTags.WEEK_RANGE).assertTextEquals("Jan 4–10, 2027")
   }
 
-  /** Shows all seven day labels and marks only today's date as selected. */
+  /** Shows all seven day labels and gives today's date its visual treatment. */
   @Test
   fun dayHeaderShowsSevenDatesAndHighlightsToday() {
     val today = LocalDate.of(2026, 10, 14)
@@ -93,10 +89,9 @@ class CalendarWeeklyViewTest {
 
     composeTestRule.onNodeWithTag(CalendarTestTags.dayName(today)).assertTextEquals("W")
     composeTestRule.onNodeWithTag(CalendarTestTags.dayNumber(today)).assertTextEquals("14")
-    composeTestRule.onNodeWithTag(CalendarTestTags.dayNumber(today)).assertIsSelected()
     composeTestRule
         .onNodeWithTag(CalendarTestTags.dayNumber(today.minusDays(1)))
-        .assertIsNotSelected()
+        .assertTextEquals("13")
     (0L..6L).forEach { offset ->
       val date = LocalDate.of(2026, 10, 12).plusDays(offset)
       composeTestRule.onNodeWithTag(CalendarTestTags.dayName(date)).assertIsDisplayed()
@@ -104,17 +99,17 @@ class CalendarWeeklyViewTest {
     }
   }
 
-  /** Highlights today only while the visible week contains that date. */
+  /** Shows today's date only while its week is displayed. */
   @Test
-  fun todayHighlightDisappearsOutsideItsVisibleWeek() {
+  fun todayDateIsVisibleOnlyInItsDisplayedWeek() {
     val today = LocalDate.of(2026, 10, 14)
     composeTestRule.setContent { CalendarWeeklyView(today = today) }
 
-    composeTestRule.onNodeWithTag(CalendarTestTags.dayNumber(today)).assertIsSelected()
+    composeTestRule.onNodeWithTag(CalendarTestTags.dayNumber(today)).assertTextEquals("14")
     composeTestRule.onNodeWithTag(CalendarTestTags.NEXT_WEEK).performClick()
-    composeTestRule.onAllNodes(isSelected()).assertCountEquals(0)
+    composeTestRule.onNodeWithTag(CalendarTestTags.dayNumber(today)).assertDoesNotExist()
     composeTestRule.onNodeWithTag(CalendarTestTags.PREVIOUS_WEEK).performClick()
-    composeTestRule.onNodeWithTag(CalendarTestTags.dayNumber(today)).assertIsSelected()
+    composeTestRule.onNodeWithTag(CalendarTestTags.dayNumber(today)).assertTextEquals("14")
   }
 
   /** Shows the timeline with its initial scroll position at 8 AM. */

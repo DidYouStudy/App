@@ -42,8 +42,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -220,7 +218,7 @@ fun CalendarWeekRangeHeader(
 
 /**
  * Renders one heading for each supplied date, with a weekday initial and day-of-month number. The
- * date matching [today] receives the selected visual treatment and selected semantics.
+ * date matching [today] receives the current-day visual treatment.
  *
  * @param weekDates The dates to display, normally the seven dates of the visible calendar week.
  * @param today The date to highlight when it is included in [weekDates].
@@ -282,7 +280,6 @@ fun CalendarDayHeader(
               modifier =
                   Modifier.align(Alignment.Center)
                       .testTag(CalendarTestTags.dayNumber(date))
-                      .semantics { selected = isToday }
                       .offset(y = Dimens.calendarDayLabelVerticalOffset),
               color =
                   if (isToday) MaterialTheme.colorScheme.onPrimary
