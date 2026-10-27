@@ -1,6 +1,7 @@
 // Co-authored-by: Codex AI Agent
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample
 
 import android.os.Bundle
@@ -94,8 +95,12 @@ fun DidYouStudyApp() {
             onSaved = {
               applicationViewModel.onPreferencesSaved()
               if (isEditing) {
-                // Return to Settings instead of stacking the Dashboard on top of it.
-                navigationActions.goBack()
+                // Return to Settings instead of stacking the Dashboard on top of it. The route
+                // check keeps a late callback from popping past Settings and emptying the back
+                // stack.
+                if (navigationActions.currentRoute() == Screen.Preferences.route) {
+                  navigationActions.goBack()
+                }
               } else {
                 navigationActions.navigateIfAllowed(
                     Screen.Dashboard,

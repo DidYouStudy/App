@@ -1,5 +1,6 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.preferences
 
 import androidx.compose.foundation.background
@@ -78,9 +79,11 @@ internal fun WidePillButton(
     onClick: () -> Unit,
     testTag: String,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
   FilledTonalButton(
       onClick = onClick,
+      enabled = enabled,
       shape = CircleShape,
       modifier = modifier.fillMaxWidth().height(56.dp).testTag(testTag),
   ) {

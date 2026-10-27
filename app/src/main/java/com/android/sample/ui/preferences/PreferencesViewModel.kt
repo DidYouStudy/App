@@ -1,4 +1,5 @@
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.preferences
 
 import androidx.compose.runtime.Composable
@@ -31,6 +32,10 @@ class PreferencesViewModel(
 
   private val _uiState = MutableStateFlow<PreferencesUiState>(PreferencesUiState.Loading)
   val uiState: StateFlow<PreferencesUiState> = _uiState.asStateFlow()
+
+  private val _isSaving = MutableStateFlow(false)
+  /** True while a save is in flight; the screen disables Save so it cannot be sent twice. */
+  val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
   private var userId: String? = null
 
   init {
@@ -64,18 +69,33 @@ class PreferencesViewModel(
     }
   }
 
+  /**
+   * Saves [updated] and calls [onSuccess] once it is persisted.
+   *
+   * Calls made while a previous save is still in flight are ignored, so rapid taps on Save write
+   * once and navigate once.
+   */
   fun updatePreferences(updated: UserPreferences, onSuccess: () -> Unit = {}) {
+    if (_isSaving.value) return
+    _isSaving.value = true
     viewModelScope.launch {
-      repository
-          .savePreferences(updated)
-          .onSuccess {
-            _uiState.value = PreferencesUiState.Success(updated)
-            onSuccess()
-          }
-          .onFailure { exception ->
-            _uiState.value =
-                PreferencesUiState.Error(exception.localizedMessage ?: "Failed to save preferences")
-          }
+      try {
+        repository
+            .savePreferences(updated)
+            .onSuccess {
+              _uiState.value = PreferencesUiState.Success(updated)
+              onSuccess()
+            }
+            .onFailure { exception ->
+              _uiState.value =
+                  PreferencesUiState.Error(
+                      exception.localizedMessage ?: "Failed to save preferences"
+                  )
+            }
+      } finally {
+        // Re-enable Save even if the save was cancelled or threw.
+        _isSaving.value = false
+      }
     }
   }
 }

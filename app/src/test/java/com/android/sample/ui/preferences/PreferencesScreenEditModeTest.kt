@@ -1,7 +1,9 @@
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.preferences
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -12,6 +14,7 @@ import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.ui.auth.TestAuthRepository
 import com.android.sample.ui.navigation.NavigationTestTags
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -26,6 +29,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
+import org.mockito.kotlin.any
 
 /** Checks the onboarding and edit-mode variants of [PreferencesScreen]. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -43,7 +47,7 @@ class PreferencesScreenEditModeTest {
     repository = mock(PreferencesRepository::class.java)
     val preferences = UserPreferences(userId = userId)
     `when`(repository.getPreferences(userId)).thenReturn(Result.success(preferences))
-    `when`(repository.savePreferences(preferences)).thenReturn(Result.success(Unit))
+    `when`(repository.savePreferences(any())).thenReturn(Result.success(Unit))
     val authRepository = TestAuthRepository()
     authRepository.currentUser.value = UserAccount(userId, null, null, null)
     viewModel = PreferencesViewModel(repository, authRepository)
@@ -125,5 +129,52 @@ class PreferencesScreenEditModeTest {
     composeTestRule.onNodeWithTag(PreferencesScreenTestTags.SAVE_BUTTON).performClick()
 
     assertEquals(1, savedCalls)
+  }
+
+  @Test
+  fun repeatedSaveTapsWhileSavingSaveAndNavigateOnce() {
+    val pendingSave = CompletableDeferred<Result<Unit>>()
+    var saveCalls = 0
+    val slowRepository =
+        object : PreferencesRepository {
+          override suspend fun getPreferences(userId: String): Result<UserPreferences?> =
+              Result.success(UserPreferences(userId = userId))
+
+          override suspend fun savePreferences(preferences: UserPreferences): Result<Unit> {
+            saveCalls++
+            return pendingSave.await()
+          }
+        }
+    val authRepository = TestAuthRepository()
+    authRepository.currentUser.value = UserAccount(userId, null, null, null)
+    viewModel = PreferencesViewModel(slowRepository, authRepository)
+    var savedCalls = 0
+    setEditModeContent(onSaved = { savedCalls++ })
+    val save = composeTestRule.onNodeWithTag(PreferencesScreenTestTags.SAVE_BUTTON)
+
+    composeTestRule.onNodeWithTag(PreferencesScreenTestTags.SESSION_LENGTH_2_HOURS).performClick()
+    save.performClick()
+    // The save is still in flight: Save is disabled and further taps do nothing.
+    save.assertIsNotEnabled()
+    save.performClick()
+    save.performClick()
+    pendingSave.complete(Result.success(Unit))
+    composeTestRule.waitForIdle()
+
+    assertEquals(1, saveCalls)
+    assertEquals(1, savedCalls)
+  }
+
+  /** Shows the screen in edit mode, as opened from Settings. */
+  private fun setEditModeContent(onSaved: () -> Unit = {}) {
+    composeTestRule.setContent {
+      PreferencesScreen(
+          viewModel = viewModel,
+          onImportClick = {},
+          onAddLocationClick = {},
+          onSaved = onSaved,
+          onBack = {},
+      )
+    }
   }
 }

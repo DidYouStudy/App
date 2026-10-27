@@ -1,5 +1,6 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.preferences
 
 import androidx.compose.foundation.background
@@ -103,6 +104,7 @@ fun PreferencesScreen(
       modifier = modifier.fillMaxSize(),
       content = { pd ->
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+        val isSaving by viewModel.isSaving.collectAsStateWithLifecycle()
 
         when (val state = uiState) {
           // if the screen should be loading
@@ -148,6 +150,7 @@ fun PreferencesScreen(
                 onBreakDurationSelect = { draft = draft.copy(breakLengthMinutes = it.minutes) },
                 onBreakFrequencySelect = { draft = draft.copy(breakFrequencyMinutes = it.minutes) },
                 onSaveClick = { viewModel.updatePreferences(draft, onSaved) },
+                saveEnabled = !isSaving,
                 modifier = modifier.padding(pd),
             )
           }
@@ -174,6 +177,7 @@ fun PreferencesScreen(
  * @param onBreakDurationSelect Called when a break duration is selected.
  * @param onBreakFrequencySelect Called when a break frequency is selected.
  * @param onSaveClick Called when the user saves the selected preferences.
+ * @param saveEnabled Whether the Save button accepts taps (false while a save is in flight).
  */
 @Composable
 fun PreferenceScreenStateless(
@@ -189,6 +193,7 @@ fun PreferenceScreenStateless(
     onBreakDurationSelect: (BreakDuration) -> Unit,
     onBreakFrequencySelect: (BreakFrequency) -> Unit,
     onSaveClick: () -> Unit,
+    saveEnabled: Boolean = true,
 ) {
   // outer box which contains the full screen content
   Box(
@@ -288,6 +293,7 @@ fun PreferenceScreenStateless(
         onClick = onSaveClick,
         testTag = Tags.SAVE_BUTTON,
         modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+        enabled = saveEnabled,
     )
   }
 }
