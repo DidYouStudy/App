@@ -44,7 +44,19 @@ class EventPlanningViewModel(
 
   init {
     viewModelScope.launch {
-      authRepository.currentUser.collect { user -> currentUserId = user?.uid }
+      try {
+        authRepository.currentUser.collect { user -> currentUserId = user?.uid }
+      } catch (exception: CancellationException) {
+        throw exception
+      } catch (exception: Exception) {
+        currentUserId = null
+        _uiState.update {
+          it.copy(
+              error = exception.localizedMessage ?: FAILED_TO_OBSERVE_USER_ERROR,
+              isEventAdded = false,
+          )
+        }
+      }
     }
   }
 
@@ -87,7 +99,7 @@ class EventPlanningViewModel(
 
     val ownerId = currentUserId
     if (ownerId == null) {
-      _uiState.update { it.copy(error = "No signed-in user", isEventAdded = false) }
+      _uiState.update { it.copy(error = NO_SIGNED_IN_USER_ERROR, isEventAdded = false) }
       return
     }
 
@@ -95,7 +107,7 @@ class EventPlanningViewModel(
     val endsAt = state.endsAt
     if (startsAt == null || endsAt == null) {
       _uiState.update {
-        it.copy(error = "Event start and end times are required", isEventAdded = false)
+        it.copy(error = EVENT_START_AND_END_REQUIRED_ERROR, isEventAdded = false)
       }
       return
     }
@@ -128,12 +140,12 @@ class EventPlanningViewModel(
             .saveEvent(event)
             .onSuccess { _uiState.update { it.copy(isEventAdded = true) } }
             .onFailure { exception ->
-              _uiState.update { it.copy(error = exception.message ?: "Failed to add event") }
+              _uiState.update { it.copy(error = exception.message ?: FAILED_TO_ADD_EVENT_ERROR) }
             }
       } catch (exception: CancellationException) {
         throw exception
       } catch (exception: Exception) {
-        _uiState.update { it.copy(error = exception.message ?: "Failed to add event") }
+        _uiState.update { it.copy(error = exception.message ?: FAILED_TO_ADD_EVENT_ERROR) }
       } finally {
         _uiState.update { it.copy(isSaving = false) }
       }
@@ -144,4 +156,11 @@ class EventPlanningViewModel(
   private fun updateForm(update: EventPlanningUiState.() -> EventPlanningUiState) {
     _uiState.update { it.update().copy(error = null, isEventAdded = false) }
   }
+
+    companion object {
+        const val FAILED_TO_OBSERVE_USER_ERROR = "Failed to observe signed-in user"
+        const val NO_SIGNED_IN_USER_ERROR = "No signed-in user"
+        const val EVENT_START_AND_END_REQUIRED_ERROR = "Event start and end times are required"
+        const val FAILED_TO_ADD_EVENT_ERROR = "Failed to add event"
+    }
 }
