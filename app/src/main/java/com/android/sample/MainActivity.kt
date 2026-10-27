@@ -93,15 +93,15 @@ fun DidYouStudyApp() {
             onImportClick = {},
             onAddLocationClick = {},
             onSaved = {
-              applicationViewModel.onPreferencesSaved()
               if (isEditing) {
-                // Return to Settings instead of stacking the Dashboard on top of it. The route
-                // check keeps a late callback from popping past Settings and emptying the back
-                // stack.
+                // Already in Dashboard state: just return to Settings instead of stacking the
+                // Dashboard on top of it. The route check keeps a late callback from popping past
+                // Settings and emptying the back stack.
                 if (navigationActions.currentRoute() == Screen.Preferences.route) {
                   navigationActions.goBack()
                 }
               } else {
+                applicationViewModel.onPreferencesSaved()
                 navigationActions.navigateIfAllowed(
                     Screen.Dashboard,
                     applicationViewModel::canNavigateTo,

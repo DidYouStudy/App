@@ -1,5 +1,6 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.app
 
 import androidx.compose.runtime.Composable
@@ -62,8 +63,9 @@ class AppViewModel(
   }
 
   /**
-   * Moves to the dashboard after PreferencesViewModel confirms a successful save. Idempotent for a
-   * returning user editing existing preferences, who is already in [AppUiState.Dashboard].
+   * Moves to the dashboard after PreferencesViewModel confirms the first-time (onboarding) save.
+   * Not called when a returning user edits preferences from Settings: they are already in
+   * [AppUiState.Dashboard].
    */
   fun onPreferencesSaved() {
     mutableUiState.value = AppUiState.Dashboard

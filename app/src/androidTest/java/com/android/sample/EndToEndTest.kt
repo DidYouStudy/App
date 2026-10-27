@@ -1,8 +1,10 @@
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -165,9 +167,7 @@ class EndToEndTest {
     openSettings()
     composeRule.onNodeWithTag(SettingsScreenTestTags.PREFERENCES_BUTTON).performClick()
     waitForTag(PrefTags.PREFERENCE_SCREEN)
-    composeRule
-        .onNodeWithTag(PrefTags.PREFERENCE_TITLE)
-        .assertTextContains("Preferences", substring = true)
+    composeRule.onNodeWithTag(PrefTags.PREFERENCE_TITLE).assertTextEquals("Modify your preferences")
     composeRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).assertIsDisplayed()
 
     // Changing a value then going back returns to Settings and persists nothing.

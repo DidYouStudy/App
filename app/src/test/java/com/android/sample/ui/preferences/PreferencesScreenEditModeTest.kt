@@ -91,7 +91,7 @@ class PreferencesScreenEditModeTest {
     composeTestRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).assertIsDisplayed()
     composeTestRule
         .onNodeWithTag(PreferencesScreenTestTags.PREFERENCE_TITLE)
-        .assertTextEquals("Preferences")
+        .assertTextEquals("Modify your preferences")
   }
 
   @Test

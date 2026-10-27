@@ -165,19 +165,6 @@ class AppViewModelTest {
     assertEquals(true, viewModel.canNavigateTo(Screen.Preferences))
   }
 
-  /** Saving edited preferences keeps the returning user in the Dashboard state. */
-  @Test
-  fun savingEditedPreferencesKeepsDashboardState() = runTest {
-    val viewModel = signedInViewModelWithPreferences()
-
-    viewModel.onPreferencesSaved()
-
-    assertEquals(AppUiState.Dashboard, viewModel.uiState.value)
-    assertEquals(true, viewModel.canNavigateTo(Screen.Settings))
-    assertEquals(true, viewModel.canNavigateTo(Screen.Preferences))
-    assertEquals(false, viewModel.canNavigateTo(Screen.Auth))
-  }
-
   /** First-time onboarding is unchanged: saving moves to Dashboard and closes the flow. */
   @Test
   fun savingFirstTimePreferencesStillMovesToDashboard() = runTest {
