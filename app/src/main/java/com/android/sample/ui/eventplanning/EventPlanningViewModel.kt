@@ -15,6 +15,7 @@ import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
 import com.android.sample.model.event.EventsRepository
+import com.android.sample.model.event.EventsRepositoryProvider
 import com.android.sample.model.event.InMemoryEventsRepository
 import java.time.Clock
 import java.time.LocalDate
@@ -304,6 +305,6 @@ fun eventsPlanningViewModel(): EventPlanningViewModel =
         factory =
             EventPlanningViewModelFactory(
                 authRepository = AuthRepositoryProvider.getRepository(LocalContext.current),
-                eventsRepository = InMemoryEventsRepository(),
+                eventsRepository = EventsRepositoryProvider.getRepository(),
             )
     )
