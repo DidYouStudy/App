@@ -139,7 +139,7 @@ private fun GroupSessionContent(
         shape = RoundedCornerShape(32.dp),
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
         trailingIcon = {
-          IconButton(onClick = {}) {
+          IconButton(onClick = { /* TODO ADVANCED FILTERS */ }) {
             Icon(Icons.Outlined.Tune, contentDescription = "Filter sessions")
           }
         },
@@ -379,6 +379,8 @@ private fun GroupSessionCard(
           horizontalArrangement = Arrangement.SpaceBetween,
       ) {
         // Shortened Participants Pill (Avatars + Count + Chevron only)
+        //TODO: make participants pill dynamically show first member pictures
+        //TODO: make pill clickable to show all group members
         Surface(
             shape = RoundedCornerShape(20.dp),
             color = Color(0xFFF3EDF7),
@@ -426,7 +428,7 @@ private fun GroupSessionCard(
         // Action Buttons (Host Edit vs Member Leave/Joined vs Join)
         if (shouldShowHost) {
           Button(
-              onClick = {},
+              onClick = { /* TODO EDIT GROUP SESSION */ },
               shape = RoundedCornerShape(20.dp),
               colors =
                   ButtonDefaults.buttonColors(
