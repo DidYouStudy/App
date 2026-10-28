@@ -77,6 +77,18 @@ class InMemoryEventsRepository : EventsRepository {
     return Result.success(event)
   }
 
+  override suspend fun getImportedEvents(ownerId: String): Result<List<Event>> {
+    if (ownerId.isBlank()) return invalidArgument()
+    val imported =
+        data.value[ownerId]
+            ?.events
+            .orEmpty()
+            .values
+            .filter { it.importKey != null }
+            .sortedWith(compareBy<Event>({ it.startsAt }, { it.endsAt }, { it.id }))
+    return Result.success(imported)
+  }
+
   override suspend fun saveEvent(event: Event): Result<Unit> {
     data.update { byOwner ->
       val owned = byOwner[event.ownerId] ?: OwnerData()

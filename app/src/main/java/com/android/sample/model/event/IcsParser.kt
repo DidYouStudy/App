@@ -149,6 +149,7 @@ object IcsParser {
         location = location,
         description = description,
         tasks = emptyList(),
+        importKey = uid?.takeIf { it.isNotBlank() },
     )
   }
 

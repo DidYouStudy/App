@@ -45,6 +45,7 @@ class IcsParserTest {
     val event = events.first()
 
     assertEquals("horaire_5224679874@is-academia", event.id)
+    assertEquals("horaire_5224679874@is-academia", event.importKey)
     assertEquals(defaultOwnerId, event.ownerId)
     assertEquals(EventType.COURSE, event.type)
     assertEquals("Modèles stochastiques pour les communications", event.subject)

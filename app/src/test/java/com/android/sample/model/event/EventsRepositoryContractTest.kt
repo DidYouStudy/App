@@ -83,6 +83,37 @@ abstract class EventsRepositoryContractTest {
 
   /** Deleting removes the event; deleting again or a missing event still succeeds. */
   @Test
+  fun getImportedEvents_returnsOnlyTheOwnersImportedEventsOfAnyDate() = runTest {
+    val imported = event("a", 9, 10).copy(importKey = "uid-a")
+    val farAway =
+        event("b", 9, 10)
+            .copy(
+                startsAt = monday.plusSeconds(400 * 86_400L),
+                endsAt = monday.plusSeconds(400 * 86_400L + 3600),
+                importKey = "uid-b",
+            )
+    repository.saveEvents(
+        listOf(
+            imported,
+            farAway,
+            event("manual", 11, 12),
+            event("other", 9, 10, otherOwner).copy(importKey = "uid-x"),
+        )
+    )
+
+    val result = repository.getImportedEvents(owner).getOrThrow()
+
+    assertEquals(listOf(imported, farAway), result)
+  }
+
+  @Test
+  fun getImportedEvents_blankOwner_isInvalidArgument() = runTest {
+    val error = repository.getImportedEvents(" ").exceptionOrNull() as EventsException
+
+    assertEquals(EventsError.INVALID_ARGUMENT, error.error)
+  }
+
+  @Test
   fun deleteEvent_removesAndIsIdempotent() = runTest {
     repository.saveEvent(event("a", 9, 10)).getOrThrow()
 

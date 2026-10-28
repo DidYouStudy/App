@@ -52,6 +52,14 @@ interface EventsRepository {
    */
   fun observeSubjects(ownerId: String): Flow<Result<List<String>>>
 
+  /**
+   * Returns every event of the owner that was imported from a schedule file (has an
+   * [Event.importKey]), whatever its date, so a new import can update or remove them.
+   *
+   * @return [Result.failure] with [EventsError.INVALID_ARGUMENT] when [ownerId] is blank.
+   */
+  suspend fun getImportedEvents(ownerId: String): Result<List<Event>>
+
   /** Creates the event, or replaces the owner's event with the same ID, and records its subject. */
   suspend fun saveEvent(event: Event): Result<Unit>
 
