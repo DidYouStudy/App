@@ -45,7 +45,7 @@ fun CalendarScreen(
     navigationActions: NavigationActions? = null,
 ) {
   val today = remember { LocalDate.now() }
-  var showTodayChip by remember { mutableStateOf(true) }
+  var todayNavigationRequested by remember { mutableStateOf(false) }
 
   Scaffold(
       topBar = {
@@ -64,27 +64,25 @@ fun CalendarScreen(
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
                 ),
             actions = {
-              if (showTodayChip) {
-                Surface(
-                    modifier = Modifier.testTag(CalendarTestTags.TODAY_CHIP),
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                ) {
-                  Text(
-                      text = stringResource(R.string.calendar_today_label),
-                      modifier =
-                          Modifier.padding(
-                              horizontal = Dimens.calendarTodayChipHorizontalPadding,
-                              vertical = Dimens.calendarTodayChipVerticalPadding,
-                          ),
-                      style = MaterialTheme.typography.labelMedium,
-                      fontWeight = FontWeight.Bold,
-                  )
-                }
-
-                Spacer(Modifier.width(Spacing.small))
+              Surface(
+                  onClick = { todayNavigationRequested = true },
+                  modifier = Modifier.testTag(CalendarTestTags.TODAY_BUTTON),
+                  shape = CircleShape,
+                  color = MaterialTheme.colorScheme.primary,
+                  contentColor = MaterialTheme.colorScheme.onPrimary,
+              ) {
+                Text(
+                    text = stringResource(R.string.calendar_today_label),
+                    modifier =
+                        Modifier.padding(
+                            horizontal = Dimens.calendarTodayChipHorizontalPadding,
+                            vertical = Dimens.calendarTodayChipVerticalPadding,
+                        ),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                )
               }
+              Spacer(Modifier.width(Spacing.small))
               ProfileButton(onClick = { navigationActions?.navigateTo(Screen.Settings) })
             },
         )
@@ -107,7 +105,8 @@ fun CalendarScreen(
       content = { paddingValues ->
         CalendarWeeklyView(
             today = today,
-            onWeekContainsToday = { showTodayChip = it },
+            todayNavigationRequested = todayNavigationRequested,
+            onTodayNavigationRequestHandled = { todayNavigationRequested = false },
             modifier = Modifier.padding(paddingValues),
         )
       },
