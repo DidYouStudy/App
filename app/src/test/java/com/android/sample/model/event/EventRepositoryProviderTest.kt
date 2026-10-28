@@ -8,42 +8,48 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mockito.Mockito.mock
 
+/** Verifies the default repository, singleton behavior, and test-time repository replacement. */
 class EventsRepositoryProviderTest {
 
-    @After
-    fun tearDown() {
-        EventsRepositoryProvider.setRepository(null)
-    }
+  /** Restores the provider's default behavior so repository state cannot leak between tests. */
+  @After
+  fun tearDown() {
+    EventsRepositoryProvider.setRepository(null)
+  }
 
-    @Test
-    fun getRepository_defaultsToInMemoryRepository() {
-        EventsRepositoryProvider.setRepository(null)
+  /** The provider creates an in-memory repository when no override has been configured. */
+  @Test
+  fun getRepository_defaultsToInMemoryRepository() {
+    EventsRepositoryProvider.setRepository(null)
 
-        assertTrue(EventsRepositoryProvider.getRepository() is InMemoryEventsRepository)
-    }
+    assertTrue(EventsRepositoryProvider.getRepository() is InMemoryEventsRepository)
+  }
 
-    @Test
-    fun getRepository_returnsTheSameInstanceOnEveryCall() {
-        EventsRepositoryProvider.setRepository(null)
+  /** Repeated lookups return the same shared repository instance. */
+  @Test
+  fun getRepository_returnsTheSameInstanceOnEveryCall() {
+    EventsRepositoryProvider.setRepository(null)
 
-        assertSame(EventsRepositoryProvider.getRepository(), EventsRepositoryProvider.getRepository())
-    }
+    assertSame(EventsRepositoryProvider.getRepository(), EventsRepositoryProvider.getRepository())
+  }
 
-    @Test
-    fun setRepository_replacesTheSharedRepository() {
-        val replacement = mock(EventsRepository::class.java)
+  /** A repository configured for tests replaces the provider's shared instance. */
+  @Test
+  fun setRepository_replacesTheSharedRepository() {
+    val replacement = mock(EventsRepository::class.java)
 
-        EventsRepositoryProvider.setRepository(replacement)
+    EventsRepositoryProvider.setRepository(replacement)
 
-        assertSame(replacement, EventsRepositoryProvider.getRepository())
-    }
+    assertSame(replacement, EventsRepositoryProvider.getRepository())
+  }
 
-    @Test
-    fun setRepositoryToNull_makesNextCallCreateAFreshDefault() {
-        val first = EventsRepositoryProvider.getRepository()
+  /** Clearing an override causes the provider to create a fresh default repository. */
+  @Test
+  fun setRepositoryToNull_makesNextCallCreateAFreshDefault() {
+    val first = EventsRepositoryProvider.getRepository()
 
-        EventsRepositoryProvider.setRepository(null)
+    EventsRepositoryProvider.setRepository(null)
 
-        assertNotSame(first, EventsRepositoryProvider.getRepository())
-    }
+    assertNotSame(first, EventsRepositoryProvider.getRepository())
+  }
 }

@@ -47,8 +47,10 @@ import org.mockito.kotlin.doSuspendableAnswer
 import org.mockito.kotlin.verify
 
 /**
- * Plain JVM tests: the ViewModel uses no Android framework class, so no Robolectric runner is
- * needed. Only `Dispatchers.Main` has to be replaced because `viewModelScope` runs on it.
+ * Plain JVM tests for authenticated-user observation, subject suggestions, form and task updates,
+ * event validation and saving, repository failures, and ViewModel factory behavior. The ViewModel
+ * uses no Android framework class, so no Robolectric runner is needed. Only `Dispatchers.Main` has
+ * to be replaced because `viewModelScope` runs on it.
  *
  * The repositories are Mockito mocks. `setUp` gives the events repository a happy-path behavior
  * (saves succeed, no subjects, the next event ID is "event-1"); tests re-stub what they need.
@@ -56,6 +58,7 @@ import org.mockito.kotlin.verify
 @OptIn(ExperimentalCoroutinesApi::class)
 class EventPlanningViewModelTest {
 
+  /** Unsupported ViewModel type used to verify that the factory rejects unrelated requests. */
   private class OtherViewModel : ViewModel()
 
   private val testDispatcher = UnconfinedTestDispatcher()
@@ -73,6 +76,7 @@ class EventPlanningViewModelTest {
   private val startsAt = Instant.parse("2026-10-27T08:00:00Z")
   private val endsAt = Instant.parse("2026-10-27T10:00:00Z")
 
+  /** Installs the test dispatcher and configures repository mocks with successful defaults. */
   @Before
   fun setUp() {
     Dispatchers.setMain(testDispatcher)
@@ -85,18 +89,23 @@ class EventPlanningViewModelTest {
     currentUserFlow.value = account("user123")
   }
 
+  /** Restores the process main dispatcher after each test. */
   @After
   fun tearDown() {
     Dispatchers.resetMain()
   }
 
+  /** Creates a minimal account for authentication-flow tests. */
   private fun account(uid: String) =
       UserAccount(uid = uid, email = null, displayName = null, photoUrl = null)
 
+  /** Creates a one-shot subject flow containing [subjects]. */
   private fun subjects(vararg subjects: String) = flowOf(Result.success(subjects.toList()))
 
+  /** Creates a ViewModel with the configured repository mocks and fixed test clock. */
   private fun createViewModel() = EventPlanningViewModel(authRepository, eventsRepository, clock)
 
+  /** Populates the form with valid study-session details for event-creation tests. */
   private fun EventPlanningViewModel.fillValidForm() {
     setType(EventType.STUDY_SESSION)
     setSubject("Algebra")
@@ -114,6 +123,7 @@ class EventPlanningViewModelTest {
 
   // ---------------------------------------------------------------- user observation
 
+  /** A message from a failed authentication flow is surfaced in UI state. */
   @Test
   fun init_userFlowFailsWithMessage_exposesMessage() = runTest {
     `when`(authRepository.currentUser)
@@ -125,6 +135,7 @@ class EventPlanningViewModelTest {
     assertFalse(viewModel.uiState.value.isEventAdded)
   }
 
+  /** A failed authentication flow without a message uses the default observation error. */
   @Test
   fun init_userFlowFailsWithoutMessage_usesDefaultMessage() = runTest {
     val exception = object : RuntimeException(null as String?) {}
@@ -138,6 +149,9 @@ class EventPlanningViewModelTest {
     )
   }
 
+  /**
+   * Event creation is rejected when authentication observation failed before identifying a user.
+   */
   @Test
   fun init_userFlowFails_noUserIsKnownAndAddingIsRejected() = runTest {
     `when`(authRepository.currentUser)
@@ -151,6 +165,7 @@ class EventPlanningViewModelTest {
     verify(eventsRepository, never()).saveEvent(any())
   }
 
+  /** Cancellation of authentication observation is propagated without displaying an error. */
   @Test
   fun init_userFlowCancelled_doesNotExposeError() = runTest {
     `when`(authRepository.currentUser)
@@ -163,6 +178,7 @@ class EventPlanningViewModelTest {
 
   // ---------------------------------------------------------------- subject suggestions
 
+  /** Subject suggestions follow sign-in changes and update when the current user's list changes. */
   @Test
   fun subjects_followTheSignedInUserAndTheirChanges() = runTest {
     val algebraSubjects = MutableStateFlow(Result.success(listOf("Algebra")))
@@ -184,6 +200,7 @@ class EventPlanningViewModelTest {
     assertEquals(emptyList<String>(), viewModel.uiState.value.recommendedSubjects)
   }
 
+  /** A failed suggestions result leaves the suggestions empty without blocking the form. */
   @Test
   fun subjects_readFailure_leavesListEmptyWithoutError() = runTest {
     `when`(eventsRepository.observeSubjects("user123"))
@@ -197,6 +214,7 @@ class EventPlanningViewModelTest {
 
   // ---------------------------------------------------------------- form
 
+  /** The ViewModel starts with default form values and no pending operation or error. */
   @Test
   fun initialState_hasDefaultFormValues() = runTest {
     val state = createViewModel().uiState.value
@@ -215,6 +233,7 @@ class EventPlanningViewModelTest {
     assertNull(state.error)
   }
 
+  /** Only the OTHER event type permits an omitted subject. */
   @Test
   fun subjectIsRequiredExceptForTypeOther() = runTest {
     val viewModel = createViewModel()
@@ -225,6 +244,7 @@ class EventPlanningViewModelTest {
     assertFalse(viewModel.uiState.value.isSubjectRequired)
   }
 
+  /** Each form setter updates its corresponding state field. */
   @Test
   fun setters_updateEveryFormField() = runTest {
     val viewModel = createViewModel()
@@ -250,6 +270,7 @@ class EventPlanningViewModelTest {
     assertEquals(tasks, state.tasks)
   }
 
+  /** Date and time setters accept null to clear previously selected values. */
   @Test
   fun setters_acceptNullDateAndTimes() = runTest {
     val viewModel = createViewModel()
@@ -266,6 +287,7 @@ class EventPlanningViewModelTest {
     assertNull(viewModel.uiState.value.endTime)
   }
 
+  /** Editing a form clears any previous error and event-added signal. */
   @Test
   fun editingForm_clearsPreviousErrorAndAddedFlag() = runTest {
     val viewModel = createViewModel()
@@ -278,6 +300,7 @@ class EventPlanningViewModelTest {
     assertFalse(viewModel.uiState.value.isEventAdded)
   }
 
+  /** Clearing an error removes it from the current UI state. */
   @Test
   fun clearError_removesDisplayedError() = runTest {
     val viewModel = createViewModel()
@@ -291,6 +314,7 @@ class EventPlanningViewModelTest {
 
   // ---------------------------------------------------------------- tasks
 
+  /** Added task text is trimmed and appended as an open checklist item. */
   @Test
   fun addTask_appendsTrimmedOpenTask() = runTest {
     val viewModel = createViewModel()
@@ -304,6 +328,7 @@ class EventPlanningViewModelTest {
     )
   }
 
+  /** Blank task text is ignored and does not clear unrelated UI feedback. */
   @Test
   fun addTask_blankText_isIgnored() = runTest {
     val viewModel = createViewModel()
@@ -316,6 +341,7 @@ class EventPlanningViewModelTest {
     assertNotNull(viewModel.uiState.value.error) // untouched: nothing was edited
   }
 
+  /** Removing a valid task index leaves the other tasks in order. */
   @Test
   fun removeTask_removesOnlyTheTaskAtIndex() = runTest {
     val viewModel = createViewModel()
@@ -326,6 +352,7 @@ class EventPlanningViewModelTest {
     assertEquals(listOf(EventTask("a"), EventTask("c")), viewModel.uiState.value.tasks)
   }
 
+  /** Removing an invalid task index leaves the checklist unchanged. */
   @Test
   fun removeTask_indexOutsideList_isIgnored() = runTest {
     val viewModel = createViewModel()
@@ -338,6 +365,7 @@ class EventPlanningViewModelTest {
     assertEquals(tasks, viewModel.uiState.value.tasks)
   }
 
+  /** Toggling a task records the test clock time and toggling again reopens it. */
   @Test
   fun toggleTask_completesThenReopensTheTask() = runTest {
     val viewModel = createViewModel()
@@ -351,6 +379,7 @@ class EventPlanningViewModelTest {
     assertNull(viewModel.uiState.value.tasks[1].completedAt)
   }
 
+  /** Toggling an invalid task index leaves the checklist unchanged. */
   @Test
   fun toggleTask_indexOutsideList_isIgnored() = runTest {
     val viewModel = createViewModel()
@@ -366,6 +395,7 @@ class EventPlanningViewModelTest {
   // ---------------------------------------------------------------- addEvent: rejected before
   // saving
 
+  /** Event creation without a signed-in user reports an error and does not call the repository. */
   @Test
   fun addEvent_withoutSignedInUser_reportsErrorAndDoesNotSave() = runTest {
     currentUserFlow.value = null
@@ -381,6 +411,7 @@ class EventPlanningViewModelTest {
     verify(eventsRepository, never()).saveEvent(any())
   }
 
+  /** A sign-out observed before creation prevents saving under the former user's identity. */
   @Test
   fun addEvent_userSignsOutAfterCreation_reportsError() = runTest {
     val viewModel = createViewModel()
@@ -393,6 +424,7 @@ class EventPlanningViewModelTest {
     verify(eventsRepository, never()).saveEvent(any())
   }
 
+  /** A missing event date is rejected before the repository is called. */
   @Test
   fun addEvent_missingDate_reportsErrorAndDoesNotSave() = runTest {
     val viewModel = createViewModel()
@@ -408,6 +440,7 @@ class EventPlanningViewModelTest {
     verify(eventsRepository, never()).saveEvent(any())
   }
 
+  /** A missing event start time is rejected before the repository is called. */
   @Test
   fun addEvent_missingStartTime_reportsErrorAndDoesNotSave() = runTest {
     val viewModel = createViewModel()
@@ -423,6 +456,7 @@ class EventPlanningViewModelTest {
     verify(eventsRepository, never()).saveEvent(any())
   }
 
+  /** A missing event end time is rejected before the repository is called. */
   @Test
   fun addEvent_missingEndTime_reportsErrorAndDoesNotSave() = runTest {
     val viewModel = createViewModel()
@@ -438,6 +472,7 @@ class EventPlanningViewModelTest {
     verify(eventsRepository, never()).saveEvent(any())
   }
 
+  /** A blank subject is invalid for event types that require one. */
   @Test
   fun addEvent_blankSubjectForNonOtherType_exposesValidationMessage() = runTest {
     val viewModel = createViewModel()
@@ -453,6 +488,7 @@ class EventPlanningViewModelTest {
     verify(eventsRepository, never()).saveEvent(any())
   }
 
+  /** An event whose end time is not after its start time is rejected. */
   @Test
   fun addEvent_endNotAfterStart_exposesValidationMessage() = runTest {
     val viewModel = createViewModel()
@@ -467,6 +503,7 @@ class EventPlanningViewModelTest {
 
   // ---------------------------------------------------------------- addEvent: saving
 
+  /** A valid event is saved with the signed-in owner, trimmed fields, and local-time conversion. */
   @Test
   fun addEvent_validForm_savesTrimmedEventForSignedInUser() = runTest {
     val viewModel = createViewModel()
@@ -496,6 +533,7 @@ class EventPlanningViewModelTest {
     assertEquals(now, saved.updatedAt)
   }
 
+  /** Successful creation resets form fields, retains suggestions, and raises the added signal. */
   @Test
   fun addEvent_success_resetsFormKeepsSubjectsAndSignalsAdded() = runTest {
     `when`(eventsRepository.observeSubjects("user123")).thenReturn(subjects("Algebra"))
@@ -517,6 +555,7 @@ class EventPlanningViewModelTest {
     assertEquals(listOf("Algebra"), state.recommendedSubjects)
   }
 
+  /** Acknowledging a handled creation clears the event-added signal. */
   @Test
   fun onEventAddedHandled_clearsTheAddedFlag() = runTest {
     val viewModel = createViewModel()
@@ -529,6 +568,7 @@ class EventPlanningViewModelTest {
     assertFalse(viewModel.uiState.value.isEventAdded)
   }
 
+  /** Editing the form after a successful creation clears the event-added signal. */
   @Test
   fun editingFormAfterSuccessfulAdd_clearsAddedFlag() = runTest {
     val viewModel = createViewModel()
@@ -541,6 +581,7 @@ class EventPlanningViewModelTest {
     assertFalse(viewModel.uiState.value.isEventAdded)
   }
 
+  /** Blank optional location and description values are stored as null. */
   @Test
   fun addEvent_blankOptionalFields_areStoredAsNull() = runTest {
     val viewModel = createViewModel()
@@ -556,6 +597,7 @@ class EventPlanningViewModelTest {
     assertTrue(viewModel.uiState.value.isEventAdded)
   }
 
+  /** An OTHER event can be saved without a subject. */
   @Test
   fun addEvent_otherTypeWithoutSubject_isSavedWithNullSubject() = runTest {
     val viewModel = createViewModel()
@@ -570,6 +612,7 @@ class EventPlanningViewModelTest {
     assertTrue(viewModel.uiState.value.isEventAdded)
   }
 
+  /** Event ownership uses the latest signed-in account rather than an earlier account. */
   @Test
   fun addEvent_usesTheLatestSignedInUserAsOwner() = runTest {
     val viewModel = createViewModel()
@@ -581,6 +624,7 @@ class EventPlanningViewModelTest {
     assertEquals("user456", savedEvents().single().ownerId)
   }
 
+  /** Separate successful additions receive distinct repository-generated event IDs. */
   @Test
   fun addEvent_twice_createsTwoDistinctEvents() = runTest {
     `when`(eventsRepository.newEventId()).thenReturn("id-1", "id-2")
@@ -594,6 +638,7 @@ class EventPlanningViewModelTest {
     assertEquals(listOf("id-1", "id-2"), savedEvents(count = 2).map { it.id })
   }
 
+  /** Retrying a failed save reuses its event ID to avoid creating a duplicate. */
   @Test
   fun addEvent_retryAfterFailure_reusesTheSameEventId() = runTest {
     `when`(eventsRepository.newEventId()).thenReturn("id-1", "id-2")
@@ -614,6 +659,7 @@ class EventPlanningViewModelTest {
     assertTrue(viewModel.uiState.value.isEventAdded)
   }
 
+  /** Resetting an unsaved form discards its pending ID so a later event receives a new one. */
   @Test
   fun resetForm_discardsFormAndStartsANewEventId() = runTest {
     `when`(eventsRepository.newEventId()).thenReturn("id-1", "id-2")
@@ -635,6 +681,7 @@ class EventPlanningViewModelTest {
     assertEquals(listOf("id-1", "id-2"), savedEvents(count = 2).map { it.id })
   }
 
+  /** Resetting the form preserves repository-provided subject suggestions. */
   @Test
   fun resetForm_keepsSubjectSuggestions() = runTest {
     `when`(eventsRepository.observeSubjects("user123")).thenReturn(subjects("Algebra"))
@@ -646,6 +693,7 @@ class EventPlanningViewModelTest {
     assertEquals(listOf("Algebra"), viewModel.uiState.value.recommendedSubjects)
   }
 
+  /** A second add request is ignored until the first repository save completes. */
   @Test
   fun addEvent_whileSaving_isIgnoredUntilSaveCompletes() = runTest {
     val gate = CompletableDeferred<Unit>()
@@ -672,6 +720,7 @@ class EventPlanningViewModelTest {
 
   // ---------------------------------------------------------------- addEvent: repository failures
 
+  /** Known repository errors map to stable, user-facing messages. */
   @Test
   fun addEvent_repositoryFailure_exposesUserMessageForEachErrorCategory() = runTest {
     val expectations =
@@ -699,6 +748,7 @@ class EventPlanningViewModelTest {
     }
   }
 
+  /** An unexpected repository failure preserves its available message. */
   @Test
   fun addEvent_otherFailureWithMessage_exposesMessage() = runTest {
     `when`(eventsRepository.saveEvent(any()))
@@ -711,6 +761,7 @@ class EventPlanningViewModelTest {
     assertEquals("disk full", viewModel.uiState.value.error)
   }
 
+  /** An unexpected repository failure without a message uses the default save error. */
   @Test
   fun addEvent_otherFailureWithoutMessage_usesDefaultMessage() = runTest {
     `when`(eventsRepository.saveEvent(any()))
@@ -724,6 +775,7 @@ class EventPlanningViewModelTest {
     assertFalse(viewModel.uiState.value.isSaving)
   }
 
+  /** A repository exception is surfaced with its message and clears the saving state. */
   @Test
   fun addEvent_repositoryThrowsWithMessage_exposesMessage() = runTest {
     `when`(eventsRepository.saveEvent(any())).thenThrow(IllegalStateException("boom"))
@@ -738,6 +790,7 @@ class EventPlanningViewModelTest {
     assertFalse(state.isSaving)
   }
 
+  /** A repository exception without a message uses the default save error. */
   @Test
   fun addEvent_repositoryThrowsWithoutMessage_usesDefaultMessage() = runTest {
     val exception = object : RuntimeException(null as String?) {}
@@ -751,6 +804,7 @@ class EventPlanningViewModelTest {
     assertFalse(viewModel.uiState.value.isSaving)
   }
 
+  /** Cancellation from a repository save is not presented as an error and ends loading. */
   @Test
   fun addEvent_cancelled_isNotReportedAsErrorAndStopsSaving() = runTest {
     `when`(eventsRepository.saveEvent(any())).thenThrow(CancellationException("cancelled"))
@@ -767,6 +821,7 @@ class EventPlanningViewModelTest {
 
   // factory tests
 
+  /** The factory creates an event-planning ViewModel for its supported type. */
   @Test
   fun factory_createsEventPlanningViewModel() {
     val factory = EventPlanningViewModelFactory(authRepository, eventsRepository)
@@ -776,6 +831,7 @@ class EventPlanningViewModelTest {
     assertNotNull(viewModel)
   }
 
+  /** The factory rejects ViewModel classes it does not support. */
   @Test
   fun factory_rejectsUnsupportedViewModelClass() {
     val factory = EventPlanningViewModelFactory(authRepository, eventsRepository)
