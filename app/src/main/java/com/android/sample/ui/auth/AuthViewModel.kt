@@ -160,29 +160,7 @@ class AuthViewModel(
     viewModelScope.launch {
       try {
         val signedInUser = operation()
-        if (signedInUser is UserAccount) {
-          // The session flow may already have started this user's lookup; avoid starting it twice.
-          if (
-              activeProfileResolutionUserId == signedInUser.uid &&
-                  mutableProfileUiState.value.isLoading
-          ) {
-            return@launch
-          }
-          when (mutableAuthUiState.value.user?.uid) {
-            null -> {
-              // Defer lookup until currentUser confirms the newly signed-in session.
-              invalidateProfileResolution()
-              pendingProfileUser = signedInUser
-            }
-            signedInUser.uid -> {
-              // The session already matches, so resolve this user's profile now.
-              invalidateProfileResolution()
-              startProfileResolution(signedInUser)
-            }
-            // A different session arrived while sign-in was running; discard this stale result.
-            else -> return@launch
-          }
-        }
+        if (signedInUser is UserAccount) handleSignedInUser(signedInUser)
       } catch (exception: CancellationException) {
         // A CancellationException can mean either that this coroutine was cancelled
         // (e.g. the ViewModel was cleared) or that the operation itself was cancelled
@@ -198,6 +176,29 @@ class AuthViewModel(
       } finally {
         mutableAuthUiState.update { it.copy(isLoading = false) }
       }
+    }
+  }
+
+  /** Defers or starts profile resolution for a sign-in result that still matches the session. */
+  private fun handleSignedInUser(user: UserAccount) {
+    // The session flow may already have started this user's lookup; avoid starting it twice.
+    if (activeProfileResolutionUserId == user.uid && mutableProfileUiState.value.isLoading) {
+      return
+    }
+
+    when (mutableAuthUiState.value.user?.uid) {
+      null -> {
+        // Defer lookup until currentUser confirms the newly signed-in session.
+        invalidateProfileResolution()
+        pendingProfileUser = user
+      }
+      user.uid -> {
+        // The session already matches, so resolve this user's profile now.
+        invalidateProfileResolution()
+        startProfileResolution(user)
+      }
+      // A different session arrived while sign-in was running; discard this stale result.
+      else -> Unit
     }
   }
 
@@ -224,26 +225,7 @@ class AuthViewModel(
           try {
             // The coordinator looks up the profile and creates it only when no profile exists.
             val result = profileResolutionCoordinator.resolve(user)
-            if (
-                activeProfileResolutionJob !== resolutionJob ||
-                    mutableAuthUiState.value.user?.uid != user.uid
-            ) {
-              // Ignore stale results; if this job is still active, clear its loading state and
-              // data.
-              if (activeProfileResolutionJob === resolutionJob) {
-                mutableProfileUiState.update { ProfileUiState() }
-              }
-              return@launch
-            }
-            // Publish either the resolved profile or its typed failure for the current job only.
-            mutableProfileUiState.update {
-              result.fold(
-                  onSuccess = { ProfileUiState(profile = it) },
-                  onFailure = {
-                    ProfileUiState(error = (it as? ProfileException)?.error ?: ProfileError.UNKNOWN)
-                  },
-              )
-            }
+            publishResolutionResult(resolutionJob, user, result)
           } catch (exception: CancellationException) {
             currentCoroutineContext().ensureActive()
             if (activeProfileResolutionJob === resolutionJob) {
@@ -269,6 +251,27 @@ class AuthViewModel(
     activeProfileResolutionJob = job
     activeProfileResolutionUserId = user.uid
     job.start()
+  }
+
+  /**
+   * Publishes a resolution result only when its job and authenticated session are still current.
+   */
+  private fun publishResolutionResult(job: Job, user: UserAccount, result: Result<UserProfile>) {
+    val isCurrentJob = activeProfileResolutionJob === job
+    if (isCurrentJob && mutableAuthUiState.value.user?.uid == user.uid) {
+      // Publish either the resolved profile or its typed failure for the current job only.
+      mutableProfileUiState.update {
+        result.fold(
+            onSuccess = { ProfileUiState(profile = it) },
+            onFailure = {
+              ProfileUiState(error = (it as? ProfileException)?.error ?: ProfileError.UNKNOWN)
+            },
+        )
+      }
+    } else if (isCurrentJob) {
+      // This job is still registered, but its session is stale; clear its loading state and data.
+      mutableProfileUiState.update { ProfileUiState() }
+    }
   }
 
   /**
