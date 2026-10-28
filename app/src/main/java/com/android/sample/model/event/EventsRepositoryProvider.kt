@@ -11,16 +11,16 @@ package com.android.sample.model.event
  * [setRepository] with a fake, and with `null` to start from a fresh default.
  */
 object EventsRepositoryProvider {
-    private var repository: EventsRepository? = null
+  private var repository: EventsRepository? = null
 
-    /** Returns the shared repository, creating the default one on first use. */
-    @Synchronized
-    fun getRepository(): EventsRepository =
-        repository ?: InMemoryEventsRepository().also { repository = it }
+  /** Returns the shared repository, creating the default one on first use. */
+  @Synchronized
+  fun getRepository(): EventsRepository =
+      repository ?: InMemoryEventsRepository().also { repository = it }
 
-    /** Replaces the shared repository; `null` drops it so the next call creates the default. */
-    @Synchronized
-    fun setRepository(newRepository: EventsRepository?) {
-        repository = newRepository
-    }
+  /** Replaces the shared repository; `null` drops it so the next call creates the default. */
+  @Synchronized
+  fun setRepository(newRepository: EventsRepository?) {
+    repository = newRepository
+  }
 }

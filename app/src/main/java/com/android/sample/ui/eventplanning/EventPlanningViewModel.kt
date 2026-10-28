@@ -16,7 +16,6 @@ import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.EventsRepositoryProvider
-import com.android.sample.model.event.InMemoryEventsRepository
 import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalTime
@@ -32,8 +31,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Form values and the result of the latest event-creation request. Has default values for all
- * fields.
+ * Form values, subject suggestions and the result of the latest add request.
+ *
+ * The date and times are the local values shown by the pickers; the ViewModel converts them to
+ * instants with the clock's time zone when adding.
+ *
+ * @property recommendedSubjects subjects the user has used before, most recent first, for the
+ *   suggestions.
+ * @property isEventAdded set after a successful add until
+ *   [EventPlanningViewModel.onEventAddedHandled] is called; the screen navigates away on it.
  */
 data class EventPlanningUiState(
     val type: EventType = EventType.STUDY_SESSION,
@@ -207,7 +213,7 @@ class EventPlanningViewModel(
               tasks = state.tasks,
           )
         } catch (exception: IllegalArgumentException) {
-          _uiState.update { it.copy(error = exception.message, isEventAdded = false) }
+          fail(exception.message)
           return
         }
 
@@ -216,14 +222,24 @@ class EventPlanningViewModel(
       try {
         eventsRepository
             .saveEvent(event)
-            .onSuccess { _uiState.update { it.copy(isEventAdded = true) } }
+            .onSuccess {
+              pendingEventId = null
+              _uiState.update {
+                EventPlanningUiState(
+                    recommendedSubjects = it.recommendedSubjects,
+                    isEventAdded = true,
+                )
+              }
+            }
             .onFailure { exception ->
-              _uiState.update { it.copy(error = exception.message ?: FAILED_TO_ADD_EVENT_ERROR) }
+              _uiState.update {
+                it.copy(error = exception.toUserMessage(FAILED_TO_ADD_EVENT_ERROR))
+              }
             }
       } catch (exception: CancellationException) {
         throw exception
       } catch (exception: Exception) {
-        _uiState.update { it.copy(error = exception.message ?: FAILED_TO_ADD_EVENT_ERROR) }
+        _uiState.update { it.copy(error = exception.toUserMessage(FAILED_TO_ADD_EVENT_ERROR)) }
       } finally {
         _uiState.update { it.copy(isSaving = false) }
       }
@@ -236,6 +252,12 @@ class EventPlanningViewModel(
    */
   fun onEventAddedHandled() {
     _uiState.update { it.copy(isEventAdded = false) }
+  }
+
+  /** Discards the form, e.g. when the user leaves the screen without adding. */
+  fun resetForm() {
+    pendingEventId = null
+    _uiState.update { EventPlanningUiState(recommendedSubjects = it.recommendedSubjects) }
   }
 
   private fun fail(message: String?) {
