@@ -1,4 +1,5 @@
 // Co-authored-by: GitHub Copilot
+// Co-authored-by: Claude AI Agent
 package com.android.sample.ui.groupsession
 
 import androidx.compose.ui.test.assert
@@ -20,6 +21,7 @@ import com.android.sample.model.event.EventType
 import com.android.sample.model.groupsession.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.ui.navigation.NavigationTestTags
+import java.time.Duration
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +35,10 @@ import org.junit.runner.RunWith
 class GroupSessionScreenTest {
   @get:Rule val composeTestRule = createComposeRule()
 
+  // Base instant captured when test class is instantiated and shifted forward
+  // so group session end times stay in the future regardless of test execution date.
+  private val testInstant = Instant.now()
+
   private val repo =
       FakeGroupSessionsRepository(
           initialSessions =
@@ -43,9 +49,9 @@ class GroupSessionScreenTest {
                       memberIds = listOf("user-1", "user-2"),
                       type = EventType.STUDY_SESSION,
                       subject = "Software Architecture",
-                      startsAt = Instant.parse("2026-10-30T09:00:00Z"),
-                      endsAt = Instant.parse("2026-10-30T10:00:00Z"),
-                      createdAt = Instant.parse("2026-10-29T10:00:00Z"),
+                      startsAt = testInstant.plus(Duration.ofHours(1)),
+                      endsAt = testInstant.plus(Duration.ofHours(2)),
+                      createdAt = testInstant.minus(Duration.ofHours(1)),
                   ),
                   GroupSession(
                       id = "s2",
@@ -53,9 +59,9 @@ class GroupSessionScreenTest {
                       memberIds = listOf("user-3"),
                       type = EventType.PROJECT,
                       subject = "Capstone planning",
-                      startsAt = Instant.parse("2026-10-30T12:00:00Z"),
-                      endsAt = Instant.parse("2026-10-30T13:00:00Z"),
-                      createdAt = Instant.parse("2026-10-29T11:00:00Z"),
+                      startsAt = testInstant.plus(Duration.ofHours(3)),
+                      endsAt = testInstant.plus(Duration.ofHours(4)),
+                      createdAt = testInstant.minus(Duration.ofHours(1)),
                   ),
                   GroupSession(
                       id = "s3",
@@ -63,9 +69,9 @@ class GroupSessionScreenTest {
                       memberIds = listOf("user-3", "user-1"),
                       type = EventType.EXAM,
                       subject = "Exam revision",
-                      startsAt = Instant.parse("2026-10-30T14:00:00Z"),
-                      endsAt = Instant.parse("2026-10-30T15:00:00Z"),
-                      createdAt = Instant.parse("2026-10-29T12:00:00Z"),
+                      startsAt = testInstant.plus(Duration.ofHours(5)),
+                      endsAt = testInstant.plus(Duration.ofHours(6)),
+                      createdAt = testInstant.minus(Duration.ofHours(1)),
                   ),
                   GroupSession(
                       id = "s4",
@@ -75,9 +81,9 @@ class GroupSessionScreenTest {
                       subject = null,
                       description = null,
                       location = null,
-                      startsAt = Instant.parse("2026-10-30T16:00:00Z"),
-                      endsAt = Instant.parse("2026-10-30T17:00:00Z"),
-                      createdAt = Instant.parse("2026-10-29T13:00:00Z"),
+                      startsAt = testInstant.plus(Duration.ofHours(7)),
+                      endsAt = testInstant.plus(Duration.ofHours(8)),
+                      createdAt = testInstant.minus(Duration.ofHours(1)),
                   ),
               )
       )
