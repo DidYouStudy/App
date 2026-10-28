@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Search
@@ -36,7 +35,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -67,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.model.event.EventType
+import com.android.sample.ui.event.AddButton
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -108,7 +107,6 @@ fun GroupSessionScreen(
       viewModel.clearError()
     }
   }
-  // TODO: modularize add button with other screens and refactor affected tests
   // TODO: Have the ViewModel expose a retry/loading state after join or leave failures.
   Scaffold(
       modifier = Modifier.testTag(GroupSessionScreenTestTags.SCREEN),
@@ -148,7 +146,13 @@ fun GroupSessionScreen(
             modifier = Modifier.testTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU),
         )
       },
-      floatingActionButton = { GroupSessionAddButton(onClick = { /* TODO ADD GROUPSESSION */ }) },
+      floatingActionButton = {
+        AddButton(
+            onClick = { /* TODO ADD GROUPSESSION */ },
+            contentDescription = "Add group session",
+            modifier = Modifier.testTag(GroupSessionScreenTestTags.ADD_BUTTON),
+        )
+      },
       content = { pd ->
         GroupSessionContent(
             state = uiState,
@@ -160,16 +164,6 @@ fun GroupSessionScreen(
         )
       },
   )
-}
-
-@Composable
-private fun GroupSessionAddButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-  FloatingActionButton(
-      onClick = onClick,
-      modifier = modifier.testTag(GroupSessionScreenTestTags.ADD_BUTTON),
-  ) {
-    Icon(Icons.Default.Add, contentDescription = "Add group session")
-  }
 }
 
 private fun errorMessage(error: GroupSessionsError): String =

@@ -17,6 +17,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.sample.R
+import com.android.sample.ui.event.AddButton
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -68,7 +69,13 @@ fun DashboardScreen(
             modifier = Modifier.testTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU),
         )
       },
-      floatingActionButton = { DashboardAddButton(onClick = onAddClick) },
+      floatingActionButton = {
+        AddButton(
+            onClick = onAddClick,
+            contentDescription = stringResource(R.string.dashboard_add_description),
+            modifier = Modifier.testTag(DashboardContentTestTags.ADD_BUTTON),
+        )
+      },
       // Sessions will come from a ViewModel once the study-session backend exists.
       content = { pd -> DashboardContent(sessions = emptyList(), modifier = Modifier.padding(pd)) },
   )

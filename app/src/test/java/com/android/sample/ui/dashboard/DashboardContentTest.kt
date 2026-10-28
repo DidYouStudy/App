@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
+import com.android.sample.ui.event.AddButton
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -323,7 +325,13 @@ class DashboardContentTest {
   @Test
   fun addButtonHasAccessibleDescriptionAndClickAction() {
     val context = ApplicationProvider.getApplicationContext<Context>()
-    composeTestRule.setContent { DashboardAddButton(onClick = {}) }
+    composeTestRule.setContent {
+      AddButton(
+          onClick = {},
+          contentDescription = context.getString(R.string.dashboard_add_description),
+          modifier = Modifier.testTag(DashboardContentTestTags.ADD_BUTTON),
+      )
+    }
 
     composeTestRule
         .onNodeWithTag(DashboardContentTestTags.ADD_BUTTON)
@@ -335,7 +343,13 @@ class DashboardContentTest {
   @Test
   fun eachAddButtonClickInvokesCallbackExactlyOnce() {
     var callbackCount = 0
-    composeTestRule.setContent { DashboardAddButton(onClick = { callbackCount++ }) }
+    composeTestRule.setContent {
+      AddButton(
+          onClick = { callbackCount++ },
+          contentDescription = "Add",
+          modifier = Modifier.testTag(DashboardContentTestTags.ADD_BUTTON),
+      )
+    }
 
     composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
     assertEquals(1, callbackCount)

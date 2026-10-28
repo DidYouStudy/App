@@ -18,10 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,6 +30,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
 import com.android.sample.R
+import com.android.sample.ui.event.AddButton
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
@@ -302,20 +299,6 @@ private fun DashboardStatTile(
   }
 }
 
-/** Shows the standard dashboard action and invokes the caller's add-session callback. */
-@Composable
-fun DashboardAddButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-  FloatingActionButton(
-      onClick = onClick,
-      modifier = modifier.testTag(DashboardContentTestTags.ADD_BUTTON),
-  ) {
-    Icon(
-        imageVector = Icons.Default.Add,
-        contentDescription = stringResource(R.string.dashboard_add_description),
-    )
-  }
-}
-
 /** Previews the dashboard populated with two planned sessions. */
 @Preview(showBackground = true)
 @Composable
@@ -342,6 +325,12 @@ private fun DashboardContentWithoutSessionsPreview() {
 /** Previews the dashboard add-session button. */
 @Preview(showBackground = true)
 @Composable
-private fun DashboardAddButtonPreview() {
-  DidYouStudyTheme { DashboardAddButton(onClick = {}) }
+private fun AddButtonPreview() {
+  DidYouStudyTheme {
+    AddButton(
+        onClick = {},
+        contentDescription = stringResource(R.string.dashboard_add_description),
+        modifier = Modifier.testTag(DashboardContentTestTags.ADD_BUTTON),
+    )
+  }
 }
