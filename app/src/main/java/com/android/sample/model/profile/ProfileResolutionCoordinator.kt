@@ -41,15 +41,9 @@ class ProfileResolutionCoordinator(private val repository: ProfileRepository) {
       // Look up first so an existing profile is reused and creation is only attempted when the
       // repository successfully confirms that no profile exists.
       val existingProfile =
-          repository
-              .getProfile(user.uid)
-              .fold(
-                  onSuccess = { it },
-                  onFailure = {
-                    if (it is CancellationException) throw it
-                    return Result.failure(it)
-                  },
-              )
+          repository.getProfile(user.uid).rethrowCancellation().getOrElse {
+            return Result.failure(it)
+          }
       if (existingProfile != null) {
         return validateProfile(user, existingProfile)
       }
@@ -57,15 +51,9 @@ class ProfileResolutionCoordinator(private val repository: ProfileRepository) {
       // A null lookup result is the only path that creates a profile. The repository may find that
       // another operation created it in the meantime and return that existing profile instead.
       val profile =
-          repository
-              .createProfile(user.uid)
-              .fold(
-                  onSuccess = { it },
-                  onFailure = {
-                    if (it is CancellationException) throw it
-                    return Result.failure(it)
-                  },
-              )
+          repository.createProfile(user.uid).rethrowCancellation().getOrElse {
+            return Result.failure(it)
+          }
       validateProfile(user, profile)
     } catch (exception: CancellationException) {
       // Repository calls can throw cancellation directly (rather than return it in Result); keep
@@ -99,4 +87,14 @@ class ProfileResolutionCoordinator(private val repository: ProfileRepository) {
       } else {
         Result.failure(ProfileException(ProfileError.INVALID_PROFILE_DATA))
       }
+
+  /**
+   * Rethrows cancellation stored in a failed repository result so it remains coroutine control
+   * flow.
+   */
+  private fun <T> Result<T>.rethrowCancellation(): Result<T> {
+    val failure = exceptionOrNull()
+    if (failure is CancellationException) throw failure
+    return this
+  }
 }
