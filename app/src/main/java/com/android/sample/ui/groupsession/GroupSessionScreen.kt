@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Search
@@ -35,6 +36,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -42,11 +44,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -77,6 +85,10 @@ object GroupSessionScreenTestTags {
   const val MY_SESSIONS_FILTER = "groupSessionMyFilter"
   const val ACTIVE_TITLE = "groupSessionActiveTitle"
   const val LOADING = "groupSessionLoading"
+  const val ERROR_SNACKBAR = "groupSessionErrorSnackbar"
+  const val ERROR_DISMISS = "groupSessionErrorDismiss"
+  const val SESSION_LIST = "groupSessionList"
+  const val ADD_BUTTON = "groupSessionAddButton"
   const val SESSION_ITEM_PREFIX = "groupSessionItem_"
 
   fun sessionItem(index: Int) = "$SESSION_ITEM_PREFIX$index"
@@ -89,8 +101,36 @@ fun GroupSessionScreen(
     viewModel: GroupSessionsViewModel = groupSessionsViewModel(),
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+  val snackbarHostState = remember { SnackbarHostState() }
+  LaunchedEffect(uiState.error) {
+    uiState.error?.let { error ->
+      snackbarHostState.showSnackbar(errorMessage(error))
+      viewModel.clearError()
+    }
+  }
+  // TODO: modularize add button with other screens and refactor affected tests
+  // TODO: Have the ViewModel expose a retry/loading state after join or leave failures.
   Scaffold(
       modifier = Modifier.testTag(GroupSessionScreenTestTags.SCREEN),
+      snackbarHost = {
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.testTag(GroupSessionScreenTestTags.ERROR_SNACKBAR),
+            snackbar = { data ->
+              Snackbar(
+                  action = {
+                    TextButton(
+                        onClick = { data.dismiss() },
+                        modifier = Modifier.testTag(GroupSessionScreenTestTags.ERROR_DISMISS),
+                    ) {
+                      Text("DISMISS")
+                    }
+                  },
+                  content = { Text(data.visuals.message) },
+              )
+            },
+        )
+      },
       topBar = {
         TopAppBar(
             title = {
@@ -108,6 +148,7 @@ fun GroupSessionScreen(
             modifier = Modifier.testTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU),
         )
       },
+      floatingActionButton = { GroupSessionAddButton(onClick = { /* TODO ADD GROUPSESSION */ }) },
       content = { pd ->
         GroupSessionContent(
             state = uiState,
@@ -120,6 +161,23 @@ fun GroupSessionScreen(
       },
   )
 }
+
+@Composable
+private fun GroupSessionAddButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+  FloatingActionButton(
+      onClick = onClick,
+      modifier = modifier.testTag(GroupSessionScreenTestTags.ADD_BUTTON),
+  ) {
+    Icon(Icons.Default.Add, contentDescription = "Add group session")
+  }
+}
+
+private fun errorMessage(error: GroupSessionsError): String =
+    when (error) {
+      GroupSessionsError.LOAD_FAILED -> "Could not load sessions. Please try again."
+      GroupSessionsError.JOIN_FAILED -> "Could not join session. Please try again."
+      GroupSessionsError.LEAVE_FAILED -> "Could not leave session. Please try again."
+    }
 
 @Composable
 private fun GroupSessionContent(
@@ -216,7 +274,7 @@ private fun GroupSessionContent(
       else ->
           LazyColumn(
               verticalArrangement = Arrangement.spacedBy(12.dp),
-              modifier = Modifier.fillMaxSize(),
+              modifier = Modifier.fillMaxSize().testTag(GroupSessionScreenTestTags.SESSION_LIST),
           ) {
             items(state.sessions.indices.toList(), key = { it }) { index ->
               GroupSessionCard(
@@ -379,8 +437,8 @@ private fun GroupSessionCard(
           horizontalArrangement = Arrangement.SpaceBetween,
       ) {
         // Shortened Participants Pill (Avatars + Count + Chevron only)
-        //TODO: make participants pill dynamically show first member pictures
-        //TODO: make pill clickable to show all group members
+        // TODO: make participants pill dynamically show first member pictures
+        // TODO: make pill clickable to show all group members
         Surface(
             shape = RoundedCornerShape(20.dp),
             color = Color(0xFFF3EDF7),
