@@ -36,6 +36,11 @@
     <string name="preferences_retry_button_on_error">Retry</string>
     <string name="preferences_import_schedule_label">Import course schedule</string>
     <string name="preferences_import_schedule_button">Import...</string>
+    <plurals name="preferences_import_schedule_success">
+        <item quantity="one">Imported %d event</item>
+        <item quantity="other">Imported %d events</item>
+    </plurals>
+    <string name="preferences_import_schedule_failure">Could not import this schedule. Choose a valid .ics file.</string>
     <string name="preferences_add_study_locations_label">Add your study locations</string>
     <string name="preferences_add_study_locations_button">Add...</string>
     <string name="preferences_study_time_label">When do you prefer to study?</string>
