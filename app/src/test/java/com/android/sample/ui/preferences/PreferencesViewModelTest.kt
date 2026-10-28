@@ -1,4 +1,5 @@
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.preferences
 
 import androidx.lifecycle.ViewModel
@@ -6,6 +7,7 @@ import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.ui.auth.TestAuthRepository
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -14,6 +16,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -148,6 +151,67 @@ class PreferencesViewModelTest {
     val state = viewModel.uiState.value
     assertTrue(state is PreferencesUiState.Error)
     assertEquals("Save failed", (state as PreferencesUiState.Error).message)
+  }
+
+  @Test
+  fun updatePreferences_whileSaveInFlight_ignoresRepeatedCalls() = runTest {
+    val prefs = UserPreferences(userId = userId)
+    val repository = SuspendingSaveRepository(prefs)
+    var callbackCalls = 0
+    val viewModel = PreferencesViewModel(repository, authRepository)
+
+    // Rapid taps on Save: only the first one may reach the repository.
+    viewModel.updatePreferences(prefs) { callbackCalls++ }
+    viewModel.updatePreferences(prefs) { callbackCalls++ }
+    viewModel.updatePreferences(prefs) { callbackCalls++ }
+    assertTrue(viewModel.isSaving.value)
+
+    repository.pendingSave.complete(Result.success(Unit))
+
+    assertEquals(1, repository.saveCalls)
+    assertEquals(1, callbackCalls)
+    assertFalse(viewModel.isSaving.value)
+  }
+
+  @Test
+  fun updatePreferences_isSavingIsFalseBeforeAnySave() = runTest {
+    `when`(repository.getPreferences(userId)).thenReturn(Result.success(null))
+
+    val viewModel = PreferencesViewModel(repository, authRepository)
+
+    assertFalse(viewModel.isSaving.value)
+  }
+
+  @Test
+  fun updatePreferences_afterFailure_allowsRetry() = runTest {
+    val prefs = UserPreferences(userId = userId)
+    val repository = SuspendingSaveRepository(prefs)
+    val viewModel = PreferencesViewModel(repository, authRepository)
+
+    viewModel.updatePreferences(prefs)
+    repository.pendingSave.complete(Result.failure(RuntimeException("Save failed")))
+    assertFalse(viewModel.isSaving.value)
+
+    // A failed save must not leave the screen stuck: a new attempt reaches the repository.
+    repository.pendingSave = CompletableDeferred()
+    viewModel.updatePreferences(prefs)
+
+    assertEquals(2, repository.saveCalls)
+  }
+
+  /** Repository whose save stays in flight until [pendingSave] is completed by the test. */
+  private class SuspendingSaveRepository(private val loaded: UserPreferences) :
+      PreferencesRepository {
+    var pendingSave = CompletableDeferred<Result<Unit>>()
+    var saveCalls = 0
+
+    override suspend fun getPreferences(userId: String): Result<UserPreferences?> =
+        Result.success(loaded)
+
+    override suspend fun savePreferences(preferences: UserPreferences): Result<Unit> {
+      saveCalls++
+      return pendingSave.await()
+    }
   }
 
   @Test

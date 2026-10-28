@@ -89,6 +89,25 @@ class InMemoryEventsRepository : EventsRepository {
     return Result.success(Unit)
   }
 
+  override suspend fun saveEvents(events: List<Event>): Result<Unit> {
+    if (events.isEmpty()) return Result.success(Unit)
+
+    data.update { byOwner ->
+      var currentMap = byOwner
+      for (event in events) {
+        val owned = currentMap[event.ownerId] ?: OwnerData()
+        val subject = event.subject?.trim()
+        val subjects =
+            if (subject == null) owned.subjects
+            else owned.subjects + (subject.lowercase() to SubjectUse(subject, event.updatedAt))
+        currentMap =
+            currentMap + (event.ownerId to OwnerData(owned.events + (event.id to event), subjects))
+      }
+      currentMap
+    }
+    return Result.success(Unit)
+  }
+
   override suspend fun deleteEvent(ownerId: String, eventId: String): Result<Unit> {
     if (ownerId.isBlank() || eventId.isBlank()) return invalidArgument()
     data.update { byOwner ->
