@@ -56,11 +56,6 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GroupSessionScreen(
-    // TODO add VM as parameter
-    // TODO: add credentialManager as parameter
-    // credentialManager: CredentialManager = CredentialManager.create(LocalContext.current),
-    // TODO: add onSignedOut as parameter
-    // onSignedOut: () -> Unit = {},
     navigationActions: NavigationActions? = null,
     viewModel: GroupSessionsViewModel = groupSessionsViewModel(),
 ) {
