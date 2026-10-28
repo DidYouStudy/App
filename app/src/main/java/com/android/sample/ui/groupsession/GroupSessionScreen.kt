@@ -434,7 +434,7 @@ private fun GroupSessionCard(
                       contentColor = Color(0xFF2B2B2B),
                   ),
               border = BorderStroke(1.dp, Color(0xFF79747E)),
-              modifier = Modifier.height(40.dp),
+              modifier = Modifier.height(40.dp).width(108.dp),
           ) {
             Text(actionLabel, fontWeight = FontWeight.Medium)
           }
@@ -445,7 +445,7 @@ private fun GroupSessionCard(
                 shape = RoundedCornerShape(20.dp),
                 border = BorderStroke(1.dp, Color(0xFFB3261E)),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFB3261E)),
-                modifier = Modifier.height(40.dp),
+                modifier = Modifier.height(40.dp).width(108.dp),
             ) {
               Text("Leave", fontWeight = FontWeight.Medium)
             }
@@ -474,7 +474,7 @@ private fun GroupSessionCard(
                       containerColor = Color(0xFF6750A4),
                       contentColor = Color.White,
                   ),
-              modifier = Modifier.height(40.dp),
+              modifier = Modifier.height(40.dp).width(108.dp),
           ) {
             Text("Join", fontWeight = FontWeight.Medium)
           }
