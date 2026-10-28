@@ -269,8 +269,8 @@ class AuthViewModel(
         )
       }
     } else if (isCurrentJob) {
-      // This job is still registered, but its session is stale; clear its loading state and data.
-      mutableProfileUiState.update { ProfileUiState() }
+      // The session changed without the observer invalidating this resolution.
+      invalidateProfileResolution()
     }
   }
 
