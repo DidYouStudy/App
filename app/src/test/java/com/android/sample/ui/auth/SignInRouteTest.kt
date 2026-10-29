@@ -21,7 +21,6 @@ import com.android.sample.model.auth.AuthError
 import com.android.sample.model.auth.AuthException
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.profile.ProfileRepository
-import com.android.sample.model.profile.ProfileResolution
 import com.android.sample.model.profile.ProfileResolutionCoordinator
 import com.android.sample.model.profile.UserProfile
 import kotlinx.coroutines.CompletableDeferred
@@ -233,8 +232,8 @@ class SignInRouteTest {
             override suspend fun getProfile(userId: String): Result<UserProfile?> =
                 Result.success(null)
 
-            override suspend fun createProfile(userId: String): Result<ProfileResolution> =
-                Result.success(ProfileResolution.Created(UserProfile(userId)))
+            override suspend fun createProfile(userId: String): Result<UserProfile> =
+                Result.success(UserProfile(userId))
           }
       )
 }
