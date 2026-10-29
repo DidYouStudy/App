@@ -107,6 +107,19 @@ abstract class EventsRepositoryContractTest {
   }
 
   @Test
+  fun getImportedEvents_sortsByStartThenEndThenId() = runTest {
+    val late = event("a", 9, 12).copy(importKey = "k1")
+    val shortSameStart = event("b", 9, 10).copy(importKey = "k2")
+    val tieB = event("d", 9, 10).copy(importKey = "k3")
+    val earlier = event("z", 8, 9).copy(importKey = "k4")
+    repository.saveEvents(listOf(late, tieB, shortSameStart, earlier))
+
+    val ids = repository.getImportedEvents(owner).getOrThrow().map { it.id }
+
+    assertEquals(listOf("z", "b", "d", "a"), ids)
+  }
+
+  @Test
   fun getImportedEvents_blankOwner_isInvalidArgument() = runTest {
     val error = repository.getImportedEvents(" ").exceptionOrNull() as EventsException
 

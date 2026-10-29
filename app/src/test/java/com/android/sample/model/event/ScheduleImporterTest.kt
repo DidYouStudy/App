@@ -295,4 +295,15 @@ class ScheduleImporterTest {
 
     assertEquals(EventsError.STORAGE_FAILURE, (result.exceptionOrNull() as EventsException).error)
   }
+
+  @Test
+  fun import_cancellationWhileReading_isPropagated() = runTest {
+    val cancelled = runCatching {
+      ScheduleImporter(InMemoryEventsRepository()).import(owner) {
+        throw kotlinx.coroutines.CancellationException("cancelled")
+      }
+    }
+
+    assertTrue(cancelled.exceptionOrNull() is kotlinx.coroutines.CancellationException)
+  }
 }
