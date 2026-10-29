@@ -178,6 +178,59 @@ class EventsRepositoryFirestoreTest {
     assertEquals(EventsError.STORAGE_FAILURE, repository.getEvent("owner", "id").error())
   }
 
+  /** Imported events are queried by `importKey != null` and returned in chronological order. */
+  @Test
+  fun getsImportedEventsSortedByStart() = runTest {
+    val query: Query = mock()
+    val snapshot: QuerySnapshot = mock()
+    val base = Instant.parse("2026-10-15T08:00:00Z")
+    fun importedDocument(id: String, startsAt: Instant): DocumentSnapshot {
+      val event =
+          Event(
+              id = id,
+              ownerId = "owner",
+              type = EventType.OTHER,
+              subject = null,
+              startsAt = startsAt,
+              endsAt = startsAt.plusSeconds(3600),
+              createdAt = base,
+              importKey = "key-$id",
+          )
+      return mock<DocumentSnapshot>().also {
+        whenever(it.id).thenReturn(id)
+        whenever(it.data).thenReturn(EventFirestoreMapper.encode(event))
+      }
+    }
+    // Built before stubbing: creating a mock inside thenReturn() would break Mockito's stubbing.
+    val documents =
+        listOf(importedDocument("late", base.plusSeconds(7200)), importedDocument("early", base))
+    whenever(events.whereNotEqualTo("importKey", null)).thenReturn(query)
+    whenever(query.get()).thenReturn(Tasks.forResult(snapshot))
+    whenever(snapshot.documents).thenReturn(documents)
+
+    val result = repository.getImportedEvents("owner").getOrThrow()
+
+    assertEquals(listOf("early", "late"), result.map { it.id })
+    assertEquals(listOf("key-early", "key-late"), result.map { it.importKey })
+  }
+
+  /** Invalid owners and storage failures are reported without leaking SDK exceptions. */
+  @Test
+  fun importedEventsReportFailures() = runTest {
+    val query: Query = mock()
+    assertEquals(EventsError.INVALID_ARGUMENT, repository.getImportedEvents(" ").error())
+    assertEquals(EventsError.PERMISSION_DENIED, repository.getImportedEvents("other").error())
+    whenever(events.whereNotEqualTo("importKey", null)).thenReturn(query)
+    whenever(query.get())
+        .thenReturn(
+            Tasks.forException(
+                FirebaseFirestoreException("offline", FirebaseFirestoreException.Code.UNAVAILABLE)
+            )
+        )
+
+    assertEquals(EventsError.STORAGE_FAILURE, repository.getImportedEvents("owner").error())
+  }
+
   /** Non-Firebase failures retain their domain category and original diagnostic cause. */
   @Test
   fun mapsUnexpectedReadFailures() = runTest {

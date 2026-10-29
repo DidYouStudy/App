@@ -83,6 +83,19 @@ class EventsRepositoryFirestore(
     EventFirestoreMapper.decode(eventId, ownerId, requireNotNull(document.data))
   }
 
+  /**
+   * Reads every event that came from a schedule import (it has an `importKey`), whatever its date.
+   * `!= null` matches only documents where the field exists, so hand-made events are excluded.
+   */
+  override suspend fun getImportedEvents(ownerId: String): Result<List<Event>> = execute {
+    validate(ownerId)
+    val snapshot = events(ownerId).whereNotEqualTo("importKey", null).get().await()
+    checkOwner(ownerId)
+    snapshot.documents
+        .map { EventFirestoreMapper.decode(it.id, ownerId, requireNotNull(it.data)) }
+        .sortedWith(compareBy<Event>({ it.startsAt }, { it.endsAt }, { it.id }))
+  }
+
   /** Atomically queues the event replacement and the subject's latest spelling/recency. */
   override suspend fun saveEvent(event: Event): Result<Unit> = saveEvents(listOf(event))
 
