@@ -379,6 +379,8 @@ private fun GroupSessionCard(
           )
           Spacer(Modifier.height(Spacing.extraExtraSmall))
           Text(
+              // TODO: currently shows ID, but should show name. Need the viewmodel to translate
+              // from ID instead
               text =
                   if (shouldShowHost) stringResource(R.string.group_session_host_self)
                   else stringResource(R.string.group_session_hosted_by, session.createdBy),
