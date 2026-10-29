@@ -10,6 +10,21 @@ import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 /**
+ * Outcome of parsing a calendar: the valid [events], how many `VEVENT`s were [skipped], and whether
+ * the file lacks its closing `END:VCALENDAR` line ([missingCalendarEnd]), which means it was
+ * probably cut off and may be missing events.
+ */
+data class ParseResult(
+    val events: List<Event>,
+    val skipped: Int,
+    val missingCalendarEnd: Boolean = false,
+) {
+  /** True when the whole file was understood: nothing skipped and properly terminated. */
+  val isComplete: Boolean
+    get() = skipped == 0 && !missingCalendarEnd
+}
+
+/**
  * Utility for parsing iCalendar (.ics) format files into domain [Event] models.
  *
  * Supports line unfolding (RFC 5545), timezone extraction (`TZID`), custom duration parsing, and
@@ -36,13 +51,24 @@ object IcsParser {
       inputStream: InputStream,
       ownerId: String,
       idGenerator: (veventUid: String?) -> String = { it ?: UUID.randomUUID().toString() },
-  ): List<Event> {
+  ): List<Event> = parseCalendarWithReport(inputStream, ownerId, idGenerator).events
+
+  /**
+   * Like [parseCalendar], but also counts the `VEVENT` blocks that were dropped because they were
+   * malformed, so callers can tell the user that part of the file was ignored.
+   */
+  fun parseCalendarWithReport(
+      inputStream: InputStream,
+      ownerId: String,
+      idGenerator: (veventUid: String?) -> String = { it ?: UUID.randomUUID().toString() },
+  ): ParseResult {
     val rawContent = inputStream.bufferedReader().use { it.readText() }
     // 1. Unfold lines according to RFC 5545 (CRLF/LF followed by space/tab)
     val unfoldedContent = rawContent.replace(Regex("\r?\n[ \t]"), "")
     val lines = unfoldedContent.lines()
 
     val events = mutableListOf<Event>()
+    var skipped = 0
     // Store property name -> list of (rawKeyWithParams, value) pairs
     var currentBlock: MutableMap<String, MutableList<Pair<String, String>>>? = null
 
@@ -52,28 +78,46 @@ object IcsParser {
 
       when {
         trimmed == "BEGIN:VEVENT" -> {
+          // A block still open here was never closed by END:VEVENT: it is lost, so count it.
+          if (currentBlock != null) skipped++
           currentBlock = mutableMapOf()
         }
         trimmed == "END:VEVENT" -> {
           currentBlock?.let { block ->
-            parseVEvent(block, ownerId, idGenerator)?.let { events.add(it) }
+            val event = parseVEvent(block, ownerId, idGenerator)
+            if (event != null) events.add(event) else skipped++
           }
           currentBlock = null
         }
-        currentBlock != null -> {
-          val colonIndex = trimmed.indexOf(':')
-          if (colonIndex != -1) {
-            val rawKey = trimmed.substring(0, colonIndex).trim()
-            val value = trimmed.substring(colonIndex + 1).trim()
-            // Normalize property name by stripping parameters after ';'
-            val propName = rawKey.substringBefore(';').uppercase()
-            currentBlock.getOrPut(propName) { mutableListOf() }.add(rawKey to value)
-          }
-        }
+        currentBlock != null -> addProperty(currentBlock, trimmed)
       }
     }
 
-    return events
+    // The file ended inside a VEVENT (truncated file): that event is dropped, so report it too.
+    if (currentBlock != null) skipped++
+
+    return ParseResult(
+        events,
+        skipped,
+        missingCalendarEnd = lines.none { it.trim() == "END:VCALENDAR" },
+    )
+  }
+
+  /**
+   * Adds the `NAME;PARAMS:value` line [line] to [block], keyed by the upper-cased property name
+   * without its parameters. Lines without a colon are ignored.
+   */
+  private fun addProperty(
+      block: MutableMap<String, MutableList<Pair<String, String>>>,
+      line: String,
+  ) {
+    val colonIndex = line.indexOf(':')
+    if (colonIndex == -1) return
+    val rawKey = line.substring(0, colonIndex).trim()
+    val value = line.substring(colonIndex + 1).trim()
+    // Normalize property name by stripping parameters after ';'
+    val propName = rawKey.substringBefore(';').uppercase()
+    block.getOrPut(propName) { mutableListOf() }.add(rawKey to value)
   }
 
   /**
@@ -149,6 +193,7 @@ object IcsParser {
         location = location,
         description = description,
         tasks = emptyList(),
+        importKey = uid?.takeIf { it.isNotBlank() },
     )
   }
 
