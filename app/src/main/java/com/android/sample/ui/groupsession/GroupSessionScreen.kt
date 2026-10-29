@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,7 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -41,6 +42,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
@@ -58,12 +60,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.android.sample.R
 import com.android.sample.model.event.EventType
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
@@ -72,6 +76,10 @@ import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.profile.ProfileButton
 import com.android.sample.ui.sharedComponents.AddButton
+import com.android.sample.ui.theme.Dimens
+import com.android.sample.ui.theme.Spacing
+import com.android.sample.ui.theme.color
+import com.android.sample.ui.theme.onColor
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
@@ -101,9 +109,18 @@ fun GroupSessionScreen(
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val snackbarHostState = remember { SnackbarHostState() }
+  val loadErrorMessage = stringResource(R.string.group_session_error_load)
+  val joinErrorMessage = stringResource(R.string.group_session_error_join)
+  val leaveErrorMessage = stringResource(R.string.group_session_error_leave)
   LaunchedEffect(uiState.error) {
     uiState.error?.let { error ->
-      snackbarHostState.showSnackbar(errorMessage(error))
+      val msg =
+          when (error) {
+            GroupSessionsError.LOAD_FAILED -> loadErrorMessage
+            GroupSessionsError.JOIN_FAILED -> joinErrorMessage
+            GroupSessionsError.LEAVE_FAILED -> leaveErrorMessage
+          }
+      snackbarHostState.showSnackbar(msg)
       viewModel.clearError()
     }
   }
@@ -121,7 +138,7 @@ fun GroupSessionScreen(
                         onClick = { data.dismiss() },
                         modifier = Modifier.testTag(GroupSessionScreenTestTags.ERROR_DISMISS),
                     ) {
-                      Text("DISMISS")
+                      Text(stringResource(R.string.group_session_error_dismiss))
                     }
                   },
                   content = { Text(data.visuals.message) },
@@ -132,7 +149,10 @@ fun GroupSessionScreen(
       topBar = {
         TopAppBar(
             title = {
-              Text("Group sessions", modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE))
+              Text(
+                  stringResource(R.string.group_session_title),
+                  modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE),
+              )
             },
             actions = {
               ProfileButton(onClick = { navigationActions?.navigateTo(Screen.Settings) })
@@ -182,46 +202,54 @@ private fun GroupSessionContent(
     onJoin: (String) -> Unit = {},
     onLeave: (String) -> Unit = {},
 ) {
-  Column(modifier = modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+  Column(modifier = modifier.fillMaxSize().padding(horizontal = Spacing.large)) {
     OutlinedTextField(
         value = state.query,
         onValueChange = onQueryChange,
         modifier = Modifier.fillMaxWidth().testTag(GroupSessionScreenTestTags.SEARCH),
         singleLine = true,
-        shape = RoundedCornerShape(32.dp),
-        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+        shape = RoundedCornerShape(Dimens.cornerFull),
+        leadingIcon = {
+          Icon(
+              Icons.Default.Search,
+              contentDescription = stringResource(R.string.group_session_search_icon_description),
+          )
+        },
         trailingIcon = {
           IconButton(onClick = { /* TODO ADVANCED FILTERS */ }) {
-            Icon(Icons.Outlined.Tune, contentDescription = "Filter sessions")
+            Icon(
+                Icons.Outlined.Tune,
+                contentDescription = stringResource(R.string.group_session_filter_icon_description),
+            )
           }
         },
-        placeholder = { Text("Search group sessions") },
+        placeholder = { Text(stringResource(R.string.group_session_search_placeholder)) },
         colors =
-            androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+            OutlinedTextFieldDefaults.colors(
                 unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                 focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                 unfocusedBorderColor = Color.Transparent,
                 focusedBorderColor = Color.Transparent,
             ),
     )
-    Spacer(Modifier.height(8.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Spacer(Modifier.height(Spacing.small))
+    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
       FilterChip(
           modifier = Modifier.testTag(GroupSessionScreenTestTags.ALL_SESSIONS_FILTER),
           selected = state.filter == GroupSessionFilter.ALL,
           onClick = { onFilterChange(GroupSessionFilter.ALL) },
-          label = { Text("All sessions") },
+          label = { Text(stringResource(R.string.group_session_filter_all)) },
           leadingIcon =
               if (state.filter == GroupSessionFilter.ALL) {
                 {
                   Icon(
                       Icons.Default.Check,
                       contentDescription = null,
-                      modifier = Modifier.size(16.dp),
+                      modifier = Modifier.size(Dimens.iconSizeSmall),
                   )
                 }
               } else null,
-          shape = RoundedCornerShape(12.dp),
+          shape = RoundedCornerShape(Dimens.cornerMedium),
           border =
               FilterChipDefaults.filterChipBorder(
                   enabled = true,
@@ -232,18 +260,18 @@ private fun GroupSessionContent(
           modifier = Modifier.testTag(GroupSessionScreenTestTags.MY_SESSIONS_FILTER),
           selected = state.filter == GroupSessionFilter.JOINED,
           onClick = { onFilterChange(GroupSessionFilter.JOINED) },
-          label = { Text("My sessions") },
+          label = { Text(stringResource(R.string.group_session_filter_my)) },
           leadingIcon =
               if (state.filter == GroupSessionFilter.JOINED) {
                 {
                   Icon(
                       Icons.Default.Check,
                       contentDescription = null,
-                      modifier = Modifier.size(16.dp),
+                      modifier = Modifier.size(Dimens.iconSizeSmall),
                   )
                 }
               } else null,
-          shape = RoundedCornerShape(12.dp),
+          shape = RoundedCornerShape(Dimens.cornerMedium),
           border =
               FilterChipDefaults.filterChipBorder(
                   enabled = true,
@@ -252,27 +280,32 @@ private fun GroupSessionContent(
       )
     }
     Text(
-        "Active sessions",
+        stringResource(R.string.group_session_active_sessions_title),
         style = MaterialTheme.typography.titleLarge,
         fontWeight = FontWeight.Bold,
         modifier =
-            Modifier.padding(vertical = 10.dp).testTag(GroupSessionScreenTestTags.ACTIVE_TITLE),
+            Modifier.padding(vertical = Spacing.mediumSmall)
+                .testTag(GroupSessionScreenTestTags.ACTIVE_TITLE),
     )
     when {
       state.isLoading ->
           Text(
-              "Loading sessions...",
+              stringResource(R.string.group_session_loading),
               modifier = Modifier.testTag(GroupSessionScreenTestTags.LOADING),
           )
-      state.sessions.isEmpty() -> Text("No active sessions")
+      state.sessions.isEmpty() -> Text(stringResource(R.string.group_session_empty))
       else ->
           LazyColumn(
-              verticalArrangement = Arrangement.spacedBy(12.dp),
+              verticalArrangement = Arrangement.spacedBy(Spacing.medium),
+              contentPadding = PaddingValues(bottom = Dimens.fabClearance),
               modifier = Modifier.fillMaxSize().testTag(GroupSessionScreenTestTags.SESSION_LIST),
           ) {
-            items(state.sessions.indices.toList(), key = { it }) { index ->
+            itemsIndexed(
+                items = state.sessions,
+                key = { _, item -> item.session.id },
+            ) { index, item ->
               GroupSessionCard(
-                  item = state.sessions[index],
+                  item = item,
                   onJoin = onJoin,
                   onLeave = onLeave,
                   modifier = Modifier.testTag(GroupSessionScreenTestTags.sessionItem(index)),
@@ -291,40 +324,54 @@ private fun GroupSessionCard(
     modifier: Modifier = Modifier,
 ) {
   val session = item.session
+  // TODO: The ViewModel should supply the reference time in GroupSessionsUiState so all cards
+  //  evaluate relative status labels consistently, unit tests remain deterministic, and composables
+  // stay pure.
   val now = Instant.now()
   val statusLabel = sessionStatusLabel(session.startsAt, now)
   val startLabel = sessionTimeLabel(session.startsAt)
   val endLabel = sessionTimeLabel(session.endsAt)
   val dateLabel = sessionDateLabel(session.startsAt, now)
   val shouldShowHost = item.isCreator
-  val actionLabel = if (shouldShowHost) "Edit" else if (item.isMember) "Joined" else "Join"
+
+  val subjectFallback = stringResource(R.string.group_session_subject_fallback)
+  val actionEditLabel = stringResource(R.string.group_session_action_edit)
+  val actionJoinedLabel = stringResource(R.string.group_session_action_joined)
+  val actionJoinLabel = stringResource(R.string.group_session_action_join)
+  val actionLeaveLabel = stringResource(R.string.group_session_action_leave)
+  val actionLabel =
+      if (shouldShowHost) actionEditLabel
+      else if (item.isMember) actionJoinedLabel else actionJoinLabel
 
   Card(
       modifier = modifier.fillMaxWidth(),
-      shape = RoundedCornerShape(24.dp),
-      colors =
-          CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+      shape = RoundedCornerShape(Dimens.cornerExtraLarge),
+      colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+      border = BorderStroke(Dimens.borderThin, MaterialTheme.colorScheme.outlineVariant),
       elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
   ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(18.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(Dimens.cardPadding)) {
       // Top Row: Avatar + Title/Host + Status Badge
       Row(
           modifier = Modifier.fillMaxWidth(),
           verticalAlignment = Alignment.Top,
       ) {
         Box(
-            modifier = Modifier.size(56.dp).clip(CircleShape).background(eventColor(session.type)),
+            modifier =
+                Modifier.size(Dimens.avatarSizeLarge)
+                    .clip(CircleShape)
+                    .background(session.type.color),
             contentAlignment = Alignment.Center,
         ) {
           Text(
-              text = (session.subject ?: "Other").take(1).uppercase(),
+              text = (session.subject ?: subjectFallback).take(1).uppercase(),
               fontWeight = FontWeight.Bold,
-              fontSize = 22.sp,
-              color = Color(0xFF201F22),
+              style = MaterialTheme.typography.titleLarge,
+              color = session.type.onColor,
           )
         }
 
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.width(Spacing.mediumLarge))
 
         Column(modifier = Modifier.weight(1f)) {
           Text(
@@ -334,64 +381,69 @@ private fun GroupSessionCard(
               overflow = TextOverflow.Ellipsis,
               style = MaterialTheme.typography.titleMedium,
           )
-          Spacer(Modifier.height(2.dp))
+          Spacer(Modifier.height(Spacing.extraExtraSmall))
           Text(
+              // TODO: currently shows ID, but should show name. Need the viewmodel to translate
+              // from ID instead
               text =
-                  if (shouldShowHost) "Your session (Host)" else "Hosted by ${session.createdBy}",
+                  if (shouldShowHost) stringResource(R.string.group_session_host_self)
+                  else stringResource(R.string.group_session_hosted_by, session.createdBy),
               style = MaterialTheme.typography.bodyMedium,
               color =
-                  if (shouldShowHost) Color(0xFF6750A4)
+                  if (shouldShowHost) MaterialTheme.colorScheme.primary
                   else MaterialTheme.colorScheme.onSurfaceVariant,
               fontWeight = if (shouldShowHost) FontWeight.Bold else FontWeight.Normal,
           )
         }
 
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(Spacing.small))
 
         Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = Color(0xFFF3DCCB),
+            shape = RoundedCornerShape(Dimens.cornerLarge),
+            color = MaterialTheme.colorScheme.tertiaryContainer,
         ) {
           Text(
               text = statusLabel,
-              modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-              color = Color(0xFF7C4B2A),
-              fontSize = 13.sp,
+              modifier =
+                  Modifier.padding(horizontal = Spacing.medium, vertical = Spacing.extraSmall),
+              color = MaterialTheme.colorScheme.onTertiaryContainer,
+              style = MaterialTheme.typography.labelMedium,
               fontWeight = FontWeight.Bold,
           )
         }
       }
 
-      Spacer(Modifier.height(14.dp))
+      Spacer(Modifier.height(Spacing.mediumLarge))
 
       // Type Badge
       Surface(
-          shape = RoundedCornerShape(12.dp),
-          color = eventColor(session.type),
+          shape = RoundedCornerShape(Dimens.cornerMedium),
+          color = session.type.color,
       ) {
         Text(
             text = session.type.displayName(),
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = Spacing.medium, vertical = Spacing.extraSmall),
+            color = session.type.onColor,
             fontWeight = FontWeight.Bold,
-            fontSize = 14.sp,
+            style = MaterialTheme.typography.labelLarge,
         )
       }
 
-      Spacer(Modifier.height(10.dp))
+      Spacer(Modifier.height(Spacing.mediumSmall))
 
       // Description
       Text(
-          text = session.description ?: "Group study session",
+          text = session.description ?: stringResource(R.string.group_session_description_fallback),
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurface,
       )
 
-      Spacer(Modifier.height(14.dp))
+      Spacer(Modifier.height(Spacing.mediumLarge))
 
       // Meta Info Pills: Location on top, Date/Time below (Full Width to prevent text clipping)
       Column(
           modifier = Modifier.fillMaxWidth(),
-          verticalArrangement = Arrangement.spacedBy(8.dp),
+          verticalArrangement = Arrangement.spacedBy(Spacing.small),
       ) {
         MetaInfoPill(
             modifier = Modifier.fillMaxWidth(),
@@ -399,10 +451,10 @@ private fun GroupSessionCard(
               Icon(
                   Icons.Outlined.LocationOn,
                   contentDescription = null,
-                  modifier = Modifier.size(16.dp),
+                  modifier = Modifier.size(Dimens.iconSizeSmall),
               )
             },
-            text = session.location ?: "Location TBD",
+            text = session.location ?: stringResource(R.string.group_session_location_fallback),
         )
         MetaInfoPill(
             modifier = Modifier.fillMaxWidth(),
@@ -410,19 +462,22 @@ private fun GroupSessionCard(
               Icon(
                   Icons.Default.AccessTime,
                   contentDescription = null,
-                  modifier = Modifier.size(16.dp),
+                  modifier = Modifier.size(Dimens.iconSizeSmall),
               )
             },
             text = "$dateLabel · $startLabel – $endLabel",
         )
       }
 
-      Spacer(Modifier.height(16.dp))
+      Spacer(Modifier.height(Spacing.large))
 
       // Thin Divider Line
-      HorizontalDivider(color = Color(0xFFE7E0EC), thickness = 1.dp)
+      HorizontalDivider(
+          color = MaterialTheme.colorScheme.outlineVariant,
+          thickness = Dimens.borderThin,
+      )
 
-      Spacer(Modifier.height(14.dp))
+      Spacer(Modifier.height(Spacing.mediumLarge))
 
       // Bottom Row: Compact Participants Pill + Action Buttons
       Row(
@@ -434,45 +489,66 @@ private fun GroupSessionCard(
         // TODO: make participants pill dynamically show first member pictures
         // TODO: make pill clickable to show all group members
         Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = Color(0xFFF3EDF7),
-            modifier = Modifier.height(40.dp),
+            shape = RoundedCornerShape(Dimens.cornerLarge),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            modifier = Modifier.height(Dimens.actionButtonHeight),
         ) {
           Row(
-              modifier = Modifier.padding(horizontal = 10.dp),
+              modifier = Modifier.padding(horizontal = Spacing.mediumSmall),
               verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(4.dp),
+              horizontalArrangement = Arrangement.spacedBy(Spacing.extraSmall),
           ) {
             Box(
-                modifier = Modifier.size(20.dp).clip(CircleShape).background(Color(0xFFD0BCFF)),
+                modifier =
+                    Modifier.size(Dimens.avatarSizeSmall)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center,
             ) {
-              Text("M", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = Color(0xFF21005D))
+              Text(
+                  "M",
+                  fontWeight = FontWeight.Bold,
+                  fontSize = 10.sp,
+                  color = MaterialTheme.colorScheme.onPrimaryContainer,
+              )
             }
             Box(
-                modifier = Modifier.size(20.dp).clip(CircleShape).background(Color(0xFFCCC2DC)),
+                modifier =
+                    Modifier.size(Dimens.avatarSizeSmall)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.secondaryContainer),
                 contentAlignment = Alignment.Center,
             ) {
-              Text("A", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = Color(0xFF1D1B20))
+              Text(
+                  "A",
+                  fontWeight = FontWeight.Bold,
+                  fontSize = 10.sp,
+                  color = MaterialTheme.colorScheme.onSecondaryContainer,
+              )
             }
             val extraCount = session.memberIds.size - 2
             if (extraCount > 0) {
               Surface(
                   shape = CircleShape,
-                  color = Color(0xFFE8DEF8),
-                  modifier = Modifier.size(20.dp),
+                  color = MaterialTheme.colorScheme.tertiaryContainer,
+                  modifier = Modifier.size(Dimens.avatarSizeSmall),
               ) {
                 Box(contentAlignment = Alignment.Center) {
-                  Text("+$extraCount", fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                  Text(
+                      "+$extraCount",
+                      fontSize = 9.sp,
+                      fontWeight = FontWeight.Bold,
+                      color = MaterialTheme.colorScheme.onTertiaryContainer,
+                  )
                 }
               }
             }
-            Spacer(Modifier.width(2.dp))
+            Spacer(Modifier.width(Spacing.extraExtraSmall))
             Icon(
                 Icons.Default.ChevronRight,
                 contentDescription = null,
-                modifier = Modifier.size(16.dp),
-                tint = Color(0xFF49454F),
+                modifier = Modifier.size(Dimens.iconSizeSmall),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
           }
         }
@@ -481,56 +557,64 @@ private fun GroupSessionCard(
         if (shouldShowHost) {
           Button(
               onClick = { /* TODO EDIT GROUP SESSION */ },
-              shape = RoundedCornerShape(20.dp),
+              shape = RoundedCornerShape(Dimens.cornerLarge),
               colors =
                   ButtonDefaults.buttonColors(
-                      containerColor = Color(0xFFE5E1E7),
-                      contentColor = Color(0xFF2B2B2B),
+                      containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                      contentColor = MaterialTheme.colorScheme.onSurface,
                   ),
-              border = BorderStroke(1.dp, Color(0xFF79747E)),
-              modifier = Modifier.height(40.dp).width(108.dp),
+              border = BorderStroke(Dimens.borderThin, MaterialTheme.colorScheme.outline),
+              contentPadding = PaddingValues(horizontal = Spacing.extraSmall),
+              modifier = Modifier.height(Dimens.actionButtonHeight).width(Dimens.actionButtonWidth),
           ) {
             Text(actionLabel, fontWeight = FontWeight.Medium)
           }
         } else if (item.isMember) {
-          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
             OutlinedButton(
                 onClick = { onLeave(session.id) },
-                shape = RoundedCornerShape(20.dp),
-                border = BorderStroke(1.dp, Color(0xFFB3261E)),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFB3261E)),
-                modifier = Modifier.height(40.dp).width(108.dp),
+                shape = RoundedCornerShape(Dimens.cornerLarge),
+                border = BorderStroke(Dimens.borderThin, MaterialTheme.colorScheme.error),
+                colors =
+                    ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
+                contentPadding = PaddingValues(horizontal = Spacing.extraSmall),
+                modifier =
+                    Modifier.height(Dimens.actionButtonHeight).width(Dimens.actionButtonWidth),
             ) {
-              Text("Leave", fontWeight = FontWeight.Medium)
+              Text(actionLeaveLabel, fontWeight = FontWeight.Medium)
             }
             Button(
                 onClick = {},
                 enabled = false,
-                shape = RoundedCornerShape(20.dp),
-                colors =
-                    ButtonDefaults.buttonColors(
-                        disabledContainerColor = Color(0xFF1D1B20).copy(alpha = 0.1f),
-                        disabledContentColor = Color(0xFF1D1B20).copy(alpha = 0.45f),
-                    ),
-                modifier = Modifier.height(40.dp),
+                shape = RoundedCornerShape(Dimens.cornerLarge),
+                contentPadding = PaddingValues(horizontal = Spacing.extraSmall),
+                modifier =
+                    Modifier.height(Dimens.actionButtonHeight).width(Dimens.actionButtonWidth),
             ) {
-              Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
-              Spacer(Modifier.width(4.dp))
-              Text("Joined", fontWeight = FontWeight.Medium)
+              Icon(
+                  Icons.Default.Check,
+                  contentDescription = null,
+                  modifier = Modifier.size(Dimens.iconSizeSmall),
+              )
+              Spacer(Modifier.width(Spacing.extraExtraSmall))
+              Text(actionJoinedLabel, fontWeight = FontWeight.Medium)
             }
           }
         } else {
           Button(
               onClick = { onJoin(session.id) },
-              shape = RoundedCornerShape(20.dp),
+              shape = RoundedCornerShape(Dimens.cornerLarge),
               colors =
                   ButtonDefaults.buttonColors(
-                      containerColor = Color(0xFF6750A4),
-                      contentColor = Color.White,
+                      containerColor = MaterialTheme.colorScheme.primary,
+                      contentColor = MaterialTheme.colorScheme.onPrimary,
                   ),
-              modifier = Modifier.height(40.dp).width(108.dp),
+              contentPadding = PaddingValues(horizontal = Spacing.extraSmall),
+              modifier = Modifier.height(Dimens.actionButtonHeight).width(Dimens.actionButtonWidth),
           ) {
-            Text("Join", fontWeight = FontWeight.Medium)
+            Text(actionJoinLabel, fontWeight = FontWeight.Medium)
           }
         }
       }
@@ -547,12 +631,16 @@ private fun MetaInfoPill(
   Row(
       modifier =
           modifier
-              .border(1.dp, Color(0xFFD7D6D9), RoundedCornerShape(16.dp))
-              .padding(horizontal = 12.dp, vertical = 10.dp),
+              .border(
+                  Dimens.borderThin,
+                  MaterialTheme.colorScheme.outlineVariant,
+                  RoundedCornerShape(Dimens.cornerLarge),
+              )
+              .padding(horizontal = Spacing.medium, vertical = Spacing.mediumSmall),
       verticalAlignment = Alignment.CenterVertically,
   ) {
     icon()
-    Spacer(Modifier.width(8.dp))
+    Spacer(Modifier.width(Spacing.small))
     Text(
         text = text,
         style = MaterialTheme.typography.bodyLarge,
@@ -563,40 +651,38 @@ private fun MetaInfoPill(
   }
 }
 
-private fun sessionStatusLabel(start: Instant, now: Instant): String {
+@Composable
+internal fun sessionStatusLabel(start: Instant, now: Instant): String {
   val duration = Duration.between(now, start)
   return when {
-    duration.isNegative || duration.isZero -> "Started"
-    duration.toMinutes() < 60 -> "In ${duration.toMinutes()} min"
-    duration.toHours() < 24 ->
-        "In ${duration.toHours()} hour${if (duration.toHours() == 1L) "" else "s"}"
-    else -> "In ${duration.toDays()} day${if (duration.toDays() == 1L) "" else "s"}"
+    duration.isNegative || duration.isZero -> stringResource(R.string.group_session_status_started)
+    duration.toMinutes() < 60 ->
+        stringResource(R.string.group_session_status_in_minutes, duration.toMinutes())
+    duration.toHours() < 24 -> {
+      val hours = duration.toHours()
+      if (hours == 1L) stringResource(R.string.group_session_status_in_hours_one, hours)
+      else stringResource(R.string.group_session_status_in_hours_other, hours)
+    }
+    else -> {
+      val days = duration.toDays()
+      if (days == 1L) stringResource(R.string.group_session_status_in_days_one, days)
+      else stringResource(R.string.group_session_status_in_days_other, days)
+    }
   }
 }
 
+@Composable
 private fun sessionDateLabel(start: Instant, now: Instant): String {
   val zone = ZoneId.systemDefault()
   val localStart = start.atZone(zone).toLocalDate()
   val localNow = now.atZone(zone).toLocalDate()
-  return if (localStart == localNow) "Today"
+  return if (localStart == localNow) stringResource(R.string.group_session_date_today)
   else start.atZone(zone).format(DateTimeFormatter.ofPattern("EEE"))
 }
 
 private fun sessionTimeLabel(instant: Instant): String =
     DateTimeFormatter.ofPattern("h:mm a").withZone(ZoneId.systemDefault()).format(instant)
 
-private fun eventColor(type: EventType): Color =
-    when (type) {
-      EventType.STUDY_SESSION -> Color(0xFFC09AF7)
-      EventType.COURSE -> Color(0xFF9BE7EF)
-      EventType.EXERCISE_SESSION -> Color(0xFF98E27E)
-      EventType.LAB -> Color(0xFFF2E36F)
-      EventType.PROJECT -> Color(0xFFF2A876)
-      EventType.EXAM -> Color(0xFFF57975)
-      EventType.OTHER -> Color(0xFFC7C7C7)
-    }
-
-/** Provides a readable fallback when an OTHER session has no subject. */
 private fun EventType.displayName(): String =
     name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
 

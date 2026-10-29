@@ -45,6 +45,7 @@ class IcsParserTest {
     val event = events.first()
 
     assertEquals("horaire_5224679874@is-academia", event.id)
+    assertEquals("horaire_5224679874@is-academia", event.importKey)
     assertEquals(defaultOwnerId, event.ownerId)
     assertEquals(EventType.COURSE, event.type)
     assertEquals("Modèles stochastiques pour les communications", event.subject)
@@ -435,5 +436,99 @@ class IcsParserTest {
     assertEquals(1, events.size)
     assertEquals(EventType.OTHER, events.first().type)
     assertEquals(null, events.first().subject)
+  }
+
+  @Test
+  fun parseCalendarWithReport_countsMalformedEntries() {
+    val ics =
+        """
+        BEGIN:VCALENDAR
+        BEGIN:VEVENT
+        UID:ok@x
+        SUMMARY:Algebra
+        CATEGORIES:Cours
+        DTSTART;TZID=Europe/Zurich:20261015T080000
+        DURATION:PT2H
+        END:VEVENT
+        BEGIN:VEVENT
+        UID:bad@x
+        SUMMARY:No start
+        CATEGORIES:Cours
+        END:VEVENT
+        END:VCALENDAR
+        """
+            .trimIndent()
+
+    val result = IcsParser.parseCalendarWithReport(stringToStream(ics), defaultOwnerId)
+
+    assertEquals(1, result.events.size)
+    assertEquals(1, result.skipped)
+  }
+
+  @Test
+  fun parseCalendarWithReport_countsTruncatedFinalEntry() {
+    val ics =
+        """
+        BEGIN:VCALENDAR
+        BEGIN:VEVENT
+        UID:ok@x
+        SUMMARY:Algebra
+        CATEGORIES:Cours
+        DTSTART;TZID=Europe/Zurich:20261015T080000
+        DURATION:PT2H
+        END:VEVENT
+        BEGIN:VEVENT
+        UID:cut@x
+        SUMMARY:Cut off
+        DTSTART;TZID=Europe/Zurich:20261016T08
+        """
+            .trimIndent()
+
+    val result = IcsParser.parseCalendarWithReport(stringToStream(ics), defaultOwnerId)
+
+    assertEquals(1, result.events.size)
+    assertEquals(1, result.skipped)
+  }
+
+  @Test
+  fun parseCalendarWithReport_flagsMissingCalendarEnd() {
+    val body =
+        "BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:ok@x\nSUMMARY:Algebra\nCATEGORIES:Cours\n" +
+            "DTSTART;TZID=Europe/Zurich:20261015T080000\nDURATION:PT2H\nEND:VEVENT\n"
+
+    val open = IcsParser.parseCalendarWithReport(stringToStream(body), defaultOwnerId)
+    val closed =
+        IcsParser.parseCalendarWithReport(stringToStream(body + "END:VCALENDAR"), defaultOwnerId)
+
+    assertTrue(open.missingCalendarEnd)
+    assertTrue(!open.isComplete)
+    assertEquals(1, open.events.size)
+    assertTrue(!closed.missingCalendarEnd)
+    assertTrue(closed.isComplete)
+  }
+
+  @Test
+  fun parseCalendarWithReport_countsEntryInterruptedByNextBegin() {
+    val ics =
+        """
+        BEGIN:VCALENDAR
+        BEGIN:VEVENT
+        UID:cut@x
+        SUMMARY:Never closed
+        BEGIN:VEVENT
+        UID:ok@x
+        SUMMARY:Algebra
+        CATEGORIES:Cours
+        DTSTART;TZID=Europe/Zurich:20261015T080000
+        DURATION:PT2H
+        END:VEVENT
+        END:VCALENDAR
+        """
+            .trimIndent()
+
+    val result = IcsParser.parseCalendarWithReport(stringToStream(ics), defaultOwnerId)
+
+    assertEquals(1, result.events.size)
+    assertEquals(1, result.skipped)
   }
 }
