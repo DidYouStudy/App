@@ -24,6 +24,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -123,17 +124,7 @@ fun OutlinedInputField(
         )
       },
       minLines = minLines,
-      colors =
-          TextFieldDefaults.colors(
-              focusedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-              unfocusedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-              disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-              focusedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
-              unfocusedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
-              cursorColor = MaterialTheme.colorScheme.primary,
-              focusedIndicatorColor = Color.Transparent,
-              unfocusedIndicatorColor = Color.Transparent,
-          ),
+      colors = formTextFieldColors(),
       shape = shape,
       modifier =
           modifier
@@ -237,17 +228,7 @@ fun AddTaskInputField(
                 }
               }
           ),
-      colors =
-          TextFieldDefaults.colors(
-              focusedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-              unfocusedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-              disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-              focusedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
-              unfocusedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
-              cursorColor = MaterialTheme.colorScheme.primary,
-              focusedIndicatorColor = Color.Transparent,
-              unfocusedIndicatorColor = Color.Transparent,
-          ),
+      colors = formTextFieldColors(),
       shape = shape,
       modifier =
           modifier
@@ -256,3 +237,17 @@ fun AddTaskInputField(
               .testTag(testTag),
   )
 }
+
+/** Extracted color palette to eliminate SonarCloud duplication smells across form fields. */
+@Composable
+private fun formTextFieldColors(): TextFieldColors =
+    TextFieldDefaults.colors(
+        focusedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+        unfocusedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+        disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+        focusedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        unfocusedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        cursorColor = MaterialTheme.colorScheme.primary,
+        focusedIndicatorColor = Color.Transparent,
+        unfocusedIndicatorColor = Color.Transparent,
+    )
