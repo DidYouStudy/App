@@ -420,7 +420,7 @@ class EventPlanningViewModel(
 
   /** Applies a form edit and clears the previous save result. */
   private fun updateForm(update: EventPlanningUiState.() -> EventPlanningUiState) {
-    _uiState.update { it.update().copy(error = null, isEventAdded = false) }
+    _uiState.update { it.update().withoutResults() }
   }
 
   /** Turns a repository failure into text for the user rather than a technical message. */
