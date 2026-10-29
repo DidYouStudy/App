@@ -7,6 +7,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.*
 import java.time.Instant
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
@@ -56,18 +57,72 @@ class EventsRepositoryFirestoreTest {
     val query: Query = mock()
     val snapshot: QuerySnapshot = mock()
     val second: DocumentReference = mock()
+    val meta: CollectionReference = mock()
+    val subjects: DocumentReference = mock()
     val start = Instant.parse("2026-01-01T10:00:00Z")
-    val event = Event("id", "owner", EventType.OTHER, null, start, start.plusSeconds(3600), start)
+    val event =
+        Event("id", "owner", EventType.COURSE, "Analysis", start, start.plusSeconds(3600), start)
+    val other = event.copy(id = "second", subject = "Physics")
     whenever(events.document("second")).thenReturn(second)
+    whenever(owner.collection("meta")).thenReturn(meta)
+    whenever(meta.document("subjects")).thenReturn(subjects)
     whenever(db.batch()).thenReturn(batch)
     whenever(batch.commit()).thenReturn(TaskCompletionSource<Void>().task)
     whenever(events.whereEqualTo(FieldPath.documentId(), "id")).thenReturn(query)
     whenever(query.get(Source.CACHE)).thenReturn(Tasks.forResult(snapshot))
 
-    assertTrue(repository.saveEvents(listOf(event, event.copy(id = "second"))).isSuccess)
+    assertTrue(repository.saveEvents(listOf(event, other)).isSuccess)
     verify(batch).set(eq(document), any<Map<String, Any>>())
     verify(batch).set(eq(second), any<Map<String, Any>>())
+    verify(batch)
+        .set(eq(subjects), eq(SubjectCatalogFirestoreMapper.encode(event)!!), any<SetOptions>())
+    verify(batch)
+        .set(eq(subjects), eq(SubjectCatalogFirestoreMapper.encode(other)!!), any<SetOptions>())
     verify(batch).commit()
+  }
+
+  /** A later invalid event prevents the entire batch from reaching Firestore. */
+  @Test
+  fun rejectsLaterInvalidEventBeforeWriting() = runTest {
+    val start = Instant.parse("2026-01-01T10:00:00Z")
+    val event = Event("id", "owner", EventType.OTHER, null, start, start.plusSeconds(3600), start)
+
+    assertEquals(
+        EventsError.INVALID_ARGUMENT,
+        repository.saveEvents(listOf(event, event.copy(id = "invalid/id"))).error(),
+    )
+    verifyNoInteractions(db)
+  }
+
+  /** A batch cannot contain events belonging to different owners. */
+  @Test
+  fun rejectsMixedOwnersBeforeWriting() = runTest {
+    val start = Instant.parse("2026-01-01T10:00:00Z")
+    val event = Event("id", "owner", EventType.OTHER, null, start, start.plusSeconds(3600), start)
+
+    assertEquals(
+        EventsError.INVALID_ARGUMENT,
+        repository.saveEvents(listOf(event, event.copy(id = "second", ownerId = "other"))).error(),
+    )
+    verifyNoInteractions(db)
+  }
+
+  /** Revalidates a changed task list in a later event before writing anything. */
+  @Test
+  fun rejectsInvalidNestedTaskBeforeWriting() = runTest {
+    val start = Instant.parse("2026-01-01T10:00:00Z")
+    val event = Event("id", "owner", EventType.OTHER, null, start, start.plusSeconds(3600), start)
+    val invalidTask: EventTask = mock()
+    whenever(invalidTask.text).thenReturn("")
+    val tasks = mutableListOf<EventTask>()
+    val later = event.copy(id = "second", tasks = tasks)
+    tasks.add(invalidTask)
+
+    assertEquals(
+        EventsError.INVALID_EVENT_DATA,
+        repository.saveEvents(listOf(event, later)).error(),
+    )
+    verifyNoInteractions(db)
   }
 
   /** Invalid IDs and wrong owners never reach cached storage. */
@@ -125,11 +180,15 @@ class EventsRepositoryFirestoreTest {
   /** Cancellation is propagated instead of converted to an ordinary failure result. */
   @Test
   fun propagatesCancellation() = runTest {
-    whenever(document.get()).thenReturn(TaskCompletionSource<DocumentSnapshot>().task)
-    val read = async { repository.getEvent("owner", "id") }
-    runCurrent()
-    read.cancelAndJoin()
-    assertTrue(read.isCancelled)
+    val cancellation = CancellationException("read cancelled")
+    whenever(document.get()).thenReturn(Tasks.forException(cancellation))
+
+    try {
+      repository.getEvent("owner", "id")
+      fail("Cancellation must be thrown, not returned as a failure")
+    } catch (caught: CancellationException) {
+      assertSame(cancellation, caught)
+    }
   }
 
   /** A cancelled subject collector removes its SDK and authentication listeners. */

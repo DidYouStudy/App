@@ -84,17 +84,7 @@ class EventsRepositoryFirestore(
   }
 
   /** Atomically queues the event replacement and the subject's latest spelling/recency. */
-  override suspend fun saveEvent(event: Event): Result<Unit> = execute {
-    validate(event.ownerId, event.id)
-    val data = EventFirestoreMapper.encode(event)
-    // Revalidate nested tasks too: callers may have supplied a mutable list to the domain model.
-    EventFirestoreMapper.decode(event.id, event.ownerId, data)
-    val batch = firestore.batch().set(events(event.ownerId).document(event.id), data)
-    SubjectCatalogFirestoreMapper.encode(event)?.let {
-      batch.set(subjects(event.ownerId), it, SetOptions.merge())
-    }
-    commitLocally(batch, event.ownerId, event.id)
-  }
+  override suspend fun saveEvent(event: Event): Result<Unit> = saveEvents(listOf(event))
 
   /** Validates all events before queuing their writes in one batch. */
   override suspend fun saveEvents(events: List<Event>): Result<Unit> = execute {
@@ -104,6 +94,7 @@ class EventsRepositoryFirestore(
         requireArgument(event.ownerId == owner)
         validate(event.ownerId, event.id)
         val data = EventFirestoreMapper.encode(event)
+        // Revalidate tasks: the caller may have changed the list since creating the event.
         EventFirestoreMapper.decode(event.id, event.ownerId, data)
         event to data
       }

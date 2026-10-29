@@ -101,6 +101,39 @@ class EventsRepositoryFirestoreEmulatorTest {
   private fun document(id: String) =
       db.collection("users").document(uid).collection("events").document(id)
 
+  /** A bulk save persists every event and each subject suggestion through the real SDK. */
+  @Test
+  fun bulkSavePersistsEventsAndSubjects() = runBlocking {
+    val first = event("first").copy(subject = "Analysis")
+    val second = event("second").copy(subject = "Physics")
+
+    repository.saveEvents(listOf(first, second)).getOrThrow()
+    sync()
+
+    assertEquals(first, repository.getEvent(uid, first.id).getOrThrow())
+    assertEquals(second, repository.getEvent(uid, second.id).getOrThrow())
+    assertEquals(
+        listOf("Analysis", "Physics"),
+        withTimeout(15000) { repository.observeSubjects(uid).first().getOrThrow() },
+    )
+  }
+
+  /** An invalid later event leaves both events and subject suggestions untouched. */
+  @Test
+  fun bulkSaveRejectsInvalidLaterEventWithoutWrites() = runBlocking {
+    val valid = event("first")
+    val invalid = event("invalid/id").copy(subject = "Physics")
+
+    assertEquals(
+        EventsError.INVALID_ARGUMENT,
+        (repository.saveEvents(listOf(valid, invalid)).exceptionOrNull() as EventsException).error,
+    )
+    assertFalse(document("first").get(Source.SERVER).await().exists())
+    assertTrue(
+        withTimeout(15000) { repository.observeSubjects(uid).first().getOrThrow().isEmpty() }
+    )
+  }
+
   /** CRUD, complete field mapping, stable retries and idempotent missing deletes. */
   @Test
   fun crudAndServerRoundTrip() = runBlocking {

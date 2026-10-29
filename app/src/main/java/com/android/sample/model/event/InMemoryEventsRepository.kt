@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.model.event
 
 import java.time.Instant
@@ -91,6 +92,7 @@ class InMemoryEventsRepository : EventsRepository {
 
   override suspend fun saveEvents(events: List<Event>): Result<Unit> {
     if (events.isEmpty()) return Result.success(Unit)
+    if (events.any { it.ownerId != events.first().ownerId }) return invalidArgument()
 
     data.update { byOwner ->
       var currentMap = byOwner
