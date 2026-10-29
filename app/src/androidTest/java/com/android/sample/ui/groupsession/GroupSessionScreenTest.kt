@@ -5,16 +5,15 @@ package com.android.sample.ui.groupsession
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
-import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
@@ -106,7 +105,10 @@ class GroupSessionScreenTest {
     composeTestRule.onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE).assertIsDisplayed()
     composeTestRule.onNodeWithText("Active sessions").assertIsDisplayed()
     composeTestRule.onNodeWithText("Software Architecture").assertIsDisplayed()
-    composeTestRule.onNodeWithText("Capstone planning").performScrollTo().assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(hasText("Capstone planning"))
+    composeTestRule.onNodeWithText("Capstone planning").assertIsDisplayed()
 
     composeTestRule.onNodeWithText("My sessions").performClick()
     composeTestRule.onNodeWithText("Software Architecture").assertIsDisplayed()
@@ -144,7 +146,10 @@ class GroupSessionScreenTest {
     composeTestRule.onNodeWithText("My sessions").performClick()
 
     composeTestRule.onNodeWithText("Software Architecture").assertIsDisplayed()
-    composeTestRule.onNodeWithText("Exam revision").performScrollTo().assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(hasText("Exam revision"))
+    composeTestRule.onNodeWithText("Exam revision").assertIsDisplayed()
     composeTestRule.onNodeWithText("Capstone planning").assertDoesNotExist()
   }
 
@@ -154,10 +159,9 @@ class GroupSessionScreenTest {
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
-    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST).performTouchInput {
-      swipeUp()
-      swipeUp()
-    }
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(hasTestTag(GroupSessionScreenTestTags.sessionItem(3)))
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.sessionItem(3))
         .assert(hasAnyDescendant(hasText("Other")))
@@ -184,11 +188,21 @@ class GroupSessionScreenTest {
     composeTestRule.onNodeWithText("Search group sessions").performTextInput("capstone")
     composeTestRule.onNodeWithText("Capstone planning").assertIsDisplayed()
 
-    composeTestRule.onNodeWithText("Join").performScrollTo().performClick()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(hasText("Join"))
+    composeTestRule.onNodeWithText("Join").performClick()
     composeTestRule.waitUntil(timeoutMillis = 2_000) { repo.joinCalls == 1 }
-    composeTestRule.onNodeWithText("Joined").performScrollTo().assertIsDisplayed()
 
-    composeTestRule.onNodeWithText("Leave").performScrollTo().performClick()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(hasText("Joined"))
+    composeTestRule.onNodeWithText("Joined").assertIsDisplayed()
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(hasText("Leave"))
+    composeTestRule.onNodeWithText("Leave").performClick()
     composeTestRule.waitUntil(timeoutMillis = 2_000) { repo.leaveCalls == 1 }
   }
 
@@ -200,7 +214,10 @@ class GroupSessionScreenTest {
 
     repo.failJoin = true
     composeTestRule.onNodeWithText("Search group sessions").performTextInput("capstone")
-    composeTestRule.onNodeWithText("Join").performScrollTo().performClick()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(hasText("Join"))
+    composeTestRule.onNodeWithText("Join").performClick()
     composeTestRule.waitUntil(timeoutMillis = 2_000) { repo.joinCalls == 1 }
     composeTestRule.waitUntil(timeoutMillis = 2_000) {
       composeTestRule
