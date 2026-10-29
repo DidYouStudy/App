@@ -464,4 +464,54 @@ class IcsParserTest {
     assertEquals(1, result.events.size)
     assertEquals(1, result.skipped)
   }
+
+  @Test
+  fun parseCalendarWithReport_countsTruncatedFinalEntry() {
+    val ics =
+        """
+        BEGIN:VCALENDAR
+        BEGIN:VEVENT
+        UID:ok@x
+        SUMMARY:Algebra
+        CATEGORIES:Cours
+        DTSTART;TZID=Europe/Zurich:20261015T080000
+        DURATION:PT2H
+        END:VEVENT
+        BEGIN:VEVENT
+        UID:cut@x
+        SUMMARY:Cut off
+        DTSTART;TZID=Europe/Zurich:20261016T08
+        """
+            .trimIndent()
+
+    val result = IcsParser.parseCalendarWithReport(stringToStream(ics), defaultOwnerId)
+
+    assertEquals(1, result.events.size)
+    assertEquals(1, result.skipped)
+  }
+
+  @Test
+  fun parseCalendarWithReport_countsEntryInterruptedByNextBegin() {
+    val ics =
+        """
+        BEGIN:VCALENDAR
+        BEGIN:VEVENT
+        UID:cut@x
+        SUMMARY:Never closed
+        BEGIN:VEVENT
+        UID:ok@x
+        SUMMARY:Algebra
+        CATEGORIES:Cours
+        DTSTART;TZID=Europe/Zurich:20261015T080000
+        DURATION:PT2H
+        END:VEVENT
+        END:VCALENDAR
+        """
+            .trimIndent()
+
+    val result = IcsParser.parseCalendarWithReport(stringToStream(ics), defaultOwnerId)
+
+    assertEquals(1, result.events.size)
+    assertEquals(1, result.skipped)
+  }
 }

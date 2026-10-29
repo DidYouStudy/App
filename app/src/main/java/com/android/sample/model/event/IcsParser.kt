@@ -66,6 +66,8 @@ object IcsParser {
 
       when {
         trimmed == "BEGIN:VEVENT" -> {
+          // A block still open here was never closed by END:VEVENT: it is lost, so count it.
+          if (currentBlock != null) skipped++
           currentBlock = mutableMapOf()
         }
         trimmed == "END:VEVENT" -> {
@@ -87,6 +89,9 @@ object IcsParser {
         }
       }
     }
+
+    // The file ended inside a VEVENT (truncated file): that event is dropped, so report it too.
+    if (currentBlock != null) skipped++
 
     return ParseResult(events, skipped)
   }
