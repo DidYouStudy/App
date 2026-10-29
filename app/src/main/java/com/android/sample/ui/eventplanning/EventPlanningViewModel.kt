@@ -35,7 +35,7 @@ import kotlinx.coroutines.launch
  *
  * The date and times are the local values shown by the pickers; the ViewModel converts them to
  * instants with the clock's time zone when adding. The date is the day the event starts: an end
- * * time earlier than the start time means the event ends the next day.
+ * time earlier than the start time means the event ends the next day.
  *
  * @property recommendedSubjects subjects the user has used before, most recent first, for the
  *   suggestions.
@@ -339,25 +339,42 @@ class EventPlanningViewModel(
     // An end time before the start time can only mean the next day (e.g. 22:00 to 01:00).
     val endDate = if (endTime.isBefore(startTime)) date.plusDays(1) else date
 
-    // uses new id for event if it is not a retry for a previous event
-    val id =
-        editing?.id ?: pendingEventId ?: eventsRepository.newEventId().also { pendingEventId = it }
     val now = clock.instant()
     val event =
         try {
-          Event(
-              id = id,
-              ownerId = ownerId,
-              type = state.type,
-              subject = state.subject.trim().takeIf(String::isNotEmpty),
-              startsAt = date.atTime(startTime).atZone(clock.zone).toInstant(),
-              endsAt = endDate.atTime(endTime).atZone(clock.zone).toInstant(),
-              createdAt = editing?.createdAt ?: now,
-              updatedAt = now,
-              location = state.location.trim().takeIf(String::isNotEmpty),
-              description = state.description.trim().takeIf(String::isNotEmpty),
-              tasks = state.tasks,
-          )
+          val subject = state.subject.trim().takeIf(String::isNotEmpty)
+          val startsAt = date.atTime(startTime).atZone(clock.zone).toInstant()
+          val endsAt = endDate.atTime(endTime).atZone(clock.zone).toInstant()
+          val location = state.location.trim().takeIf(String::isNotEmpty)
+          val description = state.description.trim().takeIf(String::isNotEmpty)
+          if (editing == null) {
+            val id = pendingEventId ?: eventsRepository.newEventId().also { pendingEventId = it }
+            Event(
+                id = id,
+                ownerId = ownerId,
+                type = state.type,
+                subject = subject,
+                startsAt = startsAt,
+                endsAt = endsAt,
+                createdAt = now,
+                updatedAt = now,
+                location = location,
+                description = description,
+                tasks = state.tasks,
+            )
+          } else {
+            editing.copy(
+                ownerId = ownerId,
+                type = state.type,
+                subject = subject,
+                startsAt = startsAt,
+                endsAt = endsAt,
+                updatedAt = now,
+                location = location,
+                description = description,
+                tasks = state.tasks,
+            )
+          }
         } catch (exception: IllegalArgumentException) {
           fail(exception.message)
           return
