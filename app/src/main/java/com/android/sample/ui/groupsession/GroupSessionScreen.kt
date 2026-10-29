@@ -186,13 +186,6 @@ fun GroupSessionScreen(
   )
 }
 
-private fun errorMessage(error: GroupSessionsError): String =
-    when (error) {
-      GroupSessionsError.LOAD_FAILED -> "Could not load sessions. Please try again."
-      GroupSessionsError.JOIN_FAILED -> "Could not join session. Please try again."
-      GroupSessionsError.LEAVE_FAILED -> "Could not leave session. Please try again."
-    }
-
 @Composable
 private fun GroupSessionContent(
     state: GroupSessionsUiState,
