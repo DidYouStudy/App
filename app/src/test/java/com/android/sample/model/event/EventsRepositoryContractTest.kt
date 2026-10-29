@@ -92,14 +92,9 @@ abstract class EventsRepositoryContractTest {
                 endsAt = monday.plusSeconds(400 * 86_400L + 3600),
                 importKey = "uid-b",
             )
-    repository.saveEvents(
-        listOf(
-            imported,
-            farAway,
-            event("manual", 11, 12),
-            event("other", 9, 10, otherOwner).copy(importKey = "uid-x"),
-        )
-    )
+    // A batch may only hold one owner's events, so the other owner's event is saved separately.
+    repository.saveEvents(listOf(imported, farAway, event("manual", 11, 12))).getOrThrow()
+    repository.saveEvent(event("other", 9, 10, otherOwner).copy(importKey = "uid-x")).getOrThrow()
 
     val result = repository.getImportedEvents(owner).getOrThrow()
 
