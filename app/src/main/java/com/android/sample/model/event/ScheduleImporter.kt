@@ -4,6 +4,7 @@ package com.android.sample.model.event
 import java.io.IOException
 import java.io.InputStream
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -11,35 +12,43 @@ import kotlinx.coroutines.withContext
  * Imports a course schedule (.ics file) into a user's calendar through an [EventsRepository],
  * replacing what an earlier import created.
  *
- * Each imported event keeps the file's `UID` as its [Event.importKey]. On a new import, events with
- * a known key are updated in place (same ID, creation time and tasks), new ones are added, and
- * events of an earlier import that are missing from the file are deleted. Events the user created
+ * Each imported event gets an [Event.importKey] made of the file's `UID` and the event's start. On
+ * a new import, events with a known key are updated in place (same ID, creation time and tasks),
+ * new ones are added, and events of an earlier import that are missing from the file are deleted.
+ * An occurrence that moves to another time therefore counts as a new event. Events the user created
  * by hand have no import key and are never touched.
  */
-class ScheduleImporter(private val repository: EventsRepository) {
+class ScheduleImporter(
+    private val repository: EventsRepository,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+) {
 
   /**
    * Parses the schedule opened by [openStream] and replaces the owner's previously imported events
    * with its events.
    *
    * New events are saved before stale ones are deleted, so a failure never leaves the calendar
-   * emptier than before.
+   * emptier than before. If some entries of the file were malformed and skipped, nothing is
+   * deleted: a skipped entry may be one that was imported earlier, and removing it would lose its
+   * tasks for a mere parsing problem.
    *
    * @param openStream opens the file; called off the main thread, and the stream is closed here.
    *   Returning null (e.g. the file vanished) counts as a failure.
-   * @return [Result.success] with the number of events in the file, or [Result.failure] with an
-   *   [EventsException]: [EventsError.INVALID_ARGUMENT] when [ownerId] is blank, the file cannot be
-   *   read, or it contains no valid event (nothing is changed then); otherwise the repository's own
-   *   failure. Cancellation is propagated.
+   * @return [Result.success] with an [ImportSummary] (events imported and entries skipped), or
+   *   [Result.failure] with an [EventsException]: [EventsError.INVALID_ARGUMENT] when [ownerId] is
+   *   blank, the file cannot be read, or it contains no valid event (nothing is changed then);
+   *   otherwise the repository's own failure. Cancellation is propagated.
    */
-  suspend fun import(ownerId: String, openStream: () -> InputStream?): Result<Int> {
+  suspend fun import(ownerId: String, openStream: () -> InputStream?): Result<ImportSummary> {
     if (ownerId.isBlank()) return Result.failure(EventsException(EventsError.INVALID_ARGUMENT))
 
-    val parsed =
+    val report =
         try {
-          withContext(Dispatchers.IO) {
+          withContext(ioDispatcher) {
             val stream = openStream() ?: throw IOException("Cannot open the schedule file")
-            stream.use { IcsParser.parseCalendar(it, ownerId) { repository.newEventId() } }
+            stream.use {
+              IcsParser.parseCalendarWithReport(it, ownerId) { repository.newEventId() }
+            }
           }
         } catch (e: CancellationException) {
           throw e
@@ -48,7 +57,9 @@ class ScheduleImporter(private val repository: EventsRepository) {
         }
 
     // A file without any usable event is almost certainly the wrong file: tell the user.
-    if (parsed.isEmpty()) return Result.failure(EventsException(EventsError.INVALID_ARGUMENT))
+    if (report.events.isEmpty()) {
+      return Result.failure(EventsException(EventsError.INVALID_ARGUMENT))
+    }
 
     val existing =
         repository.getImportedEvents(ownerId).getOrElse {
@@ -56,7 +67,7 @@ class ScheduleImporter(private val repository: EventsRepository) {
         }
     val existingByKey = existing.associateBy { it.importKey }
 
-    val incoming = withUniqueKeys(parsed)
+    val incoming = withStableKeys(report.events)
     val toSave = incoming.map { event ->
       // Reuse the stored event's identity so the update does not duplicate it.
       existingByKey[event.importKey]?.let {
@@ -67,35 +78,35 @@ class ScheduleImporter(private val repository: EventsRepository) {
       return Result.failure(it)
     }
 
-    val keptKeys = incoming.map { it.importKey }.toSet()
-    for (stale in existing.filter { it.importKey !in keptKeys }) {
-      repository.deleteEvent(ownerId, stale.id).onFailure {
-        return Result.failure(it)
+    // Only prune when the whole file was understood (see the KDoc).
+    if (report.skipped == 0) {
+      val keptKeys = incoming.map { it.importKey }.toSet()
+      for (stale in existing.filter { it.importKey !in keptKeys }) {
+        repository.deleteEvent(ownerId, stale.id).onFailure {
+          return Result.failure(it)
+        }
       }
     }
-    return Result.success(toSave.size)
+    return Result.success(ImportSummary(imported = toSave.size, skipped = report.skipped))
   }
 
   private companion object {
     /**
-     * Gives every event a distinct import key. A missing `UID` is replaced by subject and start;
-     * recurring entries sharing a `UID` get their start time appended; remaining exact duplicates
-     * collapse to the last one.
+     * Gives every event a key that depends only on the event itself: its `UID` (or, when missing,
+     * its subject) plus its start time. Recurring entries share a `UID`, so the start time is what
+     * tells the occurrences apart; because it is always appended, cancelling one occurrence never
+     * changes the key of its siblings. Exact duplicates collapse to the last one.
      */
-    fun withUniqueKeys(events: List<Event>): List<Event> {
-      val keyed = events.map {
-        it.copy(importKey = it.importKey ?: "${it.subject}@${it.startsAt.epochSecond}")
-      }
-      val counts = keyed.groupingBy { it.importKey }.eachCount()
-      return keyed
-          .map {
-            if (counts.getValue(it.importKey) > 1) {
-              it.copy(importKey = "${it.importKey}@${it.startsAt.epochSecond}")
-            } else it
-          }
-          .associateBy { it.importKey }
-          .values
-          .toList()
-    }
+    fun withStableKeys(events: List<Event>): List<Event> =
+        events
+            .map { it.copy(importKey = "${it.importKey ?: it.subject}@${it.startsAt.epochSecond}") }
+            .associateBy { it.importKey }
+            .values
+            .toList()
   }
 }
+
+/**
+ * Outcome of an import: [imported] events were stored, [skipped] malformed entries were ignored.
+ */
+data class ImportSummary(val imported: Int, val skipped: Int)

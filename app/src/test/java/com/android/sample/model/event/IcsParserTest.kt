@@ -437,4 +437,31 @@ class IcsParserTest {
     assertEquals(EventType.OTHER, events.first().type)
     assertEquals(null, events.first().subject)
   }
+
+  @Test
+  fun parseCalendarWithReport_countsMalformedEntries() {
+    val ics =
+        """
+        BEGIN:VCALENDAR
+        BEGIN:VEVENT
+        UID:ok@x
+        SUMMARY:Algebra
+        CATEGORIES:Cours
+        DTSTART;TZID=Europe/Zurich:20261015T080000
+        DURATION:PT2H
+        END:VEVENT
+        BEGIN:VEVENT
+        UID:bad@x
+        SUMMARY:No start
+        CATEGORIES:Cours
+        END:VEVENT
+        END:VCALENDAR
+        """
+            .trimIndent()
+
+    val result = IcsParser.parseCalendarWithReport(stringToStream(ics), defaultOwnerId)
+
+    assertEquals(1, result.events.size)
+    assertEquals(1, result.skipped)
+  }
 }

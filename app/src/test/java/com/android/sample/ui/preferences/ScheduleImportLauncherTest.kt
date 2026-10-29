@@ -108,6 +108,25 @@ class ScheduleImportLauncherTest {
   }
 
   @Test
+  fun fileWithMalformedEntry_showsPartialToast() {
+    val viewModel = viewModel()
+    setContent(viewModel)
+    val withBadEntry =
+        validIcs.replace(
+            "END:VCALENDAR",
+            "BEGIN:VEVENT\nUID:bad@x\nSUMMARY:No start\nCATEGORIES:Cours\nEND:VEVENT\nEND:VCALENDAR",
+        )
+
+    pick(clickAndGetPickerRequest(), fileUri(withBadEntry))
+
+    awaitUntil { ShadowToast.getLatestToast() != null }
+    assertEquals(
+        "Schedule imported, but 1 entry could not be read and was skipped.",
+        ShadowToast.getTextOfLatestToast(),
+    )
+  }
+
+  @Test
   fun invalidFile_showsFailureToast() {
     val viewModel = viewModel()
     setContent(viewModel)

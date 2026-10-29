@@ -37,11 +37,20 @@ fun rememberScheduleImportLauncher(
     val message =
         when (val s = state) {
           is ScheduleImportState.Success ->
-              resources.getQuantityString(
-                  R.plurals.preferences_import_schedule_success,
-                  s.count,
-                  s.count,
-              )
+              if (s.skipped == 0) {
+                resources.getQuantityString(
+                    R.plurals.preferences_import_schedule_success,
+                    s.count,
+                    s.count,
+                )
+              } else {
+                // Some entries were unreadable: say so instead of reporting a clean import.
+                resources.getQuantityString(
+                    R.plurals.preferences_import_schedule_partial,
+                    s.skipped,
+                    s.skipped,
+                )
+              }
           ScheduleImportState.Failure ->
               resources.getString(R.string.preferences_import_schedule_failure)
           else -> null

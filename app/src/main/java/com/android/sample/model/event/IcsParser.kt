@@ -9,6 +9,9 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
+/** Outcome of parsing a calendar: the valid [events] and how many `VEVENT`s were [skipped]. */
+data class ParseResult(val events: List<Event>, val skipped: Int)
+
 /**
  * Utility for parsing iCalendar (.ics) format files into domain [Event] models.
  *
@@ -36,13 +39,24 @@ object IcsParser {
       inputStream: InputStream,
       ownerId: String,
       idGenerator: (veventUid: String?) -> String = { it ?: UUID.randomUUID().toString() },
-  ): List<Event> {
+  ): List<Event> = parseCalendarWithReport(inputStream, ownerId, idGenerator).events
+
+  /**
+   * Like [parseCalendar], but also counts the `VEVENT` blocks that were dropped because they were
+   * malformed, so callers can tell the user that part of the file was ignored.
+   */
+  fun parseCalendarWithReport(
+      inputStream: InputStream,
+      ownerId: String,
+      idGenerator: (veventUid: String?) -> String = { it ?: UUID.randomUUID().toString() },
+  ): ParseResult {
     val rawContent = inputStream.bufferedReader().use { it.readText() }
     // 1. Unfold lines according to RFC 5545 (CRLF/LF followed by space/tab)
     val unfoldedContent = rawContent.replace(Regex("\r?\n[ \t]"), "")
     val lines = unfoldedContent.lines()
 
     val events = mutableListOf<Event>()
+    var skipped = 0
     // Store property name -> list of (rawKeyWithParams, value) pairs
     var currentBlock: MutableMap<String, MutableList<Pair<String, String>>>? = null
 
@@ -56,7 +70,8 @@ object IcsParser {
         }
         trimmed == "END:VEVENT" -> {
           currentBlock?.let { block ->
-            parseVEvent(block, ownerId, idGenerator)?.let { events.add(it) }
+            val event = parseVEvent(block, ownerId, idGenerator)
+            if (event != null) events.add(event) else skipped++
           }
           currentBlock = null
         }
@@ -73,7 +88,7 @@ object IcsParser {
       }
     }
 
-    return events
+    return ParseResult(events, skipped)
   }
 
   /**

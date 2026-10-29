@@ -49,6 +49,13 @@ class ScheduleImporterTest {
   private suspend fun stored(repo: EventsRepository) =
       repo.observeEvents(owner, from, to).first().getOrThrow()
 
+  /** The import key the importer derives from a `UID` and the event's start (UTC instant). */
+  private fun key(uid: String, startUtc: String) = "$uid@${Instant.parse(startUtc).epochSecond}"
+
+  /** A VEVENT the parser rejects (no DTSTART). */
+  private val malformedVevent =
+      "BEGIN:VEVENT\nUID:bad@x\nSUMMARY:Broken\nCATEGORIES:Cours\nEND:VEVENT"
+
   @Test
   fun import_savesParsedEventsWithRepositoryIds() = runTest {
     val repo = IdRecordingRepository(InMemoryEventsRepository())
@@ -56,7 +63,7 @@ class ScheduleImporterTest {
 
     val result = ScheduleImporter(repo).import(owner, stream(text))
 
-    assertEquals(2, result.getOrThrow())
+    assertEquals(ImportSummary(imported = 2, skipped = 0), result.getOrThrow())
     assertEquals(2, repo.issuedIds.size)
     assertEquals(repo.issuedIds.toSet(), stored(repo).map { it.id }.toSet())
   }
@@ -88,8 +95,65 @@ class ScheduleImporterTest {
 
     val result = ScheduleImporter(repo).import(owner, stream(text))
 
-    assertEquals(2, result.getOrThrow())
+    assertEquals(2, result.getOrThrow().imported)
     assertEquals(2, stored(repo).map { it.id }.toSet().size)
+  }
+
+  @Test
+  fun import_malformedEntry_isReportedAsSkipped() = runTest {
+    val repo = InMemoryEventsRepository()
+    val text = ics(vevent("a@x", "20261015T080000"), malformedVevent)
+
+    val result = ScheduleImporter(repo).import(owner, stream(text))
+
+    assertEquals(ImportSummary(imported = 1, skipped = 1), result.getOrThrow())
+    assertEquals(1, stored(repo).size)
+  }
+
+  @Test
+  fun import_malformedEntry_preventsDeletingPreviousEvents() = runTest {
+    val repo = InMemoryEventsRepository()
+    val importer = ScheduleImporter(repo)
+    val old = vevent("old@x", "20261015T080000")
+    importer.import(owner, stream(ics(old, vevent("a@x", "20261016T080000"))))
+
+    // The earlier "old@x" entry may be the one that is now unreadable: it must survive.
+    importer.import(owner, stream(ics(vevent("a@x", "20261016T080000"), malformedVevent)))
+
+    assertEquals(
+        setOf(key("old@x", "2026-10-15T06:00:00Z"), key("a@x", "2026-10-16T06:00:00Z")),
+        stored(repo).map { it.importKey }.toSet(),
+    )
+  }
+
+  @Test
+  fun import_cancellingOneOccurrence_keepsSiblingIdentityAndTasks() = runTest {
+    val repo = InMemoryEventsRepository()
+    val importer = ScheduleImporter(repo)
+    val week1 = vevent("rec@x", "20261015T080000")
+    val week2 = vevent("rec@x", "20261022T080000")
+    importer.import(owner, stream(ics(week1, week2)))
+    val sibling = stored(repo).first { it.startsAt == Instant.parse("2026-10-22T06:00:00Z") }
+    val task = EventTask("Prepare quiz")
+    repo.saveEvent(sibling.copy(tasks = listOf(task))).getOrThrow()
+
+    importer.import(owner, stream(ics(week2)))
+
+    val remaining = stored(repo).single()
+    assertEquals(sibling.id, remaining.id)
+    assertEquals(listOf(task), remaining.tasks)
+  }
+
+  @Test
+  fun import_importerUsesInjectedDispatcher() = runTest {
+    val dispatcher = kotlinx.coroutines.test.StandardTestDispatcher(testScheduler)
+    val repo = InMemoryEventsRepository()
+
+    val result =
+        ScheduleImporter(repo, dispatcher)
+            .import(owner, stream(ics(vevent("a@x", "20261015T080000"))))
+
+    assertEquals(1, result.getOrThrow().imported)
   }
 
   @Test
@@ -164,11 +228,10 @@ class ScheduleImporterTest {
     val task = EventTask("Read chapter 3")
     repo.saveEvent(first.copy(tasks = listOf(task))).getOrThrow()
 
-    importer.import(owner, stream(ics(vevent("a@x", "20261015T100000", "New"))))
+    importer.import(owner, stream(ics(vevent("a@x", "20261015T080000", "New"))))
 
     val updated = stored(repo).single()
     assertEquals("New", updated.subject)
-    assertEquals(Instant.parse("2026-10-15T08:00:00Z"), updated.startsAt)
     assertEquals(first.id, updated.id)
     assertEquals(first.createdAt, updated.createdAt)
     assertEquals(listOf(task), updated.tasks)
@@ -185,7 +248,7 @@ class ScheduleImporterTest {
 
     importer.import(owner, stream(ics(vevent("b@x", "20261016T080000"))))
 
-    assertEquals(listOf("b@x"), stored(repo).map { it.importKey })
+    assertEquals(listOf(key("b@x", "2026-10-16T06:00:00Z")), stored(repo).map { it.importKey })
   }
 
   @Test
@@ -207,7 +270,10 @@ class ScheduleImporterTest {
 
     importer.import(owner, stream(ics(vevent("b@x", "20261016T080000"))))
 
-    assertEquals(setOf("manual", "b@x"), stored(repo).map { it.importKey ?: it.id }.toSet())
+    assertEquals(
+        setOf("manual", key("b@x", "2026-10-16T06:00:00Z")),
+        stored(repo).map { it.importKey ?: it.id }.toSet(),
+    )
   }
 
   @Test
@@ -219,7 +285,7 @@ class ScheduleImporterTest {
     val result = importer.import(owner, stream("not a calendar"))
 
     assertTrue(result.isFailure)
-    assertEquals(listOf("a@x"), stored(repo).map { it.importKey })
+    assertEquals(listOf(key("a@x", "2026-10-15T06:00:00Z")), stored(repo).map { it.importKey })
   }
 
   @Test
@@ -263,7 +329,7 @@ class ScheduleImporterTest {
         ScheduleImporter(failing).import(owner, stream(ics(vevent("b@x", "20261016T080000"))))
 
     assertTrue(result.isFailure)
-    assertEquals(listOf("a@x"), stored(inner).map { it.importKey })
+    assertEquals(listOf(key("a@x", "2026-10-15T06:00:00Z")), stored(inner).map { it.importKey })
   }
 
   @Test

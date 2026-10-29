@@ -40,6 +40,10 @@
         <item quantity="one">Imported %d event</item>
         <item quantity="other">Imported %d events</item>
     </plurals>
+    <plurals name="preferences_import_schedule_partial">
+        <item quantity="one">Schedule imported, but %d entry could not be read and was skipped.</item>
+        <item quantity="other">Schedule imported, but %d entries could not be read and were skipped.</item>
+    </plurals>
     <string name="preferences_import_schedule_failure">Could not import this schedule. Choose a valid .ics file.</string>
     <string name="preferences_add_study_locations_label">Add your study locations</string>
     <string name="preferences_add_study_locations_button">Add...</string>

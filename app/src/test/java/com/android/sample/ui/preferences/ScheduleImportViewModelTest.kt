@@ -69,6 +69,20 @@ class ScheduleImportViewModelTest {
   }
 
   @Test
+  fun importSchedule_malformedEntry_reportsSkippedCount() = runTest {
+    val withBadEntry =
+        validIcs.replace(
+            "END:VCALENDAR",
+            "BEGIN:VEVENT\nUID:bad@x\nSUMMARY:No start\nCATEGORIES:Cours\nEND:VEVENT\nEND:VCALENDAR",
+        )
+
+    viewModel.importSchedule { ByteArrayInputStream(withBadEntry.toByteArray()) }
+
+    awaitSettled()
+    assertEquals(ScheduleImportState.Success(count = 1, skipped = 1), viewModel.state.value)
+  }
+
+  @Test
   fun importSchedule_invalidFile_reportsFailure() = runTest {
     viewModel.importSchedule { ByteArrayInputStream("nope".toByteArray()) }
 
