@@ -654,7 +654,7 @@ private fun MetaInfoPill(
 }
 
 @Composable
-private fun sessionStatusLabel(start: Instant, now: Instant): String {
+internal fun sessionStatusLabel(start: Instant, now: Instant): String {
   val duration = Duration.between(now, start)
   return when {
     duration.isNegative || duration.isZero -> stringResource(R.string.group_session_status_started)

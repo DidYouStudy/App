@@ -26,9 +26,13 @@ import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.ui.navigation.NavigationTestTags
 import java.time.Duration
 import java.time.Instant
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -201,6 +205,41 @@ class GroupSessionScreenTest {
   }
 
   @Test
+  fun loading_state_is_displayed_while_loading() {
+    val neverEndingRepo =
+        object : GroupSessionsRepository {
+          override fun observeSessions(endingAfter: Instant): Flow<Result<List<GroupSession>>> =
+              flow {
+                awaitCancellation()
+              }
+
+          override fun newSessionId(): String = "id"
+
+          override suspend fun getSession(sessionId: String): Result<GroupSession> =
+              Result.failure(RuntimeException())
+
+          override suspend fun saveSession(userId: String, session: GroupSession): Result<Unit> =
+              Result.failure(RuntimeException())
+
+          override suspend fun deleteSession(userId: String, sessionId: String): Result<Unit> =
+              Result.failure(RuntimeException())
+
+          override suspend fun joinSession(userId: String, sessionId: String): Result<Unit> =
+              Result.failure(RuntimeException())
+
+          override suspend fun leaveSession(userId: String, sessionId: String): Result<Unit> =
+              Result.failure(RuntimeException())
+        }
+    val viewModel = GroupSessionsViewModel(authRepository, neverEndingRepo)
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.LOADING).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.group_session_loading))
+        .assertIsDisplayed()
+  }
+
+  @Test
   fun search_and_join_leave_actions_work() {
     val viewModel = GroupSessionsViewModel(authRepository, repo)
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
@@ -259,6 +298,96 @@ class GroupSessionScreenTest {
     composeTestRule.onNodeWithText(joinErrorText).assertDoesNotExist()
   }
 
+  @Test
+  fun failed_leave_shows_dismissible_error_message() {
+    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
+
+    repo.failLeave = true
+    val leaveText = context.getString(R.string.group_session_action_leave)
+    val leaveErrorText = context.getString(R.string.group_session_error_leave)
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(hasText(leaveText))
+    composeTestRule.onNodeWithText(leaveText).performClick()
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { repo.leaveCalls == 1 }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) {
+      composeTestRule.onAllNodesWithText(leaveErrorText).fetchSemanticsNodes().isNotEmpty()
+    }
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.ERROR_SNACKBAR)
+        .assert(hasAnyDescendant(hasText(leaveErrorText)))
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ERROR_DISMISS).performClick()
+    composeTestRule.onNodeWithText(leaveErrorText).assertDoesNotExist()
+  }
+
+  @Test
+  fun failed_load_shows_dismissible_error_message() {
+    val failingRepo =
+        object : GroupSessionsRepository {
+          override fun observeSessions(endingAfter: Instant): Flow<Result<List<GroupSession>>> =
+              flowOf(Result.failure(RuntimeException("load failed")))
+
+          override fun newSessionId(): String = "id"
+
+          override suspend fun getSession(sessionId: String): Result<GroupSession> =
+              Result.failure(RuntimeException())
+
+          override suspend fun saveSession(userId: String, session: GroupSession): Result<Unit> =
+              Result.failure(RuntimeException())
+
+          override suspend fun deleteSession(userId: String, sessionId: String): Result<Unit> =
+              Result.failure(RuntimeException())
+
+          override suspend fun joinSession(userId: String, sessionId: String): Result<Unit> =
+              Result.failure(RuntimeException())
+
+          override suspend fun leaveSession(userId: String, sessionId: String): Result<Unit> =
+              Result.failure(RuntimeException())
+        }
+    val viewModel = GroupSessionsViewModel(authRepository, failingRepo)
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+
+    val loadErrorText = context.getString(R.string.group_session_error_load)
+    composeTestRule.waitUntil(timeoutMillis = 2_000) {
+      composeTestRule.onAllNodesWithText(loadErrorText).fetchSemanticsNodes().isNotEmpty()
+    }
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.ERROR_SNACKBAR)
+        .assert(hasAnyDescendant(hasText(loadErrorText)))
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ERROR_DISMISS).performClick()
+    composeTestRule.onNodeWithText(loadErrorText).assertDoesNotExist()
+  }
+
+  @Test
+  fun session_status_label_formats_durations_correctly() {
+    var startedLabel = ""
+    var minLabel = ""
+    var hourOneLabel = ""
+    var hoursOtherLabel = ""
+    var dayOneLabel = ""
+    var daysOtherLabel = ""
+
+    composeTestRule.setContent {
+      val now = Instant.parse("2026-10-29T12:00:00Z")
+      startedLabel = sessionStatusLabel(start = now.minus(Duration.ofMinutes(10)), now = now)
+      minLabel = sessionStatusLabel(start = now.plus(Duration.ofMinutes(59)), now = now)
+      hourOneLabel = sessionStatusLabel(start = now.plus(Duration.ofHours(1)), now = now)
+      hoursOtherLabel = sessionStatusLabel(start = now.plus(Duration.ofHours(5)), now = now)
+      dayOneLabel = sessionStatusLabel(start = now.plus(Duration.ofDays(1)), now = now)
+      daysOtherLabel = sessionStatusLabel(start = now.plus(Duration.ofDays(3)), now = now)
+    }
+
+    assertEquals("Started", startedLabel)
+    assertEquals("In 59 min", minLabel)
+    assertEquals("In 1 hour", hourOneLabel)
+    assertEquals("In 5 hours", hoursOtherLabel)
+    assertEquals("In 1 day", dayOneLabel)
+    assertEquals("In 3 days", daysOtherLabel)
+  }
+
   private class FakeAuthRepository(private val currentUserId: String) : AuthRepository {
     override val currentUser = MutableStateFlow(UserAccount(currentUserId, null, "Alice", null))
 
@@ -271,6 +400,7 @@ class GroupSessionScreenTest {
   private class FakeGroupSessionsRepository(
       private val initialSessions: List<GroupSession>,
       var failJoin: Boolean = false,
+      var failLeave: Boolean = false,
   ) : GroupSessionsRepository {
     private var state = MutableStateFlow(initialSessions)
     var joinCalls: Int = 0
@@ -281,6 +411,7 @@ class GroupSessionScreenTest {
 
     fun reset() {
       failJoin = false
+      failLeave = false
       joinCalls = 0
       leaveCalls = 0
       state = MutableStateFlow(initialSessions)
@@ -317,6 +448,7 @@ class GroupSessionScreenTest {
 
     override suspend fun leaveSession(userId: String, sessionId: String): Result<Unit> {
       leaveCalls += 1
+      if (failLeave) return Result.failure(RuntimeException("leave failed"))
       state.value =
           state.value.map { session ->
             if (session.id == sessionId)
