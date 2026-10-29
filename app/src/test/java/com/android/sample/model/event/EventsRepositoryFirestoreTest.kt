@@ -13,6 +13,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
@@ -189,6 +190,40 @@ class EventsRepositoryFirestoreTest {
     } catch (caught: CancellationException) {
       assertSame(cancellation, caught)
     }
+  }
+
+  /** Equal snapshots do not emit twice, while a changed subject list still emits. */
+  @Test
+  fun subjectObservationSuppressesDuplicateValues() = runTest {
+    val meta: CollectionReference = mock()
+    val subjects: DocumentReference = mock()
+    val registration: ListenerRegistration = mock()
+    val empty: DocumentSnapshot = mock()
+    val changed: DocumentSnapshot = mock()
+    val start = Instant.parse("2026-01-01T10:00:00Z")
+    val event =
+        Event("id", "owner", EventType.COURSE, "Physics", start, start.plusSeconds(3600), start)
+    whenever(owner.collection("meta")).thenReturn(meta)
+    whenever(meta.document("subjects")).thenReturn(subjects)
+    whenever(subjects.addSnapshotListener(any<EventListener<DocumentSnapshot>>()))
+        .thenReturn(registration)
+    whenever(empty.data).thenReturn(null)
+    whenever(changed.data).thenReturn(SubjectCatalogFirestoreMapper.encode(event))
+    val results = mutableListOf<Result<List<String>>>()
+    val collector = launch { repository.observeSubjects("owner").collect { results.add(it) } }
+    runCurrent()
+    val callback = argumentCaptor<EventListener<DocumentSnapshot>>()
+    verify(subjects).addSnapshotListener(callback.capture())
+
+    callback.firstValue.onEvent(empty, null)
+    runCurrent()
+    callback.firstValue.onEvent(empty, null)
+    runCurrent()
+    callback.firstValue.onEvent(changed, null)
+    runCurrent()
+
+    assertEquals(listOf(emptyList<String>(), listOf("Physics")), results.map { it.getOrThrow() })
+    collector.cancelAndJoin()
   }
 
   /** A cancelled subject collector removes its SDK and authentication listeners. */
