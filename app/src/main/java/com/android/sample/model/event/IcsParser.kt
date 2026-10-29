@@ -77,16 +77,7 @@ object IcsParser {
           }
           currentBlock = null
         }
-        currentBlock != null -> {
-          val colonIndex = trimmed.indexOf(':')
-          if (colonIndex != -1) {
-            val rawKey = trimmed.substring(0, colonIndex).trim()
-            val value = trimmed.substring(colonIndex + 1).trim()
-            // Normalize property name by stripping parameters after ';'
-            val propName = rawKey.substringBefore(';').uppercase()
-            currentBlock.getOrPut(propName) { mutableListOf() }.add(rawKey to value)
-          }
-        }
+        currentBlock != null -> addProperty(currentBlock, trimmed)
       }
     }
 
@@ -94,6 +85,23 @@ object IcsParser {
     if (currentBlock != null) skipped++
 
     return ParseResult(events, skipped)
+  }
+
+  /**
+   * Adds the `NAME;PARAMS:value` line [line] to [block], keyed by the upper-cased property name
+   * without its parameters. Lines without a colon are ignored.
+   */
+  private fun addProperty(
+      block: MutableMap<String, MutableList<Pair<String, String>>>,
+      line: String,
+  ) {
+    val colonIndex = line.indexOf(':')
+    if (colonIndex == -1) return
+    val rawKey = line.substring(0, colonIndex).trim()
+    val value = line.substring(colonIndex + 1).trim()
+    // Normalize property name by stripping parameters after ';'
+    val propName = rawKey.substringBefore(';').uppercase()
+    block.getOrPut(propName) { mutableListOf() }.add(rawKey to value)
   }
 
   /**
