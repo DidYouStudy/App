@@ -2,7 +2,6 @@
 // Co-authored-by: Claude Opus 5.5
 package com.android.sample.model.groupsession
 
-import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
 import java.time.Instant
@@ -18,64 +17,7 @@ import kotlinx.coroutines.sync.withLock
  * In-memory [GroupSessionsRepository] for tests and early UI development; data is not persisted.
  */
 class InMemoryGroupSessionsRepository : GroupSessionsRepository {
-  private val sessions =
-      MutableStateFlow(
-          mapOf(
-              "session-1" to
-                  GroupSession(
-                      id = "session-1",
-                      createdBy = "alice",
-                      memberIds = listOf("alice", "bob", "charlie"),
-                      type = EventType.EXERCISE_SESSION,
-                      subject = "Analysis II",
-                      startsAt = Instant.parse("2028-10-28T16:00:00Z"),
-                      endsAt = Instant.parse("2028-10-28T22:30:00Z"),
-                      createdAt = Instant.parse("2028-10-27T08:00:00Z"),
-                      location = "CM 1 105",
-                      description = "Working through problem set 4. Bring lecture notes!",
-                  ),
-              "session-2" to
-                  GroupSession(
-                      id = "session-2",
-                      createdBy = "bob",
-                      memberIds = listOf("bob", "diana", "frank"),
-                      type = EventType.EXAM,
-                      subject = "Linear algebra",
-                      startsAt = Instant.parse("2026-10-29T21:00:00Z"),
-                      endsAt = Instant.parse("2026-10-29T21:30:00Z"),
-                      createdAt = Instant.parse("2026-10-27T09:00:00Z"),
-                      location = "BC 02",
-                      description = "Mock exam simulation under 90-minute timed conditions.",
-                  ),
-              "session-3" to
-                  GroupSession(
-                      id = "session-3",
-                      createdBy = "XBa6wUrTypVPzQ8w4qsvA0a99582", // YOUR USER ID
-                      memberIds = listOf("XBa6wUrTypVPzQ8w4qsvA0a99582"),
-                      type = EventType.PROJECT,
-                      subject = "Software architecture project workshop",
-                      startsAt = Instant.parse("2026-10-30T18:30:00Z"),
-                      endsAt = Instant.parse("2026-10-30T20:30:00Z"),
-                      createdAt = Instant.parse("2026-10-27T10:30:00Z"),
-                      location = null,
-                      description =
-                          "Very long description Very long description Very long description Very long description Very long description Very long description ",
-                  ),
-              "session-4" to
-                  GroupSession(
-                      id = "session-4",
-                      createdBy = "alice",
-                      memberIds = listOf("alice", "bob", "charlie", "erin"),
-                      type = EventType.STUDY_SESSION,
-                      subject = "Discrete Mathematics Problem Solving Group",
-                      startsAt = Instant.parse("2026-10-29T17:00:00Z"),
-                      endsAt = Instant.parse("2026-10-29T18:30:00Z"),
-                      createdAt = Instant.parse("2026-10-27T10:30:00Z"),
-                      location = "INM 111",
-                      description = "Going over combinatorics and induction practice sets.",
-                  ),
-          )
-      )
+  private val sessions = MutableStateFlow<Map<String, GroupSession>>(emptyMap())
   private val writeMutex = Mutex()
 
   /** Observes public sessions that have not ended yet, in start/end/ID order. */
