@@ -1,4 +1,16 @@
 {
-  "indexes": [],
-  "fieldOverrides": []
+  "indexes": [
+    {
+      "collectionGroup": "events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "startsAt", "order": "ASCENDING" },
+        { "fieldPath": "endsAt", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    { "collectionGroup": "meta", "fieldPath": "subjects", "indexes": [] },
+    { "collectionGroup": "events", "fieldPath": "tasks", "indexes": [] }
+  ]
 }

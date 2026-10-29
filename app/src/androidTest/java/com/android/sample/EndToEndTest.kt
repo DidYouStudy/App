@@ -18,7 +18,6 @@ import com.android.sample.model.preferences.TimeOfDay
 import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.ProfileRepositoryProvider
-import com.android.sample.model.profile.ProfileResolution
 import com.android.sample.model.profile.UserProfile
 import com.android.sample.ui.auth.SignInScreenTestTags
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -290,6 +289,6 @@ private class InMemoryPreferencesRepository : PreferencesRepository {
 private class EmptyProfileRepository : ProfileRepository {
   override suspend fun getProfile(userId: String): Result<UserProfile?> = Result.success(null)
 
-  override suspend fun createProfile(userId: String): Result<ProfileResolution> =
+  override suspend fun createProfile(userId: String): Result<UserProfile> =
       Result.failure(UnsupportedOperationException("Profiles are not created in this test"))
 }

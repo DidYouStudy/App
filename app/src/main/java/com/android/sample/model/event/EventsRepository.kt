@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.model.event
 
 import java.time.Instant
@@ -52,11 +53,20 @@ interface EventsRepository {
    */
   fun observeSubjects(ownerId: String): Flow<Result<List<String>>>
 
+  /**
+   * Returns every event of the owner that was imported from a schedule file (has an
+   * [Event.importKey]), whatever its date, so a new import can update or remove them.
+   *
+   * @return [Result.failure] with [EventsError.INVALID_ARGUMENT] when [ownerId] is blank.
+   */
+  suspend fun getImportedEvents(ownerId: String): Result<List<Event>>
+
   /** Creates the event, or replaces the owner's event with the same ID, and records its subject. */
   suspend fun saveEvent(event: Event): Result<Unit>
 
   /**
-   * Saves multiple events atomically or in batch, recording their subjects.
+   * Saves multiple events in one batch, recording their subjects. All events must have the same
+   * owner; a mixed-owner list is rejected without saving any events.
    *
    * @return [Result.success] when all events are saved, or [Result.failure] if validation or
    *   writing fails.
