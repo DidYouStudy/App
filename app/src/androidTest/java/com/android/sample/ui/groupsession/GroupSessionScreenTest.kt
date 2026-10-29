@@ -115,6 +115,9 @@ class GroupSessionScreenTest {
     composeTestRule
         .onNodeWithText(context.getString(R.string.group_session_active_sessions_title))
         .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(hasText("Software Architecture"))
     composeTestRule.onNodeWithText("Software Architecture").assertIsDisplayed()
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
@@ -124,6 +127,9 @@ class GroupSessionScreenTest {
     composeTestRule
         .onNodeWithText(context.getString(R.string.group_session_filter_my))
         .performClick()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(hasText("Software Architecture"))
     composeTestRule.onNodeWithText("Software Architecture").assertIsDisplayed()
     composeTestRule.onNodeWithText("Capstone planning").assertDoesNotExist()
   }
@@ -143,6 +149,9 @@ class GroupSessionScreenTest {
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
     composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(hasTestTag(GroupSessionScreenTestTags.sessionItem(0)))
+    composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.sessionItem(0))
         .assert(hasAnyDescendant(hasText(context.getString(R.string.group_session_host_self))))
         .assert(hasAnyDescendant(hasText(context.getString(R.string.group_session_action_edit))))
@@ -160,6 +169,9 @@ class GroupSessionScreenTest {
         .onNodeWithText(context.getString(R.string.group_session_filter_my))
         .performClick()
 
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(hasText("Software Architecture"))
     composeTestRule.onNodeWithText("Software Architecture").assertIsDisplayed()
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
@@ -251,6 +263,9 @@ class GroupSessionScreenTest {
     val leaveText = context.getString(R.string.group_session_action_leave)
 
     composeTestRule.onNodeWithText(searchPlaceholder).performTextInput("capstone")
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(hasText("Capstone planning"))
     composeTestRule.onNodeWithText("Capstone planning").assertIsDisplayed()
 
     composeTestRule
