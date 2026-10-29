@@ -1,4 +1,5 @@
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.settings
 
 import androidx.compose.foundation.layout.Column
@@ -145,11 +146,6 @@ fun SettingsScreenStateless(
           text = stringResource(R.string.settings_preferences_button),
           onClick = onModifyPreferencesClick,
           testTag = SettingsScreenTestTags.PREFERENCES_BUTTON,
-      )
-      Text(
-          text = "(Not implemented)",
-          style = MaterialTheme.typography.labelSmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
 
       Spacer(Modifier.height(16.dp))

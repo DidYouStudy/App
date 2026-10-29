@@ -1,8 +1,10 @@
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -151,6 +153,50 @@ class EndToEndTest {
     assertOnDashboard()
     composeRule.onNodeWithTag(PrefTags.PREFERENCE_SCREEN).assertDoesNotExist()
     composeRule.onNodeWithTag(SignInScreenTestTags.SCREEN).assertDoesNotExist()
+  }
+
+  @Test
+  fun returningUser_opensPreferencesFromSettings_andBackReturnsWithoutSaving() {
+    val original = UserPreferences(userId = USER.uid)
+    environment.preferences.saved[USER.uid] = original
+    environment.auth.signInAs(USER)
+    assertOnDashboard()
+
+    // The Settings button opens Preferences in edit mode: edit title and a back button.
+    openSettings()
+    composeRule.onNodeWithTag(SettingsScreenTestTags.PREFERENCES_BUTTON).performClick()
+    waitForTag(PrefTags.PREFERENCE_SCREEN)
+    composeRule.onNodeWithTag(PrefTags.PREFERENCE_TITLE).assertTextEquals("Modify your preferences")
+    composeRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).assertIsDisplayed()
+
+    // Changing a value then going back returns to Settings and persists nothing.
+    composeRule.click(PrefTags.SESSION_LENGTH_2_HOURS)
+    composeRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).performClick()
+    waitForTag(SettingsScreenTestTags.SCREEN)
+    composeRule.onNodeWithTag(PrefTags.PREFERENCE_SCREEN).assertDoesNotExist()
+    assertEquals(original, environment.preferences.saved[USER.uid])
+  }
+
+  @Test
+  fun returningUser_savesEditedPreferences_andReturnsToSettings() {
+    environment.preferences.saved[USER.uid] = UserPreferences(userId = USER.uid)
+    environment.auth.signInAs(USER)
+    assertOnDashboard()
+
+    openSettings()
+    composeRule.onNodeWithTag(SettingsScreenTestTags.PREFERENCES_BUTTON).performClick()
+    waitForTag(PrefTags.PREFERENCE_SCREEN)
+    composeRule.click(PrefTags.SESSION_LENGTH_2_HOURS)
+    composeRule.onNodeWithTag(PrefTags.SAVE_BUTTON).performClick()
+
+    // Saving persists the edit and lands back on Settings, not on the dashboard.
+    waitForTag(SettingsScreenTestTags.SCREEN)
+    composeRule.onNodeWithTag(PrefTags.PREFERENCE_SCREEN).assertDoesNotExist()
+    assertEquals(120, environment.preferences.saved[USER.uid]?.sessionLengthMinutes)
+
+    // Back from Settings reaches the dashboard: Preferences was not left on the back stack.
+    composeRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).performClick()
+    assertOnDashboard()
   }
 
   @Test

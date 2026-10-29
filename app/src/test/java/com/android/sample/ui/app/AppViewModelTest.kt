@@ -1,4 +1,5 @@
 // Co-authored-by: GitHub Copilot
+// Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.app
 
 import com.android.sample.model.auth.UserAccount
@@ -151,7 +152,51 @@ class AppViewModelTest {
     val viewModel = AppViewModel(authRepository, preferencesRepository)
 
     assertEquals(true, viewModel.canNavigateTo(Screen.Dashboard))
+    assertEquals(true, viewModel.canNavigateTo(Screen.Settings))
     assertEquals(false, viewModel.canNavigateTo(Screen.Auth))
+  }
+
+  /** A returning user must be able to reach Preferences from Settings to edit them (#124). */
+  @Test
+  fun returningUserCanNavigateToPreferencesToEditThem() = runTest {
+    val viewModel = signedInViewModelWithPreferences()
+
+    assertEquals(AppUiState.Dashboard, viewModel.uiState.value)
+    assertEquals(true, viewModel.canNavigateTo(Screen.Preferences))
+  }
+
+  /** First-time onboarding is unchanged: saving moves to Dashboard and closes the flow. */
+  @Test
+  fun savingFirstTimePreferencesStillMovesToDashboard() = runTest {
+    val user = UserAccount("user-1", null, null, null)
+    authRepository.currentUser.value = user
+    `when`(preferencesRepository.getPreferences(user.uid)).thenReturn(Result.success(null))
+    val viewModel = AppViewModel(authRepository, preferencesRepository)
+
+    viewModel.onPreferencesSaved()
+
+    assertEquals(AppUiState.Dashboard, viewModel.uiState.value)
+    assertEquals(true, viewModel.canNavigateTo(Screen.Dashboard))
+  }
+
+  /** Signing out while editing blocks Preferences again. */
+  @Test
+  fun signingOutWhileEditingBlocksPreferences() = runTest {
+    val viewModel = signedInViewModelWithPreferences()
+
+    authRepository.currentUser.value = null
+
+    assertEquals(AppUiState.LogOut, viewModel.uiState.value)
     assertEquals(false, viewModel.canNavigateTo(Screen.Preferences))
+    assertEquals(true, viewModel.canNavigateTo(Screen.Auth))
+  }
+
+  /** Builds a view model for a signed-in user who already has saved preferences. */
+  private suspend fun signedInViewModelWithPreferences(): AppViewModel {
+    val user = UserAccount("user-1", null, null, null)
+    authRepository.currentUser.value = user
+    `when`(preferencesRepository.getPreferences(user.uid))
+        .thenReturn(Result.success(UserPreferences(userId = user.uid)))
+    return AppViewModel(authRepository, preferencesRepository)
   }
 }
