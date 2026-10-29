@@ -122,6 +122,25 @@ class ProfileResolutionCoordinatorTest {
     assertSame(failure, exception.cause)
   }
 
+  // Converts an unexpected exception during profile creation into a stable failure.
+  @Test
+  fun resolve_wrapsUnexpectedCreationExceptionAsUnknownProfileFailure() = runTest {
+    val failure = IllegalStateException("unexpected profile creation failure")
+    val repository =
+        FakeProfileRepository(
+            getProfileResult = Result.success(null),
+            createProfileException = failure,
+        )
+
+    val result = ProfileResolutionCoordinator(repository).resolve(user)
+
+    assertTrue(result.isFailure)
+    val exception = result.exceptionOrNull() as ProfileException
+    assertEquals(ProfileError.UNKNOWN, exception.error)
+    assertSame(failure, exception.cause)
+    assertEquals(listOf("user123"), repository.createProfileUserIds)
+  }
+
   // Rejects a profile that does not belong to the authenticated user.
   @Test
   fun resolve_rejectsProfileWithDifferentUserId() = runTest {
@@ -261,7 +280,7 @@ class ProfileResolutionCoordinatorTest {
   private class FakeProfileRepository(
       private val getProfileResult: Result<UserProfile?> = Result.success(null),
       private val createProfileResult: Result<UserProfile> = Result.success(UserProfile("user123")),
-      private val createProfileException: CancellationException? = null,
+      private val createProfileException: Throwable? = null,
       private val getProfileException: Throwable? = null,
   ) : ProfileRepository {
     val getProfileUserIds = mutableListOf<String>()
