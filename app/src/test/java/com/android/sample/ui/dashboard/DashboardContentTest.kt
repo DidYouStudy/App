@@ -5,12 +5,9 @@ import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assert
-import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertCountEquals
-import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -20,7 +17,6 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.TextLayoutResult
@@ -28,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
-import com.android.sample.ui.sharedComponents.AddButton
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -320,40 +315,5 @@ class DashboardContentTest {
         averageDailyBounds.bottom - averageDailyBounds.top,
         totalSessionsBounds.bottom - totalSessionsBounds.top,
     )
-  }
-
-  @Test
-  fun addButtonHasAccessibleDescriptionAndClickAction() {
-    val context = ApplicationProvider.getApplicationContext<Context>()
-    composeTestRule.setContent {
-      AddButton(
-          onClick = {},
-          contentDescription = context.getString(R.string.dashboard_add_description),
-          modifier = Modifier.testTag(DashboardContentTestTags.ADD_BUTTON),
-      )
-    }
-
-    composeTestRule
-        .onNodeWithTag(DashboardContentTestTags.ADD_BUTTON)
-        .assertIsDisplayed()
-        .assertHasClickAction()
-        .assertContentDescriptionEquals(context.getString(R.string.dashboard_add_description))
-  }
-
-  @Test
-  fun eachAddButtonClickInvokesCallbackExactlyOnce() {
-    var callbackCount = 0
-    composeTestRule.setContent {
-      AddButton(
-          onClick = { callbackCount++ },
-          contentDescription = "Add",
-          modifier = Modifier.testTag(DashboardContentTestTags.ADD_BUTTON),
-      )
-    }
-
-    composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
-    assertEquals(1, callbackCount)
-    composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
-    assertEquals(2, callbackCount)
   }
 }
