@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.model.event
 
 import java.time.Instant
@@ -56,7 +57,8 @@ interface EventsRepository {
   suspend fun saveEvent(event: Event): Result<Unit>
 
   /**
-   * Saves multiple events atomically or in batch, recording their subjects.
+   * Saves multiple events in one batch, recording their subjects. All events must have the same
+   * owner; a mixed-owner list is rejected without saving any events.
    *
    * @return [Result.success] when all events are saved, or [Result.failure] if validation or
    *   writing fails.

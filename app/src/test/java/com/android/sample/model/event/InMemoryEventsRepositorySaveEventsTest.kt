@@ -1,4 +1,5 @@
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.model.event
 
 import java.time.Duration
@@ -120,13 +121,35 @@ class InMemoryEventsRepositorySaveEventsTest {
     assertEquals("Computer Science", subjects[1])
   }
 
+  /** Mixed-owner batches are rejected before either user's data is changed. */
+  @Test
+  fun saveEventsRejectsMixedOwnersWithoutWrites() = runBlocking {
+    val user1Event = createSampleEvent("user1_ev", ownerId1, "User1 Course")
+    val user2Event = createSampleEvent("user2_ev", ownerId2, "User2 Course")
+
+    val result = repository.saveEvents(listOf(user1Event, user2Event))
+
+    assertEquals(EventsError.INVALID_ARGUMENT, (result.exceptionOrNull() as EventsException).error)
+    assertEquals(
+        EventsError.NOT_FOUND,
+        (repository.getEvent(ownerId1, user1Event.id).exceptionOrNull() as EventsException).error,
+    )
+    assertEquals(
+        EventsError.NOT_FOUND,
+        (repository.getEvent(ownerId2, user2Event.id).exceptionOrNull() as EventsException).error,
+    )
+    assertTrue(repository.observeSubjects(ownerId1).first().getOrThrow().isEmpty())
+    assertTrue(repository.observeSubjects(ownerId2).first().getOrThrow().isEmpty())
+  }
+
+  /** Separate batches remain isolated between owners. */
   @Test
   fun saveEventsIsolatesDataBetweenMultipleUsers() = runBlocking {
     val user1Event = createSampleEvent("user1_ev", ownerId1, "User1 Course")
     val user2Event = createSampleEvent("user2_ev", ownerId2, "User2 Course")
 
-    val result = repository.saveEvents(listOf(user1Event, user2Event))
-    assertTrue(result.isSuccess)
+    repository.saveEvents(listOf(user1Event)).getOrThrow()
+    repository.saveEvents(listOf(user2Event)).getOrThrow()
 
     // User 1 sees only their event and subjects
     val user1Events =
