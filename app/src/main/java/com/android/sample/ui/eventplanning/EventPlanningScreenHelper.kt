@@ -60,8 +60,8 @@ fun SelectorFieldPill(
     placeholderText: String,
     onClick: () -> Unit,
     testTag: String,
-    hasDropdownArrow: Boolean = false,
     modifier: Modifier = Modifier,
+    hasDropdownArrow: Boolean = false,
 ) {
   val shape = RoundedCornerShape(Dimens.cornerPill)
   Box(
