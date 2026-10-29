@@ -31,4 +31,35 @@ object Dimens {
   val googleButtonHorizontalPadding = 12.dp
   val googleLogoSize = 20.dp
   val profileButtonPadding = 12.dp
+
+  val calendarWeekSwitchHeaderHeight = 52.dp
+  val calendarWeekNavigationButtonSize = 36.dp
+  val calendarDayHeaderHeight = 54.dp
+  val calendarDayHeaderBorderWidth = 0.5.dp
+  val calendarDayNumberSlotSize = 20.dp
+  val calendarTodayCircleSize = 22.dp
+  val calendarDayLabelVerticalOffset = (-5).dp
+  val calendarHourLabelVerticalOffset = (-8).dp
+  val calendarTimeAxisWidth = 48.dp
+  val calendarInitialLabelClearance = 6.dp
+  val calendarTodayChipHorizontalPadding = 8.dp
+  val calendarTodayChipVerticalPadding = 4.dp
+  // Event planning & form dimensions
+  val borderMedium = 1.5.dp
+  val cornerPill = 30.dp
+  val pillMinHeight = 54.dp
+  val pillHorizontalPadding = 20.dp
+  val pillVerticalPadding = 14.dp
+  val formHorizontalPadding = 24.dp
+  val formVerticalPadding = 8.dp
+  val formSpacing = 8.dp
+  val saveButtonHorizontalPadding = 24.dp
+  val saveButtonVerticalPadding = 16.dp
+  val saveButtonHeight = 54.dp
+  val saveButtonProgressSize = 24.dp
+  val progressIndicatorStrokeWidth = 2.dp
+  val taskRowHorizontalPadding = 12.dp
+  val taskRowVerticalPadding = 4.dp
+  val taskTextStartPadding = 4.dp
+  val errorVerticalPadding = 4.dp
 }
