@@ -65,13 +65,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.model.event.EventType
-import com.android.sample.ui.event.AddButton
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.profile.ProfileButton
+import com.android.sample.ui.sharedComponents.AddButton
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId

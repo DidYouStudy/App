@@ -17,13 +17,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.sample.R
-import com.android.sample.ui.event.AddButton
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.profile.ProfileButton
+import com.android.sample.ui.sharedComponents.AddButton
 import com.android.sample.ui.theme.Dimens
 
 @OptIn(ExperimentalMaterial3Api::class)

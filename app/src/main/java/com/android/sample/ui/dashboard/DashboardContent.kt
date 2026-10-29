@@ -30,7 +30,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
 import com.android.sample.R
-import com.android.sample.ui.event.AddButton
+import com.android.sample.ui.sharedComponents.AddButton
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
