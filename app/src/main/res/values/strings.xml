@@ -1,6 +1,7 @@
 <!-- Co-authored-by: GitHub Copilot -->
 <!-- Co-authored-by: Claude AI Agent -->
 <!-- Co-authored-by: Claude Opus 5.5 -->
+<!-- Co-authored-by: OpenAI Codex <noreply@openai.com> -->
 <resources>
     <string name="app_name">DidYouStudy</string>
     <string name="button_go_back">Back</string>
@@ -26,6 +27,10 @@
     <string name="settings_error_failed_to_load_profile">Failed to load user profile.</string>
     <string name="settings_error_failed_to_sign_out">Failed to sign out.</string>
     <string name="profile_button_description">Open profile</string>
+    <string name="calendar_title">Calendar</string>
+    <string name="calendar_today_label">Today</string>
+    <string name="calendar_previous_week_description">Previous week</string>
+    <string name="calendar_next_week_description">Next week</string>
     <string name="preferences_header">Complete your profile</string>
     <string name="preferences_edit_header">Modify your preferences</string>
     <string name="preferences_retry_button_on_error">Retry</string>
