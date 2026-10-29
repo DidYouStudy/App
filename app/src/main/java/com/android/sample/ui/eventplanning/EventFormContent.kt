@@ -18,8 +18,24 @@ import com.android.sample.ui.theme.Dimens
 import java.time.format.DateTimeFormatter
 
 /**
- * Reusable scrollable form content containing all event attributes. Used identically by
- * AddEventScreen and future EditEventScreen.
+ * Renders the complete scrollable event planning form.
+ *
+ * This composable encapsulates the event input fields (type, date, start/end times,
+ * subject, location, description, and task checklist) and error banners. It is designed
+ * to be decoupled from screen chrome to enable reuse between Add and Edit event screens.
+ *
+ * @param uiState Current UI state containing form values, tasks, and validation errors.
+ * @param onTypeClick Invoked when the user taps the event type selector pill.
+ * @param onDateClick Invoked when the user taps the date selector pill.
+ * @param onStartTimeClick Invoked when the user taps the start time selector pill.
+ * @param onEndTimeClick Invoked when the user taps the end time selector pill.
+ * @param onSubjectClick Invoked when the user taps the subject selector pill.
+ * @param onLocationChange Callback when the text in the location field changes.
+ * @param onDescriptionChange Callback when the text in the description field changes.
+ * @param onAddTask Callback invoked with the non-blank task title when submitted via IME Done.
+ * @param onToggleTask Callback invoked with the index of the task to toggle completion.
+ * @param onDeleteTask Callback invoked with the index of the task to delete.
+ * @param modifier Modifier applied to the outer scrollable container.
  */
 @Composable
 fun EventFormContent(

@@ -38,7 +38,22 @@ import com.android.sample.model.event.EventType
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
 import com.android.sample.ui.theme.Dimens
 
-/** Stateful entry point for the "Add new..." event creation screen. */
+/**
+ * Stateful destination screen for creating and saving a new event.
+ *
+ * Collects state from [EventPlanningViewModel], handles the event-saved navigation
+ * side effect, and embeds [AddEventScreenStateless] inside a Scaffold.
+ *
+ * @param modifier Modifier applied to the root screen layout.
+ * @param viewModel ViewModel backing the event creation workflow.
+ * @param onBackClick Invoked when the top app bar navigation icon is pressed.
+ * @param onEventSaved Invoked once the event has been successfully persisted.
+ * @param onPickTypeClick Intent to trigger the type selection modal.
+ * @param onPickDateClick Intent to trigger the date picker dialog.
+ * @param onPickStartTimeClick Intent to trigger the start time picker dialog.
+ * @param onPickEndTimeClick Intent to trigger the end time picker dialog.
+ * @param onPickSubjectClick Intent to trigger the subject search modal.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEventScreen(
