@@ -90,8 +90,8 @@ class EventsRepositoryFirestore(
   override suspend fun saveEvents(events: List<Event>): Result<Unit> = execute {
     if (events.isNotEmpty()) {
       val owner = events.first().ownerId
+      requireArgument(events.all { it.ownerId == owner })
       val encoded = events.map { event ->
-        requireArgument(event.ownerId == owner)
         validate(event.ownerId, event.id)
         val data = EventFirestoreMapper.encode(event)
         // Revalidate tasks: the caller may have changed the list since creating the event.

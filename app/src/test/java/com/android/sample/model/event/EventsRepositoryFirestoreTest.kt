@@ -108,6 +108,22 @@ class EventsRepositoryFirestoreTest {
     verifyNoInteractions(db)
   }
 
+  /** A change of account during validation cannot make a mixed-owner batch valid. */
+  @Test
+  fun rejectsMixedOwnersWhenAuthenticationChanges() = runTest {
+    val otherUser: FirebaseUser = mock()
+    whenever(otherUser.uid).thenReturn("other")
+    whenever(auth.currentUser).thenReturn(user, otherUser)
+    val start = Instant.parse("2026-01-01T10:00:00Z")
+    val event = Event("id", "owner", EventType.OTHER, null, start, start.plusSeconds(3600), start)
+
+    assertEquals(
+        EventsError.INVALID_ARGUMENT,
+        repository.saveEvents(listOf(event, event.copy(id = "second", ownerId = "other"))).error(),
+    )
+    verifyNoInteractions(db)
+  }
+
   /** Revalidates a changed task list in a later event before writing anything. */
   @Test
   fun rejectsInvalidNestedTaskBeforeWriting() = runTest {
