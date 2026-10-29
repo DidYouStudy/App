@@ -127,6 +127,22 @@ class ScheduleImporterTest {
   }
 
   @Test
+  fun import_fileWithoutCalendarEnd_isFlaggedAndDeletesNothing() = runTest {
+    val repo = InMemoryEventsRepository()
+    val importer = ScheduleImporter(repo)
+    importer.import(
+        owner,
+        stream(ics(vevent("old@x", "20261015T080000"), vevent("a@x", "20261016T080000"))),
+    )
+    val cutOff = ics(vevent("a@x", "20261016T080000")).removeSuffix("\nEND:VCALENDAR")
+
+    val result = importer.import(owner, stream(cutOff))
+
+    assertEquals(ImportSummary(imported = 1, skipped = 0, incomplete = true), result.getOrThrow())
+    assertEquals(2, stored(repo).size)
+  }
+
+  @Test
   fun import_cancellingOneOccurrence_keepsSiblingIdentityAndTasks() = runTest {
     val repo = InMemoryEventsRepository()
     val importer = ScheduleImporter(repo)

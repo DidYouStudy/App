@@ -28,9 +28,9 @@ class ScheduleImporter(
    * with its events.
    *
    * New events are saved before stale ones are deleted, so a failure never leaves the calendar
-   * emptier than before. If some entries of the file were malformed and skipped, nothing is
-   * deleted: a skipped entry may be one that was imported earlier, and removing it would lose its
-   * tasks for a mere parsing problem.
+   * emptier than before. If some entries of the file were malformed and skipped, or the file looks
+   * cut off (no closing `END:VCALENDAR`), nothing is deleted: the missing entries may be ones that
+   * were imported earlier, and removing them would lose their tasks for a mere parsing problem.
    *
    * @param openStream opens the file; called off the main thread, and the stream is closed here.
    *   Returning null (e.g. the file vanished) counts as a failure.
@@ -79,7 +79,7 @@ class ScheduleImporter(
     }
 
     // Only prune when the whole file was understood (see the KDoc).
-    if (report.skipped == 0) {
+    if (report.isComplete) {
       val keptKeys = incoming.map { it.importKey }.toSet()
       for (stale in existing.filter { it.importKey !in keptKeys }) {
         repository.deleteEvent(ownerId, stale.id).onFailure {
@@ -87,7 +87,13 @@ class ScheduleImporter(
         }
       }
     }
-    return Result.success(ImportSummary(imported = toSave.size, skipped = report.skipped))
+    return Result.success(
+        ImportSummary(
+            imported = toSave.size,
+            skipped = report.skipped,
+            incomplete = report.missingCalendarEnd,
+        )
+    )
   }
 
   private companion object {
@@ -107,6 +113,7 @@ class ScheduleImporter(
 }
 
 /**
- * Outcome of an import: [imported] events were stored, [skipped] malformed entries were ignored.
+ * Outcome of an import: [imported] events were stored, [skipped] malformed entries were ignored,
+ * and [incomplete] tells that the file lacks its closing `END:VCALENDAR` line (probably cut off).
  */
-data class ImportSummary(val imported: Int, val skipped: Int)
+data class ImportSummary(val imported: Int, val skipped: Int, val incomplete: Boolean = false)

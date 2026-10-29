@@ -37,7 +37,10 @@ fun rememberScheduleImportLauncher(
     val message =
         when (val s = state) {
           is ScheduleImportState.Success ->
-              if (s.skipped == 0) {
+              if (s.incomplete) {
+                // The file looks cut off: events may be missing, so do not claim a clean import.
+                resources.getString(R.string.preferences_import_schedule_incomplete)
+              } else if (s.skipped == 0) {
                 resources.getQuantityString(
                     R.plurals.preferences_import_schedule_success,
                     s.count,

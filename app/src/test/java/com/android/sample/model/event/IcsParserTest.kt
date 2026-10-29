@@ -491,6 +491,23 @@ class IcsParserTest {
   }
 
   @Test
+  fun parseCalendarWithReport_flagsMissingCalendarEnd() {
+    val body =
+        "BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:ok@x\nSUMMARY:Algebra\nCATEGORIES:Cours\n" +
+            "DTSTART;TZID=Europe/Zurich:20261015T080000\nDURATION:PT2H\nEND:VEVENT\n"
+
+    val open = IcsParser.parseCalendarWithReport(stringToStream(body), defaultOwnerId)
+    val closed =
+        IcsParser.parseCalendarWithReport(stringToStream(body + "END:VCALENDAR"), defaultOwnerId)
+
+    assertTrue(open.missingCalendarEnd)
+    assertTrue(!open.isComplete)
+    assertEquals(1, open.events.size)
+    assertTrue(!closed.missingCalendarEnd)
+    assertTrue(closed.isComplete)
+  }
+
+  @Test
   fun parseCalendarWithReport_countsEntryInterruptedByNextBegin() {
     val ics =
         """

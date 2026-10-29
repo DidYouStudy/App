@@ -25,8 +25,12 @@ sealed interface ScheduleImportState {
   /** An import is running. */
   object Importing : ScheduleImportState
 
-  /** [count] events were imported; [skipped] malformed entries of the file were ignored. */
-  data class Success(val count: Int, val skipped: Int = 0) : ScheduleImportState
+  /**
+   * [count] events were imported; [skipped] malformed entries of the file were ignored, and the
+   * file was [incomplete] if it lacks its closing `END:VCALENDAR` line.
+   */
+  data class Success(val count: Int, val skipped: Int = 0, val incomplete: Boolean = false) :
+      ScheduleImportState
 
   /** The import failed: no signed-in user, unreadable file, no valid event, or a storage error. */
   object Failure : ScheduleImportState
@@ -56,7 +60,9 @@ class ScheduleImportViewModel(
               importer
                   .import(ownerId, openStream)
                   .fold(
-                      onSuccess = { ScheduleImportState.Success(it.imported, it.skipped) },
+                      onSuccess = {
+                        ScheduleImportState.Success(it.imported, it.skipped, it.incomplete)
+                      },
                       onFailure = { ScheduleImportState.Failure },
                   )
     }

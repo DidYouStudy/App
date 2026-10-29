@@ -127,6 +127,20 @@ class ScheduleImportLauncherTest {
   }
 
   @Test
+  fun fileWithoutCalendarEnd_showsIncompleteToast() {
+    val viewModel = viewModel()
+    setContent(viewModel)
+
+    pick(clickAndGetPickerRequest(), fileUri(validIcs.removeSuffix("\nEND:VCALENDAR")))
+
+    awaitUntil { ShadowToast.getLatestToast() != null }
+    assertEquals(
+        "Schedule imported, but the file ends unexpectedly and some events may be missing.",
+        ShadowToast.getTextOfLatestToast(),
+    )
+  }
+
+  @Test
   fun invalidFile_showsFailureToast() {
     val viewModel = viewModel()
     setContent(viewModel)

@@ -9,8 +9,20 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-/** Outcome of parsing a calendar: the valid [events] and how many `VEVENT`s were [skipped]. */
-data class ParseResult(val events: List<Event>, val skipped: Int)
+/**
+ * Outcome of parsing a calendar: the valid [events], how many `VEVENT`s were [skipped], and whether
+ * the file lacks its closing `END:VCALENDAR` line ([missingCalendarEnd]), which means it was
+ * probably cut off and may be missing events.
+ */
+data class ParseResult(
+    val events: List<Event>,
+    val skipped: Int,
+    val missingCalendarEnd: Boolean = false,
+) {
+  /** True when the whole file was understood: nothing skipped and properly terminated. */
+  val isComplete: Boolean
+    get() = skipped == 0 && !missingCalendarEnd
+}
 
 /**
  * Utility for parsing iCalendar (.ics) format files into domain [Event] models.
@@ -84,7 +96,11 @@ object IcsParser {
     // The file ended inside a VEVENT (truncated file): that event is dropped, so report it too.
     if (currentBlock != null) skipped++
 
-    return ParseResult(events, skipped)
+    return ParseResult(
+        events,
+        skipped,
+        missingCalendarEnd = lines.none { it.trim() == "END:VCALENDAR" },
+    )
   }
 
   /**

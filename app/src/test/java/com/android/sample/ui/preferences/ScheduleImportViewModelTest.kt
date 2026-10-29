@@ -83,6 +83,19 @@ class ScheduleImportViewModelTest {
   }
 
   @Test
+  fun importSchedule_fileWithoutCalendarEnd_reportsIncomplete() = runTest {
+    val cutOff = validIcs.removeSuffix("\nEND:VCALENDAR")
+
+    viewModel.importSchedule { ByteArrayInputStream(cutOff.toByteArray()) }
+
+    awaitSettled()
+    assertEquals(
+        ScheduleImportState.Success(count = 1, skipped = 0, incomplete = true),
+        viewModel.state.value,
+    )
+  }
+
+  @Test
   fun importSchedule_invalidFile_reportsFailure() = runTest {
     viewModel.importSchedule { ByteArrayInputStream("nope".toByteArray()) }
 

@@ -44,6 +44,7 @@
         <item quantity="one">Schedule imported, but %d entry could not be read and was skipped.</item>
         <item quantity="other">Schedule imported, but %d entries could not be read and were skipped.</item>
     </plurals>
+    <string name="preferences_import_schedule_incomplete">Schedule imported, but the file ends unexpectedly and some events may be missing.</string>
     <string name="preferences_import_schedule_failure">Could not import this schedule. Choose a valid .ics file.</string>
     <string name="preferences_add_study_locations_label">Add your study locations</string>
     <string name="preferences_add_study_locations_button">Add...</string>
