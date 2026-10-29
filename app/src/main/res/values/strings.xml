@@ -46,4 +46,24 @@
     <string name="settings_preferences_button">Modify your preferences</string>
     <string name="settings_friends_button">Manage friends list</string>
     <string name="settings_logout_button">Log out</string>
+
+    <!-- Event Planning -->
+    <string name="event_planning_add_title">Add new&#8230;</string>
+    <string name="event_planning_save_button">Save</string>
+    <string name="event_planning_type_label">Type</string>
+    <string name="event_planning_type_placeholder">Select type</string>
+    <string name="event_planning_date_label">Date</string>
+    <string name="event_planning_date_placeholder">Select date</string>
+    <string name="event_planning_start_time_label">Start time</string>
+    <string name="event_planning_end_time_label">End time</string>
+    <string name="event_planning_time_placeholder">Select time</string>
+    <string name="event_planning_subject_label">Subject</string>
+    <string name="event_planning_subject_optional_label">Subject (optional)</string>
+    <string name="event_planning_select_or_enter_placeholder">Select or enter&#8230;</string>
+    <string name="event_planning_location_optional_label">Location (optional)</string>
+    <string name="event_planning_description_optional_label">Description (optional)</string>
+    <string name="event_planning_description_placeholder">Enter description&#8230;</string>
+    <string name="event_planning_tasks_optional_label">Tasks (optional)</string>
+    <string name="event_planning_add_task_placeholder">Add a task&#8230;</string>
+    <string name="event_planning_delete_task_content_description">Delete task</string>
 </resources>
