@@ -46,4 +46,36 @@
     <string name="settings_preferences_button">Modify your preferences</string>
     <string name="settings_friends_button">Manage friends list</string>
     <string name="settings_logout_button">Log out</string>
+
+    <!-- Group Sessions Screen -->
+    <string name="group_session_title">Group sessions</string>
+    <string name="group_session_error_dismiss">DISMISS</string>
+    <string name="group_session_add_description">Add group session</string>
+    <string name="group_session_error_load">Could not load sessions. Please try again.</string>
+    <string name="group_session_error_join">Could not join session. Please try again.</string>
+    <string name="group_session_error_leave">Could not leave session. Please try again.</string>
+    <string name="group_session_search_icon_description">Search</string>
+    <string name="group_session_filter_icon_description">Filter sessions</string>
+    <string name="group_session_search_placeholder">Search group sessions</string>
+    <string name="group_session_filter_all">All sessions</string>
+    <string name="group_session_filter_my">My sessions</string>
+    <string name="group_session_active_sessions_title">Active sessions</string>
+    <string name="group_session_loading">Loading sessions...</string>
+    <string name="group_session_empty">No active sessions</string>
+    <string name="group_session_subject_fallback">Other</string>
+    <string name="group_session_host_self">Your session (Host)</string>
+    <string name="group_session_hosted_by">Hosted by %1$s</string>
+    <string name="group_session_description_fallback">Group study session</string>
+    <string name="group_session_location_fallback">Location TBD</string>
+    <string name="group_session_date_today">Today</string>
+    <string name="group_session_status_started">Started</string>
+    <string name="group_session_status_in_minutes">In %1$d min</string>
+    <string name="group_session_status_in_hours_one">In %1$d hour</string>
+    <string name="group_session_status_in_hours_other">In %1$d hours</string>
+    <string name="group_session_status_in_days_one">In %1$d day</string>
+    <string name="group_session_status_in_days_other">In %1$d days</string>
+    <string name="group_session_action_edit">Edit</string>
+    <string name="group_session_action_leave">Leave</string>
+    <string name="group_session_action_joined">Joined</string>
+    <string name="group_session_action_join">Join</string>
 </resources>

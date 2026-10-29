@@ -2,6 +2,7 @@
 // Co-authored-by: Claude AI Agent
 package com.android.sample.ui.groupsession
 
+import android.content.Context
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyDescendant
@@ -14,7 +15,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.EventType
@@ -34,6 +37,8 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class GroupSessionScreenTest {
   @get:Rule val composeTestRule = createComposeRule()
+
+  private val context: Context = ApplicationProvider.getApplicationContext()
 
   // Base instant captured when test class is instantiated and shifted forward
   // so group session end times stay in the future regardless of test execution date.
@@ -103,14 +108,18 @@ class GroupSessionScreenTest {
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
     composeTestRule.onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE).assertIsDisplayed()
-    composeTestRule.onNodeWithText("Active sessions").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.group_session_active_sessions_title))
+        .assertIsDisplayed()
     composeTestRule.onNodeWithText("Software Architecture").assertIsDisplayed()
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
         .performScrollToNode(hasText("Capstone planning"))
     composeTestRule.onNodeWithText("Capstone planning").assertIsDisplayed()
 
-    composeTestRule.onNodeWithText("My sessions").performClick()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.group_session_filter_my))
+        .performClick()
     composeTestRule.onNodeWithText("Software Architecture").assertIsDisplayed()
     composeTestRule.onNodeWithText("Capstone planning").assertDoesNotExist()
   }
@@ -131,10 +140,10 @@ class GroupSessionScreenTest {
 
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.sessionItem(0))
-        .assert(hasAnyDescendant(hasText("Your session (Host)")))
-        .assert(hasAnyDescendant(hasText("Edit")))
-        .assert(!hasAnyDescendant(hasText("Join")))
-        .assert(!hasAnyDescendant(hasText("Leave")))
+        .assert(hasAnyDescendant(hasText(context.getString(R.string.group_session_host_self))))
+        .assert(hasAnyDescendant(hasText(context.getString(R.string.group_session_action_edit))))
+        .assert(!hasAnyDescendant(hasText(context.getString(R.string.group_session_action_join))))
+        .assert(!hasAnyDescendant(hasText(context.getString(R.string.group_session_action_leave))))
   }
 
   @Test
@@ -143,7 +152,9 @@ class GroupSessionScreenTest {
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
-    composeTestRule.onNodeWithText("My sessions").performClick()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.group_session_filter_my))
+        .performClick()
 
     composeTestRule.onNodeWithText("Software Architecture").assertIsDisplayed()
     composeTestRule
@@ -164,9 +175,17 @@ class GroupSessionScreenTest {
         .performScrollToNode(hasTestTag(GroupSessionScreenTestTags.sessionItem(3)))
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.sessionItem(3))
-        .assert(hasAnyDescendant(hasText("Other")))
-        .assert(hasAnyDescendant(hasText("Group study session")))
-        .assert(hasAnyDescendant(hasText("Location TBD")))
+        .assert(
+            hasAnyDescendant(hasText(context.getString(R.string.group_session_subject_fallback)))
+        )
+        .assert(
+            hasAnyDescendant(
+                hasText(context.getString(R.string.group_session_description_fallback))
+            )
+        )
+        .assert(
+            hasAnyDescendant(hasText(context.getString(R.string.group_session_location_fallback)))
+        )
         .assert(hasAnyDescendant(hasText("+1")))
   }
 
@@ -176,7 +195,9 @@ class GroupSessionScreenTest {
     val viewModel = GroupSessionsViewModel(authRepository, emptyRepository)
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
 
-    composeTestRule.onNodeWithText("No active sessions").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.group_session_empty))
+        .assertIsDisplayed()
   }
 
   @Test
@@ -185,24 +206,29 @@ class GroupSessionScreenTest {
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
-    composeTestRule.onNodeWithText("Search group sessions").performTextInput("capstone")
+    val searchPlaceholder = context.getString(R.string.group_session_search_placeholder)
+    val joinText = context.getString(R.string.group_session_action_join)
+    val joinedText = context.getString(R.string.group_session_action_joined)
+    val leaveText = context.getString(R.string.group_session_action_leave)
+
+    composeTestRule.onNodeWithText(searchPlaceholder).performTextInput("capstone")
     composeTestRule.onNodeWithText("Capstone planning").assertIsDisplayed()
 
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
-        .performScrollToNode(hasText("Join"))
-    composeTestRule.onNodeWithText("Join").performClick()
+        .performScrollToNode(hasText(joinText))
+    composeTestRule.onNodeWithText(joinText).performClick()
     composeTestRule.waitUntil(timeoutMillis = 2_000) { repo.joinCalls == 1 }
 
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
-        .performScrollToNode(hasText("Joined"))
-    composeTestRule.onNodeWithText("Joined").assertIsDisplayed()
+        .performScrollToNode(hasText(joinedText))
+    composeTestRule.onNodeWithText(joinedText).assertIsDisplayed()
 
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
-        .performScrollToNode(hasText("Leave"))
-    composeTestRule.onNodeWithText("Leave").performClick()
+        .performScrollToNode(hasText(leaveText))
+    composeTestRule.onNodeWithText(leaveText).performClick()
     composeTestRule.waitUntil(timeoutMillis = 2_000) { repo.leaveCalls == 1 }
   }
 
@@ -213,23 +239,24 @@ class GroupSessionScreenTest {
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
     repo.failJoin = true
-    composeTestRule.onNodeWithText("Search group sessions").performTextInput("capstone")
+    val searchPlaceholder = context.getString(R.string.group_session_search_placeholder)
+    val joinText = context.getString(R.string.group_session_action_join)
+    val joinErrorText = context.getString(R.string.group_session_error_join)
+
+    composeTestRule.onNodeWithText(searchPlaceholder).performTextInput("capstone")
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
-        .performScrollToNode(hasText("Join"))
-    composeTestRule.onNodeWithText("Join").performClick()
+        .performScrollToNode(hasText(joinText))
+    composeTestRule.onNodeWithText(joinText).performClick()
     composeTestRule.waitUntil(timeoutMillis = 2_000) { repo.joinCalls == 1 }
     composeTestRule.waitUntil(timeoutMillis = 2_000) {
-      composeTestRule
-          .onAllNodesWithText("Could not join session. Please try again.")
-          .fetchSemanticsNodes()
-          .isNotEmpty()
+      composeTestRule.onAllNodesWithText(joinErrorText).fetchSemanticsNodes().isNotEmpty()
     }
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.ERROR_SNACKBAR)
-        .assert(hasAnyDescendant(hasText("Could not join session. Please try again.")))
+        .assert(hasAnyDescendant(hasText(joinErrorText)))
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ERROR_DISMISS).performClick()
-    composeTestRule.onNodeWithText("Could not join session. Please try again.").assertDoesNotExist()
+    composeTestRule.onNodeWithText(joinErrorText).assertDoesNotExist()
   }
 
   private class FakeAuthRepository(private val currentUserId: String) : AuthRepository {
