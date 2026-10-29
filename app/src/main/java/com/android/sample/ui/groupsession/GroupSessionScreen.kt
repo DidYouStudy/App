@@ -19,7 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -302,9 +302,12 @@ private fun GroupSessionContent(
               contentPadding = PaddingValues(bottom = Dimens.fabClearance),
               modifier = Modifier.fillMaxSize().testTag(GroupSessionScreenTestTags.SESSION_LIST),
           ) {
-            items(state.sessions.indices.toList(), key = { it }) { index ->
+            itemsIndexed(
+                items = state.sessions,
+                key = { _, item -> item.session.id },
+            ) { index, item ->
               GroupSessionCard(
-                  item = state.sessions[index],
+                  item = item,
                   onJoin = onJoin,
                   onLeave = onLeave,
                   modifier = Modifier.testTag(GroupSessionScreenTestTags.sessionItem(index)),
@@ -323,6 +326,9 @@ private fun GroupSessionCard(
     modifier: Modifier = Modifier,
 ) {
   val session = item.session
+  // TODO: The ViewModel should supply the reference time in GroupSessionsUiState so all cards
+  //  evaluate relative status labels consistently, unit tests remain deterministic, and composables
+  // stay pure.
   val now = Instant.now()
   val statusLabel = sessionStatusLabel(session.startsAt, now)
   val startLabel = sessionTimeLabel(session.startsAt)
