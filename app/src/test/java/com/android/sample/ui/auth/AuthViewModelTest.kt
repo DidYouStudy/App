@@ -574,7 +574,8 @@ class AuthViewModelTest {
         (profileStateField.get(viewModel) as MutableStateFlow<ProfileUiState>).value =
             ProfileUiState(isLoading = true)
 
-        AuthViewModel::class.java
+        AuthViewModel::class
+            .java
             .declaredMethods
             .single { it.name.startsWith("publishResolutionResult") }
             .apply { isAccessible = true }
@@ -583,13 +584,15 @@ class AuthViewModelTest {
         assertEquals(ProfileUiState(), viewModel.profileUiState.value)
         assertNull(activeJobField.get(viewModel))
         assertNull(
-            AuthViewModel::class.java
+            AuthViewModel::class
+                .java
                 .getDeclaredField("activeProfileResolutionUserId")
                 .apply { isAccessible = true }
                 .get(viewModel)
         )
         assertNull(
-            AuthViewModel::class.java
+            AuthViewModel::class
+                .java
                 .getDeclaredField("pendingProfileUser")
                 .apply { isAccessible = true }
                 .get(viewModel)
