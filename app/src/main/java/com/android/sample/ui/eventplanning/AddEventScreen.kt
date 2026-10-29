@@ -41,8 +41,8 @@ import com.android.sample.ui.theme.Dimens
 /**
  * Stateful destination screen for creating and saving a new event.
  *
- * Collects state from [EventPlanningViewModel], handles the event-saved navigation
- * side effect, and embeds [AddEventScreenStateless] inside a Scaffold.
+ * Collects state from [EventPlanningViewModel], handles the event-saved navigation side effect, and
+ * embeds [AddEventScreenStateless] inside a Scaffold.
  *
  * @param modifier Modifier applied to the root screen layout.
  * @param viewModel ViewModel backing the event creation workflow.

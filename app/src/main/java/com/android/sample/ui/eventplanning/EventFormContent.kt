@@ -20,9 +20,9 @@ import java.time.format.DateTimeFormatter
 /**
  * Renders the complete scrollable event planning form.
  *
- * This composable encapsulates the event input fields (type, date, start/end times,
- * subject, location, description, and task checklist) and error banners. It is designed
- * to be decoupled from screen chrome to enable reuse between Add and Edit event screens.
+ * This composable encapsulates the event input fields (type, date, start/end times, subject,
+ * location, description, and task checklist) and error banners. It is designed to be decoupled from
+ * screen chrome to enable reuse between Add and Edit event screens.
  *
  * @param uiState Current UI state containing form values, tasks, and validation errors.
  * @param onTypeClick Invoked when the user taps the event type selector pill.
