@@ -169,7 +169,7 @@ fun GroupSessionScreen(
       floatingActionButton = {
         AddButton(
             onClick = { /* TODO ADD GROUPSESSION */ },
-            contentDescription = "Add group session",
+            contentDescription = stringResource(R.string.group_session_add_description),
             modifier = Modifier.testTag(GroupSessionScreenTestTags.ADD_BUTTON),
         )
       },

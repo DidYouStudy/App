@@ -19,7 +19,7 @@ import org.junit.runner.RunWith
 
 /** Unit tests for [AddButton]. */
 @RunWith(AndroidJUnit4::class)
-class AddbuttonTest {
+class AddButtonTest {
   @get:Rule val composeTestRule = createComposeRule()
 
   @Test
