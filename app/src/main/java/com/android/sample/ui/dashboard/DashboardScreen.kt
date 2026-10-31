@@ -23,6 +23,7 @@ import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.profile.ProfileButton
+import com.android.sample.ui.sharedComponents.AddButton
 import com.android.sample.ui.theme.Dimens
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,7 +69,13 @@ fun DashboardScreen(
             modifier = Modifier.testTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU),
         )
       },
-      floatingActionButton = { DashboardAddButton(onClick = onAddClick) },
+      floatingActionButton = {
+        AddButton(
+            onClick = onAddClick,
+            contentDescription = stringResource(R.string.dashboard_add_description),
+            modifier = Modifier.testTag(DashboardContentTestTags.ADD_BUTTON),
+        )
+      },
       // Sessions will come from a ViewModel once the study-session backend exists.
       content = { pd -> DashboardContent(sessions = emptyList(), modifier = Modifier.padding(pd)) },
   )
