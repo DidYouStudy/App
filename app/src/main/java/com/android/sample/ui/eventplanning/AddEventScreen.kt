@@ -36,6 +36,7 @@ import com.android.sample.R
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
+import com.android.sample.ui.theme.AlphaTokens
 import com.android.sample.ui.theme.Dimens
 
 /**
@@ -174,8 +175,10 @@ fun AddEventScreenStateless(
               ButtonDefaults.buttonColors(
                   containerColor = MaterialTheme.colorScheme.primary,
                   contentColor = MaterialTheme.colorScheme.onPrimary,
-                  disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                  disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
+                  disabledContainerColor =
+                      MaterialTheme.colorScheme.primary.copy(alpha = AlphaTokens.DISABLED),
+                  disabledContentColor =
+                      MaterialTheme.colorScheme.onPrimary.copy(alpha = AlphaTokens.DISABLED),
               ),
           shape = RoundedCornerShape(Dimens.cornerPill),
           modifier =

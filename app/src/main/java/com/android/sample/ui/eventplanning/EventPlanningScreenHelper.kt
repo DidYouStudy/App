@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import com.android.sample.R
 import com.android.sample.model.event.EventTask
+import com.android.sample.ui.theme.AlphaTokens
 import com.android.sample.ui.theme.Dimens
 
 @Composable
@@ -89,7 +90,10 @@ fun SelectorFieldPill(
           text = if (!valueText.isNullOrBlank()) valueText else placeholderText,
           color =
               if (!valueText.isNullOrBlank()) MaterialTheme.colorScheme.onSecondaryContainer
-              else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+              else
+                  MaterialTheme.colorScheme.onSecondaryContainer.copy(
+                      alpha = AlphaTokens.PLACEHOLDER
+                  ),
           style = MaterialTheme.typography.bodyMedium,
       )
       if (hasDropdownArrow) {
@@ -120,7 +124,10 @@ fun OutlinedInputField(
       placeholder = {
         Text(
             text = placeholder,
-            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+            color =
+                MaterialTheme.colorScheme.onSecondaryContainer.copy(
+                    alpha = AlphaTokens.PLACEHOLDER
+                ),
         )
       },
       minLines = minLines,
@@ -207,7 +214,10 @@ fun AddTaskInputField(
       placeholder = {
         Text(
             text = stringResource(R.string.event_planning_add_task_placeholder),
-            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+            color =
+                MaterialTheme.colorScheme.onSecondaryContainer.copy(
+                    alpha = AlphaTokens.PLACEHOLDER
+                ),
         )
       },
       leadingIcon = {
