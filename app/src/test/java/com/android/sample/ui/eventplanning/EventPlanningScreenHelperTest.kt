@@ -2,6 +2,7 @@
 package com.android.sample.ui.eventplanning
 
 import android.content.Context
+import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -15,6 +16,9 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
 import com.android.sample.model.event.EventTask
+import com.android.sample.model.event.EventType
+import java.time.LocalDate
+import java.time.LocalTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -163,5 +167,193 @@ class EventPlanningScreenHelperTest {
     composeTestRule.onNodeWithTag("add_task_tag").performImeAction()
 
     assertFalse(invoked)
+  }
+
+  @Test
+  fun eventTypeDropdownMenuDisplaysAllEntriesAndInvokesCallback() {
+    var selectedType: EventType? = null
+    var dismissed = false
+
+    composeTestRule.setContent {
+      EventTypeDropdownMenu(
+          expanded = true,
+          onDismissRequest = { dismissed = true },
+          onTypeSelected = { selectedType = it },
+      )
+    }
+
+    // Verify formatted labels display
+    composeTestRule.onNodeWithText("Course").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Study session").assertIsDisplayed().performClick()
+
+    assertEquals(EventType.STUDY_SESSION, selectedType)
+    assertTrue(dismissed)
+  }
+
+  @Test
+  fun eventDatePickerDialogTriggersConfirmAndDismiss() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var selectedDate: LocalDate? = null
+    var dismissed = false
+
+    composeTestRule.setContent {
+      EventDatePickerDialog(
+          initialDate = LocalDate.of(2026, 11, 1),
+          onDateSelected = { selectedDate = it },
+          onDismiss = { dismissed = true },
+      )
+    }
+
+    // Confirm button
+    composeTestRule.onNodeWithText(context.getString(R.string.confirm)).performClick()
+    assertTrue(dismissed)
+  }
+
+  @Test
+  fun eventDatePickerDialogDismissButtonTriggersCallback() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var dismissed = false
+
+    composeTestRule.setContent {
+      EventDatePickerDialog(
+          initialDate = LocalDate.of(2026, 11, 1),
+          onDateSelected = {},
+          onDismiss = { dismissed = true },
+      )
+    }
+
+    composeTestRule.onNodeWithText(context.getString(R.string.cancel)).performClick()
+    assertTrue(dismissed)
+  }
+
+  @Test
+  fun eventTimePickerDialogTriggersConfirmAndDismiss() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var selectedTime: LocalTime? = null
+    var dismissed = false
+
+    composeTestRule.setContent {
+      EventTimePickerDialog(
+          initialTime = LocalTime.of(14, 30),
+          title = "Select Time",
+          onTimeSelected = { selectedTime = it },
+          onDismiss = { dismissed = true },
+      )
+    }
+
+    composeTestRule.onNodeWithText("Select Time").assertIsDisplayed()
+    composeTestRule.onNodeWithText(context.getString(R.string.confirm)).performClick()
+    assertEquals(LocalTime.of(14, 30), selectedTime)
+
+    composeTestRule.onNodeWithText(context.getString(R.string.cancel)).performClick()
+    assertTrue(dismissed)
+  }
+
+  @Test
+  fun subjectPickerDialogFiltersListAndSelectsExistingSubject() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var confirmedSubject = ""
+    val subjects = listOf("Analysis I", "Algorithms", "Linear Algebra")
+
+    composeTestRule.setContent {
+      SubjectPickerDialog(
+          currentSelection = "",
+          allSubjects = subjects,
+          onDismiss = {},
+          onConfirm = { confirmedSubject = it },
+      )
+    }
+
+    // Filter by typing
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.event_planning_subject_search_placeholder))
+        .performTextInput("Alg")
+
+    composeTestRule.onNodeWithText("Algorithms").assertIsDisplayed().performClick()
+    assertEquals("Algorithms", confirmedSubject)
+  }
+
+  @Test
+  fun subjectPickerDialogAllowsSelectingCustomNewSubject() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var confirmedSubject = ""
+    val subjects = listOf("Analysis I", "Algorithms")
+
+    composeTestRule.setContent {
+      SubjectPickerDialog(
+          currentSelection = "",
+          allSubjects = subjects,
+          onDismiss = {},
+          onConfirm = { confirmedSubject = it },
+      )
+    }
+
+    // Search query for unlisted subject
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.event_planning_subject_search_placeholder))
+        .performTextInput("Quantum Computing")
+
+    composeTestRule.onNodeWithText("+ Use \"Quantum Computing\"").assertIsDisplayed().performClick()
+    assertEquals("Quantum Computing", confirmedSubject)
+  }
+
+  @Test
+  fun subjectPickerDialogConfirmButtonUsesCurrentSelectionIfSearchBlank() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var confirmedSubject = ""
+
+    composeTestRule.setContent {
+      SubjectPickerDialog(
+          currentSelection = "Physics",
+          allSubjects = listOf("Physics", "Chemistry"),
+          onDismiss = {},
+          onConfirm = { confirmedSubject = it },
+      )
+    }
+
+    composeTestRule.onNodeWithText(context.getString(R.string.confirm)).performClick()
+    assertEquals("Physics", confirmedSubject)
+  }
+
+  @Test
+  fun subjectPickerDialogCancelTriggersDismiss() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var dismissed = false
+
+    composeTestRule.setContent {
+      SubjectPickerDialog(
+          currentSelection = "Physics",
+          allSubjects = listOf("Physics"),
+          onDismiss = { dismissed = true },
+          onConfirm = {},
+      )
+    }
+
+    composeTestRule.onNodeWithText(context.getString(R.string.cancel)).performClick()
+    assertTrue(dismissed)
+  }
+
+  @Test
+  fun inputFieldsGainFocusAndTriggerBringIntoView() {
+    composeTestRule.setContent {
+      Column {
+        OutlinedInputField(
+            value = "",
+            onValueChange = {},
+            placeholder = "Focus Location",
+            testTag = "focus_input",
+        )
+        AddTaskInputField(
+            onAddTask = {},
+            testTag = "focus_task_input",
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag("focus_input").performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag("focus_task_input").performClick()
+    composeTestRule.waitForIdle()
   }
 }

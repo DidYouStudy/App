@@ -319,4 +319,109 @@ class AddEventScreenTest {
         context.getString(R.string.event_planning_add_task_placeholder)
     )
   }
+
+  @Test
+  fun displaysRequiredFieldsErrorBannerWhenValidationFails() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val uiState =
+        EventPlanningUiState(
+            date = null,
+            startTime = null,
+            endTime = null,
+            error = "Validation error",
+        )
+
+    composeTestRule.setContent {
+      AddEventScreenStateless(
+          uiState = uiState,
+          onBackClick = {},
+          onTypeChange = {},
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationChange = {},
+          onDescriptionChange = {},
+          onAddTask = {},
+          onToggleTask = {},
+          onDeleteTask = {},
+          onSaveClick = {},
+      )
+    }
+
+    composeTestRule
+        .onNodeWithTag(Tags.ERROR_TEXT)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.event_planning_error_required_fields))
+  }
+
+  @Test
+  fun displaysSaveFailedErrorBannerWhenFieldsCompleteButBackendFails() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val uiState =
+        EventPlanningUiState(
+            type = EventType.OTHER,
+            date = LocalDate.of(2026, 11, 1),
+            startTime = LocalTime.of(10, 0),
+            endTime = LocalTime.of(11, 0),
+            error = "Firestore timeout", // Complete fields with backend error
+        )
+
+    composeTestRule.setContent {
+      AddEventScreenStateless(
+          uiState = uiState,
+          onBackClick = {},
+          onTypeChange = {},
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationChange = {},
+          onDescriptionChange = {},
+          onAddTask = {},
+          onToggleTask = {},
+          onDeleteTask = {},
+          onSaveClick = {},
+      )
+    }
+
+    composeTestRule
+        .onNodeWithTag(Tags.ERROR_TEXT)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.event_planning_error_save_failed))
+  }
+
+  @Test
+  fun statefulScreenLaunchesInternalPickersWhenCallbacksAreNull() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val viewModel = createViewModel()
+
+    composeTestRule.setContent {
+      AddEventScreen(
+          viewModel = viewModel,
+          onBackClick = {},
+          onEventSaved = {},
+          onPickDateClick = null,
+          onPickStartTimeClick = null,
+          onPickEndTimeClick = null,
+          onPickSubjectClick = null,
+      )
+    }
+
+    // Trigger internal Date Picker dialog
+    composeTestRule.onNodeWithTag(Tags.DATE_SELECTOR).performClick()
+    composeTestRule.onNodeWithText(context.getString(R.string.cancel)).performClick()
+
+    // Trigger internal Start Time Picker dialog
+    composeTestRule.onNodeWithTag(Tags.START_TIME_SELECTOR).performClick()
+    composeTestRule.onNodeWithText(context.getString(R.string.cancel)).performClick()
+
+    // Trigger internal End Time Picker dialog
+    composeTestRule.onNodeWithTag(Tags.END_TIME_SELECTOR).performClick()
+    composeTestRule.onNodeWithText(context.getString(R.string.cancel)).performClick()
+
+    // Trigger internal Subject Picker dialog
+    composeTestRule.onNodeWithTag(Tags.SUBJECT_SELECTOR).performClick()
+    composeTestRule.onNodeWithText(context.getString(R.string.cancel)).performClick()
+  }
 }
