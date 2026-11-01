@@ -289,10 +289,7 @@ fun AddEventScreenStateless(
           }
         }
       },
-      modifier = modifier
-          .fillMaxSize()
-          .imePadding()
-          .testTag(Tags.SCREEN_CONTAINER),
+      modifier = modifier.fillMaxSize().imePadding().testTag(Tags.SCREEN_CONTAINER),
   ) { innerPadding ->
     Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
       EventFormContent(
