@@ -1,7 +1,9 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.ui.calendar
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -17,13 +19,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
@@ -34,16 +35,18 @@ import com.android.sample.ui.profile.ProfileButton
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
+import java.time.LocalDate
 
-/** Connects calendar controls and ViewModel state to the app's standard navigation scaffold. */
+/** Renders the calendar scaffold from the supplied state and action callbacks. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarScreen(
+    uiState: CalendarUiState,
+    onToday: () -> Unit,
+    onPreviousWeek: () -> Unit,
+    onNextWeek: () -> Unit,
     navigationActions: NavigationActions? = null,
-    viewModel: CalendarViewModel = calendarViewModel(),
 ) {
-  val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
   Scaffold(
       topBar = {
         TopAppBar(
@@ -62,7 +65,7 @@ fun CalendarScreen(
                 ),
             actions = {
               Surface(
-                  onClick = viewModel::navigateToToday,
+                  onClick = onToday,
                   modifier = Modifier.testTag(CalendarTestTags.TODAY_BUTTON),
                   shape = CircleShape,
                   color = MaterialTheme.colorScheme.primary,

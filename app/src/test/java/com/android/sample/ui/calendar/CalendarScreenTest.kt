@@ -14,32 +14,36 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
-import com.android.sample.model.event.InMemoryEventsRepository
-import com.android.sample.ui.auth.TestAuthRepository
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
-import java.time.Clock
 import java.time.LocalDate
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 
-/** Covers the calendar screen shell, selected navigation item, and add affordance. */
+/** Covers the calendar screen's scaffold, displayed state, and action callbacks. */
 @RunWith(AndroidJUnit4::class)
 class CalendarScreenTest {
   @get:Rule val composeTestRule = createComposeRule()
 
-  /** Shows the title, selects Calendar, exposes the add action, and routes tab clicks. */
+  /** Shows the calendar chrome and routes navigation clicks. */
   @Test
   fun screenShowsCalendarChromeAndHandlesNavigationClick() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     val navigationActions = mock<NavigationActions>()
     composeTestRule.setContent {
-      CalendarScreen(navigationActions, viewModel = createCalendarViewModel())
+      CalendarScreen(
+          uiState = calendarUiState(LocalDate.of(2026, 10, 28)),
+          onToday = {},
+          onPreviousWeek = {},
+          onNextWeek = {},
+          navigationActions = navigationActions,
+      )
     }
 
     composeTestRule
@@ -63,27 +67,58 @@ class CalendarScreenTest {
     verify(navigationActions).navigateTo(Screen.Dashboard)
   }
 
-  /** Keeps the Today button available in every week and navigates to today's week when clicked. */
+  /** Keeps the Today button visible and forwards its click to the route callback. */
   @Test
-  fun todayButtonAlwaysAppearsAndNavigatesToCurrentWeek() {
-    val today = LocalDate.now()
-    composeTestRule.setContent { CalendarScreen(viewModel = createCalendarViewModel()) }
+  fun todayButtonIsVisibleAndForwardsClick() {
+    var todayClicks = 0
+    composeTestRule.setContent {
+      CalendarScreen(
+          uiState = calendarUiState(LocalDate.of(2026, 10, 28)),
+          onToday = { todayClicks++ },
+          onPreviousWeek = {},
+          onNextWeek = {},
+      )
+    }
 
-    composeTestRule.onNodeWithTag(CalendarTestTags.TODAY_BUTTON).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(CalendarTestTags.NEXT_WEEK).performClick()
-    composeTestRule.onNodeWithTag(CalendarTestTags.TODAY_BUTTON).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(CalendarTestTags.TODAY_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(CalendarTestTags.TODAY_BUTTON).assertIsDisplayed().performClick()
 
-    composeTestRule
-        .onNodeWithTag(CalendarTestTags.WEEK_RANGE)
-        .assertTextEquals(formatWeekRange(CalendarDateHelper().weekDates(today)))
+    composeTestRule.runOnIdle { assertEquals(1, todayClicks) }
   }
 
-  /** Creates a calendar ViewModel with in-memory dependencies so the tests do not need Firebase. */
-  private fun createCalendarViewModel() =
-      CalendarViewModel(
-          authRepository = TestAuthRepository(),
-          eventsRepository = InMemoryEventsRepository(),
-          clock = Clock.systemDefaultZone(),
+  /** Shows a localized error message when the ViewModel state contains a load failure. */
+  @Test
+  fun eventLoadFailureShowsErrorMessage() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    composeTestRule.setContent {
+      CalendarScreen(
+          uiState =
+              calendarUiState(
+                  LocalDate.of(2026, 10, 28),
+                  error = CalendarViewModelError.LOAD_EVENTS_FAILED,
+              ),
+          onToday = {},
+          onPreviousWeek = {},
+          onNextWeek = {},
       )
+    }
+
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.calendar_load_events_error))
+        .assertIsDisplayed()
+  }
+
+  /** Creates predictable weekly display state for screen tests. */
+  private fun calendarUiState(
+      today: LocalDate,
+      error: CalendarViewModelError? = null,
+  ): CalendarUiState {
+    val weekDates = CalendarDateHelper().weekDates(today)
+    return CalendarUiState(
+        today = today,
+        weekStart = weekDates.first(),
+        weekDates = weekDates,
+        isLoading = false,
+        error = error,
+    )
+  }
 }
