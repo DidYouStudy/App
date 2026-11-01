@@ -29,7 +29,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -156,7 +156,7 @@ fun TaskRowItem(
       modifier =
           Modifier.fillMaxWidth()
               .clip(shape)
-              .background(MaterialTheme.colorScheme.secondaryContainer)
+              .background(MaterialTheme.colorScheme.surfaceVariant)
               .padding(
                   horizontal = Dimens.taskRowHorizontalPadding,
                   vertical = Dimens.taskRowVerticalPadding,
@@ -205,7 +205,7 @@ fun AddTaskInputField(
     testTag: String,
     modifier: Modifier = Modifier,
 ) {
-  var text by remember { mutableStateOf("") }
+  var text by rememberSaveable { mutableStateOf("") }
   val shape = RoundedCornerShape(Dimens.cornerPill)
 
   TextField(

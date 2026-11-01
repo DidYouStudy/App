@@ -5,12 +5,16 @@ import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -229,5 +233,82 @@ class AddEventScreenTest {
 
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION_INPUT).performTextInput("Quiet zone")
     assertEquals("Quiet zone", viewModel.uiState.value.description)
+  }
+
+  @Test
+  fun unsubmittedTaskTextSurvivesScreenRestoration() {
+    val restorationTester = StateRestorationTester(composeTestRule)
+    val draftTask = "Review analysis lecture notes"
+
+    restorationTester.setContent {
+      AddEventScreenStateless(
+          uiState = EventPlanningUiState(),
+          onTypeClick = {},
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationChange = {},
+          onDescriptionChange = {},
+          onAddTask = {},
+          onToggleTask = {},
+          onDeleteTask = {},
+          onSaveClick = {},
+      )
+    }
+
+    // Scroll to the task field before checking visibility and typing
+    val taskInputNode = composeTestRule.onNodeWithTag(Tags.ADD_TASK_BUTTON)
+    taskInputNode.performScrollTo().assertIsDisplayed().performTextInput(draftTask)
+    taskInputNode.assertTextContains(draftTask)
+
+    // Simulate configuration change / Activity recreation
+    restorationTester.emulateSavedInstanceStateRestore()
+
+    // Verify unsubmitted text was saved and restored
+    composeTestRule
+        .onNodeWithTag(Tags.ADD_TASK_BUTTON)
+        .performScrollTo()
+        .assertIsDisplayed()
+        .assertTextContains(draftTask)
+  }
+
+  @Test
+  fun restoredTaskCanBeSubmittedWithImeAction() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val restorationTester = StateRestorationTester(composeTestRule)
+    var submittedTask: String? = null
+    val draftTask = "Prepare lab presentation"
+
+    restorationTester.setContent {
+      AddEventScreenStateless(
+          uiState = EventPlanningUiState(),
+          onTypeClick = {},
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationChange = {},
+          onDescriptionChange = {},
+          onAddTask = { task -> submittedTask = task },
+          onToggleTask = {},
+          onDeleteTask = {},
+          onSaveClick = {},
+      )
+    }
+
+    val taskInputNode = composeTestRule.onNodeWithTag(Tags.ADD_TASK_BUTTON)
+    taskInputNode.performScrollTo().performTextInput(draftTask)
+
+    restorationTester.emulateSavedInstanceStateRestore()
+
+    // Scroll back into view if needed and trigger keyboard 'Done'
+    taskInputNode.performScrollTo().performImeAction()
+
+    // Verify task passed to callback and input reverted to placeholder
+    assertEquals(draftTask, submittedTask)
+    taskInputNode.assertTextContains(
+        context.getString(R.string.event_planning_add_task_placeholder)
+    )
   }
 }
