@@ -1,8 +1,11 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.model.groupsession
 
+import com.android.sample.model.event.ACTIVITY_MAX_DURATION
 import com.android.sample.model.event.EventType
+import com.android.sample.model.event.requireValidActivity
 import java.time.Duration
 import java.time.Instant
 
@@ -42,18 +45,11 @@ data class GroupSession(
     require(memberIds.all { it.isNotBlank() }) { "Member IDs must not be blank" }
     require(createdBy in memberIds) { "Creator must be a member" }
     require(memberIds.distinct().size == memberIds.size) { "Member IDs must be unique" }
-    require(subject?.isNotBlank() ?: (type == EventType.OTHER)) {
-      "Subject must not be blank, and may only be absent for OTHER"
-    }
-    require(endsAt.isAfter(startsAt)) { "End must be after start" }
-    require(Duration.between(startsAt, endsAt) <= MAX_DURATION) {
-      "Group session must not last longer than $MAX_DURATION"
-    }
-    require(location == null || location.isNotBlank()) { "Location must not be blank" }
+    requireValidActivity("Group session", type, subject, startsAt, endsAt, location)
   }
 
   companion object {
-    /** Longest allowed session duration; catches scheduling mistakes such as a wrong end date. */
-    val MAX_DURATION: Duration = Duration.ofHours(24)
+    /** Longest allowed session duration; the shared [ACTIVITY_MAX_DURATION]. */
+    val MAX_DURATION: Duration = ACTIVITY_MAX_DURATION
   }
 }

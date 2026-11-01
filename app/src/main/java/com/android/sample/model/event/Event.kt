@@ -1,5 +1,6 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.sample.model.event
 
 import java.time.Duration
@@ -47,19 +48,12 @@ data class Event(
   init {
     require(id.isNotBlank()) { "Event ID must not be blank" }
     require(ownerId.isNotBlank()) { "Owner ID must not be blank" }
-    require(subject?.isNotBlank() ?: (type == EventType.OTHER)) {
-      "Subject must not be blank, and may only be absent for OTHER"
-    }
-    require(endsAt.isAfter(startsAt)) { "End must be after start" }
-    require(Duration.between(startsAt, endsAt) <= MAX_DURATION) {
-      "Event must not last longer than $MAX_DURATION"
-    }
-    require(location == null || location.isNotBlank()) { "Location must not be blank" }
+    requireValidActivity("Event", type, subject, startsAt, endsAt, location)
     require(importKey == null || importKey.isNotBlank()) { "Import key must not be blank" }
   }
 
   companion object {
-    /** Longest allowed event; catches input mistakes such as a wrong end date. */
-    val MAX_DURATION: Duration = Duration.ofHours(24)
+    /** Longest allowed event; the shared [ACTIVITY_MAX_DURATION]. */
+    val MAX_DURATION: Duration = ACTIVITY_MAX_DURATION
   }
 }
