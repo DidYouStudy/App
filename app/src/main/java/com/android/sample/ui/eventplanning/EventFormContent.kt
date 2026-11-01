@@ -4,11 +4,17 @@ package com.android.sample.ui.eventplanning
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -26,6 +33,7 @@ import com.android.sample.R
 import com.android.sample.model.event.EventType
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
 import com.android.sample.ui.theme.Dimens
+import com.android.sample.ui.theme.Spacing
 import java.time.format.DateTimeFormatter
 
 /**
@@ -153,6 +161,34 @@ fun EventFormContent(
         onClick = onEndTimeClick,
         testTag = Tags.END_TIME_SELECTOR,
     )
+
+    // Informational warning for overnight events
+    val endsNextDay =
+        uiState.startTime != null &&
+            uiState.endTime != null &&
+            uiState.endTime.isBefore(uiState.startTime)
+
+    if (endsNextDay) {
+      Row(
+          verticalAlignment = Alignment.CenterVertically,
+          modifier =
+              Modifier.padding(start = Dimens.cornerSmall, top = Spacing.extraSmall)
+                  .testTag(Tags.ENDS_NEXT_DAY_WARNING),
+      ) {
+        Icon(
+            imageVector = Icons.Outlined.Info,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(Dimens.iconSizeSmall),
+        )
+        Spacer(modifier = Modifier.width(Spacing.extraSmall))
+        Text(
+            text = stringResource(R.string.event_planning_ends_next_day_warning),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary,
+        )
+      }
+    }
 
     // Subject
     val subjectLabelText =
