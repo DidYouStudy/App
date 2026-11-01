@@ -92,6 +92,8 @@ class AddEventScreenTest {
     composeTestRule.setContent {
       AddEventScreenStateless(
           uiState = uiState,
+          onBackClick = {},
+          onTypeChange = {},
           onTypeClick = {},
           onDateClick = {},
           onStartTimeClick = {},
@@ -127,6 +129,8 @@ class AddEventScreenTest {
     composeTestRule.setContent {
       AddEventScreenStateless(
           uiState = uiState,
+          onBackClick = {},
+          onTypeChange = {},
           onTypeClick = {},
           onDateClick = {},
           onStartTimeClick = {},
@@ -243,6 +247,8 @@ class AddEventScreenTest {
     restorationTester.setContent {
       AddEventScreenStateless(
           uiState = EventPlanningUiState(),
+          onBackClick = {},
+          onTypeChange = {},
           onTypeClick = {},
           onDateClick = {},
           onStartTimeClick = {},
@@ -283,6 +289,8 @@ class AddEventScreenTest {
     restorationTester.setContent {
       AddEventScreenStateless(
           uiState = EventPlanningUiState(),
+          onBackClick = {},
+          onTypeChange = {},
           onTypeClick = {},
           onDateClick = {},
           onStartTimeClick = {},
