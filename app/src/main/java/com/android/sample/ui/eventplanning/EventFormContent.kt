@@ -2,17 +2,28 @@
 package com.android.sample.ui.eventplanning
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import com.android.sample.R
+import com.android.sample.model.event.EventType
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
 import com.android.sample.ui.theme.Dimens
 import java.time.format.DateTimeFormatter
@@ -40,7 +51,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun EventFormContent(
     uiState: EventPlanningUiState,
-    onTypeClick: () -> Unit,
+    onTypeChange: (EventType) -> Unit,
     onDateClick: () -> Unit,
     onStartTimeClick: () -> Unit,
     onEndTimeClick: () -> Unit,
@@ -51,9 +62,13 @@ fun EventFormContent(
     onToggleTask: (Int) -> Unit,
     onDeleteTask: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    onTypeClick: (() -> Unit)? = null,
 ) {
   val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
   val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+  var showTypeMenu by rememberSaveable { mutableStateOf(false) }
+  val density = LocalDensity.current
+  var pillWidth by remember { mutableStateOf(Dimens.noPadding) }
 
   Column(
       modifier =
@@ -71,14 +86,37 @@ fun EventFormContent(
         text = stringResource(R.string.event_planning_type_label),
         testTag = Tags.TYPE_LABEL,
     )
-    SelectorFieldPill(
-        valueText =
-            uiState.type.name.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() },
-        placeholderText = stringResource(R.string.event_planning_type_placeholder),
-        onClick = onTypeClick,
-        testTag = Tags.TYPE_SELECTOR,
-        hasDropdownArrow = true,
-    )
+    Box(
+        modifier =
+            Modifier.fillMaxWidth().onSizeChanged { size ->
+              pillWidth = with(density) { size.width.toDp() }
+            }
+    ) {
+      SelectorFieldPill(
+          valueText =
+              uiState.type.name.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() },
+          placeholderText = stringResource(R.string.event_planning_type_placeholder),
+          onClick = {
+            if (onTypeClick != null) {
+              onTypeClick()
+            } else {
+              showTypeMenu = true
+            }
+          },
+          testTag = Tags.TYPE_SELECTOR,
+          hasDropdownArrow = true,
+      )
+
+      EventTypeDropdownMenu(
+          expanded = showTypeMenu,
+          onDismissRequest = { showTypeMenu = false },
+          onTypeSelected = { selectedType ->
+            onTypeChange(selectedType)
+            showTypeMenu = false
+          },
+          modifier = Modifier.width(pillWidth),
+      )
+    }
 
     // Date
     SectionLabel(

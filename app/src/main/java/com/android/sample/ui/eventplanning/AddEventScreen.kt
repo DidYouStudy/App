@@ -2,6 +2,7 @@
 package com.android.sample.ui.eventplanning
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,6 +27,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -62,13 +66,20 @@ fun AddEventScreen(
     viewModel: EventPlanningViewModel = eventsPlanningViewModel(),
     onBackClick: () -> Unit,
     onEventSaved: () -> Unit,
-    onPickTypeClick: () -> Unit = {},
-    onPickDateClick: () -> Unit = {},
-    onPickStartTimeClick: () -> Unit = {},
-    onPickEndTimeClick: () -> Unit = {},
-    onPickSubjectClick: () -> Unit = {},
+    onPickTypeClick: (() -> Unit)? = null,
+    onPickDateClick: (() -> Unit)? = null,
+    onPickStartTimeClick: (() -> Unit)? = null,
+    onPickEndTimeClick: (() -> Unit)? = null,
+    onPickSubjectClick: (() -> Unit)? = null,
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+  // State-saveable dialog visibility flags so open dialogs survive configuration changes
+  var showTypeMenu by rememberSaveable { mutableStateOf(false) }
+  var showDatePicker by rememberSaveable { mutableStateOf(false) }
+  var showStartTimePicker by rememberSaveable { mutableStateOf(false) }
+  var showEndTimePicker by rememberSaveable { mutableStateOf(false) }
+  var showSubjectPicker by rememberSaveable { mutableStateOf(false) }
 
   LaunchedEffect(uiState.isEventAdded) {
     if (uiState.isEventAdded) {
@@ -105,21 +116,76 @@ fun AddEventScreen(
       },
       modifier = modifier.fillMaxSize(),
   ) { innerPadding ->
-    AddEventScreenStateless(
-        uiState = uiState,
-        onTypeClick = onPickTypeClick,
-        onDateClick = onPickDateClick,
-        onStartTimeClick = onPickStartTimeClick,
-        onEndTimeClick = onPickEndTimeClick,
-        onSubjectClick = onPickSubjectClick,
-        onLocationChange = viewModel::setLocation,
-        onDescriptionChange = viewModel::setDescription,
-        onAddTask = viewModel::addTask,
-        onToggleTask = viewModel::toggleTask,
-        onDeleteTask = viewModel::removeTask,
-        onSaveClick = viewModel::addEvent,
-        modifier = Modifier.padding(innerPadding),
-    )
+    Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+      AddEventScreenStateless(
+          uiState = uiState,
+          onTypeChange = viewModel::setType,
+          onTypeClick = onPickTypeClick,
+          onDateClick = { onPickDateClick?.invoke() ?: run { showDatePicker = true } },
+          onStartTimeClick = {
+            onPickStartTimeClick?.invoke() ?: run { showStartTimePicker = true }
+          },
+          onEndTimeClick = { onPickEndTimeClick?.invoke() ?: run { showEndTimePicker = true } },
+          onSubjectClick = { onPickSubjectClick?.invoke() ?: run { showSubjectPicker = true } },
+          onLocationChange = viewModel::setLocation,
+          onDescriptionChange = viewModel::setDescription,
+          onAddTask = viewModel::addTask,
+          onToggleTask = viewModel::toggleTask,
+          onDeleteTask = viewModel::removeTask,
+          onSaveClick = viewModel::addEvent,
+      )
+
+      // Date Picker Dialog
+      if (showDatePicker) {
+        EventDatePickerDialog(
+            initialDate = uiState.date,
+            onDateSelected = { date ->
+              viewModel.setDate(date)
+              showDatePicker = false
+            },
+            onDismiss = { showDatePicker = false },
+        )
+      }
+
+      // Start Time Picker Dialog
+      if (showStartTimePicker) {
+        EventTimePickerDialog(
+            initialTime = uiState.startTime,
+            title = stringResource(R.string.event_planning_start_time_label),
+            onTimeSelected = { time ->
+              viewModel.setStartTime(time)
+              showStartTimePicker = false
+            },
+            onDismiss = { showStartTimePicker = false },
+        )
+      }
+
+      // End Time Picker Dialog
+      if (showEndTimePicker) {
+        EventTimePickerDialog(
+            initialTime = uiState.endTime,
+            title = stringResource(R.string.event_planning_end_time_label),
+            onTimeSelected = { time ->
+              viewModel.setEndTime(time)
+              showEndTimePicker = false
+            },
+            onDismiss = { showEndTimePicker = false },
+        )
+      }
+
+      // Subject Picker Dialog
+      if (showSubjectPicker) {
+        SubjectPickerDialog(
+            currentSelection = uiState.subject,
+            allSubjects = uiState.recommendedSubjects,
+            onDismiss = { showSubjectPicker = false },
+            onConfirm = { subject ->
+              viewModel.setSubject(subject)
+              showSubjectPicker = false
+            },
+        )
+      }
+    }
   }
 }
 
@@ -127,7 +193,7 @@ fun AddEventScreen(
 @Composable
 fun AddEventScreenStateless(
     uiState: EventPlanningUiState,
-    onTypeClick: () -> Unit,
+    onTypeChange: (EventType) -> Unit,
     onDateClick: () -> Unit,
     onStartTimeClick: () -> Unit,
     onEndTimeClick: () -> Unit,
@@ -139,6 +205,7 @@ fun AddEventScreenStateless(
     onDeleteTask: (Int) -> Unit,
     onSaveClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onTypeClick: (() -> Unit)? = null,
 ) {
   Column(
       modifier =
@@ -150,7 +217,7 @@ fun AddEventScreenStateless(
     // 1. Scrollable form takes all remaining vertical space ABOVE the button
     EventFormContent(
         uiState = uiState,
-        onTypeClick = onTypeClick,
+        onTypeChange = onTypeChange,
         onDateClick = onDateClick,
         onStartTimeClick = onStartTimeClick,
         onEndTimeClick = onEndTimeClick,
@@ -160,6 +227,7 @@ fun AddEventScreenStateless(
         onAddTask = onAddTask,
         onToggleTask = onToggleTask,
         onDeleteTask = onDeleteTask,
+        onTypeClick = onTypeClick,
         modifier = Modifier.weight(1f).fillMaxWidth(),
     )
 
@@ -233,6 +301,8 @@ private fun AddEventScreenPreview() {
         onToggleTask = {},
         onDeleteTask = {},
         onSaveClick = {},
+        onTypeChange = {},
+        modifier = Modifier,
     )
   }
 }
