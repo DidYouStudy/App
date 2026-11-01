@@ -14,10 +14,13 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
+import com.android.sample.model.event.InMemoryEventsRepository
+import com.android.sample.ui.auth.TestAuthRepository
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
+import java.time.Clock
 import java.time.LocalDate
 import org.junit.Rule
 import org.junit.Test
@@ -35,7 +38,9 @@ class CalendarScreenTest {
   fun screenShowsCalendarChromeAndHandlesNavigationClick() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     val navigationActions = mock<NavigationActions>()
-    composeTestRule.setContent { CalendarScreen(navigationActions) }
+    composeTestRule.setContent {
+      CalendarScreen(navigationActions, viewModel = createCalendarViewModel())
+    }
 
     composeTestRule
         .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
@@ -62,7 +67,7 @@ class CalendarScreenTest {
   @Test
   fun todayButtonAlwaysAppearsAndNavigatesToCurrentWeek() {
     val today = LocalDate.now()
-    composeTestRule.setContent { CalendarScreen() }
+    composeTestRule.setContent { CalendarScreen(viewModel = createCalendarViewModel()) }
 
     composeTestRule.onNodeWithTag(CalendarTestTags.TODAY_BUTTON).assertIsDisplayed()
     composeTestRule.onNodeWithTag(CalendarTestTags.NEXT_WEEK).performClick()
@@ -73,4 +78,12 @@ class CalendarScreenTest {
         .onNodeWithTag(CalendarTestTags.WEEK_RANGE)
         .assertTextEquals(formatWeekRange(CalendarDateHelper().weekDates(today)))
   }
+
+  /** Creates a calendar ViewModel with in-memory dependencies so the tests do not need Firebase. */
+  private fun createCalendarViewModel() =
+      CalendarViewModel(
+          authRepository = TestAuthRepository(),
+          eventsRepository = InMemoryEventsRepository(),
+          clock = Clock.systemDefaultZone(),
+      )
 }

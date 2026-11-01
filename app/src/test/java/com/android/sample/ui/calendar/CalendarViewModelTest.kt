@@ -1,7 +1,6 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.ui.calendar
 
-import androidx.lifecycle.SavedStateHandle
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventType
@@ -29,7 +28,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-/** Tests selected-week event observation, saved state, authentication, and load failures. */
+/** Tests selected-week navigation, event observation, authentication, and load failures. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CalendarViewModelTest {
   private val testDispatcher = UnconfinedTestDispatcher()
@@ -67,20 +66,87 @@ class CalendarViewModelTest {
     assertFalse(viewModel.uiState.value.isLoading)
     assertNull(viewModel.uiState.value.error)
     assertEquals("alice", eventsRepository.queries.single().ownerId)
-    assertEquals(Instant.parse("2026-10-25T22:00:00Z"), eventsRepository.queries.single().from)
+    assertEquals(Instant.parse("2026-10-25T23:00:00Z"), eventsRepository.queries.single().from)
     assertEquals(Instant.parse("2026-11-01T23:00:00Z"), eventsRepository.queries.single().to)
   }
 
-  /** The saved week is restored and the observation restarts for that week. */
+  /** Week navigation updates the selected dates and requests events for each new week. */
   @Test
-  fun restoresSelectedWeekFromSavedState() = runTest {
+  fun previousAndNextWeekUpdateStateAndEventQuery() = runTest {
     authRepository.currentUser.value = account("alice")
-    val savedStateHandle = SavedStateHandle(mapOf("calendar_week_start" to "2026-11-02"))
+    val viewModel = createViewModel()
 
-    val viewModel = createViewModel(savedStateHandle)
+    viewModel.previousWeek()
 
-    assertEquals(LocalDate.of(2026, 11, 2), viewModel.uiState.value.weekStart)
-    assertEquals(Instant.parse("2026-11-01T23:00:00Z"), eventsRepository.queries.single().from)
+    assertEquals(LocalDate.of(2026, 10, 19), viewModel.uiState.value.weekStart)
+    assertEquals(
+        CalendarDateHelper().weekDates(LocalDate.of(2026, 10, 19)),
+        viewModel.uiState.value.weekDates,
+    )
+    assertEquals(Instant.parse("2026-10-18T22:00:00Z"), eventsRepository.queries.last().from)
+
+    viewModel.nextWeek()
+
+    assertEquals(LocalDate.of(2026, 10, 26), viewModel.uiState.value.weekStart)
+    assertEquals(Instant.parse("2026-10-25T23:00:00Z"), eventsRepository.queries.last().from)
+    assertEquals(listOf("alice", "alice", "alice"), eventsRepository.queries.map { it.ownerId })
+  }
+
+  /** Today navigation selects the week containing today from the injected clock. */
+  @Test
+  fun navigateToTodayUsesInjectedClock() = runTest {
+    authRepository.currentUser.value = account("alice")
+    val viewModel = createViewModel()
+    viewModel.nextWeek()
+
+    viewModel.navigateToToday()
+
+    assertEquals(LocalDate.of(2026, 10, 26), viewModel.uiState.value.weekStart)
+    assertEquals(LocalDate.of(2026, 10, 28), viewModel.uiState.value.today)
+    assertEquals(Instant.parse("2026-10-25T23:00:00Z"), eventsRepository.queries.last().from)
+  }
+
+  /** Crossing midnight does not reset a week selected three weeks ahead. */
+  @Test
+  fun selectedWeekThreeWeeksAheadSurvivesMidnight() = runTest {
+    authRepository.currentUser.value = account("alice")
+    val mutableClock = MutableClock(Instant.parse("2026-10-28T22:59:00Z"), zone)
+    val viewModel = CalendarViewModel(authRepository, eventsRepository, mutableClock)
+
+    repeat(3) { viewModel.nextWeek() }
+
+    val selectedWeek = LocalDate.of(2026, 11, 16)
+    assertEquals(selectedWeek, viewModel.uiState.value.weekStart)
+
+    mutableClock.currentInstant = Instant.parse("2026-10-28T23:01:00Z")
+
+    assertEquals(LocalDate.of(2026, 10, 29), LocalDate.now(mutableClock))
+    assertEquals(selectedWeek, viewModel.uiState.value.weekStart)
+  }
+
+  /** Previous and next week navigation preserve correct dates across a year boundary. */
+  @Test
+  fun weekNavigationCrossesYearBoundary() = runTest {
+    authRepository.currentUser.value = account("alice")
+    val viewModel = createViewModel()
+
+    repeat(10) { viewModel.nextWeek() }
+    assertEquals(LocalDate.of(2027, 1, 4), viewModel.uiState.value.weekStart)
+
+    viewModel.previousWeek()
+    assertEquals(LocalDate.of(2026, 12, 28), viewModel.uiState.value.weekStart)
+    assertEquals(
+        CalendarDateHelper().weekDates(LocalDate.of(2026, 12, 28)),
+        viewModel.uiState.value.weekDates,
+    )
+
+    viewModel.nextWeek()
+    viewModel.nextWeek()
+    assertEquals(LocalDate.of(2027, 1, 11), viewModel.uiState.value.weekStart)
+    assertEquals(
+        CalendarDateHelper().weekDates(LocalDate.of(2027, 1, 11)),
+        viewModel.uiState.value.weekDates,
+    )
   }
 
   /** Signing out clears the previous user's events; signing in observes only the new owner. */
@@ -115,9 +181,8 @@ class CalendarViewModelTest {
     assertEquals(CalendarViewModelError.LOAD_EVENTS_FAILED, viewModel.uiState.value.error)
   }
 
-  /** Creates a ViewModel using the supplied saved-state handle and fixed clock. */
-  private fun createViewModel(savedStateHandle: SavedStateHandle = SavedStateHandle()) =
-      CalendarViewModel(authRepository, eventsRepository, savedStateHandle, clock)
+  /** Creates a ViewModel with the test repositories and fixed clock. */
+  private fun createViewModel() = CalendarViewModel(authRepository, eventsRepository, clock)
 
   /** Creates a minimal authenticated account for observation tests. */
   private fun account(uid: String) = UserAccount(uid, null, null, null)
@@ -135,6 +200,15 @@ class CalendarViewModelTest {
         endsAt = endsAt,
         createdAt = startsAt,
     )
+  }
+
+  /** A test clock whose instant can be advanced across midnight. */
+  private class MutableClock(var currentInstant: Instant, private val zone: ZoneId) : Clock() {
+    override fun getZone(): ZoneId = zone
+
+    override fun withZone(zone: ZoneId): Clock = MutableClock(currentInstant, zone)
+
+    override fun instant(): Instant = currentInstant
   }
 
   /** Records each range request while delegating event storage and observation to memory. */
