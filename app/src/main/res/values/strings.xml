@@ -81,6 +81,10 @@
     <string name="event_planning_tasks_optional_label">Tasks (optional)</string>
     <string name="event_planning_add_task_placeholder">Add a task&#8230;</string>
     <string name="event_planning_delete_task_content_description">Delete task</string>
+    <string name="event_planning_select_subject_title">Select subject</string>
+    <string name="event_planning_subject_search_placeholder">Search or type new subject…</string>
+    <string name="confirm">OK</string>
+    <string name="cancel">Cancel</string>
 
     <!-- Group Sessions Screen -->
     <string name="group_session_title">Group sessions</string>
