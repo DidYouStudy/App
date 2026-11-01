@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -207,6 +208,12 @@ fun AddEventScreenStateless(
     modifier: Modifier = Modifier,
     onTypeClick: (() -> Unit)? = null,
 ) {
+  val hasMissingFields =
+      uiState.date == null ||
+          uiState.startTime == null ||
+          uiState.endTime == null ||
+          (uiState.isSubjectRequired && uiState.subject.isBlank())
+
   Column(
       modifier =
           modifier
@@ -236,41 +243,63 @@ fun AddEventScreenStateless(
         color = MaterialTheme.colorScheme.background,
         modifier = Modifier.fillMaxWidth(),
     ) {
-      Button(
-          onClick = onSaveClick,
-          enabled = !uiState.isSaving,
-          colors =
-              ButtonDefaults.buttonColors(
-                  containerColor = MaterialTheme.colorScheme.primary,
-                  contentColor = MaterialTheme.colorScheme.onPrimary,
-                  disabledContainerColor =
-                      MaterialTheme.colorScheme.primary.copy(alpha = AlphaTokens.DISABLED),
-                  disabledContentColor =
-                      MaterialTheme.colorScheme.onPrimary.copy(alpha = AlphaTokens.DISABLED),
-              ),
-          shape = RoundedCornerShape(Dimens.cornerPill),
+      Column(
           modifier =
               Modifier.fillMaxWidth()
                   .padding(
                       horizontal = Dimens.saveButtonHorizontalPadding,
                       vertical = Dimens.saveButtonVerticalPadding,
-                  )
-                  .height(Dimens.saveButtonHeight)
-                  .testTag(Tags.SAVE_BUTTON),
+                  ),
+          horizontalAlignment = Alignment.CenterHorizontally,
       ) {
-        if (uiState.isSaving) {
-          CircularProgressIndicator(
-              modifier =
-                  Modifier.size(Dimens.saveButtonProgressSize).testTag(Tags.SAVE_BUTTON_PROGRESS),
-              color = MaterialTheme.colorScheme.onPrimary,
-              strokeWidth = Dimens.progressIndicatorStrokeWidth,
-          )
-        } else {
+        // Error banner anchored directly above the button
+        uiState.error?.let {
+          val errorMessageRes =
+              if (hasMissingFields) {
+                R.string.event_planning_error_required_fields
+              } else {
+                R.string.event_planning_error_save_failed
+              }
+
           Text(
-              text = stringResource(R.string.event_planning_save_button),
-              style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-              color = MaterialTheme.colorScheme.onPrimary,
+              text = stringResource(errorMessageRes),
+              color = MaterialTheme.colorScheme.error,
+              style = MaterialTheme.typography.bodyMedium,
+              modifier =
+                  Modifier.padding(bottom = Dimens.errorVerticalPadding).testTag(Tags.ERROR_TEXT),
           )
+        }
+
+        Button(
+            onClick = onSaveClick,
+            enabled = !uiState.isSaving,
+            colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContainerColor =
+                        MaterialTheme.colorScheme.primary.copy(alpha = AlphaTokens.DISABLED),
+                    disabledContentColor =
+                        MaterialTheme.colorScheme.onPrimary.copy(alpha = AlphaTokens.DISABLED),
+                ),
+            shape = RoundedCornerShape(Dimens.cornerPill),
+            modifier =
+                Modifier.fillMaxWidth().height(Dimens.saveButtonHeight).testTag(Tags.SAVE_BUTTON),
+        ) {
+          if (uiState.isSaving) {
+            CircularProgressIndicator(
+                modifier =
+                    Modifier.size(Dimens.saveButtonProgressSize).testTag(Tags.SAVE_BUTTON_PROGRESS),
+                color = MaterialTheme.colorScheme.onPrimary,
+                strokeWidth = Dimens.progressIndicatorStrokeWidth,
+            )
+          } else {
+            Text(
+                text = stringResource(R.string.event_planning_save_button),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onPrimary,
+            )
+          }
         }
       }
     }

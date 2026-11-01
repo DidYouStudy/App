@@ -82,6 +82,14 @@ fun EventFormContent(
   val density = LocalDensity.current
   var pillWidth by remember { mutableStateOf(Dimens.noPadding) }
 
+  /** Per-component errors: */
+  val hasValidationError = uiState.error != null
+  val isDateMissing = hasValidationError && uiState.date == null
+  val isStartTimeMissing = hasValidationError && uiState.startTime == null
+  val isEndTimeMissing = hasValidationError && uiState.endTime == null
+  val isSubjectMissing =
+      hasValidationError && uiState.isSubjectRequired && uiState.subject.isBlank()
+
   Column(
       modifier =
           modifier
@@ -151,6 +159,7 @@ fun EventFormContent(
           onDateClick()
         },
         testTag = Tags.DATE_SELECTOR,
+        isError = isDateMissing,
     )
 
     // Start time
@@ -166,6 +175,7 @@ fun EventFormContent(
           onStartTimeClick()
         },
         testTag = Tags.START_TIME_SELECTOR,
+        isError = isStartTimeMissing,
     )
 
     // End time
@@ -181,6 +191,7 @@ fun EventFormContent(
           onEndTimeClick()
         },
         testTag = Tags.END_TIME_SELECTOR,
+        isError = isEndTimeMissing,
     )
 
     // Informational warning for overnight events
@@ -225,6 +236,7 @@ fun EventFormContent(
         },
         testTag = Tags.SUBJECT_SELECTOR,
         hasDropdownArrow = true,
+        isError = isSubjectMissing,
     )
 
     // Location (optional)
@@ -275,17 +287,6 @@ fun EventFormContent(
           itemTag = "${Tags.TASK_ITEM_PREFIX}$index",
           checkboxTag = "${Tags.TASK_CHECKBOX_PREFIX}$index",
           deleteTag = "${Tags.TASK_DELETE_PREFIX}$index",
-      )
-    }
-
-    // Display validation or save errors if present
-    uiState.error?.let { err ->
-      Text(
-          text = err,
-          color = MaterialTheme.colorScheme.error,
-          style = MaterialTheme.typography.bodyMedium,
-          modifier =
-              Modifier.padding(vertical = Dimens.errorVerticalPadding).testTag(Tags.ERROR_TEXT),
       )
     }
   }

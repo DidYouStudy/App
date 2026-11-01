@@ -95,6 +95,7 @@ fun SelectorFieldPill(
     testTag: String,
     modifier: Modifier = Modifier,
     hasDropdownArrow: Boolean = false,
+    isError: Boolean = false,
 ) {
   val shape = RoundedCornerShape(Dimens.cornerPill)
   Box(
@@ -104,6 +105,13 @@ fun SelectorFieldPill(
               .heightIn(min = Dimens.pillMinHeight)
               .clip(shape)
               .background(MaterialTheme.colorScheme.secondaryContainer)
+              .then(
+                  if (isError) {
+                    Modifier.border(Dimens.borderMedium, MaterialTheme.colorScheme.error, shape)
+                  } else {
+                    Modifier
+                  }
+              )
               .clickable(onClick = onClick)
               .padding(
                   horizontal = Dimens.pillHorizontalPadding,
