@@ -57,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -147,6 +148,7 @@ fun OutlinedInputField(
     modifier: Modifier = Modifier,
     minLines: Int = 1,
 ) {
+  var isFocused by remember { mutableStateOf(false) }
   val shape = RoundedCornerShape(Dimens.cornerPill)
   TextField(
       value = value,
@@ -166,7 +168,14 @@ fun OutlinedInputField(
       modifier =
           modifier
               .fillMaxWidth()
-              .border(Dimens.borderMedium, MaterialTheme.colorScheme.primary, shape)
+              .onFocusChanged { isFocused = it.isFocused }
+              .then(
+                  if (isFocused) {
+                    Modifier.border(Dimens.borderMedium, MaterialTheme.colorScheme.primary, shape)
+                  } else {
+                    Modifier
+                  }
+              )
               .testTag(testTag),
   )
 }
@@ -236,6 +245,7 @@ fun AddTaskInputField(
     modifier: Modifier = Modifier,
 ) {
   var text by rememberSaveable { mutableStateOf("") }
+  var isFocused by remember { mutableStateOf(false) }
   val shape = RoundedCornerShape(Dimens.cornerPill)
 
   TextField(
@@ -273,7 +283,14 @@ fun AddTaskInputField(
       modifier =
           modifier
               .fillMaxWidth()
-              .border(Dimens.borderMedium, MaterialTheme.colorScheme.primary, shape)
+              .onFocusChanged { isFocused = it.isFocused }
+              .then(
+                  if (isFocused) {
+                    Modifier.border(Dimens.borderMedium, MaterialTheme.colorScheme.primary, shape)
+                  } else {
+                    Modifier
+                  }
+              )
               .testTag(testTag),
   )
 }

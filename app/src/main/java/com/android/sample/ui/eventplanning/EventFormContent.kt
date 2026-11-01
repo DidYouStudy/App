@@ -1,6 +1,8 @@
 // Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.eventplanning
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import com.android.sample.R
@@ -75,6 +78,7 @@ fun EventFormContent(
   val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
   val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
   var showTypeMenu by rememberSaveable { mutableStateOf(false) }
+  val focusManager = LocalFocusManager.current
   val density = LocalDensity.current
   var pillWidth by remember { mutableStateOf(Dimens.noPadding) }
 
@@ -82,6 +86,13 @@ fun EventFormContent(
       modifier =
           modifier
               .verticalScroll(rememberScrollState())
+              // Clear focus when tapping blank space in the scrollable form without a ripple
+              .clickable(
+                  interactionSource = remember { MutableInteractionSource() },
+                  indication = null,
+              ) {
+                focusManager.clearFocus()
+              }
               .padding(
                   horizontal = Dimens.formHorizontalPadding,
                   vertical = Dimens.formVerticalPadding,
@@ -105,6 +116,7 @@ fun EventFormContent(
               uiState.type.name.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() },
           placeholderText = stringResource(R.string.event_planning_type_placeholder),
           onClick = {
+            focusManager.clearFocus()
             if (onTypeClick != null) {
               onTypeClick()
             } else {
@@ -134,7 +146,10 @@ fun EventFormContent(
     SelectorFieldPill(
         valueText = uiState.date?.format(dateFormatter),
         placeholderText = stringResource(R.string.event_planning_date_placeholder),
-        onClick = onDateClick,
+        onClick = {
+          focusManager.clearFocus()
+          onDateClick()
+        },
         testTag = Tags.DATE_SELECTOR,
     )
 
@@ -146,7 +161,10 @@ fun EventFormContent(
     SelectorFieldPill(
         valueText = uiState.startTime?.format(timeFormatter),
         placeholderText = stringResource(R.string.event_planning_time_placeholder),
-        onClick = onStartTimeClick,
+        onClick = {
+          focusManager.clearFocus()
+          onStartTimeClick()
+        },
         testTag = Tags.START_TIME_SELECTOR,
     )
 
@@ -158,7 +176,10 @@ fun EventFormContent(
     SelectorFieldPill(
         valueText = uiState.endTime?.format(timeFormatter),
         placeholderText = stringResource(R.string.event_planning_time_placeholder),
-        onClick = onEndTimeClick,
+        onClick = {
+          focusManager.clearFocus()
+          onEndTimeClick()
+        },
         testTag = Tags.END_TIME_SELECTOR,
     )
 
@@ -198,7 +219,10 @@ fun EventFormContent(
     SelectorFieldPill(
         valueText = uiState.subject,
         placeholderText = stringResource(R.string.event_planning_select_or_enter_placeholder),
-        onClick = onSubjectClick,
+        onClick = {
+          focusManager.clearFocus()
+          onSubjectClick()
+        },
         testTag = Tags.SUBJECT_SELECTOR,
         hasDropdownArrow = true,
     )
@@ -240,8 +264,14 @@ fun EventFormContent(
     uiState.tasks.forEachIndexed { index, task ->
       TaskRowItem(
           task = task,
-          onToggle = { onToggleTask(index) },
-          onDelete = { onDeleteTask(index) },
+          onToggle = {
+            focusManager.clearFocus()
+            onToggleTask(index)
+          },
+          onDelete = {
+            focusManager.clearFocus()
+            onDeleteTask(index)
+          },
           itemTag = "${Tags.TASK_ITEM_PREFIX}$index",
           checkboxTag = "${Tags.TASK_CHECKBOX_PREFIX}$index",
           deleteTag = "${Tags.TASK_DELETE_PREFIX}$index",
