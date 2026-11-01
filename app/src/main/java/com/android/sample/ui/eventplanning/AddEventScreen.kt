@@ -1,12 +1,15 @@
 // Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.eventplanning
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,6 +35,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -74,9 +78,9 @@ fun AddEventScreen(
     onPickSubjectClick: (() -> Unit)? = null,
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+  val focusManager = LocalFocusManager.current
 
   // State-saveable dialog visibility flags so open dialogs survive configuration changes
-  var showTypeMenu by rememberSaveable { mutableStateOf(false) }
   var showDatePicker by rememberSaveable { mutableStateOf(false) }
   var showStartTimePicker by rememberSaveable { mutableStateOf(false) }
   var showEndTimePicker by rememberSaveable { mutableStateOf(false) }
@@ -88,6 +92,107 @@ fun AddEventScreen(
       onEventSaved()
     }
   }
+
+  BackHandler {
+    focusManager.clearFocus()
+    onBackClick()
+  }
+
+  AddEventScreenStateless(
+      uiState = uiState,
+      onBackClick = onBackClick,
+      onTypeChange = viewModel::setType,
+      onTypeClick = onPickTypeClick,
+      onDateClick = { onPickDateClick?.invoke() ?: run { showDatePicker = true } },
+      onStartTimeClick = { onPickStartTimeClick?.invoke() ?: run { showStartTimePicker = true } },
+      onEndTimeClick = { onPickEndTimeClick?.invoke() ?: run { showEndTimePicker = true } },
+      onSubjectClick = { onPickSubjectClick?.invoke() ?: run { showSubjectPicker = true } },
+      onLocationChange = viewModel::setLocation,
+      onDescriptionChange = viewModel::setDescription,
+      onAddTask = viewModel::addTask,
+      onToggleTask = viewModel::toggleTask,
+      onDeleteTask = viewModel::removeTask,
+      onSaveClick = viewModel::addEvent,
+      modifier = modifier,
+  )
+
+  // Date Picker Dialog
+  if (showDatePicker) {
+    EventDatePickerDialog(
+        initialDate = uiState.date,
+        onDateSelected = { date ->
+          viewModel.setDate(date)
+          showDatePicker = false
+        },
+        onDismiss = { showDatePicker = false },
+    )
+  }
+
+  // Start Time Picker Dialog
+  if (showStartTimePicker) {
+    EventTimePickerDialog(
+        initialTime = uiState.startTime,
+        title = stringResource(R.string.event_planning_start_time_label),
+        onTimeSelected = { time ->
+          viewModel.setStartTime(time)
+          showStartTimePicker = false
+        },
+        onDismiss = { showStartTimePicker = false },
+    )
+  }
+
+  // End Time Picker Dialog
+  if (showEndTimePicker) {
+    EventTimePickerDialog(
+        initialTime = uiState.endTime,
+        title = stringResource(R.string.event_planning_end_time_label),
+        onTimeSelected = { time ->
+          viewModel.setEndTime(time)
+          showEndTimePicker = false
+        },
+        onDismiss = { showEndTimePicker = false },
+    )
+  }
+
+  // Subject Picker Dialog
+  if (showSubjectPicker) {
+    SubjectPickerDialog(
+        currentSelection = uiState.subject,
+        allSubjects = uiState.recommendedSubjects,
+        onDismiss = { showSubjectPicker = false },
+        onConfirm = { subject ->
+          viewModel.setSubject(subject)
+          showSubjectPicker = false
+        },
+    )
+  }
+}
+
+/** Stateless AddEventScreen displaying form content and the pinned Save button. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddEventScreenStateless(
+    uiState: EventPlanningUiState,
+    onBackClick: () -> Unit,
+    onTypeChange: (EventType) -> Unit,
+    onDateClick: () -> Unit,
+    onStartTimeClick: () -> Unit,
+    onEndTimeClick: () -> Unit,
+    onSubjectClick: () -> Unit,
+    onLocationChange: (String) -> Unit,
+    onDescriptionChange: (String) -> Unit,
+    onAddTask: (String) -> Unit,
+    onToggleTask: (Int) -> Unit,
+    onDeleteTask: (Int) -> Unit,
+    onSaveClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onTypeClick: (() -> Unit)? = null,
+) {
+  val hasMissingFields =
+      uiState.date == null ||
+          uiState.startTime == null ||
+          uiState.endTime == null ||
+          (uiState.isSubjectRequired && uiState.subject.isBlank())
 
   Scaffold(
       topBar = {
@@ -115,193 +220,96 @@ fun AddEventScreen(
             modifier = Modifier.testTag(Tags.TOP_APP_BAR),
         )
       },
-      modifier = modifier.fillMaxSize(),
-  ) { innerPadding ->
-    Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-      AddEventScreenStateless(
-          uiState = uiState,
-          onTypeChange = viewModel::setType,
-          onTypeClick = onPickTypeClick,
-          onDateClick = { onPickDateClick?.invoke() ?: run { showDatePicker = true } },
-          onStartTimeClick = {
-            onPickStartTimeClick?.invoke() ?: run { showStartTimePicker = true }
-          },
-          onEndTimeClick = { onPickEndTimeClick?.invoke() ?: run { showEndTimePicker = true } },
-          onSubjectClick = { onPickSubjectClick?.invoke() ?: run { showSubjectPicker = true } },
-          onLocationChange = viewModel::setLocation,
-          onDescriptionChange = viewModel::setDescription,
-          onAddTask = viewModel::addTask,
-          onToggleTask = viewModel::toggleTask,
-          onDeleteTask = viewModel::removeTask,
-          onSaveClick = viewModel::addEvent,
-      )
-
-      // Date Picker Dialog
-      if (showDatePicker) {
-        EventDatePickerDialog(
-            initialDate = uiState.date,
-            onDateSelected = { date ->
-              viewModel.setDate(date)
-              showDatePicker = false
-            },
-            onDismiss = { showDatePicker = false },
-        )
-      }
-
-      // Start Time Picker Dialog
-      if (showStartTimePicker) {
-        EventTimePickerDialog(
-            initialTime = uiState.startTime,
-            title = stringResource(R.string.event_planning_start_time_label),
-            onTimeSelected = { time ->
-              viewModel.setStartTime(time)
-              showStartTimePicker = false
-            },
-            onDismiss = { showStartTimePicker = false },
-        )
-      }
-
-      // End Time Picker Dialog
-      if (showEndTimePicker) {
-        EventTimePickerDialog(
-            initialTime = uiState.endTime,
-            title = stringResource(R.string.event_planning_end_time_label),
-            onTimeSelected = { time ->
-              viewModel.setEndTime(time)
-              showEndTimePicker = false
-            },
-            onDismiss = { showEndTimePicker = false },
-        )
-      }
-
-      // Subject Picker Dialog
-      if (showSubjectPicker) {
-        SubjectPickerDialog(
-            currentSelection = uiState.subject,
-            allSubjects = uiState.recommendedSubjects,
-            onDismiss = { showSubjectPicker = false },
-            onConfirm = { subject ->
-              viewModel.setSubject(subject)
-              showSubjectPicker = false
-            },
-        )
-      }
-    }
-  }
-}
-
-/** Stateless AddEventScreen displaying form content and the pinned Save button. */
-@Composable
-fun AddEventScreenStateless(
-    uiState: EventPlanningUiState,
-    onTypeChange: (EventType) -> Unit,
-    onDateClick: () -> Unit,
-    onStartTimeClick: () -> Unit,
-    onEndTimeClick: () -> Unit,
-    onSubjectClick: () -> Unit,
-    onLocationChange: (String) -> Unit,
-    onDescriptionChange: (String) -> Unit,
-    onAddTask: (String) -> Unit,
-    onToggleTask: (Int) -> Unit,
-    onDeleteTask: (Int) -> Unit,
-    onSaveClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    onTypeClick: (() -> Unit)? = null,
-) {
-  val hasMissingFields =
-      uiState.date == null ||
-          uiState.startTime == null ||
-          uiState.endTime == null ||
-          (uiState.isSubjectRequired && uiState.subject.isBlank())
-
-  Column(
-      modifier =
-          modifier
-              .fillMaxSize()
-              .background(MaterialTheme.colorScheme.background)
-              .testTag(Tags.SCREEN_CONTAINER),
-  ) {
-    // 1. Scrollable form takes all remaining vertical space ABOVE the button
-    EventFormContent(
-        uiState = uiState,
-        onTypeChange = onTypeChange,
-        onDateClick = onDateClick,
-        onStartTimeClick = onStartTimeClick,
-        onEndTimeClick = onEndTimeClick,
-        onSubjectClick = onSubjectClick,
-        onLocationChange = onLocationChange,
-        onDescriptionChange = onDescriptionChange,
-        onAddTask = onAddTask,
-        onToggleTask = onToggleTask,
-        onDeleteTask = onDeleteTask,
-        onTypeClick = onTypeClick,
-        modifier = Modifier.weight(1f).fillMaxWidth(),
-    )
-
-    // 2. Button container sits physically below the form, never overlapping it
-    Surface(
-        color = MaterialTheme.colorScheme.background,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-      Column(
-          modifier =
-              Modifier.fillMaxWidth()
-                  .padding(
-                      horizontal = Dimens.saveButtonHorizontalPadding,
-                      vertical = Dimens.saveButtonVerticalPadding,
-                  ),
-          horizontalAlignment = Alignment.CenterHorizontally,
-      ) {
-        // Error banner anchored directly above the button
-        uiState.error?.let {
-          val errorMessageRes =
-              if (hasMissingFields) {
-                R.string.event_planning_error_required_fields
-              } else {
-                R.string.event_planning_error_save_failed
-              }
-
-          Text(
-              text = stringResource(errorMessageRes),
-              color = MaterialTheme.colorScheme.error,
-              style = MaterialTheme.typography.bodyMedium,
-              modifier =
-                  Modifier.padding(bottom = Dimens.errorVerticalPadding).testTag(Tags.ERROR_TEXT),
-          )
-        }
-
-        Button(
-            onClick = onSaveClick,
-            enabled = !uiState.isSaving,
-            colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    disabledContainerColor =
-                        MaterialTheme.colorScheme.primary.copy(alpha = AlphaTokens.DISABLED),
-                    disabledContentColor =
-                        MaterialTheme.colorScheme.onPrimary.copy(alpha = AlphaTokens.DISABLED),
-                ),
-            shape = RoundedCornerShape(Dimens.cornerPill),
-            modifier =
-                Modifier.fillMaxWidth().height(Dimens.saveButtonHeight).testTag(Tags.SAVE_BUTTON),
+      bottomBar = {
+        Surface(
+            color = MaterialTheme.colorScheme.background,
+            modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
         ) {
-          if (uiState.isSaving) {
-            CircularProgressIndicator(
+          Column(
+              modifier =
+                  Modifier.fillMaxWidth()
+                      .padding(
+                          horizontal = Dimens.saveButtonHorizontalPadding,
+                          vertical = Dimens.saveButtonVerticalPadding,
+                      ),
+              horizontalAlignment = Alignment.CenterHorizontally,
+          ) {
+            uiState.error?.let {
+              val errorMessageRes =
+                  if (hasMissingFields) {
+                    R.string.event_planning_error_required_fields
+                  } else {
+                    R.string.event_planning_error_save_failed
+                  }
+
+              Text(
+                  text = stringResource(errorMessageRes),
+                  color = MaterialTheme.colorScheme.error,
+                  style = MaterialTheme.typography.bodyMedium,
+                  modifier =
+                      Modifier.padding(bottom = Dimens.errorVerticalPadding)
+                          .testTag(Tags.ERROR_TEXT),
+              )
+            }
+
+            Button(
+                onClick = onSaveClick,
+                enabled = !uiState.isSaving,
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        disabledContainerColor =
+                            MaterialTheme.colorScheme.primary.copy(alpha = AlphaTokens.DISABLED),
+                        disabledContentColor =
+                            MaterialTheme.colorScheme.onPrimary.copy(alpha = AlphaTokens.DISABLED),
+                    ),
+                shape = RoundedCornerShape(Dimens.cornerPill),
                 modifier =
-                    Modifier.size(Dimens.saveButtonProgressSize).testTag(Tags.SAVE_BUTTON_PROGRESS),
-                color = MaterialTheme.colorScheme.onPrimary,
-                strokeWidth = Dimens.progressIndicatorStrokeWidth,
-            )
-          } else {
-            Text(
-                text = stringResource(R.string.event_planning_save_button),
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onPrimary,
-            )
+                    Modifier.fillMaxWidth()
+                        .height(Dimens.saveButtonHeight)
+                        .testTag(Tags.SAVE_BUTTON),
+            ) {
+              if (uiState.isSaving) {
+                CircularProgressIndicator(
+                    modifier =
+                        Modifier.size(Dimens.saveButtonProgressSize)
+                            .testTag(Tags.SAVE_BUTTON_PROGRESS),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    strokeWidth = Dimens.progressIndicatorStrokeWidth,
+                )
+              } else {
+                Text(
+                    text = stringResource(R.string.event_planning_save_button),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                )
+              }
+            }
           }
         }
-      }
+      },
+      modifier = modifier
+          .fillMaxSize()
+          .imePadding()
+          .testTag(Tags.SCREEN_CONTAINER),
+  ) { innerPadding ->
+    Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+      EventFormContent(
+          uiState = uiState,
+          onTypeChange = onTypeChange,
+          onDateClick = onDateClick,
+          onStartTimeClick = onStartTimeClick,
+          onEndTimeClick = onEndTimeClick,
+          onSubjectClick = onSubjectClick,
+          onLocationChange = onLocationChange,
+          onDescriptionChange = onDescriptionChange,
+          onAddTask = onAddTask,
+          onToggleTask = onToggleTask,
+          onDeleteTask = onDeleteTask,
+          onTypeClick = onTypeClick,
+          modifier = Modifier.fillMaxSize(),
+      )
     }
   }
 }
@@ -319,6 +327,7 @@ private fun AddEventScreenPreview() {
                 description = "Bring course pack and notes.",
                 tasks = listOf(EventTask("Read Chapter 4"), EventTask("Do homework 2")),
             ),
+        onBackClick = {},
         onTypeClick = {},
         onDateClick = {},
         onStartTimeClick = {},

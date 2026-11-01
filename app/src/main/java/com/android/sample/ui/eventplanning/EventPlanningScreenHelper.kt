@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -52,6 +54,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -74,6 +77,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
+import kotlinx.coroutines.launch
 
 @Composable
 fun SectionLabel(text: String, testTag: String) {
@@ -158,6 +162,8 @@ fun OutlinedInputField(
 ) {
   var isFocused by remember { mutableStateOf(false) }
   val shape = RoundedCornerShape(Dimens.cornerPill)
+  val bringIntoViewRequester = remember { BringIntoViewRequester() }
+  val coroutineScope = rememberCoroutineScope()
   TextField(
       value = value,
       onValueChange = onValueChange,
@@ -176,7 +182,13 @@ fun OutlinedInputField(
       modifier =
           modifier
               .fillMaxWidth()
-              .onFocusChanged { isFocused = it.isFocused }
+              .bringIntoViewRequester(bringIntoViewRequester)
+              .onFocusChanged { focusState ->
+                isFocused = focusState.isFocused
+                if (focusState.isFocused) {
+                  coroutineScope.launch { bringIntoViewRequester.bringIntoView() }
+                }
+              }
               .then(
                   if (isFocused) {
                     Modifier.border(Dimens.borderMedium, MaterialTheme.colorScheme.primary, shape)
@@ -255,6 +267,8 @@ fun AddTaskInputField(
   var text by rememberSaveable { mutableStateOf("") }
   var isFocused by remember { mutableStateOf(false) }
   val shape = RoundedCornerShape(Dimens.cornerPill)
+  val bringIntoViewRequester = remember { BringIntoViewRequester() }
+  val coroutineScope = rememberCoroutineScope()
 
   TextField(
       value = text,
@@ -291,7 +305,13 @@ fun AddTaskInputField(
       modifier =
           modifier
               .fillMaxWidth()
-              .onFocusChanged { isFocused = it.isFocused }
+              .bringIntoViewRequester(bringIntoViewRequester)
+              .onFocusChanged { focusState ->
+                isFocused = focusState.isFocused
+                if (focusState.isFocused) {
+                  coroutineScope.launch { bringIntoViewRequester.bringIntoView() }
+                }
+              }
               .then(
                   if (isFocused) {
                     Modifier.border(Dimens.borderMedium, MaterialTheme.colorScheme.primary, shape)
