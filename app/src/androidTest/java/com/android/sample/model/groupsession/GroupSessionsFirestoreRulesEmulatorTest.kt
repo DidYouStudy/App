@@ -32,13 +32,14 @@ class GroupSessionsFirestoreRulesEmulatorTest {
       val app: FirebaseApp,
       val auth: FirebaseAuth,
       val db: FirebaseFirestore,
-      val uid: String,
+      var uid: String,
   )
 
   private val clients = mutableListOf<Client>()
   private lateinit var creator: Client
   private lateinit var member: Client
   private lateinit var outsider: Client
+  private lateinit var filler: Client
   private val start = Instant.parse("2026-10-20T12:00:00Z")
   private val end = start.plusSeconds(3600)
   private val created = Instant.parse("2026-10-19T12:00:00Z")
@@ -50,6 +51,33 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     creator = newClient("creator")
     member = newClient("member")
     outsider = newClient("outsider")
+    filler = newClient("filler")
+  }
+
+  /** OTHER sessions allow a null subject and a duration of exactly 24 hours. */
+  @Test
+  fun creatorCanCreateAndEditOtherSessionAndExactDaySession() = runBlocking {
+    val otherId = uniqueId()
+    val other =
+        sessionData(creator) +
+            mapOf(
+                "type" to EventType.OTHER.name,
+                "subject" to null,
+            )
+    set(document(creator, otherId), other)
+    val editedOther = other + ("description" to "Open study time")
+    set(document(creator, otherId), editedOther)
+    assertEquals(editedOther, readData(outsider, otherId))
+
+    val dayId = uniqueId()
+    val exactDay =
+        sessionData(creator) +
+            mapOf(
+                "startsAt" to timestamp(start),
+                "endsAt" to timestamp(start.plusSeconds(24 * 3600)),
+            )
+    set(document(creator, dayId), exactDay)
+    assertEquals(exactDay, readData(outsider, dayId))
   }
 
   /** Releases every isolated Firebase client, including temporary members. */
@@ -120,9 +148,8 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     val id = createSession()
     val memberIds = mutableListOf(creator.uid)
     repeat(28) { index ->
-      val extra = newClient("filler-$index")
-      memberIds += extra.uid
-      update(document(extra, id), mapOf("memberIds" to memberIds.toList()))
+      memberIds += signUp(filler, "filler-$index")
+      update(document(filler, id), mapOf("memberIds" to memberIds.toList()))
     }
 
     memberIds += member.uid
@@ -214,6 +241,15 @@ class GroupSessionsFirestoreRulesEmulatorTest {
           mapOf("memberIds" to listOf(creator.uid, member.uid, "someone-else")),
       )
     }
+    val beforeOutsiderEdit = readData(outsider, id)["memberIds"]
+    denied {
+      update(
+          document(outsider, id),
+          mapOf("memberIds" to listOf(creator.uid)),
+      )
+    }
+    assertEquals(beforeOutsiderEdit, readData(outsider, id)["memberIds"])
+
     denied { update(document(member, id), mapOf("memberIds" to listOf(member.uid))) }
     denied {
       update(
@@ -221,6 +257,20 @@ class GroupSessionsFirestoreRulesEmulatorTest {
           mapOf("memberIds" to listOf(creator.uid, outsider.uid)),
       )
     }
+    val thirdId = signUp(filler, "third-member")
+    update(
+        document(filler, id),
+        mapOf("memberIds" to listOf(creator.uid, member.uid, thirdId)),
+    )
+    val beforeMemberEdit = readData(outsider, id)["memberIds"]
+    denied {
+      update(
+          document(member, id),
+          mapOf("memberIds" to listOf(creator.uid, member.uid)),
+      )
+    }
+    assertEquals(beforeMemberEdit, readData(outsider, id)["memberIds"])
+
     denied {
       update(
           document(member, id),
@@ -242,14 +292,29 @@ class GroupSessionsFirestoreRulesEmulatorTest {
   @Test
   fun creatorCannotChangeMembershipOrImmutableFields() = runBlocking {
     val id = createSession()
+    update(
+        document(member, id),
+        mapOf("memberIds" to listOf(creator.uid, member.uid)),
+    )
 
+    val joinedMembers = readData(outsider, id)["memberIds"]
     denied {
       update(
           document(creator, id),
-          mapOf("memberIds" to listOf(creator.uid, member.uid)),
+          mapOf("memberIds" to listOf(member.uid)),
       )
     }
-    denied { update(document(creator, id), mapOf("memberIds" to listOf(member.uid))) }
+    assertEquals(joinedMembers, readData(outsider, id)["memberIds"])
+
+    val creatorOnlyId = createSession()
+    denied {
+      update(
+          document(creator, creatorOnlyId),
+          mapOf("memberIds" to emptyList<String>()),
+      )
+    }
+    assertEquals(listOf(creator.uid), readData(outsider, creatorOnlyId)["memberIds"])
+
     val immutableChanges =
         listOf(
             "createdBy" to member.uid,
@@ -278,7 +343,11 @@ class GroupSessionsFirestoreRulesEmulatorTest {
             valid + ("subject" to null),
             valid + ("endsAt" to timestamp(start)),
             valid + ("endsAt" to timestamp(start.plusSeconds(24 * 3600 + 1))),
+            valid + ("createdAt" to 42),
+            valid + ("updatedAt" to 42),
+            valid + ("startsAt" to 42),
             valid + ("location" to " "),
+            valid + ("description" to 42),
             valid + ("unexpected" to true),
         )
 
@@ -312,14 +381,20 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     auth.useEmulator("10.0.2.2", 9099)
     val db = FirebaseFirestore.getInstance(app)
     db.useEmulator("10.0.2.2", 8080)
-    val uid = timed {
-      auth
-          .createUserWithEmailAndPassword("$name@example.test", "EmulatorOnly123!")
-          .await()
-          .user!!
-          .uid
-    }
+    val uid = signUp(auth, name)
     return Client(app, auth, db, uid).also(clients::add)
+  }
+
+  /** Creates another unique emulator account on a reusable Firebase Auth client. */
+  private suspend fun signUp(client: Client, label: String): String {
+    val uid = signUp(client.auth, "group-rules-$label-${UUID.randomUUID()}")
+    client.uid = uid
+    return uid
+  }
+
+  /** Registers a user with a unique email address. */
+  private suspend fun signUp(auth: FirebaseAuth, name: String): String = timed {
+    auth.createUserWithEmailAndPassword("$name@example.test", "EmulatorOnly123!").await().user!!.uid
   }
 
   /** Builds a payload without depending on the mapper under test. */

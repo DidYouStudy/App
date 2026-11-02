@@ -136,21 +136,28 @@ class GroupSessionFirestoreMapperTest {
   @Test
   fun rejectsMalformedDocumentsAsInvalidEventData() {
     val valid = validData()
+    val requiredFields =
+        listOf("createdBy", "memberIds", "type", "startsAt", "endsAt", "createdAt", "updatedAt")
     val malformed =
-        listOf(
-            valid - "createdBy",
-            valid + ("startsAt" to "yesterday"),
-            valid + ("type" to "UNKNOWN"),
-            valid + ("subject" to " "),
-            valid + ("subject" to null),
-            valid + ("memberIds" to "creator"),
-            valid + ("memberIds" to listOf("creator", 42)),
-            valid + ("memberIds" to listOf("member")),
-            valid + ("memberIds" to listOf("creator", "creator")),
-            valid + ("endsAt" to valid["startsAt"]),
-            valid + ("endsAt" to timestamp(time.plusSeconds(24 * 3600 + 1))),
-            valid + ("location" to " "),
-        )
+        requiredFields.map { valid - it } +
+            listOf(
+                valid + ("startsAt" to "yesterday"),
+                valid + ("type" to "UNKNOWN"),
+                valid + ("type" to 42),
+                valid + ("subject" to 42),
+                valid + ("subject" to " "),
+                valid + ("subject" to null),
+                valid + ("createdBy" to 42),
+                valid + ("memberIds" to "creator"),
+                valid + ("memberIds" to listOf("creator", 42)),
+                valid + ("memberIds" to listOf("member")),
+                valid + ("memberIds" to listOf("creator", "creator")),
+                valid + ("endsAt" to valid["startsAt"]),
+                valid + ("endsAt" to timestamp(time.plusSeconds(24 * 3600 + 1))),
+                valid + ("location" to 42),
+                valid + ("location" to " "),
+                valid + ("description" to 42),
+            )
 
     malformed.forEach { data ->
       val error =
