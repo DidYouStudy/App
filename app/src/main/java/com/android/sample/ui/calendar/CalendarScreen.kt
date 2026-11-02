@@ -118,7 +118,6 @@ fun CalendarScreen(
                 when (uiState.error) {
                   CalendarViewModelError.LOAD_EVENTS_FAILED ->
                       stringResource(R.string.calendar_load_events_error)
-                  null -> ""
                 }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
               Text(text = errorMessage)

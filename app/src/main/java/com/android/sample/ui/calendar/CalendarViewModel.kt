@@ -80,10 +80,16 @@ class CalendarViewModel(
 
   /** Selects the week containing today according to the ViewModel's injected clock. */
   fun navigateToToday() {
-    val today = LocalDate.now(clock)
+    val today = updateToday()
     val todayWeekStart = dateHelper.weekDates(today).first()
-    _uiState.update { it.copy(today = today) }
     currentWeekStart.value = todayWeekStart
+  }
+
+  /** Updates today's date without changing the selected week or its event observation. */
+  fun updateToday(): LocalDate {
+    val today = LocalDate.now(clock)
+    _uiState.update { state -> if (state.today == today) state else state.copy(today = today) }
+    return today
   }
 
   /** Retries observing events for the current user and selected week. */
@@ -135,6 +141,8 @@ class CalendarViewModel(
           )
     }
 
+    // ownerId is nullable. While this check usually won't run, it's here to handle the calendar
+    // screen safely in case the user signs out
     if (ownerId == null) return
 
     // A new week or user cancels the prior observation through collectLatest.

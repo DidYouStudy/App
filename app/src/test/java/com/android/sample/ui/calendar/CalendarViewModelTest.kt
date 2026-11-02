@@ -106,22 +106,27 @@ class CalendarViewModelTest {
     assertEquals(Instant.parse("2026-10-25T23:00:00Z"), eventsRepository.queries.last().from)
   }
 
-  /** Crossing midnight does not reset a week selected three weeks ahead. */
+  /** Updating today after midnight preserves a future week and does not reload its events. */
   @Test
-  fun selectedWeekThreeWeeksAheadSurvivesMidnight() = runTest {
+  fun updateTodayAfterMidnightKeepsSelectedWeekWithoutReloadingEvents() = runTest {
     authRepository.currentUser.value = account("alice")
     val mutableClock = MutableClock(Instant.parse("2026-10-28T22:59:00Z"), zone)
     val viewModel = CalendarViewModel(authRepository, eventsRepository, mutableClock)
+    assertEquals(LocalDate.of(2026, 10, 28), viewModel.uiState.value.today)
 
     repeat(3) { viewModel.nextWeek() }
 
     val selectedWeek = LocalDate.of(2026, 11, 16)
     assertEquals(selectedWeek, viewModel.uiState.value.weekStart)
+    val queriesBeforeDateUpdate = eventsRepository.queries.toList()
 
     mutableClock.currentInstant = Instant.parse("2026-10-28T23:01:00Z")
+    viewModel.updateToday()
 
     assertEquals(LocalDate.of(2026, 10, 29), LocalDate.now(mutableClock))
+    assertEquals(LocalDate.of(2026, 10, 29), viewModel.uiState.value.today)
     assertEquals(selectedWeek, viewModel.uiState.value.weekStart)
+    assertEquals(queriesBeforeDateUpdate, eventsRepository.queries)
   }
 
   /** Previous and next week navigation preserve correct dates across a year boundary. */
