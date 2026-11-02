@@ -6,7 +6,6 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import androidx.lifecycle.ViewModel
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.ui.calendar.CalendarDateHelper
 import com.android.sample.ui.calendar.CalendarScreen
@@ -26,13 +25,9 @@ import org.mockito.kotlin.verifyNoMoreInteractions
 class TopLevelScreensProfileButtonTest {
   @get:Rule val composeTestRule = createComposeRule()
 
-  /** Shows a screen with optional ViewModel state and checks its profile navigation action. */
-  private fun <T : ViewModel> assertProfileButtonOpensSettings(
-      viewModel: T? = null,
-      screen: @Composable (NavigationActions?, T?) -> Unit,
-  ) {
+  private fun assertProfileButtonOpensSettings(screen: @Composable (NavigationActions?) -> Unit) {
     val navigationActions = mock<NavigationActions>()
-    composeTestRule.setContent { screen(navigationActions, viewModel) }
+    composeTestRule.setContent { screen(navigationActions) }
 
     composeTestRule
         .onNodeWithTag(ProfileButtonTestTags.PROFILE_BUTTON)
@@ -45,14 +40,12 @@ class TopLevelScreensProfileButtonTest {
 
   @Test
   fun dashboardProfileButtonOpensSettings() {
-    assertProfileButtonOpensSettings<ViewModel> { navigationActions, _ ->
-      DashboardScreen(navigationActions = navigationActions)
-    }
+    assertProfileButtonOpensSettings { DashboardScreen(navigationActions = it) }
   }
 
   @Test
   fun calendarProfileButtonOpensSettings() {
-    assertProfileButtonOpensSettings<ViewModel> { navigationActions, _ ->
+    assertProfileButtonOpensSettings { navigationActions ->
       val today = LocalDate.now()
       val weekDates = CalendarDateHelper().weekDates(today)
       CalendarScreen(
@@ -73,9 +66,7 @@ class TopLevelScreensProfileButtonTest {
 
   @Test
   fun groupSessionProfileButtonOpensSettings() {
-    assertProfileButtonOpensSettings<ViewModel> { navigationActions, _ ->
-      GroupSessionScreen(navigationActions = navigationActions)
-    }
+    assertProfileButtonOpensSettings { GroupSessionScreen(navigationActions = it) }
   }
 
   @Test
