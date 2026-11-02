@@ -121,7 +121,7 @@ fun PreferencesScreen(
                   verticalArrangement = Arrangement.Center,
                   horizontalAlignment = Alignment.CenterHorizontally,
               ) {
-                Text(state.message)
+                Text(stringResource(id = state.error.toMessageRes()))
                 Button(
                     onClick = viewModel::loadPreferences,
                 ) {

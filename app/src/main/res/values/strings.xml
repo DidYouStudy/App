@@ -57,6 +57,9 @@
     <string name="preferences_break_duration_label">How much break time do you prefer?</string>
     <string name="preferences_break_frequency_label">How often would you like to take breaks?</string>
     <string name="preferences_save_button">Save</string>
+    <string name="preferences_error_no_signed_in_user">No signed-in user.</string>
+    <string name="preferences_error_load_failed">Failed to load preferences.</string>
+    <string name="preferences_error_save_failed">Failed to save preferences.</string>
     <string name="settings_header">Settings</string>
     <string name="settings_profile_picture">Profile picture</string>
     <string name="settings_greeting">Hello, %1$s!</string>

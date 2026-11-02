@@ -22,7 +22,8 @@ sealed interface PreferencesUiState {
 
   data class Success(val preferences: UserPreferences) : PreferencesUiState
 
-  data class Error(val message: String) : PreferencesUiState
+  /** Loading or saving failed; the screen shows the message for [error] and a Retry button. */
+  data class Error(val error: PreferencesError) : PreferencesUiState
 }
 
 class PreferencesViewModel(
@@ -43,7 +44,7 @@ class PreferencesViewModel(
       authRepository.currentUser.collect { user ->
         userId = user?.uid
         if (user == null) {
-          _uiState.value = PreferencesUiState.Error("No signed-in user")
+          _uiState.value = PreferencesUiState.Error(PreferencesError.NO_SIGNED_IN_USER)
         } else {
           loadPreferences()
         }
@@ -62,10 +63,7 @@ class PreferencesViewModel(
                 // Fallback to default preferences if none exist for the user
                 PreferencesUiState.Success(prefs ?: UserPreferences(userId = currentUserId))
           }
-          .onFailure { exception ->
-            _uiState.value =
-                PreferencesUiState.Error(exception.localizedMessage ?: "Failed to load preferences")
-          }
+          .onFailure { _uiState.value = PreferencesUiState.Error(PreferencesError.LOAD_FAILED) }
     }
   }
 
@@ -86,12 +84,7 @@ class PreferencesViewModel(
               _uiState.value = PreferencesUiState.Success(updated)
               onSuccess()
             }
-            .onFailure { exception ->
-              _uiState.value =
-                  PreferencesUiState.Error(
-                      exception.localizedMessage ?: "Failed to save preferences"
-                  )
-            }
+            .onFailure { _uiState.value = PreferencesUiState.Error(PreferencesError.SAVE_FAILED) }
       } finally {
         // Re-enable Save even if the save was cancelled or threw.
         _isSaving.value = false

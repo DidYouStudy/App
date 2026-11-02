@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -113,6 +114,29 @@ class PreferencesScreenEditModeTest {
     composeTestRule
         .onNodeWithTag(PreferencesScreenTestTags.SAVE_BUTTON)
         .assertTextEquals(context.getString(R.string.preferences_save_button))
+  }
+
+  /** A load failure shows the translated message, never the raw exception text. */
+  @Test
+  fun loadFailureShowsTranslatedMessageNotExceptionText() = runTest {
+    `when`(repository.getPreferences(userId)).thenReturn(Result.failure(RuntimeException("boom")))
+    val authRepository = TestAuthRepository()
+    authRepository.currentUser.value = UserAccount(userId, null, null, null)
+    val failingViewModel = PreferencesViewModel(repository, authRepository)
+
+    composeTestRule.setContent {
+      PreferencesScreen(
+          viewModel = failingViewModel,
+          onImportClick = {},
+          onAddLocationClick = {},
+          onSaved = {},
+      )
+    }
+
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.preferences_error_load_failed))
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithText("boom").assertDoesNotExist()
   }
 
   @Test
