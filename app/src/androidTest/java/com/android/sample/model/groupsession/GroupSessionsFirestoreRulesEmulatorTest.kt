@@ -54,6 +54,20 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     filler = newClient("filler")
   }
 
+  /** Releases every isolated Firebase client, including temporary members. */
+  @After
+  fun cleanup() = runBlocking {
+    clients.forEach { client ->
+      timed {
+        client.db.terminate().await()
+        client.db.clearPersistence().await()
+      }
+      client.auth.signOut()
+      client.app.delete()
+    }
+    clients.clear()
+  }
+
   /** OTHER sessions allow a null subject and a duration of exactly 24 hours. */
   @Test
   fun creatorCanCreateAndEditOtherSessionAndExactDaySession() = runBlocking {
@@ -78,20 +92,6 @@ class GroupSessionsFirestoreRulesEmulatorTest {
             )
     set(document(creator, dayId), exactDay)
     assertEquals(exactDay, readData(outsider, dayId))
-  }
-
-  /** Releases every isolated Firebase client, including temporary members. */
-  @After
-  fun cleanup() = runBlocking {
-    clients.forEach { client ->
-      timed {
-        client.db.terminate().await()
-        client.db.clearPersistence().await()
-      }
-      client.auth.signOut()
-      client.app.delete()
-    }
-    clients.clear()
   }
 
   /** Any signed-in non-member can read a document and list the collection. */
@@ -235,12 +235,7 @@ class GroupSessionsFirestoreRulesEmulatorTest {
         mapOf("memberIds" to listOf(creator.uid, member.uid)),
     )
 
-    denied {
-      update(
-          document(member, id),
-          mapOf("memberIds" to listOf(creator.uid, member.uid, "someone-else")),
-      )
-    }
+    val originalDescription = readData(outsider, id)["description"]
     val beforeOutsiderEdit = readData(outsider, id)["memberIds"]
     denied {
       update(
@@ -249,14 +244,43 @@ class GroupSessionsFirestoreRulesEmulatorTest {
       )
     }
     assertEquals(beforeOutsiderEdit, readData(outsider, id)["memberIds"])
+    assertEquals(originalDescription, readData(outsider, id)["description"])
 
-    denied { update(document(member, id), mapOf("memberIds" to listOf(member.uid))) }
+    denied {
+      update(
+          document(member, id),
+          mapOf("memberIds" to listOf(creator.uid, member.uid, member.uid)),
+      )
+    }
+
+    val outsiderMembers = readData(outsider, id)["memberIds"]
+    val outsiderDescription = readData(outsider, id)["description"]
     denied {
       update(
           document(outsider, id),
-          mapOf("memberIds" to listOf(creator.uid, outsider.uid)),
+          mapOf(
+              "memberIds" to listOf(creator.uid, member.uid, outsider.uid),
+              "description" to "Changed with outsider join",
+          ),
       )
     }
+    assertEquals(outsiderMembers, readData(outsider, id)["memberIds"])
+    assertEquals(outsiderDescription, readData(outsider, id)["description"])
+
+    val memberMembers = readData(outsider, id)["memberIds"]
+    val memberDescription = readData(outsider, id)["description"]
+    denied {
+      update(
+          document(member, id),
+          mapOf(
+              "memberIds" to listOf(creator.uid),
+              "description" to "Changed with member leave",
+          ),
+      )
+    }
+    assertEquals(memberMembers, readData(outsider, id)["memberIds"])
+    assertEquals(memberDescription, readData(outsider, id)["description"])
+
     val thirdId = signUp(filler, "third-member")
     update(
         document(filler, id),
@@ -271,12 +295,6 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     }
     assertEquals(beforeMemberEdit, readData(outsider, id)["memberIds"])
 
-    denied {
-      update(
-          document(member, id),
-          mapOf("memberIds" to listOf(creator.uid, member.uid, member.uid)),
-      )
-    }
     denied {
       update(
           document(member, id),
