@@ -42,3 +42,10 @@ val Typography =
  */
 val Typography.cardTitle: TextStyle
   get() = titleLarge.copy(fontSize = 18.sp, lineHeight = 24.sp)
+
+/**
+ * Label of the Google sign-in button. Like the Google brand colours, it is fixed by Google's
+ * branding guidelines rather than by the app theme.
+ */
+val GoogleButtonTextStyle =
+    TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.25.sp)

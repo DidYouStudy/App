@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.theme
 
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -26,5 +27,13 @@ class TypeTest {
     assertEquals(base.fontFamily, style.fontFamily)
     assertEquals(base.fontWeight, style.fontWeight)
     assertEquals(base.letterSpacing, style.letterSpacing)
+  }
+
+  /** The Google button label keeps the brand values it had before it was named. */
+  @Test
+  fun googleButtonTextStyleKeepsBrandValues() {
+    assertEquals(14.sp, GoogleButtonTextStyle.fontSize)
+    assertEquals(FontWeight.Medium, GoogleButtonTextStyle.fontWeight)
+    assertEquals(0.25.sp, GoogleButtonTextStyle.letterSpacing)
   }
 }

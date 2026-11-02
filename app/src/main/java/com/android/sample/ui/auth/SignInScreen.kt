@@ -25,7 +25,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -34,12 +33,13 @@ import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.sp
 import com.android.sample.R
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
+import com.android.sample.ui.theme.GoogleButtonBackground
 import com.android.sample.ui.theme.GoogleButtonBorder
 import com.android.sample.ui.theme.GoogleButtonText
+import com.android.sample.ui.theme.GoogleButtonTextStyle
 import com.android.sample.ui.theme.Spacing
 
 /** Test tags for the sign-in screen, shared by the UI and its tests. */
@@ -104,7 +104,7 @@ fun SignInScreen(
         onClick = onSignInClick,
         enabled = !isLoading,
         shape = CircleShape,
-        color = Color.White,
+        color = GoogleButtonBackground,
         contentColor = GoogleButtonText,
         border = BorderStroke(Dimens.borderThin, GoogleButtonBorder),
         modifier =
@@ -132,9 +132,7 @@ fun SignInScreen(
         )
         Text(
             text = stringResource(R.string.sign_in_google_button),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            letterSpacing = 0.25.sp,
+            style = GoogleButtonTextStyle,
             color = GoogleButtonText,
             textAlign = TextAlign.Center,
             modifier = Modifier.weight(1f).alpha(contentAlpha),
