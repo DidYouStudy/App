@@ -261,6 +261,14 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     }
     assertEquals(beforeAddingSomeoneElse, readData(outsider, id)["memberIds"])
 
+    denied {
+      update(
+          document(member, id),
+          mapOf("memberIds" to listOf(member.uid, creator.uid)),
+      )
+    }
+    assertEquals(listOf(creator.uid, member.uid), readData(outsider, id)["memberIds"])
+
     val beforeRemovingThemself = readData(outsider, id)["memberIds"]
     denied { update(document(member, id), mapOf("memberIds" to listOf(member.uid))) }
     assertEquals(beforeRemovingThemself, readData(outsider, id)["memberIds"])
