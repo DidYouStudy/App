@@ -44,9 +44,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import com.android.sample.R
 import com.android.sample.ui.navigation.NavigationTestTags
+import com.android.sample.ui.theme.Dimens
+import com.android.sample.ui.theme.Spacing
 
 // ---------------------------------------------------------------------------
 // Building blocks / Helper methods
@@ -130,7 +131,7 @@ internal fun ProfileCard(
     onEditUsernameClick: () -> Unit,
     onChangeProfilePictureClick: () -> Unit,
 ) {
-  val avatarSize = 76.dp
+  val avatarSize = Dimens.settingsAvatarSize
 
   Box(modifier = Modifier.fillMaxWidth()) {
     // The card starts at the vertical middle of the avatar
@@ -139,20 +140,24 @@ internal fun ProfileCard(
             Modifier.fillMaxWidth()
                 .padding(top = avatarSize / 2)
                 .testTag(SettingsScreenTestTags.PROFILE_CARD),
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shape = RoundedCornerShape(Dimens.cornerMedium),
+        border = BorderStroke(Dimens.borderThin, MaterialTheme.colorScheme.outlineVariant),
         colors =
             CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
       Column(
-          modifier = Modifier.fillMaxWidth().padding(top = avatarSize / 2 + 4.dp, bottom = 8.dp),
+          modifier =
+              Modifier.fillMaxWidth()
+                  .padding(top = avatarSize / 2 + Spacing.extraSmall, bottom = Spacing.small),
           horizontalAlignment = Alignment.CenterHorizontally,
       ) {
         if (isLoading) {
           // loading circle
           CircularProgressIndicator(
-              modifier = Modifier.size(24.dp).testTag(SettingsScreenTestTags.LOADING_INDICATOR),
-              strokeWidth = 2.dp,
+              modifier =
+                  Modifier.size(Dimens.settingsLoadingIndicatorSize)
+                      .testTag(SettingsScreenTestTags.LOADING_INDICATOR),
+              strokeWidth = Dimens.progressIndicatorStrokeWidth,
           )
         } else {
           // "Hello, user!" text
@@ -164,7 +169,7 @@ internal fun ProfileCard(
               modifier = Modifier.testTag(SettingsScreenTestTags.GREETING),
           )
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(Spacing.extraSmall))
         // Opens the flow for changing the displayed username.
         SmallEditButton(
             text = stringResource(R.string.settings_edit_username),
@@ -231,7 +236,7 @@ internal fun DefaultAvatarIcon() {
         imageVector = Icons.Outlined.Person,
         contentDescription = stringResource(R.string.settings_profile_picture),
         tint = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.size(52.dp),
+        modifier = Modifier.size(Dimens.settingsAvatarIconSize),
     )
   }
 }
@@ -250,16 +255,19 @@ internal fun SmallEditButton(text: String, onClick: () -> Unit, testTag: String)
       modifier =
           Modifier.testTag(testTag)
               .clickable(role = Role.Button, onClick = onClick)
-              .padding(horizontal = 12.dp, vertical = 6.dp),
+              .padding(
+                  horizontal = Spacing.medium,
+                  vertical = Dimens.settingsEditButtonVerticalPadding,
+              ),
       verticalAlignment = Alignment.CenterVertically,
   ) {
     Icon(
         imageVector = Icons.Outlined.Edit,
         contentDescription = null,
         tint = color,
-        modifier = Modifier.size(16.dp),
+        modifier = Modifier.size(Dimens.iconSizeSmall),
     )
-    Spacer(Modifier.width(8.dp))
+    Spacer(Modifier.width(Spacing.small))
     Text(text = text, style = MaterialTheme.typography.labelMedium, color = color)
   }
 }
@@ -281,8 +289,12 @@ internal fun SettingsPillButton(
 ) {
   Button(
       onClick = onClick,
-      modifier = Modifier.fillMaxWidth().padding(horizontal = 7.dp).height(50.dp).testTag(testTag),
-      shape = RoundedCornerShape(50),
+      modifier =
+          Modifier.fillMaxWidth()
+              .padding(horizontal = Dimens.settingsHorizontalPadding)
+              .height(Dimens.settingsPillButtonHeight)
+              .testTag(testTag),
+      shape = CircleShape,
       colors =
           ButtonDefaults.buttonColors(
               containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -295,8 +307,12 @@ internal fun SettingsPillButton(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Start,
     ) {
-      Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(22.dp))
-      Spacer(Modifier.width(12.dp))
+      Icon(
+          imageVector = icon,
+          contentDescription = null,
+          modifier = Modifier.size(Dimens.settingsPillIconSize),
+      )
+      Spacer(Modifier.width(Spacing.medium))
       Text(text = text, style = MaterialTheme.typography.labelLarge)
     }
   }
@@ -313,10 +329,10 @@ internal fun LogoutButton(onClick: () -> Unit) {
       onClick = onClick,
       modifier =
           Modifier.fillMaxWidth()
-              .padding(horizontal = 7.dp)
-              .height(52.dp)
+              .padding(horizontal = Dimens.settingsHorizontalPadding)
+              .height(Dimens.settingsLogoutButtonHeight)
               .testTag(SettingsScreenTestTags.LOGOUT_BUTTON),
-      shape = RoundedCornerShape(50),
+      shape = CircleShape,
       colors =
           ButtonDefaults.buttonColors(
               containerColor = MaterialTheme.colorScheme.error,
@@ -326,9 +342,9 @@ internal fun LogoutButton(onClick: () -> Unit) {
     Icon(
         imageVector = Icons.AutoMirrored.Filled.Logout,
         contentDescription = null,
-        modifier = Modifier.size(20.dp),
+        modifier = Modifier.size(Dimens.iconSizeMedium),
     )
-    Spacer(Modifier.width(8.dp))
+    Spacer(Modifier.width(Spacing.small))
     Text(
         text = stringResource(R.string.settings_logout_button),
         style = MaterialTheme.typography.labelLarge,
