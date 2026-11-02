@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.preferences
 
+import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -9,7 +10,9 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.sample.R
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.UserPreferences
@@ -38,6 +41,7 @@ import org.mockito.kotlin.any
 class PreferencesScreenEditModeTest {
   @get:Rule val composeTestRule = createComposeRule()
 
+  private val context = ApplicationProvider.getApplicationContext<Context>()
   private val userId = "user-1"
   private lateinit var repository: PreferencesRepository
   private lateinit var viewModel: PreferencesViewModel
@@ -92,6 +96,23 @@ class PreferencesScreenEditModeTest {
     composeTestRule
         .onNodeWithTag(PreferencesScreenTestTags.PREFERENCE_TITLE)
         .assertTextEquals("Modify your preferences")
+  }
+
+  /** The Save button label comes from the string resource, so it can be translated. */
+  @Test
+  fun saveButtonShowsLabelFromStringResource() {
+    composeTestRule.setContent {
+      PreferencesScreen(
+          viewModel = viewModel,
+          onImportClick = {},
+          onAddLocationClick = {},
+          onSaved = {},
+      )
+    }
+
+    composeTestRule
+        .onNodeWithTag(PreferencesScreenTestTags.SAVE_BUTTON)
+        .assertTextEquals(context.getString(R.string.preferences_save_button))
   }
 
   @Test

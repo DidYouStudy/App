@@ -5,6 +5,10 @@
 <resources>
     <string name="app_name">DidYouStudy</string>
     <string name="button_go_back">Back</string>
+    <string name="not_implemented">(Not implemented)</string>
+    <string name="nav_tab_dashboard">Dashboard</string>
+    <string name="nav_tab_calendar">Calendar</string>
+    <string name="nav_tab_group_session">Group session</string>
     <string name="sign_in_title">Ready to study?</string>
     <string name="sign_in_google_button">Sign in with Google</string>
     <string name="sign_in_logo_description">DidYouStudy? logo</string>
@@ -113,4 +117,8 @@
     <string name="group_session_action_leave">Leave</string>
     <string name="group_session_action_joined">Joined</string>
     <string name="group_session_action_join">Join</string>
+    <!-- %1$s: day ("Today" or a weekday), %2$s: start time, %3$s: end time -->
+    <string name="group_session_date_time_range">%1$s · %2$s – %3$s</string>
+    <!-- Number of members not shown as an avatar in the participants pill -->
+    <string name="group_session_extra_members">+%1$d</string>
 </resources>

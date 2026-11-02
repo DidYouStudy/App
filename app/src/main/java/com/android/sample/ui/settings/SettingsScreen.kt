@@ -1,5 +1,6 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.settings
 
 import androidx.compose.foundation.layout.Column
@@ -158,7 +159,7 @@ fun SettingsScreenStateless(
           testTag = SettingsScreenTestTags.FRIENDS_BUTTON,
       )
       Text(
-          text = "(Not implemented)",
+          text = stringResource(R.string.not_implemented),
           style = MaterialTheme.typography.labelSmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
       )

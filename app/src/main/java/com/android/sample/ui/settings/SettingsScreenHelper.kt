@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Ai Agent
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.settings
 
 import androidx.compose.foundation.BorderStroke
@@ -171,7 +172,7 @@ internal fun ProfileCard(
             testTag = SettingsScreenTestTags.EDIT_USERNAME_BUTTON,
         )
         Text(
-            text = "(Not implemented)",
+            text = stringResource(R.string.not_implemented),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -182,7 +183,7 @@ internal fun ProfileCard(
             testTag = SettingsScreenTestTags.CHANGE_PROFILE_PICTURE_BUTTON,
         )
         Text(
-            text = "(Not implemented)",
+            text = stringResource(R.string.not_implemented),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

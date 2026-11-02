@@ -1,6 +1,7 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Copilot
 // Co-authored-by: Gemini
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.groupsession
 
 import androidx.compose.foundation.BorderStroke
@@ -458,7 +459,13 @@ private fun GroupSessionCard(
                   modifier = Modifier.size(Dimens.iconSizeSmall),
               )
             },
-            text = "$dateLabel · $startLabel – $endLabel",
+            text =
+                stringResource(
+                    R.string.group_session_date_time_range,
+                    dateLabel,
+                    startLabel,
+                    endLabel,
+                ),
         )
       }
 
@@ -528,7 +535,7 @@ private fun GroupSessionCard(
               ) {
                 Box(contentAlignment = Alignment.Center) {
                   Text(
-                      "+$extraCount",
+                      stringResource(R.string.group_session_extra_members, extraCount),
                       fontSize = 9.sp,
                       fontWeight = FontWeight.Bold,
                       color = MaterialTheme.colorScheme.onTertiaryContainer,

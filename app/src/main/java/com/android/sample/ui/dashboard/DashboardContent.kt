@@ -119,7 +119,7 @@ private fun DashboardDayCard(sessions: List<DashboardSession>, modifier: Modifie
           modifier = Modifier.fillMaxWidth().testTag(DashboardContentTestTags.EMPTY_DAY),
       )
       Text(
-          text = "(Not implemented)",
+          text = stringResource(R.string.not_implemented),
           style = MaterialTheme.typography.labelSmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
@@ -251,7 +251,7 @@ private fun DashboardStatsCard(stats: DashboardStats, modifier: Modifier = Modif
         modifier = Modifier.testTag(DashboardContentTestTags.STATS_HINT),
     )
     Text(
-        text = "(Not implemented)",
+        text = stringResource(R.string.not_implemented),
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )

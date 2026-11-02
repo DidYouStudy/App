@@ -293,7 +293,7 @@ fun PreferenceScreenStateless(
 
     // Save button
     WidePillButton(
-        text = "Save",
+        text = stringResource(id = R.string.preferences_save_button),
         onClick = onSaveClick,
         testTag = Tags.SAVE_BUTTON,
         modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
