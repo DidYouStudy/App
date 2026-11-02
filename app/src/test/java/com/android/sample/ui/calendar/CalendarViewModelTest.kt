@@ -181,6 +181,28 @@ class CalendarViewModelTest {
     assertEquals(CalendarViewModelError.LOAD_EVENTS_FAILED, viewModel.uiState.value.error)
   }
 
+  /** Retry reobserves the same owner and week, then clears the error when events load. */
+  @Test
+  fun retryAfterFailureReloadsEventsForCurrentWeek() = runTest {
+    authRepository.currentUser.value = account("alice")
+    val event = event("algebra", "alice", LocalDate.of(2026, 10, 28))
+    eventsRepository.saveEvent(event)
+    eventsRepository.failure = IllegalStateException("offline")
+    val viewModel = createViewModel()
+
+    assertEquals(CalendarViewModelError.LOAD_EVENTS_FAILED, viewModel.uiState.value.error)
+    val initialQuery = eventsRepository.queries.single()
+
+    eventsRepository.failure = null
+    viewModel.retryEvents()
+
+    assertEquals(listOf(event), viewModel.uiState.value.events)
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertNull(viewModel.uiState.value.error)
+    assertEquals(2, eventsRepository.queries.size)
+    assertEquals(initialQuery, eventsRepository.queries.last())
+  }
+
   /** Creates a ViewModel with the test repositories and fixed clock. */
   private fun createViewModel() = CalendarViewModel(authRepository, eventsRepository, clock)
 

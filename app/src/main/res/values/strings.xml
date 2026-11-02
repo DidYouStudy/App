@@ -31,6 +31,8 @@
     <string name="calendar_today_label">Today</string>
     <string name="calendar_previous_week_description">Previous week</string>
     <string name="calendar_next_week_description">Next week</string>
+    <string name="calendar_load_events_error">Could not load calendar events.</string>
+    <string name="calendar_retry_button">Retry</string>
     <string name="preferences_header">Complete your profile</string>
     <string name="preferences_edit_header">Modify your preferences</string>
     <string name="preferences_retry_button_on_error">Retry</string>

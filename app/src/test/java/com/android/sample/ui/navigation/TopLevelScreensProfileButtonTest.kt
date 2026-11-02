@@ -7,10 +7,13 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.sample.ui.calendar.CalendarDateHelper
 import com.android.sample.ui.calendar.CalendarScreen
+import com.android.sample.ui.calendar.CalendarUiState
 import com.android.sample.ui.dashboard.DashboardScreen
 import com.android.sample.ui.groupsession.GroupSessionScreen
 import com.android.sample.ui.profile.ProfileButtonTestTags
+import java.time.LocalDate
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -42,7 +45,23 @@ class TopLevelScreensProfileButtonTest {
 
   @Test
   fun calendarProfileButtonOpensSettings() {
-    assertProfileButtonOpensSettings { CalendarScreen(navigationActions = it) }
+    assertProfileButtonOpensSettings { navigationActions ->
+      val today = LocalDate.now()
+      val weekDates = CalendarDateHelper().weekDates(today)
+      CalendarScreen(
+          uiState =
+              CalendarUiState(
+                  today = today,
+                  weekStart = weekDates.first(),
+                  weekDates = weekDates,
+              ),
+          onToday = {},
+          onPreviousWeek = {},
+          onNextWeek = {},
+          onRetry = {},
+          navigationActions = navigationActions,
+      )
+    }
   }
 
   @Test

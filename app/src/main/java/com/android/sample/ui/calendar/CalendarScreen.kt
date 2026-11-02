@@ -2,13 +2,18 @@
 package com.android.sample.ui.calendar
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -45,6 +50,7 @@ fun CalendarScreen(
     onToday: () -> Unit,
     onPreviousWeek: () -> Unit,
     onNextWeek: () -> Unit,
+    onRetry: () -> Unit,
     navigationActions: NavigationActions? = null,
 ) {
   Scaffold(
@@ -103,19 +109,92 @@ fun CalendarScreen(
         }
       },
       content = { paddingValues ->
-        CalendarWeeklyView(
-            uiState = uiState,
-            onPreviousWeek = viewModel::previousWeek,
-            onNextWeek = viewModel::nextWeek,
-            modifier = Modifier.padding(paddingValues),
-        )
+        if (uiState.error != null) {
+          Box(
+              modifier = Modifier.padding(paddingValues).fillMaxSize(),
+              contentAlignment = Alignment.Center,
+          ) {
+            val errorMessage =
+                when (uiState.error) {
+                  CalendarViewModelError.LOAD_EVENTS_FAILED ->
+                      stringResource(R.string.calendar_load_events_error)
+                  null -> ""
+                }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+              Text(text = errorMessage)
+              Spacer(modifier = Modifier.height(Spacing.small))
+              Button(
+                  onClick = onRetry,
+                  enabled = !uiState.isLoading,
+                  colors =
+                      ButtonDefaults.buttonColors(
+                          containerColor = MaterialTheme.colorScheme.primary,
+                          contentColor = MaterialTheme.colorScheme.onPrimary,
+                      ),
+              ) {
+                if (uiState.isLoading) {
+                  CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
+                } else {
+                  Text(text = stringResource(R.string.calendar_retry_button))
+                }
+              }
+            }
+          }
+        } else {
+          CalendarWeeklyView(
+              uiState = uiState,
+              onPreviousWeek = onPreviousWeek,
+              onNextWeek = onNextWeek,
+              modifier = Modifier.padding(paddingValues),
+          )
+        }
       },
   )
 }
 
-/** Renders a preview of the calendar screen. */
+/** Renders a preview of the calendar screen with its weekly content. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
 @Composable
 fun CalendarScreenPreview() {
-  DidYouStudyTheme { CalendarScreen() }
+  DidYouStudyTheme {
+    CalendarScreen(
+        uiState = previewUiState(),
+        onToday = {},
+        onPreviousWeek = {},
+        onNextWeek = {},
+        onRetry = {},
+    )
+  }
+}
+
+/** Renders a preview of the calendar screen's event-loading error state. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true)
+@Composable
+fun CalendarScreenErrorPreview() {
+  DidYouStudyTheme {
+    CalendarScreen(
+        uiState = previewUiState(error = CalendarViewModelError.LOAD_EVENTS_FAILED),
+        onToday = {},
+        onPreviousWeek = {},
+        onNextWeek = {},
+        onRetry = {},
+    )
+  }
+}
+
+/** Creates deterministic date state for the calendar screen previews. */
+private fun previewUiState(
+    error: CalendarViewModelError? = null,
+): CalendarUiState {
+  val today = LocalDate.of(2026, 10, 28)
+  val dates = CalendarDateHelper().weekDates(today)
+  return CalendarUiState(
+      today = today,
+      weekStart = dates.first(),
+      weekDates = dates,
+      isLoading = false,
+      error = error,
+  )
 }

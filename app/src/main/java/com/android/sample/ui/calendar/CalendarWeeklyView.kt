@@ -55,7 +55,6 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 private const val HOURS_PER_DAY = 24
-
 private const val DAYS_PER_WEEK = 7
 private const val FIRST_VISIBLE_HOUR = 8
 private const val DEFAULT_VISIBLE_HOURS = 10
@@ -272,7 +271,7 @@ fun CalendarDayHeader(
                   if (isToday) MaterialTheme.colorScheme.onPrimary
                   else MaterialTheme.colorScheme.onSurface,
               fontWeight = FontWeight.Bold,
-              fontSize = 10.sp,
+              fontSize = 10.sp, // TODO:remove hardcoded value
           )
         }
       }

@@ -52,14 +52,16 @@ class CalendarViewModel(
 ) : ViewModel() {
   private val dateHelper = CalendarDateHelper()
   // Start with the week containing today; subsequent navigation stays in this ViewModel's state.
-  private val selectedWeekStart = MutableStateFlow(dateHelper.weekDates(LocalDate.now(clock)).first())
+  private val currentWeekStart =
+      MutableStateFlow(dateHelper.weekDates(LocalDate.now(clock)).first())
+  private val retryRequest = MutableStateFlow(0L)
 
   private val _uiState =
       MutableStateFlow(
           CalendarUiState(
               today = LocalDate.now(clock),
-              weekStart = selectedWeekStart.value,
-              weekDates = dateHelper.weekDates(selectedWeekStart.value),
+              weekStart = currentWeekStart.value,
+              weekDates = dateHelper.weekDates(currentWeekStart.value),
           )
       )
 
@@ -68,12 +70,12 @@ class CalendarViewModel(
 
   /** Selects the Monday-to-Sunday week before the currently displayed one. */
   fun previousWeek() {
-    selectedWeekStart.value = dateHelper.previousWeek(selectedWeekStart.value).first()
+    currentWeekStart.value = dateHelper.previousWeek(currentWeekStart.value).first()
   }
 
   /** Selects the Monday-to-Sunday week after the currently displayed one. */
   fun nextWeek() {
-    selectedWeekStart.value = dateHelper.nextWeek(selectedWeekStart.value).first()
+    currentWeekStart.value = dateHelper.nextWeek(currentWeekStart.value).first()
   }
 
   /** Selects the week containing today according to the ViewModel's injected clock. */
@@ -81,16 +83,30 @@ class CalendarViewModel(
     val today = LocalDate.now(clock)
     val todayWeekStart = dateHelper.weekDates(today).first()
     _uiState.update { it.copy(today = today) }
-    selectedWeekStart.value = todayWeekStart
+    currentWeekStart.value = todayWeekStart
+  }
+
+  /** Retries observing events for the current user and selected week. */
+  fun retryEvents() {
+    retryRequest.update { it + 1 }
   }
 
   init {
     viewModelScope.launch {
+      var lastHandledRetryRequest = retryRequest.value
       try {
-        combine(authRepository.currentUser, selectedWeekStart) { user, weekStart ->
-              user to weekStart
+        combine(
+                authRepository.currentUser,
+                currentWeekStart,
+                retryRequest,
+            ) { user, weekStart, retryCount ->
+              Triple(user, weekStart, retryCount)
             }
-            .collectLatest { (user, weekStart) -> observeWeek(user?.uid, weekStart) }
+            .collectLatest { (user, weekStart, retryCount) ->
+              val isRetry = retryCount != lastHandledRetryRequest
+              lastHandledRetryRequest = retryCount
+              observeWeek(user?.uid, weekStart, isRetry)
+            }
       } catch (exception: CancellationException) {
         throw exception
       } catch (exception: Exception) {
@@ -99,16 +115,25 @@ class CalendarViewModel(
     }
   }
 
-  /** Updates the visible week state, then observes its events when a user is signed in. */
-  private suspend fun observeWeek(ownerId: String?, weekStart: LocalDate) {
-    // Clear stale events whenever the user or selected week changes.
-    _uiState.value =
-        CalendarUiState(
-            today = LocalDate.now(clock),
-            weekStart = weekStart,
-            weekDates = dateHelper.weekDates(weekStart),
-            isLoading = ownerId != null,
-        )
+  /** Resets week state or preserves the error during retry, then observes events for that week. */
+  private suspend fun observeWeek(
+      ownerId: String?,
+      weekStart: LocalDate,
+      isRetry: Boolean,
+  ) {
+    if (isRetry) {
+      // Keep the error visible while the retry runs; success clears it in [updateEvents].
+      _uiState.update { it.copy(isLoading = ownerId != null) }
+    } else {
+      // Clear stale events whenever the user or selected week changes.
+      _uiState.value =
+          CalendarUiState(
+              today = LocalDate.now(clock),
+              weekStart = weekStart,
+              weekDates = dateHelper.weekDates(weekStart),
+              isLoading = ownerId != null,
+          )
+    }
 
     if (ownerId == null) return
 

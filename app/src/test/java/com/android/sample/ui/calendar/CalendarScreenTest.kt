@@ -42,6 +42,7 @@ class CalendarScreenTest {
           onToday = {},
           onPreviousWeek = {},
           onNextWeek = {},
+          onRetry = {},
           navigationActions = navigationActions,
       )
     }
@@ -77,6 +78,7 @@ class CalendarScreenTest {
           onToday = { todayClicks++ },
           onPreviousWeek = {},
           onNextWeek = {},
+          onRetry = {},
       )
     }
 
@@ -85,10 +87,11 @@ class CalendarScreenTest {
     composeTestRule.runOnIdle { assertEquals(1, todayClicks) }
   }
 
-  /** Shows a localized error message when the ViewModel state contains a load failure. */
+  /** Shows the error message and forwards the Retry button click. */
   @Test
-  fun eventLoadFailureShowsErrorMessage() {
+  fun eventLoadFailureShowsRetryButton() {
     val context = ApplicationProvider.getApplicationContext<Context>()
+    var retryClicks = 0
     composeTestRule.setContent {
       CalendarScreen(
           uiState =
@@ -99,12 +102,18 @@ class CalendarScreenTest {
           onToday = {},
           onPreviousWeek = {},
           onNextWeek = {},
+          onRetry = { retryClicks++ },
       )
     }
 
     composeTestRule
         .onNodeWithText(context.getString(R.string.calendar_load_events_error))
         .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.calendar_retry_button))
+        .assertIsDisplayed()
+        .performClick()
+    composeTestRule.runOnIdle { assertEquals(1, retryClicks) }
   }
 
   /** Creates predictable weekly display state for screen tests. */

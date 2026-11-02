@@ -20,5 +20,6 @@ fun CalendarRoute(
       onToday = viewModel::navigateToToday,
       onPreviousWeek = viewModel::previousWeek,
       onNextWeek = viewModel::nextWeek,
+      onRetry = viewModel::retryEvents,
   )
 }
