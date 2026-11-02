@@ -302,6 +302,24 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     assertEquals(memberMembers, readData(outsider, id)["memberIds"])
     assertEquals(memberDescription, readData(outsider, id)["description"])
 
+    val beforeOutsiderAddingSomeoneElse = readData(outsider, id)["memberIds"]
+    denied {
+      update(
+          document(outsider, id),
+          mapOf("memberIds" to listOf(creator.uid, member.uid, outsider.uid, "someone-else")),
+      )
+    }
+    assertEquals(beforeOutsiderAddingSomeoneElse, readData(outsider, id)["memberIds"])
+
+    val beforeOutsiderAddingThemselfTwice = readData(outsider, id)["memberIds"]
+    denied {
+      update(
+          document(outsider, id),
+          mapOf("memberIds" to listOf(creator.uid, member.uid, outsider.uid, outsider.uid)),
+      )
+    }
+    assertEquals(beforeOutsiderAddingThemselfTwice, readData(outsider, id)["memberIds"])
+
     val thirdId = signUp(filler, "third-member")
     update(
         document(filler, id),
@@ -334,6 +352,15 @@ class GroupSessionsFirestoreRulesEmulatorTest {
       )
     }
     assertEquals(joinedMembers, readData(outsider, id)["memberIds"])
+
+    val beforeCreatorRemovingThemself = readData(outsider, id)["memberIds"]
+    denied {
+      update(
+          document(creator, id),
+          mapOf("memberIds" to listOf(creator.uid)),
+      )
+    }
+    assertEquals(beforeCreatorRemovingThemself, readData(outsider, id)["memberIds"])
 
     val creatorOnlyId = createSession()
     denied {
