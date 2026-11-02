@@ -59,9 +59,12 @@ fun SettingsScreen(
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val snackbarHostState = remember { SnackbarHostState() }
 
+  // Resolve the error text here rather than in the ViewModel, so it follows the device language.
+  val errorMessage = uiState.error?.let { stringResource(it.toMessageRes()) }
+
   // Show errors from the ViewModel in a snackbar, then clear them.
-  LaunchedEffect(uiState.error) {
-    uiState.error?.let { message ->
+  LaunchedEffect(errorMessage) {
+    errorMessage?.let { message ->
       snackbarHostState.showSnackbar(message)
       viewModel.clearError()
     }
@@ -70,7 +73,7 @@ fun SettingsScreen(
   // Render the UI from the latest state and route user actions to their handlers.
   SettingsScreenStateless(
       modifier = modifier,
-      username = uiState.username,
+      username = uiState.username ?: stringResource(R.string.default_username),
       profilePictureUrl = uiState.profilePictureUrl,
       isLoading = uiState.isLoading,
       snackbarHostState = snackbarHostState,

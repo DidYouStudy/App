@@ -1,4 +1,5 @@
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.settings
 
 import androidx.compose.runtime.Composable
@@ -18,12 +19,20 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** Holds UI state for the Settings screen. */
+/**
+ * Holds UI state for the Settings screen.
+ *
+ * @property username Name to greet the user with, or null when none is known; the screen then shows
+ *   the translated default name.
+ * @property profilePictureUrl URL of the user's profile picture, if any.
+ * @property isLoading Whether the profile is still loading.
+ * @property error Failure to report to the user, or null when there is none.
+ */
 data class SettingsUiState(
-    val username: String = "",
+    val username: String? = null,
     val profilePictureUrl: String? = null,
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: SettingsError? = null,
 )
 
 /**
@@ -57,7 +66,6 @@ class SettingsViewModel(
               profile?.username?.takeIf { it.isNotBlank() }
                   ?: userAccount.displayName?.takeIf { it.isNotBlank() }
                   ?: userAccount.email?.substringBefore("@")
-                  ?: DEFAULT_USERNAME
 
           val photoUrl =
               profile?.profilePictureUrl?.takeIf { it.isNotBlank() } ?: userAccount.photoUrl
@@ -74,12 +82,7 @@ class SettingsViewModel(
       } catch (exception: CancellationException) {
         throw exception
       } catch (exception: Exception) {
-        _uiState.update {
-          it.copy(
-              isLoading = false,
-              error = exception.localizedMessage ?: FAILED_TO_LOAD_PROFILE_ERROR,
-          )
-        }
+        _uiState.update { it.copy(isLoading = false, error = SettingsError.LOAD_PROFILE_FAILED) }
       }
     }
   }
@@ -93,7 +96,7 @@ class SettingsViewModel(
       } catch (exception: CancellationException) {
         throw exception
       } catch (exception: Exception) {
-        _uiState.update { it.copy(error = exception.localizedMessage ?: FAILED_TO_SIGN_OUT_ERROR) }
+        _uiState.update { it.copy(error = SettingsError.SIGN_OUT_FAILED) }
       }
     }
   }
@@ -101,12 +104,6 @@ class SettingsViewModel(
   /** Clears any active error message. */
   fun clearError() {
     _uiState.update { it.copy(error = null) }
-  }
-
-  companion object {
-    const val DEFAULT_USERNAME = "User"
-    const val FAILED_TO_LOAD_PROFILE_ERROR = "Failed to load user profile"
-    const val FAILED_TO_SIGN_OUT_ERROR = "Failed to sign out"
   }
 }
 
