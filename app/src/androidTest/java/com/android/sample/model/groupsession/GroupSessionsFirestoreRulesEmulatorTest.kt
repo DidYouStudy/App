@@ -252,6 +252,27 @@ class GroupSessionsFirestoreRulesEmulatorTest {
           mapOf("memberIds" to listOf(creator.uid, member.uid, member.uid)),
       )
     }
+    val beforeAddingSomeoneElse = readData(outsider, id)["memberIds"]
+    denied {
+      update(
+          document(member, id),
+          mapOf("memberIds" to listOf(creator.uid, member.uid, "someone-else")),
+      )
+    }
+    assertEquals(beforeAddingSomeoneElse, readData(outsider, id)["memberIds"])
+
+    val beforeRemovingThemself = readData(outsider, id)["memberIds"]
+    denied { update(document(member, id), mapOf("memberIds" to listOf(member.uid))) }
+    assertEquals(beforeRemovingThemself, readData(outsider, id)["memberIds"])
+
+    val beforeAddingOutsider = readData(outsider, id)["memberIds"]
+    denied {
+      update(
+          document(outsider, id),
+          mapOf("memberIds" to listOf(creator.uid, outsider.uid)),
+      )
+    }
+    assertEquals(beforeAddingOutsider, readData(outsider, id)["memberIds"])
 
     val outsiderMembers = readData(outsider, id)["memberIds"]
     val outsiderDescription = readData(outsider, id)["description"]
@@ -294,16 +315,6 @@ class GroupSessionsFirestoreRulesEmulatorTest {
       )
     }
     assertEquals(beforeMemberEdit, readData(outsider, id)["memberIds"])
-
-    denied {
-      update(
-          document(member, id),
-          mapOf(
-              "memberIds" to listOf(creator.uid, member.uid),
-              "description" to "Changed with membership",
-          ),
-      )
-    }
   }
 
   /** The creator cannot change membership, createdBy or createdAt. */
