@@ -14,10 +14,12 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -253,6 +255,141 @@ class GroupSessionsViewModelTest {
     assertEquals(GroupSessionsError.LEAVE_FAILED, viewModel.uiState.value.error)
   }
 
+  /** A successful unrelated list update does not clear a join failure. */
+  @Test
+  fun joinFailure_survivesUnrelatedSessionUpdate() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val viewModel = createViewModel()
+
+    viewModel.join("missing")
+    assertEquals(GroupSessionsError.JOIN_FAILED, viewModel.uiState.value.error)
+
+    repository.saveSession(BOB, session("unrelated", BOB))
+
+    assertEquals(GroupSessionsError.JOIN_FAILED, viewModel.uiState.value.error)
+  }
+
+  /** A successful unrelated list update does not clear a leave failure. */
+  @Test
+  fun leaveFailure_survivesUnrelatedSessionUpdate() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    repository.saveSession(ALICE, session("own", ALICE))
+    val viewModel = createViewModel()
+
+    viewModel.leave("own")
+    assertEquals(GroupSessionsError.LEAVE_FAILED, viewModel.uiState.value.error)
+
+    repository.saveSession(BOB, session("unrelated", BOB))
+
+    assertEquals(GroupSessionsError.LEAVE_FAILED, viewModel.uiState.value.error)
+  }
+
+  /** Refreshing the list does not clear a join failure. */
+  @Test
+  fun refresh_preservesJoinFailure() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val viewModel = createViewModel()
+
+    viewModel.join("missing")
+    assertEquals(GroupSessionsError.JOIN_FAILED, viewModel.uiState.value.error)
+
+    viewModel.refresh()
+
+    assertEquals(GroupSessionsError.JOIN_FAILED, viewModel.uiState.value.error)
+  }
+
+  /** A delayed join failure is ignored after switching directly to another user. */
+  @Test
+  fun joinFailureFromPreviousAccount_isIgnored() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val delayedRepository = DelayedGroupSessionsRepository()
+    val viewModel = createViewModel(delayedRepository)
+
+    viewModel.join("target")
+    assertTrue(delayedRepository.joinStarted.isCompleted)
+    authRepository.currentUser.value = account(BOB)
+    delayedRepository.joinResult.complete(Result.failure(IllegalStateException()))
+
+    assertNull(viewModel.uiState.value.error)
+  }
+
+  /** A delayed leave failure does not alter the signed-out state. */
+  @Test
+  fun leaveFailureAfterSignOut_isIgnored() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val delayedRepository = DelayedGroupSessionsRepository()
+    val viewModel = createViewModel(delayedRepository)
+
+    viewModel.leave("target")
+    assertTrue(delayedRepository.leaveStarted.isCompleted)
+    authRepository.currentUser.value = null
+    delayedRepository.leaveResult.complete(Result.failure(IllegalStateException()))
+
+    assertTrue(viewModel.uiState.value.sessions.isEmpty())
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertNull(viewModel.uiState.value.error)
+  }
+
+  /** Signing out and back in as the same user invalidates an earlier join result. */
+  @Test
+  fun joinFailureAfterSigningOutAndBackIn_isIgnored() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val delayedRepository = DelayedGroupSessionsRepository()
+    val viewModel = createViewModel(delayedRepository)
+
+    viewModel.join("target")
+    assertTrue(delayedRepository.joinStarted.isCompleted)
+    authRepository.currentUser.value = null
+    authRepository.currentUser.value = account(ALICE)
+    delayedRepository.joinResult.complete(Result.failure(IllegalStateException()))
+
+    assertNull(viewModel.uiState.value.error)
+  }
+
+  /** A later successful list emission clears a preceding load failure and displays the list. */
+  @Test
+  fun successfulEmission_clearsLoadFailure() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    emissions.emit(Result.failure(EventsException(EventsError.STORAGE_FAILURE)))
+    assertEquals(GroupSessionsError.LOAD_FAILED, viewModel.uiState.value.error)
+    val shown = session("shown", ALICE)
+
+    emissions.emit(Result.success(listOf(shown)))
+
+    assertNull(viewModel.uiState.value.error)
+    assertEquals(listOf(shown), viewModel.uiState.value.sessions.map { it.session })
+  }
+
+  /** A refresh does not invalidate a still-pending join failure for the same user. */
+  @Test
+  fun joinFailure_survivesRefreshWhilePending() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val delayedRepository = DelayedGroupSessionsRepository()
+    val viewModel = createViewModel(delayedRepository)
+
+    viewModel.join("target")
+    assertTrue(delayedRepository.joinStarted.isCompleted)
+    viewModel.refresh()
+    delayedRepository.joinResult.complete(Result.failure(IllegalStateException()))
+
+    assertEquals(GroupSessionsError.JOIN_FAILED, viewModel.uiState.value.error)
+  }
+
+  /** Switching users clears an action error belonging to the previous account. */
+  @Test
+  fun switchingUsers_clearsActionError() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val viewModel = createViewModel()
+    viewModel.join("missing")
+    assertEquals(GroupSessionsError.JOIN_FAILED, viewModel.uiState.value.error)
+
+    authRepository.currentUser.value = account(BOB)
+
+    assertNull(viewModel.uiState.value.error)
+  }
+
   /** A failed session flow stops loading and exposes LOAD_FAILED without leaking exception text. */
   @Test
   fun failedSessionFlowStopsLoadingAndExposesLoadCategory() = runTest {
@@ -416,6 +553,38 @@ class GroupSessionsViewModelTest {
 
     override suspend fun leaveSession(userId: String, sessionId: String): Result<Unit> =
         Result.success(Unit)
+  }
+
+  /** Repository fake that lets tests complete join and leave calls after an auth change. */
+  private class DelayedGroupSessionsRepository : GroupSessionsRepository {
+    private val sessions = MutableStateFlow<Result<List<GroupSession>>>(Result.success(emptyList()))
+    val joinStarted = CompletableDeferred<Unit>()
+    val leaveStarted = CompletableDeferred<Unit>()
+    val joinResult = CompletableDeferred<Result<Unit>>()
+    val leaveResult = CompletableDeferred<Result<Unit>>()
+
+    override fun observeSessions(endingAfter: Instant): Flow<Result<List<GroupSession>>> = sessions
+
+    override fun newSessionId(): String = "unused"
+
+    override suspend fun getSession(sessionId: String): Result<GroupSession> =
+        Result.failure(UnsupportedOperationException("Not used in this test"))
+
+    override suspend fun saveSession(userId: String, session: GroupSession): Result<Unit> =
+        Result.success(Unit)
+
+    override suspend fun deleteSession(userId: String, sessionId: String): Result<Unit> =
+        Result.success(Unit)
+
+    override suspend fun joinSession(userId: String, sessionId: String): Result<Unit> {
+      joinStarted.complete(Unit)
+      return joinResult.await()
+    }
+
+    override suspend fun leaveSession(userId: String, sessionId: String): Result<Unit> {
+      leaveStarted.complete(Unit)
+      return leaveResult.await()
+    }
   }
 
   private companion object {

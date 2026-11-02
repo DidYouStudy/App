@@ -51,11 +51,11 @@ class ProfileRepositoryFirestore(
    * unchanged.
    *
    * @param userId stable authentication identifier and profile document ID.
-   * @return [Result.success] containing whether the profile was created or already existed;
-   *   [Result.failure] containing [ProfileException] with a stable [ProfileError] category.
+   * @return [Result.success] containing the existing or newly created profile; [Result.failure]
+   *   containing [ProfileException] with a stable [ProfileError] category.
    * @throws CancellationException when the coroutine is cancelled.
    */
-  override suspend fun createProfile(userId: String): Result<ProfileResolution> {
+  override suspend fun createProfile(userId: String): Result<UserProfile> {
     if (userId.isBlank()) {
       return Result.failure(ProfileException(ProfileError.INVALID_USER_ID))
     }
@@ -65,11 +65,11 @@ class ProfileRepositoryFirestore(
           .runTransaction { transaction ->
             val snapshot = transaction.get(document)
             if (snapshot.exists()) {
-              ProfileResolution.Existing(snapshot.toUserProfile(userId))
+              snapshot.toUserProfile(userId)
             } else {
               val profile = UserProfile(uid = userId)
               transaction.set(document, profile)
-              ProfileResolution.Created(profile)
+              profile
             }
           }
           .await()

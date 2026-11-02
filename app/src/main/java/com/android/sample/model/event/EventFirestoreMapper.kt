@@ -20,6 +20,7 @@ internal object EventFirestoreMapper {
             "updatedAt" to timestamp(updatedAt),
             "location" to location,
             "description" to description,
+            "importKey" to importKey,
             "tasks" to
                 tasks.map {
                   mapOf("text" to it.text, "completedAt" to it.completedAt?.let(::timestamp))
@@ -47,6 +48,7 @@ internal object EventFirestoreMapper {
               val task = it as Map<*, *>
               EventTask(task["text"] as String, task["completedAt"]?.let(::instant))
             },
+        data.optionalString("importKey"),
     )
   }
 

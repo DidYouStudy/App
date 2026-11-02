@@ -11,16 +11,17 @@ import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.profile.ProfileError
 import com.android.sample.model.profile.ProfileRepository
-import com.android.sample.model.profile.ProfileResolution
 import com.android.sample.model.profile.ProfileResolutionCoordinator
 import com.android.sample.model.profile.UserProfile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -148,9 +149,7 @@ class AuthViewModelTest {
       runTest(dispatcher) {
         val expected = UserProfile("alice")
         profileRepository.getProfileAction = { Result.success(null) }
-        profileRepository.createProfileAction = {
-          Result.success(ProfileResolution.Created(expected))
-        }
+        profileRepository.createProfileAction = { Result.success(expected) }
         repository.signIn = { alice }
 
         viewModel.signInWithGoogle { "token" }
@@ -295,7 +294,7 @@ class AuthViewModelTest {
   @Test
   fun sessionChangeDuringCreationCancelsAndClearsProfileResolution() =
       runTest(dispatcher) {
-        val creation = CompletableDeferred<Result<ProfileResolution>>()
+        val creation = CompletableDeferred<Result<UserProfile>>()
         profileRepository.getProfileAction = { Result.success(null) }
         profileRepository.createProfileAction = {
           try {
@@ -327,6 +326,39 @@ class AuthViewModelTest {
         runCurrent()
 
         assertEquals(ProfileUiState(error = ProfileError.UNKNOWN), viewModel.profileUiState.value)
+      }
+
+  // Reports UNKNOWN when profile lookup returns a non-domain failure in Result.
+  @Test
+  fun lookupResultWithUnexpectedFailure_reportsUnknownProfileError() =
+      runTest(dispatcher) {
+        profileRepository.getProfileAction = {
+          Result.failure(IllegalStateException("unexpected lookup failure"))
+        }
+        repository.signIn = { alice }
+
+        viewModel.signInWithGoogle { "token" }
+        runCurrent()
+
+        assertEquals(ProfileUiState(error = ProfileError.UNKNOWN), viewModel.profileUiState.value)
+        assertTrue(profileRepository.createProfileUserIds.isEmpty())
+      }
+
+  // Reports UNKNOWN when profile creation returns a non-domain failure in Result.
+  @Test
+  fun creationResultWithUnexpectedFailure_reportsUnknownProfileError() =
+      runTest(dispatcher) {
+        profileRepository.getProfileAction = { Result.success(null) }
+        profileRepository.createProfileAction = {
+          Result.failure(IllegalStateException("unexpected creation failure"))
+        }
+        repository.signIn = { alice }
+
+        viewModel.signInWithGoogle { "token" }
+        runCurrent()
+
+        assertEquals(ProfileUiState(error = ProfileError.UNKNOWN), viewModel.profileUiState.value)
+        assertEquals(listOf("alice"), profileRepository.createProfileUserIds)
       }
 
   // Keeps a loaded profile when a later sign-in request fails without changing the session.
@@ -507,6 +539,65 @@ class AuthViewModelTest {
         runCurrent()
 
         assertEquals(stateAfterAccountSwitch, viewModel.profileUiState.value)
+      }
+
+  // Clears all tracked resolution state if the active job reaches publication for a stale session.
+  @Test
+  fun activeResolutionWithMismatchedSession_clearsAllProfileResolutionState() =
+      runTest(dispatcher) {
+        val resolutionJob = Job()
+        val activeJobField =
+            AuthViewModel::class.java.getDeclaredField("activeProfileResolutionJob").apply {
+              isAccessible = true
+            }
+        activeJobField.set(viewModel, resolutionJob)
+        AuthViewModel::class.java.getDeclaredField("activeProfileResolutionUserId").apply {
+          isAccessible = true
+          set(viewModel, alice.uid)
+        }
+        AuthViewModel::class.java.getDeclaredField("pendingProfileUser").apply {
+          isAccessible = true
+          set(viewModel, alice)
+        }
+        @Suppress("UNCHECKED_CAST")
+        val authState =
+            AuthViewModel::class.java.getDeclaredField("mutableAuthUiState").let { field ->
+              field.isAccessible = true
+              field.get(viewModel) as MutableStateFlow<AuthUiState>
+            }
+        authState.value = AuthUiState(user = bob, isInitializing = false)
+        val profileStateField =
+            AuthViewModel::class.java.getDeclaredField("mutableProfileUiState").apply {
+              isAccessible = true
+            }
+        @Suppress("UNCHECKED_CAST")
+        (profileStateField.get(viewModel) as MutableStateFlow<ProfileUiState>).value =
+            ProfileUiState(isLoading = true)
+
+        AuthViewModel::class
+            .java
+            .declaredMethods
+            .single { it.name.startsWith("publishResolutionResult") }
+            .apply { isAccessible = true }
+            .invoke(viewModel, resolutionJob, alice, Result.success(UserProfile(alice.uid)))
+
+        assertEquals(ProfileUiState(), viewModel.profileUiState.value)
+        assertNull(activeJobField.get(viewModel))
+        assertNull(
+            AuthViewModel::class
+                .java
+                .getDeclaredField("activeProfileResolutionUserId")
+                .apply { isAccessible = true }
+                .get(viewModel)
+        )
+        assertNull(
+            AuthViewModel::class
+                .java
+                .getDeclaredField("pendingProfileUser")
+                .apply { isAccessible = true }
+                .get(viewModel)
+        )
+        resolutionJob.cancel()
       }
 
   // Clears profile resolution when the session observer fails after resolution starts.
@@ -893,8 +984,8 @@ class AuthViewModelTest {
     val createProfileUserIds = mutableListOf<String>()
     val cancelledUserIds = mutableListOf<String>()
     var getProfileAction: suspend (String) -> Result<UserProfile?> = { Result.success(null) }
-    var createProfileAction: suspend (String) -> Result<ProfileResolution> = {
-      Result.success(ProfileResolution.Created(UserProfile(it)))
+    var createProfileAction: suspend (String) -> Result<UserProfile> = {
+      Result.success(UserProfile(it))
     }
 
     override suspend fun getProfile(userId: String): Result<UserProfile?> {
@@ -902,7 +993,7 @@ class AuthViewModelTest {
       return getProfileAction(userId)
     }
 
-    override suspend fun createProfile(userId: String): Result<ProfileResolution> {
+    override suspend fun createProfile(userId: String): Result<UserProfile> {
       createProfileUserIds += userId
       return createProfileAction(userId)
     }

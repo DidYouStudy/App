@@ -40,6 +40,14 @@ class EventTest {
     assertTrue(event.tasks.isEmpty())
   }
 
+  /** Hand-made events carry no import key, and a key, when present, must have text. */
+  @Test
+  fun importKey_isNullByDefaultAndMustNotBeBlank() {
+    assertNull(event().importKey)
+    assertEquals("uid-1", event().copy(importKey = "uid-1").importKey)
+    assertThrows(IllegalArgumentException::class.java) { event().copy(importKey = " ") }
+  }
+
   /** Selected or custom subject/place labels retain their text without a category lookup. */
   @Test
   fun event_retainsSubjectLocationDescriptionAndExplicitEditTime() {

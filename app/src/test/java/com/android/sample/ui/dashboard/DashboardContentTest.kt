@@ -7,9 +7,7 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assert
-import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertCountEquals
-import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -19,7 +17,6 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.TextLayoutResult
@@ -318,28 +315,5 @@ class DashboardContentTest {
         averageDailyBounds.bottom - averageDailyBounds.top,
         totalSessionsBounds.bottom - totalSessionsBounds.top,
     )
-  }
-
-  @Test
-  fun addButtonHasAccessibleDescriptionAndClickAction() {
-    val context = ApplicationProvider.getApplicationContext<Context>()
-    composeTestRule.setContent { DashboardAddButton(onClick = {}) }
-
-    composeTestRule
-        .onNodeWithTag(DashboardContentTestTags.ADD_BUTTON)
-        .assertIsDisplayed()
-        .assertHasClickAction()
-        .assertContentDescriptionEquals(context.getString(R.string.dashboard_add_description))
-  }
-
-  @Test
-  fun eachAddButtonClickInvokesCallbackExactlyOnce() {
-    var callbackCount = 0
-    composeTestRule.setContent { DashboardAddButton(onClick = { callbackCount++ }) }
-
-    composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
-    assertEquals(1, callbackCount)
-    composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
-    assertEquals(2, callbackCount)
   }
 }

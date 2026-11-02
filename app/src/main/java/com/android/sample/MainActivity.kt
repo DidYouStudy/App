@@ -30,6 +30,7 @@ import com.android.sample.ui.groupsession.GroupSessionScreen
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.preferences.PreferencesScreen
+import com.android.sample.ui.preferences.rememberScheduleImportLauncher
 import com.android.sample.ui.settings.SettingsScreen
 import com.android.sample.ui.theme.DidYouStudyTheme
 
@@ -90,7 +91,7 @@ fun DidYouStudyApp() {
         // Fixed for the lifetime of this entry so the saving transition doesn't flip the UI.
         val isEditing = remember { appState == AppUiState.Dashboard }
         PreferencesScreen(
-            onImportClick = {},
+            onImportClick = rememberScheduleImportLauncher(),
             onAddLocationClick = {},
             onSaved = {
               if (isEditing) {

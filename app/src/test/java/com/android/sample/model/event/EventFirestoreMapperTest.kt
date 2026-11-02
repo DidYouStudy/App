@@ -20,6 +20,7 @@ class EventFirestoreMapperTest {
           location = "BC 410",
           description = "Details",
           tasks = listOf(EventTask("First"), EventTask("Second", time)),
+          importKey = "uid-1@is-academia",
       )
 
   /** Every activity type and every event field survives mapping. */
@@ -72,7 +73,7 @@ class EventFirestoreMapperTest {
   @Test
   fun missingOptionals() {
     val data = EventFirestoreMapper.encode(event.copy(type = EventType.OTHER)).toMutableMap()
-    listOf("subject", "location", "description", "tasks").forEach { data.remove(it) }
+    listOf("subject", "location", "description", "tasks", "importKey").forEach { data.remove(it) }
     assertEquals(
         event.copy(
             type = EventType.OTHER,
@@ -80,6 +81,7 @@ class EventFirestoreMapperTest {
             location = null,
             description = null,
             tasks = emptyList(),
+            importKey = null,
         ),
         EventFirestoreMapper.decode("id", "owner", data),
     )

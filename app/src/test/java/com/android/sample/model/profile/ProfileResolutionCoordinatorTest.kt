@@ -24,7 +24,7 @@ class ProfileResolutionCoordinatorTest {
     val result = ProfileResolutionCoordinator(repository).resolve(user)
 
     assertTrue(result.isSuccess)
-    assertEquals(ProfileResolution.Existing(existingProfile), result.getOrNull())
+    assertEquals(existingProfile, result.getOrNull())
     assertEquals(listOf("user123"), repository.getProfileUserIds)
     assertTrue(repository.createProfileUserIds.isEmpty())
   }
@@ -35,35 +35,15 @@ class ProfileResolutionCoordinatorTest {
     val repository =
         FakeProfileRepository(
             getProfileResult = Result.success(null),
-            createProfileResult = Result.success(ProfileResolution.Created(createdProfile)),
+            createProfileResult = Result.success(createdProfile),
         )
 
     val result = ProfileResolutionCoordinator(repository).resolve(user)
 
     assertTrue(result.isSuccess)
-    assertEquals(ProfileResolution.Created(createdProfile), result.getOrNull())
+    assertEquals(createdProfile, result.getOrNull())
     assertEquals(listOf("user123"), repository.getProfileUserIds)
     assertEquals(listOf("user123"), repository.createProfileUserIds)
-  }
-
-  // Rejects a malformed successful create result instead of reporting an unknown exception.
-  @Test
-  @Suppress("UNCHECKED_CAST")
-  fun resolve_rejectsNullCreatedResolutionAsInvalidProfileData() = runTest {
-    val malformedResult = Result.success(null) as Result<ProfileResolution>
-    val repository =
-        FakeProfileRepository(
-            getProfileResult = Result.success(null),
-            createProfileResult = malformedResult,
-        )
-
-    val result = ProfileResolutionCoordinator(repository).resolve(user)
-
-    assertTrue(result.isFailure)
-    assertEquals(
-        ProfileError.INVALID_PROFILE_DATA,
-        (result.exceptionOrNull() as ProfileException).error,
-    )
   }
 
   // Preserves a lookup failure and does not attempt profile creation.
@@ -102,7 +82,7 @@ class ProfileResolutionCoordinatorTest {
     val repository =
         FakeProfileRepository(
             getProfileResult = Result.success(null),
-            createProfileResult = Result.success(ProfileResolution.Created(createdProfile)),
+            createProfileResult = Result.success(createdProfile),
         )
     val differentUser = UserAccount("different-user", null, null, null)
 
@@ -140,6 +120,25 @@ class ProfileResolutionCoordinatorTest {
     val exception = result.exceptionOrNull() as ProfileException
     assertEquals(ProfileError.UNKNOWN, exception.error)
     assertSame(failure, exception.cause)
+  }
+
+  // Converts an unexpected exception during profile creation into a stable failure.
+  @Test
+  fun resolve_wrapsUnexpectedCreationExceptionAsUnknownProfileFailure() = runTest {
+    val failure = IllegalStateException("unexpected profile creation failure")
+    val repository =
+        FakeProfileRepository(
+            getProfileResult = Result.success(null),
+            createProfileException = failure,
+        )
+
+    val result = ProfileResolutionCoordinator(repository).resolve(user)
+
+    assertTrue(result.isFailure)
+    val exception = result.exceptionOrNull() as ProfileException
+    assertEquals(ProfileError.UNKNOWN, exception.error)
+    assertSame(failure, exception.cause)
+    assertEquals(listOf("user123"), repository.createProfileUserIds)
   }
 
   // Rejects a profile that does not belong to the authenticated user.
@@ -182,8 +181,7 @@ class ProfileResolutionCoordinatorTest {
     val repository =
         FakeProfileRepository(
             getProfileResult = Result.success(null),
-            createProfileResult =
-                Result.success(ProfileResolution.Created(UserProfile("different-user"))),
+            createProfileResult = Result.success(UserProfile("different-user")),
         )
 
     val result = ProfileResolutionCoordinator(repository).resolve(user)
@@ -202,8 +200,7 @@ class ProfileResolutionCoordinatorTest {
       val repository =
           FakeProfileRepository(
               getProfileResult = Result.success(null),
-              createProfileResult =
-                  Result.success(ProfileResolution.Created(UserProfile(blankUid))),
+              createProfileResult = Result.success(UserProfile(blankUid)),
           )
 
       val result = ProfileResolutionCoordinator(repository).resolve(user)
@@ -282,9 +279,8 @@ class ProfileResolutionCoordinatorTest {
 
   private class FakeProfileRepository(
       private val getProfileResult: Result<UserProfile?> = Result.success(null),
-      private val createProfileResult: Result<ProfileResolution> =
-          Result.success(ProfileResolution.Created(UserProfile("user123"))),
-      private val createProfileException: CancellationException? = null,
+      private val createProfileResult: Result<UserProfile> = Result.success(UserProfile("user123")),
+      private val createProfileException: Throwable? = null,
       private val getProfileException: Throwable? = null,
   ) : ProfileRepository {
     val getProfileUserIds = mutableListOf<String>()
@@ -296,7 +292,7 @@ class ProfileResolutionCoordinatorTest {
       return getProfileResult
     }
 
-    override suspend fun createProfile(userId: String): Result<ProfileResolution> {
+    override suspend fun createProfile(userId: String): Result<UserProfile> {
       createProfileUserIds += userId
       createProfileException?.let { throw it }
       return createProfileResult

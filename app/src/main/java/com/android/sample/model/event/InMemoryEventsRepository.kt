@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.model.event
 
 import java.time.Instant
@@ -77,6 +78,18 @@ class InMemoryEventsRepository : EventsRepository {
     return Result.success(event)
   }
 
+  override suspend fun getImportedEvents(ownerId: String): Result<List<Event>> {
+    if (ownerId.isBlank()) return invalidArgument()
+    val imported =
+        data.value[ownerId]
+            ?.events
+            .orEmpty()
+            .values
+            .filter { it.importKey != null }
+            .sortedWith(compareBy<Event>({ it.startsAt }, { it.endsAt }, { it.id }))
+    return Result.success(imported)
+  }
+
   override suspend fun saveEvent(event: Event): Result<Unit> {
     data.update { byOwner ->
       val owned = byOwner[event.ownerId] ?: OwnerData()
@@ -91,6 +104,7 @@ class InMemoryEventsRepository : EventsRepository {
 
   override suspend fun saveEvents(events: List<Event>): Result<Unit> {
     if (events.isEmpty()) return Result.success(Unit)
+    if (events.any { it.ownerId != events.first().ownerId }) return invalidArgument()
 
     data.update { byOwner ->
       var currentMap = byOwner

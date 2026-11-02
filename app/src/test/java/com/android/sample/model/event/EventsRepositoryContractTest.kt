@@ -83,6 +83,45 @@ abstract class EventsRepositoryContractTest {
 
   /** Deleting removes the event; deleting again or a missing event still succeeds. */
   @Test
+  fun getImportedEvents_returnsOnlyTheOwnersImportedEventsOfAnyDate() = runTest {
+    val imported = event("a", 9, 10).copy(importKey = "uid-a")
+    val farAway =
+        event("b", 9, 10)
+            .copy(
+                startsAt = monday.plusSeconds(400 * 86_400L),
+                endsAt = monday.plusSeconds(400 * 86_400L + 3600),
+                importKey = "uid-b",
+            )
+    // A batch may only hold one owner's events, so the other owner's event is saved separately.
+    repository.saveEvents(listOf(imported, farAway, event("manual", 11, 12))).getOrThrow()
+    repository.saveEvent(event("other", 9, 10, otherOwner).copy(importKey = "uid-x")).getOrThrow()
+
+    val result = repository.getImportedEvents(owner).getOrThrow()
+
+    assertEquals(listOf(imported, farAway), result)
+  }
+
+  @Test
+  fun getImportedEvents_sortsByStartThenEndThenId() = runTest {
+    val late = event("a", 9, 12).copy(importKey = "k1")
+    val shortSameStart = event("b", 9, 10).copy(importKey = "k2")
+    val tieB = event("d", 9, 10).copy(importKey = "k3")
+    val earlier = event("z", 8, 9).copy(importKey = "k4")
+    repository.saveEvents(listOf(late, tieB, shortSameStart, earlier))
+
+    val ids = repository.getImportedEvents(owner).getOrThrow().map { it.id }
+
+    assertEquals(listOf("z", "b", "d", "a"), ids)
+  }
+
+  @Test
+  fun getImportedEvents_blankOwner_isInvalidArgument() = runTest {
+    val error = repository.getImportedEvents(" ").exceptionOrNull() as EventsException
+
+    assertEquals(EventsError.INVALID_ARGUMENT, error.error)
+  }
+
+  @Test
   fun deleteEvent_removesAndIsIdempotent() = runTest {
     repository.saveEvent(event("a", 9, 10)).getOrThrow()
 

@@ -84,6 +84,87 @@ where `<project-id>` is the `project_id` in `google-services.json`.
 `firebase emulators:start` runs the Auth and Firestore emulators configured in
 `firebase.json`, and the Firestore emulator enforces the same rules.
 
+### Private event persistence
+
+`EventsRepositoryFirestore` implements the existing `EventsRepository`; frontend can keep using
+`InMemoryEventsRepository` in its tests. Production wiring is available through
+`EventsRepositoryProvider.getRepository()`. Inject the interface into ViewModels; Firebase stays
+in the model layer.
+
+- Events: `users/{uid}/events/{eventId}`. The document ID is the event ID; the document stores
+  `ownerId`, enum `type`, optional `subject`, UTC timestamps `startsAt`, `endsAt`, `createdAt`,
+  `updatedAt`, optional `location`/`description`, and ordered `tasks` (`text`, `completedAt`).
+- Suggestions: `users/{uid}/meta/subjects`, containing a `subjects` map. Keys are hex-encoded
+  UTF-8 of the trimmed lowercase label; each entry stores `spelling` and `usedAt`.
+  Each save batches the event and a merge of its one subject entry. Deletion retains suggestions.
+- Live queries use `startsAt < to` and `endsAt > from`, ordered by start, end, and document ID.
+  Matching malformed documents fail the read with `INVALID_EVENT_DATA`; they are not silently
+  omitted. Missing optional fields become null or an empty task list. Records without query
+  fields cannot be returned by Firestore's query; rules prevent new such records.
+- Rules enforce ownership and top-level types, permitted fields, activity types, subject/location
+  validation and duration. They do not enumerate every task or dynamic subject entry; the mapper
+  validates those values when reading. This is deliberately scoped to private academic-project data.
+
+#### Offline behavior and limits
+
+Android Firestore disk persistence is enabled by default. Previously cached data can be read
+without a network and survives client/app restart, subject to SDK cache eviction. Offline saves,
+edits and deletes update the local cache and synchronize when reconnected. Reuse `newEventId()`'s
+result when retrying a save. Events use last-write-wins; there is no conflict resolution or edit
+history. Caller timestamps are stored as UTC, truncated to Firestore's microsecond precision.
+
+Successful save/delete means **locally accepted**, not server-confirmed. The repository queues a
+cache-only query after the write on the SDK's serial worker queue, then awaits that local query.
+This avoids waiting for the server acknowledgement and covers idempotent deletes and repeated
+identical saves. Emulator tests guard this SDK ordering assumption; rerun them after SDK upgrades.
+Cancelling a coroutine does not retract a write already queued in Firestore.
+
+The current interface intentionally does not expose pending/confirmed status, incomplete offline
+ranges, or delayed server rejection notifications. An unvisited offline range may appear empty;
+a later server rejection may roll back a locally displayed change. A single uncached document
+read can fail with `STORAGE_FAILURE` rather than asserting that it does not exist. Cached reads
+are still restricted to the current signed-in owner. No custom sync engine is used.
+
+#### Running backend tests
+
+Keep the existing in-memory/unit tests and run the separate real-SDK suite with an Android
+emulator plus Firebase Auth and Firestore emulators (ports 9099 and 8080). Tests create isolated
+named Firebase apps pointing only to `demo-didyoustudy`, accessed through Android's `10.0.2.2`.
+A debug-only network policy permits HTTP to that emulator host; release policy is unchanged.
+
+```bash
+./gradlew check ktfmtCheck
+firebase emulators:exec --only auth,firestore --project demo-didyoustudy \
+  './gradlew connectedDebugAndroidTest'
+```
+
+Firebase emulators need Java 21+; the Gradle daemon uses its configured Java 17 toolchain.
+The restart test recreates the SDK client with the same disk cache, including a queued write;
+it does not simulate forcibly killing the Android process or clearing app data.
+
+#### Publishing rules and indexes
+
+In Firebase Console, open **Build → Firestore Database → Rules**, replace the editor contents
+with the **entire repository `firestore.rules` file**, and click **Publish**. It includes the existing
+profile/preferences permissions as well as event/subject permissions; do not paste only the new
+matches. Keep any subsequent edits in this repository too.
+
+Rules alone are insufficient for the overlap query. Prefer deploying both reviewed files with:
+
+```bash
+firebase deploy --only firestore:rules,firestore:indexes --project <project-id>
+```
+
+If configuring the index manually, create a **collection-scoped** composite index for collection ID
+`events`, fields `startsAt` ascending and `endsAt` ascending (document ID ordering is implicit).
+Wait for it to become enabled, then smoke-test the query against the project. The local emulator
+does not prove that production indexes have been deployed. `firestore.indexes.json` also disables
+unneeded single-field indexing for the subject catalog map and event tasks.
+
+No manual collection creation, new sign-in provider, Cloud Function or Storage setup is required.
+The parent `users/{uid}` document need not exist. Deployment is a maintainer step, not performed
+by the test suite.
+
 ## App name
 DidYouStudy
 

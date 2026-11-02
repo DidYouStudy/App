@@ -27,6 +27,8 @@ import java.time.Instant
  * @property tasks planned checklist for this event, in display order; allowed for every type.
  *   Callers should pass a stable list and not mutate it after creating the event. The list is
  *   exposed as read-only but is not defensively copied.
+ * @property importKey identifies the entry in the schedule file it was imported from (its `UID`),
+ *   so a later import can update or remove it; null for events the user created by hand.
  */
 data class Event(
     val id: String,
@@ -40,6 +42,7 @@ data class Event(
     val location: String? = null,
     val description: String? = null,
     val tasks: List<EventTask> = emptyList(),
+    val importKey: String? = null,
 ) {
   init {
     require(id.isNotBlank()) { "Event ID must not be blank" }
@@ -52,6 +55,7 @@ data class Event(
       "Event must not last longer than $MAX_DURATION"
     }
     require(location == null || location.isNotBlank()) { "Location must not be blank" }
+    require(importKey == null || importKey.isNotBlank()) { "Import key must not be blank" }
   }
 
   companion object {

@@ -4,31 +4,20 @@ package com.android.sample.ui.eventplanning
 import androidx.lifecycle.ViewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
-import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
 import com.android.sample.model.event.EventsRepository
-import java.time.Clock
-import java.time.Instant
-import java.time.LocalDate
-import java.time.LocalTime
-import java.time.ZoneId
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
-import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -42,7 +31,6 @@ import org.mockito.Mockito.never
 import org.mockito.Mockito.times
 import org.mockito.Mockito.`when`
 import org.mockito.kotlin.any
-import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.doSuspendableAnswer
 import org.mockito.kotlin.verify
 
@@ -56,30 +44,14 @@ import org.mockito.kotlin.verify
  * (saves succeed, no subjects, the next event ID is "event-1"); tests re-stub what they need.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class EventPlanningViewModelTest {
+class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
 
   /** Unsupported ViewModel type used to verify that the factory rejects unrelated requests. */
   private class OtherViewModel : ViewModel()
 
-  private val testDispatcher = UnconfinedTestDispatcher()
-  private val currentUserFlow = MutableStateFlow<UserAccount?>(null)
-  private lateinit var authRepository: AuthRepository
-  private lateinit var eventsRepository: EventsRepository
-
-  // Berlin is on UTC+1 on this date (summer time ended on 25 October 2026).
-  private val zone = ZoneId.of("Europe/Berlin")
-  private val now = Instant.parse("2026-10-27T12:00:00Z")
-  private val clock = Clock.fixed(now, zone)
-  private val date = LocalDate.of(2026, 10, 27)
-  private val startTime = LocalTime.of(9, 0)
-  private val endTime = LocalTime.of(11, 0)
-  private val startsAt = Instant.parse("2026-10-27T08:00:00Z")
-  private val endsAt = Instant.parse("2026-10-27T10:00:00Z")
-
   /** Installs the test dispatcher and configures repository mocks with successful defaults. */
   @Before
   fun setUp() {
-    Dispatchers.setMain(testDispatcher)
     authRepository = mock(AuthRepository::class.java)
     eventsRepository = mock(EventsRepository::class.java)
     `when`(authRepository.currentUser).thenReturn(currentUserFlow)
@@ -89,37 +61,8 @@ class EventPlanningViewModelTest {
     currentUserFlow.value = account("user123")
   }
 
-  /** Restores the process main dispatcher after each test. */
-  @After
-  fun tearDown() {
-    Dispatchers.resetMain()
-  }
-
-  /** Creates a minimal account for authentication-flow tests. */
-  private fun account(uid: String) =
-      UserAccount(uid = uid, email = null, displayName = null, photoUrl = null)
-
   /** Creates a one-shot subject flow containing [subjects]. */
   private fun subjects(vararg subjects: String) = flowOf(Result.success(subjects.toList()))
-
-  /** Creates a ViewModel with the configured repository mocks and fixed test clock. */
-  private fun createViewModel() = EventPlanningViewModel(authRepository, eventsRepository, clock)
-
-  /** Populates the form with valid study-session details for event-creation tests. */
-  private fun EventPlanningViewModel.fillValidForm() {
-    setType(EventType.STUDY_SESSION)
-    setSubject("Algebra")
-    setDate(date)
-    setStartTime(startTime)
-    setEndTime(endTime)
-  }
-
-  /** The events passed to `saveEvent` so far, which must have happened exactly [count] times. */
-  private suspend fun savedEvents(count: Int = 1): List<Event> {
-    val captor = argumentCaptor<Event>()
-    verify(eventsRepository, times(count)).saveEvent(captor.capture())
-    return captor.allValues
-  }
 
   // ---------------------------------------------------------------- user observation
 

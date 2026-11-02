@@ -80,6 +80,13 @@ class EventsFirestoreRulesEmulatorTest {
   private fun catalog() =
       db.collection("users").document(uid).collection("meta").document("subjects")
 
+  /** Events imported from a schedule file carry an import key, which the rules must accept. */
+  @Test
+  fun ownerCanSaveImportedEvent() = runBlocking {
+    event().set(eventData() + ("importKey" to "uid-1@is-academia")).await()
+    assertTrue(event().get(Source.SERVER).await().exists())
+  }
+
   /** The owner can create, read, and delete events and read and write the catalog. */
   @Test
   fun ownerCanAccessValidData() = runBlocking {
@@ -102,6 +109,8 @@ class EventsFirestoreRulesEmulatorTest {
             data + ("endsAt" to data["startsAt"]),
             data + ("endsAt" to Timestamp(day.plusSeconds(40 * 3600).epochSecond, 0)),
             data + ("tasks" to "bad"),
+            data + ("importKey" to " "),
+            data + ("importKey" to 42),
             data + ("unexpected" to true),
         )
         .forEach { invalid -> denied { event().set(invalid).await() } }

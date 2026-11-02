@@ -44,6 +44,11 @@ enum class GroupSessionsError {
   LEAVE_FAILED,
 }
 
+/** Returns this error unless it is LOAD_FAILED, which a new list or refresh resolves. */
+private fun GroupSessionsError?.withoutLoadFailure() = takeUnless {
+  it == GroupSessionsError.LOAD_FAILED
+}
+
 /** One row of the list, including the current user's membership and creator relationship. */
 data class GroupSessionItem(
     val session: GroupSession,
@@ -70,6 +75,9 @@ data class GroupSessionsUiState(
  * Sessions are sorted by the repository. Search checks subject, location, and description without
  * case sensitivity; joining and leaving use the current user's identity. A refreshed observation
  * uses the current clock instant, because an existing repository flow retains its original cutoff.
+ * Successful list emissions and refreshes clear only [GroupSessionsError.LOAD_FAILED]; action
+ * errors remain until cleared or the observed user ID changes. Action results from an earlier
+ * observed user ID are ignored.
  */
 class GroupSessionsViewModel(
     private val authRepository: AuthRepository,
@@ -82,25 +90,47 @@ class GroupSessionsViewModel(
 
   private val refreshVersion = MutableStateFlow(0)
   private var currentUserId: String? = null
+  /** Distinguishes action requests made during different observed sign-in periods. */
+  private var authGeneration = 0L
   private var observedSessions: List<GroupSession> = emptyList()
 
   init {
     viewModelScope.launch {
       combine(authRepository.currentUser, refreshVersion) { user, _ -> user }
           .collectLatest { user ->
-            currentUserId = user?.uid
+            val userId = user?.uid
+            val userChanged = userId != currentUserId
+            if (userChanged) {
+              currentUserId = userId
+              authGeneration += 1
+            }
             if (user == null) {
               observedSessions = emptyList()
               _uiState.value = GroupSessionsUiState(isLoading = false)
             } else {
               updateVisibleSessions()
-              _uiState.update { it.copy(isLoading = true, error = null) }
+              _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    error =
+                        if (userChanged) {
+                          null
+                        } else {
+                          it.error.withoutLoadFailure()
+                        },
+                )
+              }
               repository.observeSessions(clock.instant()).collect { result ->
                 result.fold(
                     onSuccess = { sessions ->
                       observedSessions = sessions
                       updateVisibleSessions()
-                      _uiState.update { it.copy(isLoading = false, error = null) }
+                      _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = it.error.withoutLoadFailure(),
+                        )
+                      }
                     },
                     onFailure = {
                       _uiState.update {
@@ -132,12 +162,16 @@ class GroupSessionsViewModel(
 
   /**
    * Joins [sessionId] as the signed-in user and reports failures as
-   * [GroupSessionsError.JOIN_FAILED].
+   * [GroupSessionsError.JOIN_FAILED] only if the observed user ID has not changed while joining.
+   * The error remains until [clearError] or a change in the observed user ID.
    */
   fun join(sessionId: String) {
     viewModelScope.launch {
       val userId = currentUserId ?: return@launch
-      if (repository.joinSession(userId, sessionId).isFailure) {
+      val requestGeneration = authGeneration
+      if (
+          repository.joinSession(userId, sessionId).isFailure && requestGeneration == authGeneration
+      ) {
         _uiState.update { it.copy(error = GroupSessionsError.JOIN_FAILED) }
       }
     }
@@ -145,12 +179,17 @@ class GroupSessionsViewModel(
 
   /**
    * Leaves [sessionId] as the signed-in user and reports failures as
-   * [GroupSessionsError.LEAVE_FAILED].
+   * [GroupSessionsError.LEAVE_FAILED] only if the observed user ID has not changed while leaving.
+   * The error remains until [clearError] or a change in the observed user ID.
    */
   fun leave(sessionId: String) {
     viewModelScope.launch {
       val userId = currentUserId ?: return@launch
-      if (repository.leaveSession(userId, sessionId).isFailure) {
+      val requestGeneration = authGeneration
+      if (
+          repository.leaveSession(userId, sessionId).isFailure &&
+              requestGeneration == authGeneration
+      ) {
         _uiState.update { it.copy(error = GroupSessionsError.LEAVE_FAILED) }
       }
     }
@@ -159,7 +198,8 @@ class GroupSessionsViewModel(
   /**
    * Observes again from the current time, so sessions that ended meanwhile disappear.
    *
-   * Without a refresh, the repository's flow continues using its original time cutoff.
+   * Without a refresh, the repository's flow continues using its original time cutoff. Refresh
+   * clears only [GroupSessionsError.LOAD_FAILED], preserving action errors.
    */
   fun refresh() {
     viewModelScope.launch { refreshVersion.update { it + 1 } }
