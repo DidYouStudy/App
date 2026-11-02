@@ -353,7 +353,9 @@ fun EventTypeDropdownMenu(
             },
         )
         if (type != EventType.entries.last()) {
-          HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+          HorizontalDivider(
+              color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = AlphaTokens.OUTLINE)
+          )
         }
       }
     }
@@ -513,7 +515,8 @@ fun SubjectPickerDialogContent(
               )
               if (index < filteredSubjects.lastIndex) {
                 HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    color =
+                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = AlphaTokens.OUTLINE)
                 )
               }
             }

@@ -4,4 +4,5 @@ package com.android.sample.ui.theme
 object AlphaTokens {
   const val PLACEHOLDER: Float = 0.7f
   const val DISABLED: Float = 0.6f
+  const val OUTLINE: Float = 0.5f
 }
