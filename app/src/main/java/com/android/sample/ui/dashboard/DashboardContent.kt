@@ -28,11 +28,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.sp
 import com.android.sample.R
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
+import com.android.sample.ui.theme.cardTitle
 
 /**
  * One planned study slot shown in 'Your day' (display model with preformatted times, not a domain
@@ -104,7 +104,7 @@ private fun DashboardDayCard(sessions: List<DashboardSession>, modifier: Modifie
   ) {
     Text(
         text = stringResource(R.string.dashboard_your_day),
-        fontSize = 18.sp,
+        style = MaterialTheme.typography.cardTitle,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.testTag(DashboardContentTestTags.YOUR_DAY_TITLE),
@@ -113,7 +113,7 @@ private fun DashboardDayCard(sessions: List<DashboardSession>, modifier: Modifie
     if (sessions.isEmpty()) {
       Text(
           text = stringResource(R.string.dashboard_no_sessions),
-          fontSize = 14.sp,
+          style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           textAlign = TextAlign.Center,
           modifier = Modifier.fillMaxWidth().testTag(DashboardContentTestTags.EMPTY_DAY),
@@ -180,13 +180,13 @@ private fun DashboardSessionRow(
     ) {
       Text(
           text = session.startTime,
-          fontSize = 14.sp,
+          style = MaterialTheme.typography.bodyMedium,
           fontWeight = FontWeight.Bold,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
       Text(
           text = session.endTime,
-          fontSize = 14.sp,
+          style = MaterialTheme.typography.bodyMedium,
           fontWeight = FontWeight.Normal,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
@@ -195,7 +195,7 @@ private fun DashboardSessionRow(
     Text(
         text = session.subject,
         modifier = Modifier.weight(1f),
-        fontSize = 16.sp,
+        style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onSurface,
     )
@@ -213,7 +213,7 @@ private fun DashboardStatsCard(stats: DashboardStats, modifier: Modifier = Modif
   ) {
     Text(
         text = stringResource(R.string.dashboard_your_stats),
-        fontSize = 18.sp,
+        style = MaterialTheme.typography.cardTitle,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.testTag(DashboardContentTestTags.STATS_TITLE),
@@ -246,7 +246,7 @@ private fun DashboardStatsCard(stats: DashboardStats, modifier: Modifier = Modif
     // Hint explaining why the values are still empty (no session data yet).
     Text(
         text = stringResource(R.string.dashboard_stats_placeholder),
-        fontSize = 14.sp,
+        style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.testTag(DashboardContentTestTags.STATS_HINT),
     )
@@ -285,13 +285,13 @@ private fun DashboardStatTile(
     // What the statistic is, then its value (or an em dash when missing).
     Text(
         text = label,
-        fontSize = 14.sp,
+        style = MaterialTheme.typography.labelLarge,
         fontWeight = FontWeight.Medium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Text(
         text = value,
-        fontSize = 22.sp,
+        style = MaterialTheme.typography.titleLarge,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurface,
     )

@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.theme
 
 import androidx.compose.material3.Typography
@@ -34,3 +35,10 @@ val Typography =
         )
         */
     )
+
+/**
+ * Heading of a dashboard card. Material 3 has no 18sp style (titleMedium is 16sp, titleLarge is
+ * 22sp), so this derives one from titleLarge with a matching line height.
+ */
+val Typography.cardTitle: TextStyle
+  get() = titleLarge.copy(fontSize = 18.sp, lineHeight = 24.sp)

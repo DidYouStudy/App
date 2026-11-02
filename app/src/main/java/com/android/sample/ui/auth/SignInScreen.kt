@@ -90,7 +90,7 @@ fun SignInScreen(
     // The bold black title introduces the sign-in action.
     Text(
         text = stringResource(R.string.sign_in_title),
-        fontSize = 36.sp,
+        style = MaterialTheme.typography.displaySmall,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onBackground,
         textAlign = TextAlign.Center,
