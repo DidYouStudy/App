@@ -1,6 +1,7 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.ui.calendar
 
+import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventType
@@ -15,6 +16,7 @@ import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -24,6 +26,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -186,6 +189,49 @@ class CalendarViewModelTest {
     assertEquals(CalendarViewModelError.LOAD_EVENTS_FAILED, viewModel.uiState.value.error)
   }
 
+  /**
+   * Converts an exception thrown while collecting the repository event stream into a load error.
+   */
+  @Test
+  fun repositoryObservationExceptionSetsLoadError() = runTest {
+    authRepository.currentUser.value = account("alice")
+    eventsRepository.throwOnObserve = true
+
+    val viewModel = createViewModel()
+
+    assertTrue(viewModel.uiState.value.events.isEmpty())
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertEquals(CalendarViewModelError.LOAD_EVENTS_FAILED, viewModel.uiState.value.error)
+  }
+
+  /** Converts a failure from the authentication session stream into a load error. */
+  @Test
+  fun authenticationStreamExceptionSetsLoadError() = runTest {
+    val failingAuthRepository = FailingAuthRepository()
+
+    val viewModel = CalendarViewModel(failingAuthRepository, eventsRepository, clock)
+
+    assertTrue(viewModel.uiState.value.events.isEmpty())
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertEquals(CalendarViewModelError.LOAD_EVENTS_FAILED, viewModel.uiState.value.error)
+  }
+
+  /** Rejects unsupported ViewModel classes with the requested class name in the message. */
+  @Test
+  fun factoryRejectsUnsupportedViewModelClass() {
+    val factory = CalendarViewModelFactory(authRepository, eventsRepository, clock)
+
+    val exception =
+        assertThrows(IllegalArgumentException::class.java) {
+          factory.create(androidx.lifecycle.ViewModel::class.java)
+        }
+
+    assertEquals(
+        "Unsupported ViewModel: androidx.lifecycle.ViewModel",
+        exception.message,
+    )
+  }
+
   /** Retry reobserves the same owner and week, then clears the error when events load. */
   @Test
   fun retryAfterFailureReloadsEventsForCurrentWeek() = runTest {
@@ -246,6 +292,7 @@ class CalendarViewModelTest {
 
     val queries = mutableListOf<Query>()
     var failure: Throwable? = null
+    var throwOnObserve: Boolean = false
 
     override fun observeEvents(
         ownerId: String,
@@ -253,6 +300,7 @@ class CalendarViewModelTest {
         to: Instant,
     ): Flow<Result<List<Event>>> {
       queries += Query(ownerId, from, to)
+      if (throwOnObserve) return flow { throw IllegalStateException("observation failed") }
       val observationFailure = failure
       return if (observationFailure == null) {
         delegate.observeEvents(ownerId, from, to)
@@ -260,5 +308,17 @@ class CalendarViewModelTest {
         flowOf(Result.failure(observationFailure))
       }
     }
+  }
+
+  /** Supplies a session flow that fails immediately to exercise the outer observation handler. */
+  private class FailingAuthRepository : AuthRepository {
+    override val currentUser: Flow<UserAccount?> = flow {
+      throw IllegalStateException("auth failed")
+    }
+
+    override suspend fun signInWithGoogle(idToken: String): UserAccount =
+        error("Sign-in is not used in this test")
+
+    override suspend fun signOut() = Unit
   }
 }

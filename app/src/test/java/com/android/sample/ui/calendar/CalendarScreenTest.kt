@@ -116,6 +116,33 @@ class CalendarScreenTest {
     composeTestRule.runOnIdle { assertEquals(1, retryClicks) }
   }
 
+  /** Renders the standard preview and confirms its calendar content is visible. */
+  @Test
+  fun calendarScreenPreviewShowsWeeklyCalendar() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    composeTestRule.setContent { CalendarScreenPreview() }
+
+    composeTestRule
+        .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.calendar_title))
+    composeTestRule.onNodeWithTag(CalendarTestTags.TODAY_BUTTON).assertIsDisplayed()
+  }
+
+  /** Renders the error preview and confirms its message and retry action are visible. */
+  @Test
+  fun calendarScreenErrorPreviewShowsLoadErrorAndRetry() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    composeTestRule.setContent { CalendarScreenErrorPreview() }
+
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.calendar_load_events_error))
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.calendar_retry_button))
+        .assertIsDisplayed()
+  }
+
   /** Creates predictable weekly display state for screen tests. */
   private fun calendarUiState(
       today: LocalDate,
