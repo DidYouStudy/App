@@ -372,7 +372,6 @@ fun EventTypeDropdownMenu(
 }
 
 /** Material 3 DatePickerDialog configured for text input mode. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventDatePickerDialog(
     initialDate: LocalDate?,
