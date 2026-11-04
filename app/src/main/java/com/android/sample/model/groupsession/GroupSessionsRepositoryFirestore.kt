@@ -37,9 +37,19 @@ class GroupSessionsRepositoryFirestore(
                     checkSignedIn()
                     if (error != null) throw error
                     // Sorting on the device keeps this query free of a composite index.
+                    // This list is shared, so one bad document must not break it for every user.
                     requireNotNull(snapshot)
                         .documents
-                        .map { GroupSessionFirestoreMapper.decode(it.id, requireNotNull(it.data)) }
+                        .mapNotNull { document ->
+                          document.data?.let { data ->
+                            try {
+                              GroupSessionFirestoreMapper.decode(document.id, data)
+                            } catch (exception: EventsException) {
+                              if (exception.error == EventsError.INVALID_EVENT_DATA) null
+                              else throw exception
+                            }
+                          }
+                        }
                         .sortedWith(
                             compareBy<GroupSession>(
                                 { it.startsAt },
@@ -101,9 +111,7 @@ class GroupSessionsRepositoryFirestore(
         .runTransaction { transaction ->
           val snapshot = transaction.get(document)
           if (snapshot.exists()) {
-            val stored =
-                GroupSessionFirestoreMapper.decode(sessionId, requireNotNull(snapshot.data))
-            if (stored.createdBy != userId) {
+            if (snapshot.getString("createdBy") != userId) {
               throw EventsException(EventsError.PERMISSION_DENIED)
             }
             transaction.delete(document)
