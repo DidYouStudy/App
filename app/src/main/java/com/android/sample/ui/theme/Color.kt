@@ -37,6 +37,8 @@ val EventTypeProjectDark = Color(0xFF8B4210)
 val EventTypeExamDark = Color(0xFF8C1D18)
 val EventTypeOtherDark = Color(0xFF424242)
 
+val EventTimeLabel = Color(0xFF6F6F6F)
+
 /** Returns a theme-adaptive background color for the given [EventType]. */
 @Composable
 fun eventColor(type: EventType, darkTheme: Boolean = isSystemInDarkTheme()): Color {
