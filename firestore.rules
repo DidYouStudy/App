@@ -98,6 +98,7 @@ service cloud.firestore {
         && before.difference(after).hasOnly([userId])
         && request.resource.data.memberIds.hasAny([userId])
              != resource.data.memberIds.hasAny([userId])
+        && (!request.resource.data.memberIds.hasAny([userId]) || resource.data.endsAt > request.time)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds']);
     }
 
