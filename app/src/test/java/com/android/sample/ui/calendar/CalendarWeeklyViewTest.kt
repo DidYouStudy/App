@@ -12,17 +12,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
+import com.android.sample.model.event.Event
+import com.android.sample.model.event.EventType
+import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
+import kotlin.math.abs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -172,6 +181,124 @@ class CalendarWeeklyViewTest {
     composeTestRule.onNodeWithTag(CalendarTestTags.hourLabel(8)).assertIsDisplayed()
   }
 
+  /** Calculates one placement with the event's local start time and duration. */
+  @Test
+  fun eventPlacementUsesLocalStartTimeAndDuration() {
+    val weekDates = CalendarDateHelper().weekDates(LocalDate.of(2026, 10, 14))
+    val event = eventOn(weekDates[2], LocalTime.of(9, 30), LocalTime.of(11, 0))
+
+    val placement = calculateEventPlacements(event, weekDates, 10.dp).single()
+
+    assertEquals(2, placement.dayIndex)
+    assertEquals(95.dp, placement.top)
+    assertEquals(15.dp, placement.height)
+  }
+
+  /** Splits an event crossing midnight into adjacent cards with the same event contents. */
+  @Test
+  fun eventPlacementSplitsAtMidnight() {
+    val weekDates = CalendarDateHelper().weekDates(LocalDate.of(2026, 10, 14))
+    val event = eventOn(weekDates[2], LocalTime.of(23, 0), weekDates[3], LocalTime.of(1, 0))
+
+    val placements = calculateEventPlacements(event, weekDates, 10.dp)
+
+    assertEquals(2, placements.size)
+    assertEquals(2, placements[0].dayIndex)
+    assertEquals(230f, placements[0].top.value, 0.001f)
+    assertEquals(10.dp, placements[0].height)
+    assertEquals(3, placements[1].dayIndex)
+    assertEquals(0.dp, placements[1].top)
+    assertEquals(10.dp, placements[1].height)
+    assertEquals(event, placements[0].event)
+    assertEquals(event, placements[1].event)
+  }
+
+  /** Ignores placements outside the displayed week while retaining in-week event segments. */
+  @Test
+  fun eventPlacementFiltersDatesOutsideDisplayedWeek() {
+    val weekDates = CalendarDateHelper().weekDates(LocalDate.of(2026, 10, 14))
+    val event =
+        eventOn(
+            weekDates.first().minusDays(1),
+            LocalTime.of(23, 0),
+            weekDates.first(),
+            LocalTime.of(1, 0),
+        )
+
+    val placements = calculateEventPlacements(event, weekDates, 10.dp)
+
+    assertEquals(1, placements.size)
+    assertEquals(0, placements.single().dayIndex)
+    assertEquals(10.dp, placements.single().height)
+  }
+
+  /** Renders event cards from the supplied events in the weekly time grid. */
+  @Test
+  fun timeGridRendersEventCardForAnInWeekEvent() {
+    val weekDates = CalendarDateHelper().weekDates(LocalDate.of(2026, 10, 14))
+    val event = eventOn(weekDates[1], LocalTime.of(9, 0), LocalTime.of(10, 0))
+
+    composeTestRule.setContent {
+      Box(Modifier.height(400.dp)) {
+        CalendarTimeGrid(
+            modifier = Modifier.fillMaxSize(),
+            events = listOf(event),
+            weekDates = weekDates,
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithText("Course").assertExists()
+    composeTestRule.onNodeWithText("Weekly course").assertExists()
+  }
+
+  /** Applies the calculated time and day placement to the rendered event card bounds. */
+  @Test
+  fun timeGridPlacesCardsInExpectedDayColumnsAndTimeOrder() {
+    val weekDates = CalendarDateHelper().weekDates(LocalDate.of(2026, 10, 14))
+    val morningEvent =
+        eventOn(weekDates[1], LocalTime.of(9, 0), LocalTime.of(10, 0), id = "morning")
+    val laterEvent = eventOn(weekDates[1], LocalTime.of(11, 0), LocalTime.of(12, 0), id = "later")
+    val otherDayEvent =
+        eventOn(weekDates[3], LocalTime.of(9, 0), LocalTime.of(10, 0), id = "other-day")
+
+    composeTestRule.setContent {
+      Box(Modifier.height(400.dp)) {
+        CalendarTimeGrid(
+            modifier = Modifier.fillMaxSize(),
+            events = listOf(morningEvent, laterEvent, otherDayEvent),
+            weekDates = weekDates,
+        )
+      }
+    }
+
+    val morningBounds =
+        composeTestRule
+            .onNodeWithTag(CalendarTestTags.eventCard("morning", 1))
+            .getUnclippedBoundsInRoot()
+    val laterBounds =
+        composeTestRule
+            .onNodeWithTag(CalendarTestTags.eventCard("later", 1))
+            .getUnclippedBoundsInRoot()
+    val otherDayBounds =
+        composeTestRule
+            .onNodeWithTag(CalendarTestTags.eventCard("other-day", 3))
+            .getUnclippedBoundsInRoot()
+
+    assertTrue(
+        "Later event should be lower in the same day column",
+        laterBounds.top > morningBounds.top,
+    )
+    assertTrue(
+        "Equal-duration events should have equal heights",
+        abs(
+            ((morningBounds.bottom - morningBounds.top) - (laterBounds.bottom - laterBounds.top))
+                .value
+        ) < 0.5f,
+    )
+    assertTrue("A later day should be to the right", otherDayBounds.left > morningBounds.left)
+  }
+
   /** Formats valid weeks that cross month and year boundaries. */
   @Test
   fun weekRangeFormatsMonthAndYearBoundaries() {
@@ -219,6 +346,32 @@ class CalendarWeeklyViewTest {
         weekStart = dates.first(),
         weekDates = dates,
         isLoading = false,
+    )
+  }
+
+  private fun eventOn(
+      date: LocalDate,
+      start: LocalTime,
+      end: LocalTime,
+      id: String = "weekly-test-event",
+  ): Event = eventOn(date, start, date, end, id)
+
+  private fun eventOn(
+      startDate: LocalDate,
+      start: LocalTime,
+      endDate: LocalDate,
+      end: LocalTime,
+      id: String = "weekly-test-event",
+  ): Event {
+    val zone = ZoneId.systemDefault()
+    return Event(
+        id = id,
+        ownerId = "test-owner",
+        type = EventType.COURSE,
+        subject = "Weekly course",
+        startsAt = startDate.atTime(start).atZone(zone).toInstant(),
+        endsAt = endDate.atTime(end).atZone(zone).toInstant(),
+        createdAt = Instant.parse("2026-10-01T12:00:00Z"),
     )
   }
 }
