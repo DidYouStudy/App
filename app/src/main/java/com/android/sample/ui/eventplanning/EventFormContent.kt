@@ -1,20 +1,42 @@
 // Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.eventplanning
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import com.android.sample.R
+import com.android.sample.model.event.EventType
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
 import com.android.sample.ui.theme.Dimens
+import com.android.sample.ui.theme.Spacing
 import java.time.format.DateTimeFormatter
 
 /**
@@ -40,7 +62,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun EventFormContent(
     uiState: EventPlanningUiState,
-    onTypeClick: () -> Unit,
+    onTypeChange: (EventType) -> Unit,
     onDateClick: () -> Unit,
     onStartTimeClick: () -> Unit,
     onEndTimeClick: () -> Unit,
@@ -51,14 +73,36 @@ fun EventFormContent(
     onToggleTask: (Int) -> Unit,
     onDeleteTask: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    onTypeClick: (() -> Unit)? = null,
 ) {
   val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
   val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+  var showTypeMenu by rememberSaveable { mutableStateOf(false) }
+  val focusManager = LocalFocusManager.current
+  val density = LocalDensity.current
+  var pillWidth by remember { mutableStateOf(Dimens.noPadding) }
+
+  /** Per-component errors: */
+  val isValidationError =
+      uiState.error == EventPlanningViewModel.EVENT_DATE_AND_TIMES_REQUIRED_ERROR ||
+          uiState.error == EventPlanningViewModel.INVALID_EVENT_ERROR
+
+  val isDateMissing = isValidationError && uiState.date == null
+  val isStartTimeMissing = isValidationError && uiState.startTime == null
+  val isEndTimeMissing = isValidationError && uiState.endTime == null
+  val isSubjectMissing = isValidationError && uiState.isSubjectRequired && uiState.subject.isBlank()
 
   Column(
       modifier =
           modifier
               .verticalScroll(rememberScrollState())
+              // Clear focus when tapping blank space in the scrollable form without a ripple
+              .clickable(
+                  interactionSource = remember { MutableInteractionSource() },
+                  indication = null,
+              ) {
+                focusManager.clearFocus()
+              }
               .padding(
                   horizontal = Dimens.formHorizontalPadding,
                   vertical = Dimens.formVerticalPadding,
@@ -71,14 +115,38 @@ fun EventFormContent(
         text = stringResource(R.string.event_planning_type_label),
         testTag = Tags.TYPE_LABEL,
     )
-    SelectorFieldPill(
-        valueText =
-            uiState.type.name.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() },
-        placeholderText = stringResource(R.string.event_planning_type_placeholder),
-        onClick = onTypeClick,
-        testTag = Tags.TYPE_SELECTOR,
-        hasDropdownArrow = true,
-    )
+    Box(
+        modifier =
+            Modifier.fillMaxWidth().onSizeChanged { size ->
+              pillWidth = with(density) { size.width.toDp() }
+            }
+    ) {
+      SelectorFieldPill(
+          valueText =
+              uiState.type.name.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() },
+          placeholderText = stringResource(R.string.event_planning_type_placeholder),
+          onClick = {
+            focusManager.clearFocus()
+            if (onTypeClick != null) {
+              onTypeClick()
+            } else {
+              showTypeMenu = true
+            }
+          },
+          testTag = Tags.TYPE_SELECTOR,
+          hasDropdownArrow = true,
+      )
+
+      EventTypeDropdownMenu(
+          expanded = showTypeMenu,
+          onDismissRequest = { showTypeMenu = false },
+          onTypeSelected = { selectedType ->
+            onTypeChange(selectedType)
+            showTypeMenu = false
+          },
+          modifier = Modifier.width(pillWidth),
+      )
+    }
 
     // Date
     SectionLabel(
@@ -88,8 +156,12 @@ fun EventFormContent(
     SelectorFieldPill(
         valueText = uiState.date?.format(dateFormatter),
         placeholderText = stringResource(R.string.event_planning_date_placeholder),
-        onClick = onDateClick,
+        onClick = {
+          focusManager.clearFocus()
+          onDateClick()
+        },
         testTag = Tags.DATE_SELECTOR,
+        isError = isDateMissing,
     )
 
     // Start time
@@ -100,8 +172,12 @@ fun EventFormContent(
     SelectorFieldPill(
         valueText = uiState.startTime?.format(timeFormatter),
         placeholderText = stringResource(R.string.event_planning_time_placeholder),
-        onClick = onStartTimeClick,
+        onClick = {
+          focusManager.clearFocus()
+          onStartTimeClick()
+        },
         testTag = Tags.START_TIME_SELECTOR,
+        isError = isStartTimeMissing,
     )
 
     // End time
@@ -112,9 +188,41 @@ fun EventFormContent(
     SelectorFieldPill(
         valueText = uiState.endTime?.format(timeFormatter),
         placeholderText = stringResource(R.string.event_planning_time_placeholder),
-        onClick = onEndTimeClick,
+        onClick = {
+          focusManager.clearFocus()
+          onEndTimeClick()
+        },
         testTag = Tags.END_TIME_SELECTOR,
+        isError = isEndTimeMissing,
     )
+
+    // Informational warning for overnight events
+    val endsNextDay =
+        uiState.startTime != null &&
+            uiState.endTime != null &&
+            uiState.endTime.isBefore(uiState.startTime)
+
+    if (endsNextDay) {
+      Row(
+          verticalAlignment = Alignment.CenterVertically,
+          modifier =
+              Modifier.padding(start = Dimens.cornerSmall, top = Spacing.extraSmall)
+                  .testTag(Tags.ENDS_NEXT_DAY_WARNING),
+      ) {
+        Icon(
+            imageVector = Icons.Outlined.Info,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(Dimens.iconSizeSmall),
+        )
+        Spacer(modifier = Modifier.width(Spacing.extraSmall))
+        Text(
+            text = stringResource(R.string.event_planning_ends_next_day_warning),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary,
+        )
+      }
+    }
 
     // Subject
     val subjectLabelText =
@@ -124,9 +232,13 @@ fun EventFormContent(
     SelectorFieldPill(
         valueText = uiState.subject,
         placeholderText = stringResource(R.string.event_planning_select_or_enter_placeholder),
-        onClick = onSubjectClick,
+        onClick = {
+          focusManager.clearFocus()
+          onSubjectClick()
+        },
         testTag = Tags.SUBJECT_SELECTOR,
         hasDropdownArrow = true,
+        isError = isSubjectMissing,
     )
 
     // Location (optional)
@@ -166,22 +278,17 @@ fun EventFormContent(
     uiState.tasks.forEachIndexed { index, task ->
       TaskRowItem(
           task = task,
-          onToggle = { onToggleTask(index) },
-          onDelete = { onDeleteTask(index) },
+          onToggle = {
+            focusManager.clearFocus()
+            onToggleTask(index)
+          },
+          onDelete = {
+            focusManager.clearFocus()
+            onDeleteTask(index)
+          },
           itemTag = "${Tags.TASK_ITEM_PREFIX}$index",
           checkboxTag = "${Tags.TASK_CHECKBOX_PREFIX}$index",
           deleteTag = "${Tags.TASK_DELETE_PREFIX}$index",
-      )
-    }
-
-    // Display validation or save errors if present
-    uiState.error?.let { err ->
-      Text(
-          text = err,
-          color = MaterialTheme.colorScheme.error,
-          style = MaterialTheme.typography.bodyMedium,
-          modifier =
-              Modifier.padding(vertical = Dimens.errorVerticalPadding).testTag(Tags.ERROR_TEXT),
       )
     }
   }

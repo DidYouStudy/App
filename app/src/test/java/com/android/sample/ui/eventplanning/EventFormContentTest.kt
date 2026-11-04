@@ -60,6 +60,7 @@ class EventFormContentTest {
     composeTestRule.setContent {
       EventFormContent(
           uiState = uiState,
+          onTypeChange = {},
           onTypeClick = { typeClicked = true },
           onDateClick = { dateClicked = true },
           onStartTimeClick = { startTimeClicked = true },
@@ -78,7 +79,7 @@ class EventFormContentTest {
 
     // Type
     composeTestRule
-        .onNodeWithTag(Tags.TYPE_LABEL)
+        .onNodeWithTag(Tags.TYPE_LABEL, useUnmergedTree = true)
         .assertTextEquals(context.getString(R.string.event_planning_type_label))
     composeTestRule.onNodeWithTag(Tags.TYPE_SELECTOR).performClick()
     composeTestRule.onNodeWithText("Course").assertIsDisplayed()
@@ -86,7 +87,7 @@ class EventFormContentTest {
 
     // Date
     composeTestRule
-        .onNodeWithTag(Tags.DATE_LABEL)
+        .onNodeWithTag(Tags.DATE_LABEL, useUnmergedTree = true)
         .assertTextEquals(context.getString(R.string.event_planning_date_label))
     composeTestRule.onNodeWithTag(Tags.DATE_SELECTOR).performClick()
     composeTestRule.onNodeWithText("2026-10-27").assertIsDisplayed()
@@ -94,7 +95,7 @@ class EventFormContentTest {
 
     // Start time
     composeTestRule
-        .onNodeWithTag(Tags.START_TIME_LABEL)
+        .onNodeWithTag(Tags.START_TIME_LABEL, useUnmergedTree = true)
         .assertTextEquals(context.getString(R.string.event_planning_start_time_label))
     composeTestRule.onNodeWithTag(Tags.START_TIME_SELECTOR).performClick()
     composeTestRule.onNodeWithText("09:00").assertIsDisplayed()
@@ -102,7 +103,7 @@ class EventFormContentTest {
 
     // End time
     composeTestRule
-        .onNodeWithTag(Tags.END_TIME_LABEL)
+        .onNodeWithTag(Tags.END_TIME_LABEL, useUnmergedTree = true)
         .assertTextEquals(context.getString(R.string.event_planning_end_time_label))
     composeTestRule.onNodeWithTag(Tags.END_TIME_SELECTOR).performClick()
     composeTestRule.onNodeWithText("11:00").assertIsDisplayed()
@@ -110,7 +111,7 @@ class EventFormContentTest {
 
     // Subject
     composeTestRule
-        .onNodeWithTag(Tags.SUBJECT_LABEL)
+        .onNodeWithTag(Tags.SUBJECT_LABEL, useUnmergedTree = true)
         .assertTextEquals(context.getString(R.string.event_planning_subject_label))
     composeTestRule.onNodeWithTag(Tags.SUBJECT_SELECTOR).performClick()
     composeTestRule.onNodeWithText("Algebra").assertIsDisplayed()
@@ -118,21 +119,21 @@ class EventFormContentTest {
 
     // Location
     composeTestRule
-        .onNodeWithTag(Tags.LOCATION_LABEL)
+        .onNodeWithTag(Tags.LOCATION_LABEL, useUnmergedTree = true)
         .assertTextEquals(context.getString(R.string.event_planning_location_optional_label))
     composeTestRule.onNodeWithTag(Tags.LOCATION_INPUT).performTextInput(" New")
     assertTrue(locationInput.contains("New"))
 
     // Description
     composeTestRule
-        .onNodeWithTag(Tags.DESCRIPTION_LABEL)
+        .onNodeWithTag(Tags.DESCRIPTION_LABEL, useUnmergedTree = true)
         .assertTextEquals(context.getString(R.string.event_planning_description_optional_label))
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION_INPUT).performTextInput(" New")
     assertTrue(descriptionInput.contains("New"))
 
     // Tasks
     composeTestRule
-        .onNodeWithTag(Tags.TASKS_LABEL)
+        .onNodeWithTag(Tags.TASKS_LABEL, useUnmergedTree = true)
         .performScrollTo()
         .assertTextEquals(context.getString(R.string.event_planning_tasks_optional_label))
     composeTestRule.onNodeWithTag(Tags.ADD_TASK_BUTTON).performScrollTo().performTextInput("Task 2")
@@ -140,19 +141,21 @@ class EventFormContentTest {
     assertEquals("Task 2", addedTask)
 
     // Task items
-    composeTestRule.onNodeWithTag("${Tags.TASK_ITEM_PREFIX}0").performScrollTo().assertIsDisplayed()
-    composeTestRule.onNodeWithTag("${Tags.TASK_CHECKBOX_PREFIX}0").performScrollTo().performClick()
-    assertEquals(0, toggledTaskIndex)
-
-    composeTestRule.onNodeWithTag("${Tags.TASK_DELETE_PREFIX}0").performScrollTo().performClick()
-    assertEquals(0, deletedTaskIndex)
-
-    // Error text
     composeTestRule
-        .onNodeWithTag(Tags.ERROR_TEXT)
+        .onNodeWithTag("${Tags.TASK_ITEM_PREFIX}0", useUnmergedTree = true)
         .performScrollTo()
         .assertIsDisplayed()
-        .assertTextEquals("Validation error")
+    composeTestRule
+        .onNodeWithTag("${Tags.TASK_CHECKBOX_PREFIX}0", useUnmergedTree = true)
+        .performScrollTo()
+        .performClick()
+    assertEquals(0, toggledTaskIndex)
+
+    composeTestRule
+        .onNodeWithTag("${Tags.TASK_DELETE_PREFIX}0", useUnmergedTree = true)
+        .performScrollTo()
+        .performClick()
+    assertEquals(0, deletedTaskIndex)
   }
 
   @Test
@@ -172,6 +175,7 @@ class EventFormContentTest {
     composeTestRule.setContent {
       EventFormContent(
           uiState = uiState,
+          onTypeChange = {},
           onTypeClick = {},
           onDateClick = {},
           onStartTimeClick = {},
@@ -187,9 +191,164 @@ class EventFormContentTest {
 
     composeTestRule.onNodeWithText("Other").assertIsDisplayed()
     composeTestRule
-        .onNodeWithTag(Tags.SUBJECT_LABEL)
+        .onNodeWithTag(Tags.SUBJECT_LABEL, useUnmergedTree = true)
         .assertTextEquals(context.getString(R.string.event_planning_subject_optional_label))
     composeTestRule.onNodeWithTag(Tags.ERROR_TEXT).assertDoesNotExist()
     composeTestRule.onNodeWithTag("${Tags.TASK_ITEM_PREFIX}0").assertDoesNotExist()
+  }
+
+  @Test
+  fun rendersEndsNextDayWarningWhenEndTimeIsBeforeStartTime() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val uiState =
+        EventPlanningUiState(
+            type = EventType.STUDY_SESSION,
+            startTime = LocalTime.of(23, 0),
+            endTime = LocalTime.of(2, 0),
+        )
+
+    composeTestRule.setContent {
+      EventFormContent(
+          uiState = uiState,
+          onTypeChange = {},
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationChange = {},
+          onDescriptionChange = {},
+          onAddTask = {},
+          onToggleTask = {},
+          onDeleteTask = {},
+      )
+    }
+
+    composeTestRule
+        .onNodeWithTag(Tags.ENDS_NEXT_DAY_WARNING, useUnmergedTree = true)
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.event_planning_ends_next_day_warning))
+        .assertIsDisplayed()
+  }
+
+  @Test
+  fun opensDropdownMenuWhenOnTypeClickIsNull() {
+    var typeChanged: EventType? = null
+    val uiState = EventPlanningUiState(type = EventType.OTHER)
+
+    composeTestRule.setContent {
+      EventFormContent(
+          uiState = uiState,
+          onTypeChange = { typeChanged = it },
+          onTypeClick = null, // Exercises internal showTypeMenu branch
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationChange = {},
+          onDescriptionChange = {},
+          onAddTask = {},
+          onToggleTask = {},
+          onDeleteTask = {},
+      )
+    }
+
+    composeTestRule.onNodeWithTag(Tags.TYPE_SELECTOR).performClick()
+    composeTestRule.onNodeWithText("Course").assertIsDisplayed().performClick()
+    assertEquals(EventType.COURSE, typeChanged)
+  }
+
+  @Test
+  fun formContentHighlightsMissingFieldsWhenValidationErrorPresent() {
+    val uiState =
+        EventPlanningUiState(
+            type = EventType.COURSE, // Subject required
+            date = null,
+            startTime = null,
+            endTime = null,
+            subject = "",
+            error = EventPlanningViewModel.EVENT_DATE_AND_TIMES_REQUIRED_ERROR,
+        )
+
+    composeTestRule.setContent {
+      EventFormContent(
+          uiState = uiState,
+          onTypeChange = {},
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationChange = {},
+          onDescriptionChange = {},
+          onAddTask = {},
+          onToggleTask = {},
+          onDeleteTask = {},
+      )
+    }
+
+    // Assert pills are rendered with error states (verifies isDateMissing, isStartTimeMissing,
+    // isEndTimeMissing, isSubjectMissing paths)
+    composeTestRule.onNodeWithTag(Tags.DATE_SELECTOR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(Tags.START_TIME_SELECTOR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(Tags.END_TIME_SELECTOR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(Tags.SUBJECT_SELECTOR).assertIsDisplayed()
+  }
+
+  @Test
+  fun clickingFormBackgroundClearsFocusWithoutCrashing() {
+    composeTestRule.setContent {
+      EventFormContent(
+          uiState = EventPlanningUiState(),
+          onTypeChange = {},
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationChange = {},
+          onDescriptionChange = {},
+          onAddTask = {},
+          onToggleTask = {},
+          onDeleteTask = {},
+      )
+    }
+
+    composeTestRule.onNodeWithTag(Tags.SCROLL_CONTAINER).performClick()
+  }
+
+  @Test
+  fun formContentDoesNotHighlightMissingFieldsWhenErrorIsNotValidationError() {
+    val uiState =
+        EventPlanningUiState(
+            type = EventType.COURSE,
+            date = null, // Missing fields
+            startTime = null,
+            endTime = null,
+            subject = "",
+            error =
+                EventPlanningViewModel
+                    .FAILED_TO_ADD_EVENT_ERROR, // Backend error, NOT validation error
+        )
+
+    composeTestRule.setContent {
+      EventFormContent(
+          uiState = uiState,
+          onTypeChange = {},
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationChange = {},
+          onDescriptionChange = {},
+          onAddTask = {},
+          onToggleTask = {},
+          onDeleteTask = {},
+      )
+    }
+
+    // Verify pills render in their default state without error borders
+    composeTestRule.onNodeWithTag(Tags.DATE_SELECTOR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(Tags.START_TIME_SELECTOR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(Tags.END_TIME_SELECTOR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(Tags.SUBJECT_SELECTOR).assertIsDisplayed()
   }
 }

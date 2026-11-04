@@ -37,4 +37,5 @@ object EventPlanningScreenTestTags {
   const val SAVE_BUTTON = "event_planning_save_button"
   const val SAVE_BUTTON_PROGRESS = "event_planning_save_button_progress"
   const val ERROR_TEXT = "event_planning_error_text"
+  const val ENDS_NEXT_DAY_WARNING = "event_planning_ends_next_day_warning"
 }
