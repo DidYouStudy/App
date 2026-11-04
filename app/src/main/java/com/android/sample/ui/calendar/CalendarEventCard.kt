@@ -1,6 +1,5 @@
 package com.android.sample.ui.calendar
 
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventType
 import com.android.sample.ui.theme.DidYouStudyTheme
@@ -46,20 +44,32 @@ fun CalendarEventCard(
       }
   val subject = event.subject.toString()
   val startingTime = EVENT_TIME_FORMAT.format(event.startsAt)
-    val cardShape = RoundedCornerShape(Dimens.calendarEventCardCorner)
+  val cardShape = RoundedCornerShape(Dimens.calendarEventCardCorner)
 
   Surface(
       modifier = modifier,
-      onClick = {}, //shows the event details screen
+      onClick = {}, // shows the event details screen
       shape = cardShape,
       color = color,
   ) {
     Row {
-      Box(modifier = Modifier.width(Spacing.extraSmall).fillMaxHeight().background(colorDark).padding(Spacing.extraSmall))
+      Box(
+          modifier =
+              Modifier.width(Spacing.extraSmall)
+                  .fillMaxHeight()
+                  .background(colorDark)
+                  .padding(Spacing.extraSmall)
+      )
 
       Column(
-          modifier = Modifier.padding(start = Spacing.extraSmall, end = Spacing.small, top = Spacing.extraSmall, bottom = Spacing.small),
-        horizontalAlignment = Alignment.Start,
+          modifier =
+              Modifier.padding(
+                  start = Spacing.extraSmall,
+                  end = Spacing.small,
+                  top = Spacing.extraSmall,
+                  bottom = Spacing.small,
+              ),
+          horizontalAlignment = Alignment.Start,
       ) {
         Text(text = title, style = calendarEventTitleStyle)
         Text(text = subject, style = calendarEventSubjectStyle)

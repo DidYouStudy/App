@@ -50,6 +50,7 @@ import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.calendarDateLabelStyle
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -367,7 +368,7 @@ fun CalendarTimeGrid(
         repeat(DAYS_PER_WEEK) { dayIndex ->
           val placements =
               events
-                  .mapNotNull { event -> calculateEventPlacement(event, weekDates, hourHeight) }
+                  .flatMap { event -> calculateEventPlacements(event, weekDates, hourHeight) }
                   .filter { placement -> placement.dayIndex == dayIndex }
 
           Box(modifier = Modifier.weight(1f)) {
@@ -403,29 +404,48 @@ internal data class CalendarEventPlacement(
 )
 
 /**
- * Converts an event's absolute times to the calendar time zone and calculates its grid position.
+ * Splits an event at local midnight and calculates each segment's grid position.
  *
- * Events outside [weekDates] return null because they do not belong to one of the displayed day
- * columns.
+ * Events outside [weekDates] produce no placements. A placement keeps the original event, so cards
+ * created for separate day segments display identical contents.
  */
-internal fun calculateEventPlacement(
+internal fun calculateEventPlacements(
     event: Event,
     weekDates: List<LocalDate>,
     hourHeight: Dp,
-): CalendarEventPlacement? {
+): List<CalendarEventPlacement> {
   val start = event.startsAt.atZone(CALENDAR_ZONE)
   val end = event.endsAt.atZone(CALENDAR_ZONE)
-  val dayIndex = weekDates.indexOf(start.toLocalDate())
-  if (dayIndex < 0) return null
+  val placements = mutableListOf<CalendarEventPlacement>()
+  var date = start.toLocalDate()
 
-  val startMinutes = start.hour * 60 + start.minute
-  val durationMinutes = java.time.Duration.between(start, end).toMinutes()
-  return CalendarEventPlacement(
-      event = event,
-      dayIndex = dayIndex,
-      top = hourHeight * (startMinutes / 60f),
-      height = hourHeight * (durationMinutes / 60f),
-  )
+  // Visit the start date and every following date touched before the event ends.
+  while (!date.isAfter(end.toLocalDate())) {
+    val dayStart = date.atStartOfDay(CALENDAR_ZONE).toInstant()
+    val nextDayStart = date.plusDays(1).atStartOfDay(CALENDAR_ZONE).toInstant()
+
+    // Clamp this segment to the current day: start at the event time, and end at midnight.
+    val segmentStart = maxOf(event.startsAt, dayStart)
+    val segmentEnd = minOf(event.endsAt, nextDayStart)
+    val dayIndex = weekDates.indexOf(date)
+
+    if (dayIndex >= 0 && segmentStart.isBefore(segmentEnd)) {
+      val minutesFromMidnight = Duration.between(dayStart, segmentStart).toMinutes()
+      val segmentMinutes = Duration.between(segmentStart, segmentEnd).toMinutes()
+      placements +=
+          CalendarEventPlacement(
+              event = event,
+              dayIndex = dayIndex,
+              top = hourHeight * (minutesFromMidnight / 60f),
+              height = hourHeight * (segmentMinutes / 60f),
+          )
+    }
+
+    // Move to the next local date; the loop stops after the event's ending date.
+    date = date.plusDays(1)
+  }
+
+  return placements
 }
 
 /**

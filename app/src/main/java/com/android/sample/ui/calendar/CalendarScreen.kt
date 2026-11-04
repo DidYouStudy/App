@@ -235,7 +235,7 @@ private fun previewUiState(
           previewEvent(
               "preview-study",
               EventType.STUDY_SESSION,
-              "Veryverylongsubjectname",
+              "Veryverylongsubjectnameetc.etc.",
               "2026-10-26T00:00:00Z",
               "2026-10-26T01:00:00Z",
           ),
@@ -257,8 +257,8 @@ private fun previewUiState(
               "preview-exam",
               EventType.EXAM,
               "History",
-              "2026-10-30T08:00:00Z",
-              "2026-10-30T10:00:00Z",
+              "2026-10-30T22:00:00Z",
+              "2026-10-31T10:00:00Z",
           ),
       )
   return CalendarUiState(
