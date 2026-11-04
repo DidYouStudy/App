@@ -9,6 +9,7 @@ import com.google.firebase.FirebaseOptions
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentReference
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Source
@@ -130,6 +131,15 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     assertFalse(deleted.exists())
   }
 
+  /** Signed-in users can delete missing sessions, but signed-out users cannot. */
+  @Test
+  fun signedInUserCanDeleteMissingSessionButSignedOutUserCannot() = runBlocking {
+    timed { document(outsider, uniqueId()).delete().await() }
+
+    outsider.auth.signOut()
+    denied { timed { document(outsider, uniqueId()).delete().await() } }
+  }
+
   /** A member can join and later remove only their own ID. */
   @Test
   fun memberCanJoinAndLeaveThemself() = runBlocking {
@@ -140,6 +150,114 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     assertEquals(listOf(creator.uid, member.uid), readData(outsider, id)["memberIds"])
     update(ref, mapOf("memberIds" to listOf(creator.uid)))
     assertEquals(listOf(creator.uid), readData(outsider, id)["memberIds"])
+  }
+
+  /** A member can join and leave using server-side array transforms. */
+  @Test
+  fun memberCanJoinAndLeaveWithArrayTransforms() = runBlocking {
+    val id = createSession()
+    val ref = document(member, id)
+
+    update(ref, mapOf("memberIds" to FieldValue.arrayUnion(member.uid)))
+    assertEquals(listOf(creator.uid, member.uid), readData(outsider, id)["memberIds"])
+    update(ref, mapOf("memberIds" to FieldValue.arrayRemove(member.uid)))
+    assertEquals(listOf(creator.uid), readData(outsider, id)["memberIds"])
+  }
+
+  /** Invalid server-side array transforms are denied without changing membership. */
+  @Test
+  fun invalidArrayTransformsAreDeniedWithoutChangingMembership() = runBlocking {
+    val id = createSession()
+    update(
+        document(member, id),
+        mapOf("memberIds" to FieldValue.arrayUnion(member.uid)),
+    )
+    val expectedMembers = listOf(creator.uid, member.uid)
+
+    denied {
+      update(
+          document(member, id),
+          mapOf("memberIds" to FieldValue.arrayUnion(outsider.uid)),
+      )
+    }
+    assertEquals(expectedMembers, readData(outsider, id)["memberIds"])
+
+    denied {
+      update(
+          document(member, id),
+          mapOf("memberIds" to FieldValue.arrayRemove(creator.uid)),
+      )
+    }
+    assertEquals(expectedMembers, readData(outsider, id)["memberIds"])
+
+    denied {
+      update(
+          document(member, id),
+          mapOf("memberIds" to FieldValue.arrayUnion(member.uid)),
+      )
+    }
+    assertEquals(expectedMembers, readData(outsider, id)["memberIds"])
+
+    denied {
+      update(
+          document(outsider, id),
+          mapOf("memberIds" to FieldValue.arrayRemove(outsider.uid)),
+      )
+    }
+    assertEquals(expectedMembers, readData(outsider, id)["memberIds"])
+
+    denied {
+      update(
+          document(creator, id),
+          mapOf("memberIds" to FieldValue.arrayUnion(outsider.uid)),
+      )
+    }
+    assertEquals(expectedMembers, readData(outsider, id)["memberIds"])
+
+    denied {
+      update(
+          document(creator, id),
+          mapOf("memberIds" to FieldValue.arrayRemove(member.uid)),
+      )
+    }
+    assertEquals(expectedMembers, readData(outsider, id)["memberIds"])
+
+    denied {
+      update(
+          document(creator, id),
+          mapOf("memberIds" to FieldValue.arrayRemove(creator.uid)),
+      )
+    }
+    assertEquals(expectedMembers, readData(outsider, id)["memberIds"])
+  }
+
+  /** A creator can edit details after members join but cannot replace their list. */
+  @Test
+  fun creatorCanEditDetailsButCannotReplaceJoinedMembers() = runBlocking {
+    val id = createSession()
+    update(
+        document(member, id),
+        mapOf("memberIds" to FieldValue.arrayUnion(member.uid)),
+    )
+    val expectedMembers = listOf(creator.uid, member.uid)
+    val description = "Updated group session"
+    val updatedAt = timestamp(created.plusSeconds(60))
+
+    update(
+        document(creator, id),
+        mapOf(
+            "description" to description,
+            "updatedAt" to updatedAt,
+        ),
+    )
+    val updatedData = readData(outsider, id)
+    assertEquals(description, updatedData["description"])
+    assertEquals(updatedAt, updatedData["updatedAt"])
+    assertEquals(expectedMembers, updatedData["memberIds"])
+
+    val beforeReplacement = readData(outsider, id)
+    denied { set(document(creator, id), sessionData(creator)) }
+    assertEquals(beforeReplacement, readData(outsider, id))
   }
 
   /** A thirtieth member can join, while a thirty-first member is rejected. */
@@ -160,6 +278,14 @@ class GroupSessionsFirestoreRulesEmulatorTest {
       update(
           document(outsider, id),
           mapOf("memberIds" to (memberIds + outsider.uid)),
+      )
+    }
+    assertEquals(memberIds, readData(outsider, id)["memberIds"])
+
+    denied {
+      update(
+          document(outsider, id),
+          mapOf("memberIds" to FieldValue.arrayUnion(outsider.uid)),
       )
     }
     assertEquals(memberIds, readData(outsider, id)["memberIds"])
@@ -269,9 +395,9 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     }
     assertEquals(listOf(creator.uid, member.uid), readData(outsider, id)["memberIds"])
 
-    val beforeRemovingThemself = readData(outsider, id)["memberIds"]
+    val beforeRemovingCreator = readData(outsider, id)["memberIds"]
     denied { update(document(member, id), mapOf("memberIds" to listOf(member.uid))) }
-    assertEquals(beforeRemovingThemself, readData(outsider, id)["memberIds"])
+    assertEquals(beforeRemovingCreator, readData(outsider, id)["memberIds"])
 
     val beforeAddingOutsider = readData(outsider, id)["memberIds"]
     denied {
@@ -353,6 +479,7 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     )
 
     val joinedMembers = readData(outsider, id)["memberIds"]
+    // The creator must remain a member.
     denied {
       update(
           document(creator, id),
@@ -361,16 +488,18 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     }
     assertEquals(joinedMembers, readData(outsider, id)["memberIds"])
 
-    val beforeCreatorRemovingThemself = readData(outsider, id)["memberIds"]
+    val beforeCreatorRemovingMember = readData(outsider, id)["memberIds"]
+    // The creator cannot change the member list.
     denied {
       update(
           document(creator, id),
           mapOf("memberIds" to listOf(creator.uid)),
       )
     }
-    assertEquals(beforeCreatorRemovingThemself, readData(outsider, id)["memberIds"])
+    assertEquals(beforeCreatorRemovingMember, readData(outsider, id)["memberIds"])
 
     val creatorOnlyId = createSession()
+    // The creator must remain a member and a session cannot be empty.
     denied {
       update(
           document(creator, creatorOnlyId),
