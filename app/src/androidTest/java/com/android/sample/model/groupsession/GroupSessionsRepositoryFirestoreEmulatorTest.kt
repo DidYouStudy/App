@@ -197,6 +197,29 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
     assertEquals(before, serverData(outsider, original.id))
   }
 
+  /** A non-creator cannot take over a saved session, and the original document is preserved. */
+  @Test
+  fun takeoverAttemptIsDeniedAndLeavesSessionUnchanged() = runBlocking {
+    val created = session(creator, uniqueId())
+    try {
+      creator.repository.saveSession(creator.uid, created).getOrThrow()
+      val before = serverData(outsider, created.id)
+
+      val takeover =
+          created.copy(
+              createdBy = member.uid,
+              memberIds = listOf(member.uid),
+          )
+      assertError(
+          member.repository.saveSession(member.uid, takeover),
+          EventsError.PERMISSION_DENIED,
+      )
+      assertEquals(before, serverData(outsider, created.id))
+    } finally {
+      creator.repository.deleteSession(creator.uid, created.id).getOrThrow()
+    }
+  }
+
   /** Missing lookups return NOT_FOUND. */
   @Test
   fun missingSessionIsNotFound() = runBlocking {

@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -113,6 +114,17 @@ class GroupSessionsRepositoryFirestoreTest {
     assertError(repository.getSession("id"), EventsError.STORAGE_FAILURE)
   }
 
+  /** Generated session IDs are nonblank and unique across consecutive calls. */
+  @Test
+  fun newSessionIdReturnsDistinctNonblankValues() {
+    val first = repository.newSessionId()
+    val second = repository.newSessionId()
+
+    assertTrue(first.isNotBlank())
+    assertTrue(second.isNotBlank())
+    assertTrue(first != second)
+  }
+
   /**
    * A permission-denied query listener error emits failure, completes, and removes its listener.
    */
@@ -165,6 +177,35 @@ class GroupSessionsRepositoryFirestoreTest {
     assertEquals(1, collected.await().size)
     assertError(collected.await().single(), EventsError.STORAGE_FAILURE)
     verify(registration).remove()
+  }
+
+  /** Signing out closes observation, while an authenticated state callback keeps it open. */
+  @Test
+  fun observeSessionsClosesWhenAuthListenerReportsSignOut() = runTest {
+    val query: Query = mock()
+    val registration: ListenerRegistration = mock()
+    whenever(collection.whereGreaterThan(eq("endsAt"), any())).thenReturn(query)
+    whenever(query.addSnapshotListener(any<EventListener<QuerySnapshot>>()))
+        .thenReturn(registration)
+
+    val collected = async { repository.observeSessions(Instant.now()).toList() }
+    runCurrent()
+    val authCallback = argumentCaptor<FirebaseAuth.AuthStateListener>()
+    verify(auth).addAuthStateListener(authCallback.capture())
+
+    authCallback.firstValue.onAuthStateChanged(auth)
+    runCurrent()
+    assertFalse(collected.isCompleted)
+
+    whenever(auth.currentUser).thenReturn(null)
+    authCallback.firstValue.onAuthStateChanged(auth)
+    runCurrent()
+
+    assertTrue(collected.isCompleted)
+    assertEquals(1, collected.await().size)
+    assertError(collected.await().single(), EventsError.PERMISSION_DENIED)
+    verify(registration).remove()
+    verify(auth).removeAuthStateListener(authCallback.firstValue)
   }
 
   /** A present but malformed document reports invalid event data. */
