@@ -10,21 +10,34 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.EventListener
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.QuerySnapshot
 import java.time.Instant
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
 
 /** Checks input validation, storage error translation, decoding, and cancellation behavior. */
+@OptIn(ExperimentalCoroutinesApi::class)
 class GroupSessionsRepositoryFirestoreTest {
   private val firestore: FirebaseFirestore = mock()
   private val auth: FirebaseAuth = mock()
@@ -98,6 +111,60 @@ class GroupSessionsRepositoryFirestoreTest {
             )
         )
     assertError(repository.getSession("id"), EventsError.STORAGE_FAILURE)
+  }
+
+  /**
+   * A permission-denied query listener error emits failure, completes, and removes its listener.
+   */
+  @Test
+  fun observeSessionsClosesOnPermissionDeniedListenerError() = runTest {
+    val query: Query = mock()
+    val registration: ListenerRegistration = mock()
+    whenever(collection.whereGreaterThan(eq("endsAt"), any())).thenReturn(query)
+    whenever(query.addSnapshotListener(any<EventListener<QuerySnapshot>>()))
+        .thenReturn(registration)
+
+    val collected = async { repository.observeSessions(Instant.now()).toList() }
+    runCurrent()
+    val callback = argumentCaptor<EventListener<QuerySnapshot>>()
+    verify(query).addSnapshotListener(callback.capture())
+
+    callback.firstValue.onEvent(
+        null,
+        FirebaseFirestoreException("denied", FirebaseFirestoreException.Code.PERMISSION_DENIED),
+    )
+    runCurrent()
+
+    assertTrue(collected.isCompleted)
+    assertEquals(1, collected.await().size)
+    assertError(collected.await().single(), EventsError.PERMISSION_DENIED)
+    verify(registration).remove()
+  }
+
+  /** An unavailable query listener error emits failure, completes, and removes its listener. */
+  @Test
+  fun observeSessionsClosesOnUnavailableListenerError() = runTest {
+    val query: Query = mock()
+    val registration: ListenerRegistration = mock()
+    whenever(collection.whereGreaterThan(eq("endsAt"), any())).thenReturn(query)
+    whenever(query.addSnapshotListener(any<EventListener<QuerySnapshot>>()))
+        .thenReturn(registration)
+
+    val collected = async { repository.observeSessions(Instant.now()).toList() }
+    runCurrent()
+    val callback = argumentCaptor<EventListener<QuerySnapshot>>()
+    verify(query).addSnapshotListener(callback.capture())
+
+    callback.firstValue.onEvent(
+        null,
+        FirebaseFirestoreException("unavailable", FirebaseFirestoreException.Code.UNAVAILABLE),
+    )
+    runCurrent()
+
+    assertTrue(collected.isCompleted)
+    assertEquals(1, collected.await().size)
+    assertError(collected.await().single(), EventsError.STORAGE_FAILURE)
+    verify(registration).remove()
   }
 
   /** A present but malformed document reports invalid event data. */
