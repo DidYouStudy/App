@@ -41,7 +41,7 @@ class GroupSessionsFirestoreRulesEmulatorTest {
   private lateinit var member: Client
   private lateinit var outsider: Client
   private lateinit var filler: Client
-  private val start = Instant.parse("2026-10-20T12:00:00Z")
+  private val start = Instant.ofEpochSecond(Instant.now().epochSecond).plusSeconds(24 * 3600)
   private val end = start.plusSeconds(3600)
   private val created = Instant.parse("2026-10-19T12:00:00Z")
 
@@ -149,6 +149,51 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     update(ref, mapOf("memberIds" to listOf(creator.uid, member.uid)))
     assertEquals(listOf(creator.uid, member.uid), readData(outsider, id)["memberIds"])
     update(ref, mapOf("memberIds" to listOf(creator.uid)))
+    assertEquals(listOf(creator.uid), readData(outsider, id)["memberIds"])
+  }
+
+  /** Existing members can leave an ended session, but outsiders cannot join it. */
+  @Test
+  fun outsiderCannotJoinAnEndedSessionButMemberCanLeave() = runBlocking {
+    val id = createSession()
+    update(
+        document(member, id),
+        mapOf("memberIds" to FieldValue.arrayUnion(member.uid)),
+    )
+    val joinedMembers = listOf(creator.uid, member.uid)
+
+    val endedAt = Instant.ofEpochSecond(Instant.now().epochSecond - 3600)
+    update(
+        document(creator, id),
+        mapOf(
+            "startsAt" to timestamp(endedAt.minusSeconds(3600)),
+            "endsAt" to timestamp(endedAt),
+        ),
+    )
+
+    denied {
+      update(
+          document(outsider, id),
+          mapOf("memberIds" to (joinedMembers + outsider.uid)),
+      )
+    }
+    assertEquals(joinedMembers, readData(outsider, id)["memberIds"])
+
+    denied {
+      update(
+          document(outsider, id),
+          mapOf("memberIds" to FieldValue.arrayUnion(outsider.uid)),
+      )
+    }
+    assertEquals(joinedMembers, readData(outsider, id)["memberIds"])
+
+    update(document(creator, id), mapOf("description" to "Session has ended"))
+    assertEquals("Session has ended", readData(outsider, id)["description"])
+
+    update(
+        document(member, id),
+        mapOf("memberIds" to FieldValue.arrayRemove(member.uid)),
+    )
     assertEquals(listOf(creator.uid), readData(outsider, id)["memberIds"])
   }
 
