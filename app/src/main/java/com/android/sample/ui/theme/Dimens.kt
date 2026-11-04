@@ -66,7 +66,7 @@ object Dimens {
   val formVerticalPadding = 8.dp
   val formSpacing = 8.dp
   val saveButtonHorizontalPadding = 24.dp
-  val saveButtonVerticalPadding = 16.dp
+  val saveButtonVerticalPadding = 8.dp
   val saveButtonHeight = 54.dp
   val saveButtonProgressSize = 24.dp
   val progressIndicatorStrokeWidth = 2.dp
@@ -74,4 +74,7 @@ object Dimens {
   val taskRowVerticalPadding = 4.dp
   val taskTextStartPadding = 4.dp
   val errorVerticalPadding = 4.dp
+  val dialogCornerRadius = 28.dp
+  val subjectPickerMaxHeight = 350.dp
+  val noPadding = 0.dp
 }
