@@ -81,7 +81,7 @@ class EventsRepositoryFirestoreEmulatorTest {
 
   /** Builds a complete event with exact microsecond precision for server round trips. */
   private fun event(id: String = "a", start: Long = 9, end: Long = 10) =
-      Event(
+      PersonalEvent(
           id,
           uid,
           EventType.PROJECT,

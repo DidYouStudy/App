@@ -93,7 +93,8 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
   }
 
   /**
-   * Event creation is rejected when authentication observation failed before identifying a user.
+   * PersonalEvent creation is rejected when authentication observation failed before identifying a
+   * user.
    */
   @Test
   fun init_userFlowFails_noUserIsKnownAndAddingIsRejected() = runTest {
@@ -338,7 +339,10 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
   // ---------------------------------------------------------------- addEvent: rejected before
   // saving
 
-  /** Event creation without a signed-in user reports an error and does not call the repository. */
+  /**
+   * PersonalEvent creation without a signed-in user reports an error and does not call the
+   * repository.
+   */
   @Test
   fun addEvent_withoutSignedInUser_reportsErrorAndDoesNotSave() = runTest {
     currentUserFlow.value = null
@@ -555,7 +559,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertTrue(viewModel.uiState.value.isEventAdded)
   }
 
-  /** Event ownership uses the latest signed-in account rather than an earlier account. */
+  /** PersonalEvent ownership uses the latest signed-in account rather than an earlier account. */
   @Test
   fun addEvent_usesTheLatestSignedInUserAsOwner() = runTest {
     val viewModel = createViewModel()

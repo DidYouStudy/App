@@ -279,7 +279,7 @@ class IcsParserTest {
         BEGIN:VCALENDAR
         BEGIN:VEVENT
         UID:invalid_tz_uid
-        SUMMARY:Unknown Zone Event
+        SUMMARY:Unknown Zone PersonalEvent
         DTSTART;TZID=Invalid/Unknown_Zone:20261013T101500
         DURATION:PT45M
         CATEGORIES:Exercices
@@ -303,7 +303,7 @@ class IcsParserTest {
         BEGIN:VCALENDAR
         BEGIN:VEVENT
         UID:malformed_date_uid
-        SUMMARY:Corrupted Date Event
+        SUMMARY:Corrupted Date PersonalEvent
         DTSTART;TZID=Europe/Berlin:NOT_A_VALID_DATE_TIME
         DURATION:PT45M
         CATEGORIES:Cours

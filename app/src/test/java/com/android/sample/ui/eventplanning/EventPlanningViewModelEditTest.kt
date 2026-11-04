@@ -1,10 +1,10 @@
 // Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.eventplanning
 
-import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
+import com.android.sample.model.event.PersonalEvent
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -74,7 +74,7 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
       startsAt: Instant = this.startsAt,
       endsAt: Instant = this.endsAt,
   ) =
-      Event(
+      PersonalEvent(
           id = id,
           ownerId = "user123",
           type = type,
@@ -89,7 +89,9 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
       )
 
   /** A view model with the stored event already loaded into its form. */
-  private suspend fun loadedViewModel(event: Event = storedEvent()): EventPlanningViewModel {
+  private suspend fun loadedViewModel(
+      event: PersonalEvent = storedEvent()
+  ): EventPlanningViewModel {
     whenever(eventsRepository.getEvent("user123", event.id)).thenReturn(Result.success(event))
     val viewModel = createViewModel()
     viewModel.loadEvent(event.id)

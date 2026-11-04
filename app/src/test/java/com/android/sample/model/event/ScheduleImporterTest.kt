@@ -72,7 +72,7 @@ class ScheduleImporterTest {
   fun import_keepsManuallyAddedEvents() = runTest {
     val repo = InMemoryEventsRepository()
     val manual =
-        Event(
+        PersonalEvent(
             id = "manual",
             ownerId = owner,
             type = EventType.OTHER,
@@ -213,7 +213,7 @@ class ScheduleImporterTest {
   fun import_repositoryFailure_isReturned() = runTest {
     val failing =
         object : EventsRepository by InMemoryEventsRepository() {
-          override suspend fun saveEvents(events: List<Event>): Result<Unit> =
+          override suspend fun saveEvents(events: List<PersonalEvent>): Result<Unit> =
               Result.failure(EventsException(EventsError.STORAGE_FAILURE))
         }
 
@@ -272,7 +272,7 @@ class ScheduleImporterTest {
     val repo = InMemoryEventsRepository()
     val importer = ScheduleImporter(repo)
     val manual =
-        Event(
+        PersonalEvent(
             id = "manual",
             ownerId = owner,
             type = EventType.OTHER,
@@ -337,7 +337,7 @@ class ScheduleImporterTest {
     ScheduleImporter(inner).import(owner, stream(ics(vevent("a@x", "20261015T080000"))))
     val failing =
         object : EventsRepository by inner {
-          override suspend fun saveEvents(events: List<Event>): Result<Unit> =
+          override suspend fun saveEvents(events: List<PersonalEvent>): Result<Unit> =
               Result.failure(EventsException(EventsError.STORAGE_FAILURE))
         }
 
@@ -352,7 +352,7 @@ class ScheduleImporterTest {
   fun import_lookupFailure_isReturned() = runTest {
     val failing =
         object : EventsRepository by InMemoryEventsRepository() {
-          override suspend fun getImportedEvents(ownerId: String): Result<List<Event>> =
+          override suspend fun getImportedEvents(ownerId: String): Result<List<PersonalEvent>> =
               Result.failure(EventsException(EventsError.PERMISSION_DENIED))
         }
 
