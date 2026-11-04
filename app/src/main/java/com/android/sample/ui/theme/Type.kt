@@ -34,3 +34,4 @@ val Typography =
         )
         */
     )
+val calendarDateLabelStyle: TextStyle = TextStyle(fontSize = 10.sp)

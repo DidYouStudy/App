@@ -24,7 +24,7 @@ import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.ui.app.AppUiState
 import com.android.sample.ui.app.appViewModel
 import com.android.sample.ui.auth.SignInRoute
-import com.android.sample.ui.calendar.CalendarScreen
+import com.android.sample.ui.calendar.CalendarRoute
 import com.android.sample.ui.dashboard.DashboardScreen
 import com.android.sample.ui.groupsession.GroupSessionScreen
 import com.android.sample.ui.navigation.NavigationActions
@@ -131,7 +131,7 @@ fun DidYouStudyApp() {
         route = Screen.Calendar.name,
     ) {
       composable(Screen.Calendar.route) {
-        CalendarScreen(
+        CalendarRoute(
             navigationActions = navigationActions,
         )
       }
