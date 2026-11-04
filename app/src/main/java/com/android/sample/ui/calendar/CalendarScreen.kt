@@ -46,6 +46,8 @@ import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.Typography
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 /** Renders the calendar scaffold from the supplied state and action callbacks. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -236,29 +238,29 @@ private fun previewUiState(
               "preview-study",
               EventType.STUDY_SESSION,
               "Veryverylongsubjectnameetc.etc.",
-              "2026-10-26T00:00:00Z",
-              "2026-10-26T01:00:00Z",
+              "2026-10-26T00:00",
+              "2026-10-26T01:00",
           ),
           previewEvent(
               "preview-course",
               EventType.COURSE,
               "Physics",
-              "2026-10-27T22:00:00Z",
-              "2026-10-28T01:00:00Z",
+              "2026-10-27T19:00",
+              "2026-10-28T01:00",
           ),
           previewEvent(
               "preview-lab",
               EventType.LAB,
               "Chemistry",
-              "2026-10-28T10:30:00Z",
-              "2026-10-28T11:00:00Z",
+              "2026-10-28T02:30",
+              "2026-10-28T03:00",
           ),
           previewEvent(
               "preview-exam",
               EventType.EXAM,
               "History",
-              "2026-10-30T22:00:00Z",
-              "2026-10-31T10:00:00Z",
+              "2026-10-30T21:00",
+              "2026-10-31T10:00",
           ),
       )
   return CalendarUiState(
@@ -280,13 +282,14 @@ private fun previewEvent(
     endsAt: String,
 ): Event {
   val createdAt = Instant.parse("2026-10-20T12:00:00Z")
+  val previewZone = ZoneId.systemDefault()
   return Event(
       id = id,
       ownerId = "preview-owner",
       type = type,
       subject = subject,
-      startsAt = Instant.parse(startsAt),
-      endsAt = Instant.parse(endsAt),
+      startsAt = LocalDateTime.parse(startsAt).atZone(previewZone).toInstant(),
+      endsAt = LocalDateTime.parse(endsAt).atZone(previewZone).toInstant(),
       createdAt = createdAt,
   )
 }
