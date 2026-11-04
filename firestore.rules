@@ -116,7 +116,7 @@ service cloud.firestore {
             && request.resource.data.createdAt == resource.data.createdAt)
           || canChangeOwnMembership(request.auth.uid)
         );
-      allow delete: if request.auth != null && (!exists(/databases/$(database)/documents/groupSessions/$(sessionId)) || resource.data.createdBy == request.auth.uid);
+      allow delete: if request.auth != null && (resource == null || resource.data.createdBy == request.auth.uid);
     }
 
     // Anything not matched above is denied by default.
