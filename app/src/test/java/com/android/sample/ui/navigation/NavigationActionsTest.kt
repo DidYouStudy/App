@@ -1,13 +1,67 @@
 // Co-authored-by: GitHub Copilot
 package com.android.sample.ui.navigation
 
+import androidx.navigation.NavDestination
+import androidx.navigation.NavHostController
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
+import org.mockito.Mockito.times
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.`when`
 
 /** Verifies guarded navigation used by the authentication and onboarding flows. */
 class NavigationActionsTest {
+  @Test
+  fun repeatedBackAtDashboardDoesNotPopTheRootDestination() {
+    val navController = mock(NavHostController::class.java)
+    val dashboard = mock(NavDestination::class.java)
+    `when`(dashboard.route).thenReturn(Screen.Dashboard.route)
+    `when`(navController.currentDestination).thenReturn(dashboard)
+
+    val actions = NavigationActions(navController)
+    repeat(3) { actions.goBack() }
+
+    verify(navController, never()).popBackStack()
+  }
+
+  @Test
+  fun repeatedBackFromSettingsStopsOnceDashboardIsReached() {
+    val navController = mock(NavHostController::class.java)
+    val settings = mock(NavDestination::class.java)
+    val dashboard = mock(NavDestination::class.java)
+    `when`(settings.route).thenReturn(Screen.Settings.route)
+    `when`(dashboard.route).thenReturn(Screen.Dashboard.route)
+    `when`(navController.currentDestination).thenReturn(settings, dashboard)
+    `when`(navController.popBackStack()).thenReturn(true)
+
+    val actions = NavigationActions(navController)
+    actions.goBack()
+    actions.goBack()
+
+    verify(navController, times(1)).popBackStack()
+  }
+
+  /** Recovers to Dashboard if popping the only non-root destination empties the controller. */
+  @Test
+  fun backFromLastDestinationNavigatesToDashboard() {
+    val navController = mock(NavHostController::class.java)
+    val settings = mock(NavDestination::class.java)
+    `when`(settings.route).thenReturn(Screen.Settings.route)
+    `when`(navController.currentDestination).thenReturn(settings, null)
+    `when`(navController.popBackStack()).thenReturn(true)
+
+    NavigationActions(navController).goBack()
+
+    assertTrue(
+        org.mockito.Mockito.mockingDetails(navController).invocations.any {
+          it.method.name == "navigate" && it.arguments.firstOrNull() == Screen.Dashboard.route
+        }
+    )
+  }
+
   @Test
   fun blockedDestinationDoesNotNavigateBackIntoAuthenticationFlow() {
     val actions = RecordingNavigationActions(Screen.Preferences.route)
