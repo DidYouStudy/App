@@ -31,9 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -49,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import com.android.sample.R
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
+import com.android.sample.ui.theme.calendarDateLabelStyle
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
@@ -57,7 +56,6 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 private const val HOURS_PER_DAY = 24
-
 private const val DAYS_PER_WEEK = 7
 private const val FIRST_VISIBLE_HOUR = 8
 private const val DEFAULT_VISIBLE_HOURS = 10
@@ -99,46 +97,28 @@ object CalendarTestTags {
 }
 
 /**
- * Displays the weekly calendar, including a navigable date range, seven day headings, and a
- * vertically scrollable empty timeline. The initial week is the Monday-to-Sunday week containing
- * [today], and the selected week is retained across supported saved-state recreation.
+ * Displays the weekly calendar from [uiState] and forwards week navigation actions to its owner.
+ * Date selection and event loading are owned by [CalendarViewModel].
  *
- * @param today The date used to choose the initial week and highlight today in its day heading.
- * @param todayNavigationRequested Whether the screen has requested navigation to today's week.
- * @param onTodayNavigationRequestHandled Callback used to clear the handled navigation request.
+ * @param uiState The ViewModel state containing today's date and the displayed week's dates.
+ * @param onPreviousWeek Callback invoked when the previous-week control is clicked.
+ * @param onNextWeek Callback invoked when the next-week control is clicked.
  * @param modifier The modifier applied to the weekly calendar's root column.
  */
 @Composable
 internal fun CalendarWeeklyView(
+    uiState: CalendarUiState,
+    onPreviousWeek: () -> Unit,
+    onNextWeek: () -> Unit,
     modifier: Modifier = Modifier,
-    today: LocalDate,
-    todayNavigationRequested: Boolean = false,
-    onTodayNavigationRequestHandled: () -> Unit = {},
 ) {
-  val dateHelper = remember { CalendarDateHelper() }
-  var weekStartEpochDay by
-      rememberSaveable(today.toEpochDay()) {
-        mutableLongStateOf(dateHelper.weekDates(today).first().toEpochDay())
-      }
-  val weekStart = LocalDate.ofEpochDay(weekStartEpochDay)
-  val weekDates = remember(weekStartEpochDay) { dateHelper.weekDates(weekStart) }
-
-  LaunchedEffect(todayNavigationRequested) {
-    if (todayNavigationRequested) {
-      weekStartEpochDay = dateHelper.weekDates(today).first().toEpochDay()
-      onTodayNavigationRequestHandled()
-    }
-  }
-
   Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
     CalendarWeekRangeHeader(
-        weekDates = weekDates,
-        onPreviousWeek = {
-          weekStartEpochDay = dateHelper.previousWeek(weekStart).first().toEpochDay()
-        },
-        onNextWeek = { weekStartEpochDay = dateHelper.nextWeek(weekStart).first().toEpochDay() },
+        weekDates = uiState.weekDates,
+        onPreviousWeek = onPreviousWeek,
+        onNextWeek = onNextWeek,
     )
-    CalendarDayHeader(weekDates = weekDates, today = today)
+    CalendarDayHeader(weekDates = uiState.weekDates, today = uiState.today)
     CalendarTimeGrid(modifier = Modifier.weight(1f))
   }
 }
@@ -269,7 +249,7 @@ fun CalendarDayHeader(
             text = date.dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.US),
             modifier = Modifier.testTag(CalendarTestTags.dayName(date)).offset(y = dateTopSpacing),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 10.sp,
+            fontSize = calendarDateLabelStyle.fontSize,
         )
         Spacer(modifier = Modifier.height(Spacing.extraExtraSmall))
 
@@ -292,7 +272,7 @@ fun CalendarDayHeader(
                   if (isToday) MaterialTheme.colorScheme.onPrimary
                   else MaterialTheme.colorScheme.onSurface,
               fontWeight = FontWeight.Bold,
-              fontSize = 10.sp,
+              fontSize = calendarDateLabelStyle.fontSize,
           )
         }
       }

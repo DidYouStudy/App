@@ -12,12 +12,15 @@ import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.groupsession.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.ui.calendar.CalendarDateHelper
 import com.android.sample.ui.calendar.CalendarScreen
+import com.android.sample.ui.calendar.CalendarUiState
 import com.android.sample.ui.dashboard.DashboardScreen
 import com.android.sample.ui.groupsession.GroupSessionScreen
 import com.android.sample.ui.groupsession.GroupSessionsViewModel
 import com.android.sample.ui.profile.ProfileButtonTestTags
 import java.time.Instant
+import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
@@ -68,7 +71,21 @@ class TopLevelScreensProfileButtonTest {
   @Test
   fun calendarProfileButtonOpensSettings() {
     assertProfileButtonOpensSettings<ViewModel> { navigationActions, _ ->
-      CalendarScreen(navigationActions = navigationActions)
+      val today = LocalDate.now()
+      val weekDates = CalendarDateHelper().weekDates(today)
+      CalendarScreen(
+          uiState =
+              CalendarUiState(
+                  today = today,
+                  weekStart = weekDates.first(),
+                  weekDates = weekDates,
+              ),
+          onToday = {},
+          onPreviousWeek = {},
+          onNextWeek = {},
+          onRetry = {},
+          navigationActions = navigationActions,
+      )
     }
   }
 

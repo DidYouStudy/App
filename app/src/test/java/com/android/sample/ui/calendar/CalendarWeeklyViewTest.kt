@@ -1,12 +1,13 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.ui.calendar
 
-// import androidx.compose.ui.test.onAllNodes
+// import androidx.compose.ui.test.assertDoesNotExist
 import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
@@ -35,7 +36,13 @@ class CalendarWeeklyViewTest {
   @Test
   fun weekNavigationButtonsHaveContentDescriptions() {
     val context = ApplicationProvider.getApplicationContext<Context>()
-    composeTestRule.setContent { CalendarWeeklyView(today = LocalDate.of(2026, 10, 14)) }
+    composeTestRule.setContent {
+      CalendarWeeklyView(
+          uiState = calendarState(LocalDate.of(2026, 10, 14)),
+          onPreviousWeek = {},
+          onNextWeek = {},
+      )
+    }
 
     composeTestRule
         .onNodeWithContentDescription(
@@ -47,45 +54,35 @@ class CalendarWeeklyViewTest {
         .assertIsDisplayed()
   }
 
-  /** Shows the Monday-to-Sunday range and moves backward and forward by one week. */
+  /** Forwards previous and next week clicks to their owner. */
   @Test
-  fun weekRangeControlsNavigateByOneWeek() {
-    composeTestRule.setContent { CalendarWeeklyView(today = LocalDate.of(2026, 10, 14)) }
+  fun weekRangeControlsForwardNavigationCallbacks() {
+    var previousClicks = 0
+    var nextClicks = 0
+    composeTestRule.setContent {
+      CalendarWeeklyView(
+          uiState = calendarState(LocalDate.of(2026, 10, 14)),
+          onPreviousWeek = { previousClicks++ },
+          onNextWeek = { nextClicks++ },
+      )
+    }
 
     composeTestRule.onNodeWithTag(CalendarTestTags.WEEK_RANGE).assertTextEquals("Oct 12–18, 2026")
     composeTestRule.onNodeWithTag(CalendarTestTags.NEXT_WEEK).performClick()
-    composeTestRule.onNodeWithTag(CalendarTestTags.WEEK_RANGE).assertTextEquals("Oct 19–25, 2026")
     composeTestRule.onNodeWithTag(CalendarTestTags.PREVIOUS_WEEK).performClick()
-    composeTestRule.onNodeWithTag(CalendarTestTags.WEEK_RANGE).assertTextEquals("Oct 12–18, 2026")
-  }
-
-  /** Navigates across a year boundary and restores the original week after matching steps. */
-  @Test
-  fun weekNavigationCrossesYearBoundaryAndRestoresAfterRepeatedSteps() {
-    composeTestRule.setContent { CalendarWeeklyView(today = LocalDate.of(2027, 1, 6)) }
-
-    composeTestRule.onNodeWithTag(CalendarTestTags.WEEK_RANGE).assertTextEquals("Jan 4–10, 2027")
-    composeTestRule.onNodeWithTag(CalendarTestTags.PREVIOUS_WEEK).performClick()
-    composeTestRule
-        .onNodeWithTag(CalendarTestTags.WEEK_RANGE)
-        .assertTextEquals("Dec 28, 2026–Jan 3, 2027")
-    composeTestRule.onNodeWithTag(CalendarTestTags.NEXT_WEEK).performClick()
-    composeTestRule.onNodeWithTag(CalendarTestTags.WEEK_RANGE).assertTextEquals("Jan 4–10, 2027")
-    composeTestRule.onNodeWithTag(CalendarTestTags.NEXT_WEEK).performClick()
-    composeTestRule.onNodeWithTag(CalendarTestTags.WEEK_RANGE).assertTextEquals("Jan 11–17, 2027")
-    composeTestRule.onNodeWithTag(CalendarTestTags.NEXT_WEEK).performClick()
-    composeTestRule.onNodeWithTag(CalendarTestTags.WEEK_RANGE).assertTextEquals("Jan 18–24, 2027")
-    composeTestRule.onNodeWithTag(CalendarTestTags.PREVIOUS_WEEK).performClick()
-    composeTestRule.onNodeWithTag(CalendarTestTags.WEEK_RANGE).assertTextEquals("Jan 11–17, 2027")
-    composeTestRule.onNodeWithTag(CalendarTestTags.PREVIOUS_WEEK).performClick()
-    composeTestRule.onNodeWithTag(CalendarTestTags.WEEK_RANGE).assertTextEquals("Jan 4–10, 2027")
+    composeTestRule.runOnIdle {
+      assertEquals(1, previousClicks)
+      assertEquals(1, nextClicks)
+    }
   }
 
   /** Shows all seven day labels and gives today's date its visual treatment. */
   @Test
   fun dayHeaderShowsSevenDatesAndHighlightsToday() {
     val today = LocalDate.of(2026, 10, 14)
-    composeTestRule.setContent { CalendarWeeklyView(today = today) }
+    composeTestRule.setContent {
+      CalendarWeeklyView(uiState = calendarState(today), onPreviousWeek = {}, onNextWeek = {})
+    }
 
     composeTestRule.onNodeWithTag(CalendarTestTags.dayName(today)).assertTextEquals("W")
     composeTestRule.onNodeWithTag(CalendarTestTags.dayNumber(today)).assertTextEquals("14")
@@ -99,23 +96,43 @@ class CalendarWeeklyViewTest {
     }
   }
 
-  /** Shows today's date only while its week is displayed. */
+  /** Renders dates from the supplied ViewModel state after its owner changes the week. */
   @Test
-  fun todayDateIsVisibleOnlyInItsDisplayedWeek() {
+  fun displayedDatesFollowSuppliedState() {
     val today = LocalDate.of(2026, 10, 14)
-    composeTestRule.setContent { CalendarWeeklyView(today = today) }
+    composeTestRule.setContent {
+      val state = remember { mutableStateOf(calendarState(today)) }
+      CalendarWeeklyView(
+          uiState = state.value,
+          onPreviousWeek = {},
+          onNextWeek = {
+            val weekStart = state.value.weekStart.plusWeeks(1)
+            state.value =
+                state.value.copy(
+                    weekStart = weekStart,
+                    weekDates = CalendarDateHelper().weekDates(weekStart),
+                )
+          },
+      )
+    }
 
     composeTestRule.onNodeWithTag(CalendarTestTags.dayNumber(today)).assertTextEquals("14")
     composeTestRule.onNodeWithTag(CalendarTestTags.NEXT_WEEK).performClick()
     composeTestRule.onNodeWithTag(CalendarTestTags.dayNumber(today)).assertDoesNotExist()
-    composeTestRule.onNodeWithTag(CalendarTestTags.PREVIOUS_WEEK).performClick()
-    composeTestRule.onNodeWithTag(CalendarTestTags.dayNumber(today)).assertTextEquals("14")
+    composeTestRule.onNodeWithTag(CalendarTestTags.NEXT_WEEK).performClick()
+    composeTestRule.onNodeWithTag(CalendarTestTags.dayNumber(today)).assertDoesNotExist()
   }
 
   /** Shows the timeline with its initial scroll position at 8 AM. */
   @Test
   fun weeklyGridStartsAtEightInTheMorning() {
-    composeTestRule.setContent { CalendarWeeklyView(today = LocalDate.of(2026, 10, 14)) }
+    composeTestRule.setContent {
+      CalendarWeeklyView(
+          uiState = calendarState(LocalDate.of(2026, 10, 14)),
+          onPreviousWeek = {},
+          onNextWeek = {},
+      )
+    }
 
     composeTestRule.onNodeWithTag(CalendarTestTags.TIME_GRID).assertIsDisplayed()
     composeTestRule
@@ -191,5 +208,17 @@ class CalendarWeeklyViewTest {
           listOf(monday, monday.plusDays(2), monday.plusDays(1)) + (3L..6L).map(monday::plusDays)
       formatWeekRange(unorderedWeek)
     }
+  }
+
+  /** Creates display state for a supplied date and its containing week. */
+  private fun calendarState(today: LocalDate): CalendarUiState {
+    val dateHelper = CalendarDateHelper()
+    val dates = dateHelper.weekDates(today)
+    return CalendarUiState(
+        today = today,
+        weekStart = dates.first(),
+        weekDates = dates,
+        isLoading = false,
+    )
   }
 }
