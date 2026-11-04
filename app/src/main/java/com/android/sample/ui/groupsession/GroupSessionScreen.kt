@@ -321,10 +321,10 @@ private fun GroupSessionCard(
   //  evaluate relative status labels consistently, unit tests remain deterministic, and composables
   // stay pure.
   val now = Instant.now()
-  val statusLabel = sessionStatusLabel(session.startsAt, now)
-  val startLabel = sessionTimeLabel(session.startsAt)
-  val endLabel = sessionTimeLabel(session.endsAt)
-  val dateLabel = sessionDateLabel(session.startsAt, now)
+  val statusLabel = sessionStatusLabel(session.details.startsAt, now)
+  val startLabel = sessionTimeLabel(session.details.startsAt)
+  val endLabel = sessionTimeLabel(session.details.endsAt)
+  val dateLabel = sessionDateLabel(session.details.startsAt, now)
   val shouldShowHost = item.isCreator
 
   val subjectFallback = stringResource(R.string.group_session_subject_fallback)
@@ -353,14 +353,14 @@ private fun GroupSessionCard(
             modifier =
                 Modifier.size(Dimens.avatarSizeLarge)
                     .clip(CircleShape)
-                    .background(session.type.color),
+                    .background(session.details.type.color),
             contentAlignment = Alignment.Center,
         ) {
           Text(
-              text = (session.subject ?: subjectFallback).take(1).uppercase(),
+              text = (session.details.subject ?: subjectFallback).take(1).uppercase(),
               fontWeight = FontWeight.Bold,
               style = MaterialTheme.typography.titleLarge,
-              color = session.type.onColor,
+              color = session.details.type.onColor,
           )
         }
 
@@ -368,7 +368,7 @@ private fun GroupSessionCard(
 
         Column(modifier = Modifier.weight(1f)) {
           Text(
-              text = session.subject ?: session.type.displayName(),
+              text = session.details.subject ?: session.details.type.displayName(),
               fontWeight = FontWeight.Bold,
               maxLines = 2, // Allows title to expand vertically before truncating
               overflow = TextOverflow.Ellipsis,
@@ -411,12 +411,12 @@ private fun GroupSessionCard(
       // Type Badge
       Surface(
           shape = RoundedCornerShape(Dimens.cornerMedium),
-          color = session.type.color,
+          color = session.details.type.color,
       ) {
         Text(
-            text = session.type.displayName(),
+            text = session.details.type.displayName(),
             modifier = Modifier.padding(horizontal = Spacing.medium, vertical = Spacing.extraSmall),
-            color = session.type.onColor,
+            color = session.details.type.onColor,
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.labelLarge,
         )
@@ -426,7 +426,9 @@ private fun GroupSessionCard(
 
       // Description
       Text(
-          text = session.description ?: stringResource(R.string.group_session_description_fallback),
+          text =
+              session.details.description
+                  ?: stringResource(R.string.group_session_description_fallback),
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurface,
       )
@@ -447,7 +449,9 @@ private fun GroupSessionCard(
                   modifier = Modifier.size(Dimens.iconSizeSmall),
               )
             },
-            text = session.location ?: stringResource(R.string.group_session_location_fallback),
+            text =
+                session.details.location
+                    ?: stringResource(R.string.group_session_location_fallback),
         )
         MetaInfoPill(
             modifier = Modifier.fillMaxWidth(),

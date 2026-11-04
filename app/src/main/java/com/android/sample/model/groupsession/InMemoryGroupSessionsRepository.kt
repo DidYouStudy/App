@@ -26,8 +26,14 @@ class InMemoryGroupSessionsRepository : GroupSessionsRepository {
       sessions
           .map { stored ->
             stored.values
-                .filter { it.endsAt.isAfter(endingAfter) }
-                .sortedWith(compareBy<GroupSession>({ it.startsAt }, { it.endsAt }, { it.id }))
+                .filter { it.details.endsAt.isAfter(endingAfter) }
+                .sortedWith(
+                    compareBy<GroupSession>(
+                        { it.details.startsAt },
+                        { it.details.endsAt },
+                        { it.id },
+                    )
+                )
           }
           .distinctUntilChanged()
           .map { Result.success(it) }

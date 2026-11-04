@@ -5,153 +5,72 @@ package com.android.sample.model.event
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Tests the personal event model's validation and optional scheduling data without Android or
- * Firebase.
+ * Tests the personal event's own fields and validation; shared content is covered by
+ * [EventDetailsTest].
  */
 class PersonalEventTest {
   private val start = Instant.parse("2026-10-19T23:30:00Z")
   private val end = Instant.parse("2026-10-20T00:30:00Z")
   private val created = Instant.parse("2026-10-18T12:00:00Z")
+  private val details = EventDetails(EventType.STUDY_SESSION, "Analysis", start, end)
 
-  /** Builds a valid entry crossing midnight, independent of machine time and time zone. */
+  /** Builds a valid entry, independent of machine time and time zone. */
   private fun event() =
-      PersonalEvent(
-          id = "event-1",
-          ownerId = "user-1",
-          type = EventType.STUDY_SESSION,
-          subject = "Analysis",
-          startsAt = start,
-          endsAt = end,
-          createdAt = created,
-      )
+      PersonalEvent(id = "event-1", ownerId = "user-1", details = details, createdAt = created)
 
-  /** Scheduling across midnight is valid, and absent optional data needs no placeholder strings. */
+  /** Absent optional data needs no placeholders, and the edit time defaults to creation. */
   @Test
-  fun crossMidnightEvent_defaultsOptionalDetailsAndEditTime() {
+  fun newEvent_defaultsTasksImportKeyAndEditTime() {
     val event = event()
 
-    assertEquals(start, event.startsAt)
-    assertEquals(end, event.endsAt)
+    assertSame(details, event.details)
     assertEquals(created, event.updatedAt)
-    assertNull(event.location)
-    assertNull(event.description)
     assertTrue(event.tasks.isEmpty())
+    assertNull(event.importKey)
   }
 
-  /** A personal event is an [Event], so shared code can read its identity without a cast. */
+  /** A personal event is an [Event], so shared code can read its content without a cast. */
   @Test
   fun personalEvent_isAnEvent() {
     val event: Event = event()
 
     assertEquals("event-1", event.id)
-    assertEquals(created, event.createdAt)
+    assertEquals("Analysis", event.details.subject)
   }
 
   /** Hand-made events carry no import key, and a key, when present, must have text. */
   @Test
   fun importKey_isNullByDefaultAndMustNotBeBlank() {
-    assertNull(event().importKey)
     assertEquals("uid-1", event().copy(importKey = "uid-1").importKey)
     assertThrows(IllegalArgumentException::class.java) { event().copy(importKey = " ") }
   }
 
-  /** Selected or custom subject/place labels retain their text without a category lookup. */
+  /** Both construction and data-class copies reject missing identity. */
   @Test
-  fun event_retainsSubjectLocationDescriptionAndExplicitEditTime() {
-    val edited = created.plusSeconds(60)
-    val event =
-        event()
-            .copy(
-                subject = "Analysis II",
-                location = "Library",
-                description = "Review integration exercises",
-                updatedAt = edited,
-            )
-
-    assertEquals("Analysis II", event.subject)
-    assertEquals("Library", event.location)
-    assertEquals("Review integration exercises", event.description)
-    assertEquals(created, event.createdAt)
-    assertEquals(edited, event.updatedAt)
-  }
-
-  /** Both construction and data-class copies reject missing identity or content. */
-  @Test
-  fun blankRequiredFields_areRejected() {
+  fun blankIdentity_isRejected() {
     for (blank in listOf("", " \t\n")) {
       assertThrows(IllegalArgumentException::class.java) { event().copy(id = blank) }
       assertThrows(IllegalArgumentException::class.java) { event().copy(ownerId = blank) }
-      assertThrows(IllegalArgumentException::class.java) { event().copy(subject = blank) }
     }
   }
 
-  /** A timed entry must occupy a positive duration, including when edited. */
+  /** Editing remains explicit: replacing the details never changes identity or timestamps. */
   @Test
-  fun zeroOrNegativeDuration_isRejected() {
-    assertThrows(IllegalArgumentException::class.java) { event().copy(endsAt = start) }
-    assertThrows(IllegalArgumentException::class.java) {
-      event().copy(endsAt = start.minusSeconds(1))
-    }
-    assertThrows(IllegalArgumentException::class.java) { event().copy(startsAt = end) }
-  }
-
-  /** Null means absent; a blank place label is invalid instead of acting as missing data. */
-  @Test
-  fun blankLocation_isRejected() {
-    for (blank in listOf("", " \t\n")) {
-      assertThrows(IllegalArgumentException::class.java) { event().copy(location = blank) }
-    }
-  }
-
-  /** Editing remains explicit: the model never generates IDs or reads a wall clock. */
-  @Test
-  fun editingSubject_keepsIdentityAndTimestampsUntilCallerUpdatesThem() {
+  fun editingDetails_keepsIdentityAndTimestampsUntilCallerUpdatesThem() {
     val initial = event()
-    val edited = initial.copy(subject = "Physics")
+    val edited = initial.copy(details = details.copy(subject = "Physics"))
 
+    assertEquals("Physics", edited.details.subject)
     assertEquals(initial.id, edited.id)
     assertEquals(initial.ownerId, edited.ownerId)
     assertEquals(initial.createdAt, edited.createdAt)
     assertEquals(initial.updatedAt, edited.updatedAt)
-  }
-
-  /** A subject is independent of activity kind: its course and study block can share one label. */
-  @Test
-  fun sameSubject_canBeUsedForCourseAndStudySession() {
-    val studySession = event()
-    val course = studySession.copy(id = "course-1", type = EventType.COURSE)
-
-    assertEquals(EventType.STUDY_SESSION, studySession.type)
-    assertEquals(EventType.COURSE, course.type)
-    assertEquals(studySession.subject, course.subject)
-  }
-
-  /** Only OTHER may omit its subject; an absent subject is null, never blank. */
-  @Test
-  fun subject_isOptionalOnlyForOther() {
-    val other = event().copy(type = EventType.OTHER, subject = null)
-
-    assertNull(other.subject)
-    assertThrows(IllegalArgumentException::class.java) { event().copy(subject = null) }
-    assertThrows(IllegalArgumentException::class.java) {
-      event().copy(type = EventType.OTHER, subject = " ")
-    }
-  }
-
-  /** Up to 24 hours is valid; anything longer is treated as an input mistake. */
-  @Test
-  fun duration_isLimitedToMaxDuration() {
-    val longest = event().copy(endsAt = start.plus(PersonalEvent.MAX_DURATION))
-
-    assertEquals(start.plus(PersonalEvent.MAX_DURATION), longest.endsAt)
-    assertThrows(IllegalArgumentException::class.java) {
-      event().copy(endsAt = start.plus(PersonalEvent.MAX_DURATION).plusSeconds(1))
-    }
   }
 
   /** Tasks are not limited to study sessions and keep their order. */
@@ -161,7 +80,8 @@ class PersonalEventTest {
 
     for (type in EventType.entries) {
       val subject = if (type == EventType.OTHER) null else "Analysis"
-      val event = event().copy(type = type, subject = subject, tasks = tasks)
+      val event =
+          event().copy(details = details.copy(type = type, subject = subject), tasks = tasks)
 
       assertEquals(tasks, event.tasks)
     }

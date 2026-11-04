@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Opus 5.5
 package com.android.sample.model.groupsession
 
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
@@ -56,10 +57,13 @@ abstract class GroupSessionsRepositoryContractTest {
           id = id,
           createdBy = createdBy,
           memberIds = memberIds,
-          type = if (subject == null) EventType.OTHER else EventType.STUDY_SESSION,
-          subject = subject,
-          startsAt = monday.plusSeconds(startHour * 3600),
-          endsAt = monday.plusSeconds(endHour * 3600),
+          details =
+              EventDetails(
+                  type = if (subject == null) EventType.OTHER else EventType.STUDY_SESSION,
+                  subject = subject,
+                  startsAt = monday.plusSeconds(startHour * 3600),
+                  endsAt = monday.plusSeconds(endHour * 3600),
+              ),
           createdAt = created,
       )
 
@@ -86,12 +90,15 @@ abstract class GroupSessionsRepositoryContractTest {
     val original = session("a")
     val replacement =
         original.copy(
-            subject = "Physics",
-            startsAt = monday.plusSeconds(11 * 3600),
-            endsAt = monday.plusSeconds(12 * 3600),
+            details =
+                original.details.copy(
+                    subject = "Physics",
+                    startsAt = monday.plusSeconds(11 * 3600),
+                    endsAt = monday.plusSeconds(12 * 3600),
+                    location = "Library",
+                    description = "Review mechanics",
+                ),
             updatedAt = created.plusSeconds(300),
-            location = "Library",
-            description = "Review mechanics",
             memberIds = listOf(creator, third),
         )
     repository.saveSession(creator, original).getOrThrow()
@@ -110,7 +117,7 @@ abstract class GroupSessionsRepositoryContractTest {
     val original = session("a")
     val replacement =
         original.copy(
-            subject = "Physics",
+            details = original.details.copy(subject = "Physics"),
             createdAt = created.minusSeconds(3600),
             updatedAt = created.plusSeconds(300),
         )
@@ -141,7 +148,9 @@ abstract class GroupSessionsRepositoryContractTest {
 
     assertEquals(
         EventsError.PERMISSION_DENIED,
-        repository.saveSession(other, original.copy(subject = "Physics")).error(),
+        repository
+            .saveSession(other, original.copy(details = original.details.copy(subject = "Physics")))
+            .error(),
     )
     assertEquals(original, repository.getSession("a").getOrThrow())
   }

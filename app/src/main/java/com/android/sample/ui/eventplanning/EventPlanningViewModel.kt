@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
@@ -343,38 +344,27 @@ class EventPlanningViewModel(
     val now = clock.instant()
     val event =
         try {
-          val subject = state.subject.trim().takeIf(String::isNotEmpty)
-          val startsAt = date.atTime(startTime).atZone(clock.zone).toInstant()
-          val endsAt = endDate.atTime(endTime).atZone(clock.zone).toInstant()
-          val location = state.location.trim().takeIf(String::isNotEmpty)
-          val description = state.description.trim().takeIf(String::isNotEmpty)
+          val details =
+              EventDetails(
+                  type = state.type,
+                  subject = state.subject.trim().takeIf(String::isNotEmpty),
+                  startsAt = date.atTime(startTime).atZone(clock.zone).toInstant(),
+                  endsAt = endDate.atTime(endTime).atZone(clock.zone).toInstant(),
+                  location = state.location.trim().takeIf(String::isNotEmpty),
+                  description = state.description.trim().takeIf(String::isNotEmpty),
+              )
           if (editing == null) {
             val id = pendingEventId ?: eventsRepository.newEventId().also { pendingEventId = it }
             PersonalEvent(
                 id = id,
                 ownerId = ownerId,
-                type = state.type,
-                subject = subject,
-                startsAt = startsAt,
-                endsAt = endsAt,
+                details = details,
                 createdAt = now,
                 updatedAt = now,
-                location = location,
-                description = description,
                 tasks = state.tasks,
             )
           } else {
-            editing.copy(
-                ownerId = ownerId,
-                type = state.type,
-                subject = subject,
-                startsAt = startsAt,
-                endsAt = endsAt,
-                updatedAt = now,
-                location = location,
-                description = description,
-                tasks = state.tasks,
-            )
+            editing.copy(ownerId = ownerId, details = details, updatedAt = now, tasks = state.tasks)
           }
         } catch (exception: IllegalArgumentException) {
           fail(exception.message)
@@ -414,18 +404,18 @@ class EventPlanningViewModel(
 
   /** Fills the form from [event] and remembers it for [editEvent]. */
   private fun populateForm(event: PersonalEvent) {
-    val start = event.startsAt.atZone(clock.zone)
-    val end = event.endsAt.atZone(clock.zone)
+    val start = event.details.startsAt.atZone(clock.zone)
+    val end = event.details.endsAt.atZone(clock.zone)
     editingEvent = event
     _uiState.update {
       it.copy(
-          type = event.type,
-          subject = event.subject.orEmpty(),
+          type = event.details.type,
+          subject = event.details.subject.orEmpty(),
           date = start.toLocalDate(),
           startTime = start.toLocalTime(),
           endTime = end.toLocalTime(),
-          location = event.location.orEmpty(),
-          description = event.description.orEmpty(),
+          location = event.details.location.orEmpty(),
+          description = event.details.description.orEmpty(),
           tasks = event.tasks,
           isEditing = true,
       )
