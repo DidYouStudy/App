@@ -75,6 +75,10 @@ object CalendarTestTags {
   const val ADD_BUTTON = "calendar_addButton"
   const val TODAY_BUTTON = "calendar_todayButton"
 
+  /** Creates a stable tag for an event card in a specific day column. */
+  fun eventCard(eventId: String, dayIndex: Int): String =
+      "calendar_eventCard_${eventId}_day_$dayIndex"
+
   /**
    * Creates the test tag used to identify a date number in a weekly day header.
    *
@@ -385,7 +389,10 @@ fun CalendarTimeGrid(
               CalendarEventCard(
                   event = placement.event,
                   modifier =
-                      Modifier.fillMaxWidth().offset(y = placement.top).height(placement.height),
+                      Modifier.fillMaxWidth()
+                          .offset(y = placement.top)
+                          .height(placement.height)
+                          .testTag(CalendarTestTags.eventCard(placement.event.id, dayIndex)),
               )
             }
           }
