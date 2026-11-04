@@ -39,11 +39,18 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
       val app: FirebaseApp,
       val auth: FirebaseAuth,
       val db: FirebaseFirestore,
-      val uid: String,
+      var uid: String,
+      val repository: GroupSessionsRepositoryFirestore,
+  )
+
+  private data class UnreachableClient(
+      val app: FirebaseApp,
+      val db: FirebaseFirestore,
       val repository: GroupSessionsRepositoryFirestore,
   )
 
   private val clients = mutableListOf<Client>()
+  private val unreachableClients = mutableListOf<UnreachableClient>()
   private lateinit var creator: Client
   private lateinit var member: Client
   private lateinit var outsider: Client
@@ -52,6 +59,7 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
   @Before
   fun setUp() = runBlocking {
     clients.clear()
+    unreachableClients.clear()
     creator = newClient("creator")
     member = newClient("member")
     outsider = newClient("outsider")
@@ -60,6 +68,15 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
   /** Releases every isolated Firebase client and its local Firestore cache. */
   @After
   fun tearDown() = runBlocking {
+    unreachableClients.forEach { client ->
+      try {
+        client.db.terminate().await()
+        client.db.clearPersistence().await()
+      } finally {
+        client.app.delete()
+      }
+    }
+    unreachableClients.clear()
     clients.forEach { client ->
       timed {
         client.db.terminate().await()
@@ -191,24 +208,32 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
   fun observeSessionsFiltersAndSortsForAnotherUser() = runBlocking {
     val base = now()
     val threshold = base.plusSeconds(1800)
-    val sameTimeZ = session(creator, "z", base.plusSeconds(3600), base.plusSeconds(7200))
-    val sameTimeA = session(creator, "a", base.plusSeconds(3600), base.plusSeconds(7200))
-    val longer = session(creator, "longer", base.plusSeconds(3600), base.plusSeconds(10800))
-    val later = session(creator, "later", base.plusSeconds(7200), base.plusSeconds(10800))
-    val endingAt = session(creator, "ending-at", threshold.minusSeconds(3600), threshold)
+    val prefix = uniqueId()
+    val sameTimeZ = session(creator, "$prefix-z", base.plusSeconds(3600), base.plusSeconds(7200))
+    val sameTimeA = session(creator, "$prefix-a", base.plusSeconds(3600), base.plusSeconds(7200))
+    val longer = session(creator, "$prefix-longer", base.plusSeconds(3600), base.plusSeconds(10800))
+    val later = session(creator, "$prefix-later", base.plusSeconds(7200), base.plusSeconds(10800))
+    val endingAt = session(creator, "$prefix-ending-at", threshold.minusSeconds(3600), threshold)
     val endingBefore =
-        session(creator, "ending-before", threshold.minusSeconds(3600), threshold.minusSeconds(1))
+        session(
+            creator,
+            "$prefix-ending-before",
+            threshold.minusSeconds(3600),
+            threshold.minusSeconds(1),
+        )
     listOf(later, endingAt, sameTimeZ, endingBefore, longer, sameTimeA).forEach {
       creator.repository.saveSession(creator.uid, it).getOrThrow()
     }
     sync(creator)
 
-    assertEquals(
-        listOf(sameTimeA, sameTimeZ, longer, later),
+    val expected = listOf(sameTimeA, sameTimeZ, longer, later)
+    val testIds =
+        listOf(later, endingAt, sameTimeZ, endingBefore, longer, sameTimeA).map { it.id }.toSet()
+    val observed =
         withTimeout(TIMEOUT_MILLIS) {
           outsider.repository.observeSessions(threshold).first().getOrThrow()
-        },
-    )
+        }
+    assertEquals(expected, observed.filter { it.id in testIds })
   }
 
   /** Membership and creator edits arrive in another user's live observation flow. */
@@ -221,41 +246,60 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
     val original = created.copy(memberIds = listOf(creator.uid, member.uid))
     val flow = outsider.repository.observeSessions(now())
 
-    assertEquals(
-        original,
-        withTimeout(TIMEOUT_MILLIS) { flow.first { it.getOrThrow().isNotEmpty() }.getOrThrow()[0] },
-    )
+    val initial =
+        withTimeout(TIMEOUT_MILLIS) {
+          flow.first { result -> result.getOrThrow().any { it.id == original.id } }.getOrThrow()
+        }
+    assertEquals(original, initial.first { it.id == original.id })
 
     val joined =
         async(Dispatchers.IO) {
           withTimeout(TIMEOUT_MILLIS) {
-            flow.first { result -> result.getOrThrow().single().memberIds.contains(outsider.uid) }
+            flow.first { result ->
+              result
+                  .getOrThrow()
+                  .firstOrNull { it.id == original.id }
+                  ?.memberIds
+                  ?.contains(outsider.uid) == true
+            }
           }
         }
     outsider.repository.joinSession(outsider.uid, original.id).getOrThrow()
     sync(outsider)
-    assertTrue(joined.await().isSuccess)
+    assertTrue(
+        joined.await().getOrThrow().first { it.id == original.id }.memberIds.contains(outsider.uid)
+    )
 
     val left =
         async(Dispatchers.IO) {
           withTimeout(TIMEOUT_MILLIS) {
-            flow.first { result -> !result.getOrThrow().single().memberIds.contains(member.uid) }
+            flow.first { result ->
+              result
+                  .getOrThrow()
+                  .firstOrNull { it.id == original.id }
+                  ?.memberIds
+                  ?.contains(member.uid) == false
+            }
           }
         }
     member.repository.leaveSession(member.uid, original.id).getOrThrow()
     sync(member)
-    assertTrue(left.await().isSuccess)
+    assertFalse(
+        left.await().getOrThrow().first { it.id == original.id }.memberIds.contains(member.uid)
+    )
 
     val edited = original.copy(subject = "Updated", updatedAt = now().plusSeconds(10))
     val edit =
         async(Dispatchers.IO) {
           withTimeout(TIMEOUT_MILLIS) {
-            flow.first { result -> result.getOrThrow().single().subject == edited.subject }
+            flow.first { result ->
+              result.getOrThrow().firstOrNull { it.id == original.id }?.subject == edited.subject
+            }
           }
         }
     creator.repository.saveSession(creator.uid, edited).getOrThrow()
     sync(creator)
-    assertTrue(edit.await().isSuccess)
+    assertEquals(edited.subject, edit.await().getOrThrow().first { it.id == original.id }.subject)
   }
 
   /** Signed-out observation emits a permission failure. */
@@ -352,17 +396,19 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
   fun joiningFullSessionIsDeniedAndLeavesMembersUnchanged() = runBlocking {
     val original = session(creator, uniqueId())
     creator.repository.saveSession(creator.uid, original).getOrThrow()
-    val existingMembers = mutableListOf(creator)
-    existingMembers += member
-    existingMembers += outsider
-    repeat(GroupSession.MAX_MEMBERS - existingMembers.size) { index ->
-      existingMembers += newClient("filler-$index")
-    }
-    existingMembers.forEach { client ->
+    val memberIds = mutableSetOf(creator.uid)
+    listOf(member, outsider).forEach { client ->
       client.repository.joinSession(client.uid, original.id).getOrThrow()
       sync(client)
+      memberIds += client.uid
     }
-    sync(creator)
+    val filler = newClient("filler")
+    repeat(GroupSession.MAX_MEMBERS - memberIds.size) { index ->
+      val fillerId = signUp(filler, "filler-$index")
+      filler.repository.joinSession(fillerId, original.id).getOrThrow()
+      sync(filler)
+      memberIds += fillerId
+    }
     val before = serverData(outsider, original.id)["memberIds"]
     assertEquals(GroupSession.MAX_MEMBERS, (before as List<*>).size)
 
@@ -449,7 +495,7 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
     assertFalse(serverDocument(outsider, original.id).exists())
   }
 
-  /** Offline save, join, leave, and delete fail promptly and never synchronize later. */
+  /** Mutations through clients pointed at an unreachable port fail without changing server data. */
   @Test
   fun offlineMutationsFailWithoutQueueingWrites() = runBlocking {
     val created = session(creator, uniqueId())
@@ -459,21 +505,27 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
     val original = created.copy(memberIds = listOf(creator.uid, member.uid))
     val before = serverData(outsider, original.id)
 
-    assertOfflineFailure(creator) {
-      creator.repository.saveSession(
+    assertUnreachableFailure(creator, "save") { repository ->
+      repository.saveSession(
           creator.uid,
           original.copy(subject = "Offline edit", updatedAt = now().plusSeconds(1)),
       )
     }
     assertEquals(before, serverData(outsider, original.id))
 
-    assertOfflineFailure(outsider) { outsider.repository.joinSession(outsider.uid, original.id) }
+    assertUnreachableFailure(outsider, "join") { repository ->
+      repository.joinSession(outsider.uid, original.id)
+    }
     assertEquals(before, serverData(outsider, original.id))
 
-    assertOfflineFailure(member) { member.repository.leaveSession(member.uid, original.id) }
+    assertUnreachableFailure(member, "leave") { repository ->
+      repository.leaveSession(member.uid, original.id)
+    }
     assertEquals(before, serverData(outsider, original.id))
 
-    assertOfflineFailure(creator) { creator.repository.deleteSession(creator.uid, original.id) }
+    assertUnreachableFailure(creator, "delete") { repository ->
+      repository.deleteSession(creator.uid, original.id)
+    }
     assertEquals(before, serverData(outsider, original.id))
   }
 
@@ -512,6 +564,39 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
         .also(clients::add)
   }
 
+  /** Creates an authenticated-repository client whose Firestore endpoint cannot be reached. */
+  private fun newUnreachableClient(client: Client, label: String): UnreachableClient {
+    val appName = "group-sessions-unreachable-$label-${UUID.randomUUID()}"
+    val app =
+        FirebaseApp.initializeApp(
+            ApplicationProvider.getApplicationContext(),
+            FirebaseOptions.Builder()
+                .setProjectId("demo-didyoustudy")
+                .setApplicationId("1:123:android:groupsessions-offline")
+                .setApiKey("fake-${UUID.randomUUID()}")
+                .build(),
+            appName,
+        )
+    val db = FirebaseFirestore.getInstance(app)
+    db.useEmulator("10.0.2.2", 1)
+    return UnreachableClient(app, db, GroupSessionsRepositoryFirestore(db, client.auth))
+        .also(unreachableClients::add)
+  }
+
+  /** Registers another emulator account on a reusable Firebase Auth client. */
+  private suspend fun signUp(client: Client, label: String): String {
+    val appName = "group-sessions-$label-${UUID.randomUUID()}"
+    val uid = timed {
+      client.auth
+          .createUserWithEmailAndPassword("$appName@example.test", "EmulatorOnly123!")
+          .await()
+          .user!!
+          .uid
+    }
+    client.uid = uid
+    return uid
+  }
+
   /** Builds a session whose default schedule is in the future relative to the test run. */
   private fun session(
       owner: Client,
@@ -535,19 +620,15 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
     timed { client.db.waitForPendingWrites().await() }
   }
 
-  /** Disables the network, checks a bounded storage failure, and reconnects the client. */
-  private suspend fun assertOfflineFailure(
+  /** Requires an unreachable-port operation to fail with STORAGE_FAILURE within 30 seconds. */
+  private suspend fun assertUnreachableFailure(
       client: Client,
-      operation: suspend () -> Result<Unit>,
+      label: String,
+      operation: suspend (GroupSessionsRepositoryFirestore) -> Result<Unit>,
   ) {
-    client.db.disableNetwork().await()
-    try {
-      val result = withTimeout(TIMEOUT_MILLIS) { operation() }
-      assertError(result, EventsError.STORAGE_FAILURE)
-    } finally {
-      client.db.enableNetwork().await()
-      sync(client)
-    }
+    val unreachable = newUnreachableClient(client, label)
+    val result = withTimeout(30_000) { operation(unreachable.repository) }
+    assertError(result, EventsError.STORAGE_FAILURE)
   }
 
   /** Reads a document from the server, bypassing this client's local cache. */

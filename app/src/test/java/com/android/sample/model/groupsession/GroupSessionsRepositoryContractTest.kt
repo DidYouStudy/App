@@ -234,7 +234,7 @@ abstract class GroupSessionsRepositoryContractTest {
   @Test
   fun joinSession_concurrentJoinsAreAllKept() = runTest {
     repository.saveSession(creator, session("a")).getOrThrow()
-    val joiners = (1..200).map { "user$it" }
+    val joiners = (1..GroupSession.MAX_MEMBERS - 2).map { "user$it" }
 
     withContext(Dispatchers.Default) {
       joiners.map { user -> launch { repository.joinSession(user, "a").getOrThrow() } }.joinAll()
