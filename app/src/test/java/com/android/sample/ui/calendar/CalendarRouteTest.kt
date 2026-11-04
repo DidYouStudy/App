@@ -35,7 +35,7 @@ class CalendarRouteTest {
   /** Polling while resumed updates today's date after local midnight without user input. */
   @Test
   fun routeAutomaticallyUpdatesTodayAfterMidnight() {
-    val clock = MutableClock(Instant.parse("2026-10-28T23:59:00Z"))
+    val clock = MutableClock(Instant.parse("2026-10-28T23:59:59Z"))
     val authRepository = mock<AuthRepository>()
     whenever(authRepository.currentUser).thenReturn(MutableStateFlow<UserAccount?>(null))
     val viewModel = CalendarViewModel(authRepository, mock<EventsRepository>(), clock)
@@ -49,8 +49,9 @@ class CalendarRouteTest {
     }
     assertEquals(LocalDate.of(2026, 10, 28), viewModel.uiState.value.today)
 
-    clock.currentInstant = Instant.parse("2026-10-29T00:01:00Z")
-    shadowOf(Looper.getMainLooper()).idleFor(3, TimeUnit.SECONDS)
+    val midnightDelayMillis = viewModel.uiState.value.midnightDelay.inWholeMilliseconds
+    clock.currentInstant = Instant.parse("2026-10-29T00:00:00Z")
+    shadowOf(Looper.getMainLooper()).idleFor(midnightDelayMillis, TimeUnit.MILLISECONDS)
     composeTestRule.waitForIdle()
     composeTestRule.runOnIdle {
       assertEquals(LocalDate.of(2026, 10, 29), viewModel.uiState.value.today)

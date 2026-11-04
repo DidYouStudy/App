@@ -10,7 +10,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.android.sample.ui.navigation.NavigationActions
-import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -24,18 +23,18 @@ fun CalendarRoute(
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val lifecycleOwner = LocalLifecycleOwner.current
 
-  // Keep today's date current while this route is resumed, and stop polling while it is inactive.
+  // Wait until midnight to update today's date
   DisposableEffect(lifecycleOwner, viewModel) {
     val refreshJob =
         lifecycleOwner.lifecycleScope.launch {
           lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            viewModel.updateToday()
             while (isActive) {
-              delay(TODAY_REFRESH_INTERVAL_MILLIS.milliseconds)
+              delay(uiState.midnightDelay)
               viewModel.updateToday()
             }
           }
         }
+
     onDispose { refreshJob.cancel() }
   }
 
@@ -48,5 +47,3 @@ fun CalendarRoute(
       onRetry = viewModel::retryEvents,
   )
 }
-
-private const val TODAY_REFRESH_INTERVAL_MILLIS = 3_000L

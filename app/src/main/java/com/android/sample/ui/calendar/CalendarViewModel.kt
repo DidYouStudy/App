@@ -14,6 +14,11 @@ import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.EventsRepositoryProvider
 import java.time.Clock
 import java.time.LocalDate
+import java.time.LocalDateTime
+import kotlin.time.Duration
+import kotlin.time.DurationUnit
+import kotlin.time.toDuration
+import kotlin.time.toKotlinDuration
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -41,6 +46,7 @@ data class CalendarUiState(
     val events: List<Event> = emptyList(),
     val isLoading: Boolean = true,
     val error: CalendarViewModelError? = null,
+    val midnightDelay: Duration = 0.toDuration(DurationUnit.SECONDS),
 )
 
 /** Owns calendar date selection and observes the signed-in user's events for the displayed week. */
@@ -62,6 +68,7 @@ class CalendarViewModel(
               today = LocalDate.now(clock),
               weekStart = currentWeekStart.value,
               weekDates = dateHelper.weekDates(currentWeekStart.value),
+              midnightDelay = calculateMidnightDelay(),
           )
       )
 
@@ -90,6 +97,12 @@ class CalendarViewModel(
     val today = LocalDate.now(clock)
     _uiState.update { state -> if (state.today == today) state else state.copy(today = today) }
     return today
+  }
+
+  fun calculateMidnightDelay(): Duration {
+    val now = LocalDateTime.now(clock)
+    val nextMidnight = now.toLocalDate().plusDays(1).atStartOfDay()
+    return java.time.Duration.between(now, nextMidnight).toKotlinDuration()
   }
 
   /** Retries observing events for the current user and selected week. */
@@ -138,6 +151,7 @@ class CalendarViewModel(
               weekStart = weekStart,
               weekDates = dateHelper.weekDates(weekStart),
               isLoading = ownerId != null,
+              midnightDelay = calculateMidnightDelay(),
           )
     }
 
