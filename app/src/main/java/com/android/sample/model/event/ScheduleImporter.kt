@@ -12,11 +12,11 @@ import kotlinx.coroutines.withContext
  * Imports a course schedule (.ics file) into a user's calendar through an [EventsRepository],
  * replacing what an earlier import created.
  *
- * Each imported event gets an [Event.importKey] made of the file's `UID` and the event's start. On
- * a new import, events with a known key are updated in place (same ID, creation time and tasks),
- * new ones are added, and events of an earlier import that are missing from the file are deleted.
- * An occurrence that moves to another time therefore counts as a new event. Events the user created
- * by hand have no import key and are never touched.
+ * Each imported event gets an [PersonalEvent.importKey] made of the file's `UID` and the event's
+ * start. On a new import, events with a known key are updated in place (same ID, creation time and
+ * tasks), new ones are added, and events of an earlier import that are missing from the file are
+ * deleted. An occurrence that moves to another time therefore counts as a new event. Events the
+ * user created by hand have no import key and are never touched.
  */
 class ScheduleImporter(
     private val repository: EventsRepository,
@@ -103,9 +103,14 @@ class ScheduleImporter(
      * tells the occurrences apart; because it is always appended, cancelling one occurrence never
      * changes the key of its siblings. Exact duplicates collapse to the last one.
      */
-    fun withStableKeys(events: List<Event>): List<Event> =
+    fun withStableKeys(events: List<PersonalEvent>): List<PersonalEvent> =
         events
-            .map { it.copy(importKey = "${it.importKey ?: it.subject}@${it.startsAt.epochSecond}") }
+            .map {
+              it.copy(
+                  importKey =
+                      "${it.importKey ?: it.details.subject}@${it.details.startsAt.epochSecond}"
+              )
+            }
             .associateBy { it.importKey }
             .values
             .toList()

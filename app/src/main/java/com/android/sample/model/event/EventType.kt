@@ -5,8 +5,8 @@ package com.android.sample.model.event
 /**
  * Activity kinds shown in the Figma calendar and add-event form.
  *
- * A type describes the activity, while [Event.subject] identifies its course or subject. Labels and
- * event colors belong to the UI rather than the persistence-independent domain model.
+ * A type describes the activity, while [PersonalEvent.subject] identifies its course or subject.
+ * Labels and event colors belong to the UI rather than the persistence-independent domain model.
  */
 enum class EventType {
   STUDY_SESSION,

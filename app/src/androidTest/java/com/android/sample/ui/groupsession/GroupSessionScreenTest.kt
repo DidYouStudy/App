@@ -20,8 +20,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
-import com.android.sample.model.groupsession.GroupSession
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.ui.navigation.NavigationTestTags
 import java.time.Duration
@@ -56,42 +57,54 @@ class GroupSessionScreenTest {
                       id = "s1",
                       createdBy = "user-1",
                       memberIds = listOf("user-1", "user-2"),
-                      type = EventType.STUDY_SESSION,
-                      subject = "Software Architecture",
-                      startsAt = testInstant.plus(Duration.ofHours(1)),
-                      endsAt = testInstant.plus(Duration.ofHours(2)),
+                      details =
+                          EventDetails(
+                              type = EventType.STUDY_SESSION,
+                              subject = "Software Architecture",
+                              startsAt = testInstant.plus(Duration.ofHours(1)),
+                              endsAt = testInstant.plus(Duration.ofHours(2)),
+                          ),
                       createdAt = testInstant.minus(Duration.ofHours(1)),
                   ),
                   GroupSession(
                       id = "s2",
                       createdBy = "user-3",
                       memberIds = listOf("user-3"),
-                      type = EventType.PROJECT,
-                      subject = "Capstone planning",
-                      startsAt = testInstant.plus(Duration.ofHours(3)),
-                      endsAt = testInstant.plus(Duration.ofHours(4)),
+                      details =
+                          EventDetails(
+                              type = EventType.PROJECT,
+                              subject = "Capstone planning",
+                              startsAt = testInstant.plus(Duration.ofHours(3)),
+                              endsAt = testInstant.plus(Duration.ofHours(4)),
+                          ),
                       createdAt = testInstant.minus(Duration.ofHours(1)),
                   ),
                   GroupSession(
                       id = "s3",
                       createdBy = "user-3",
                       memberIds = listOf("user-3", "user-1"),
-                      type = EventType.EXAM,
-                      subject = "Exam revision",
-                      startsAt = testInstant.plus(Duration.ofHours(5)),
-                      endsAt = testInstant.plus(Duration.ofHours(6)),
+                      details =
+                          EventDetails(
+                              type = EventType.EXAM,
+                              subject = "Exam revision",
+                              startsAt = testInstant.plus(Duration.ofHours(5)),
+                              endsAt = testInstant.plus(Duration.ofHours(6)),
+                          ),
                       createdAt = testInstant.minus(Duration.ofHours(1)),
                   ),
                   GroupSession(
                       id = "s4",
                       createdBy = "user-4",
                       memberIds = listOf("user-4", "user-5", "user-6"),
-                      type = EventType.OTHER,
-                      subject = null,
-                      description = null,
-                      location = null,
-                      startsAt = testInstant.plus(Duration.ofHours(7)),
-                      endsAt = testInstant.plus(Duration.ofHours(8)),
+                      details =
+                          EventDetails(
+                              type = EventType.OTHER,
+                              subject = null,
+                              description = null,
+                              location = null,
+                              startsAt = testInstant.plus(Duration.ofHours(7)),
+                              endsAt = testInstant.plus(Duration.ofHours(8)),
+                          ),
                       createdAt = testInstant.minus(Duration.ofHours(1)),
                   ),
               )
@@ -434,7 +447,7 @@ class GroupSessionScreenTest {
 
     override fun observeSessions(endingAfter: Instant): Flow<Result<List<GroupSession>>> =
         state.map { items ->
-          Result.success(items.filter { it.endsAt.isAfter(endingAfter) })
+          Result.success(items.filter { it.details.endsAt.isAfter(endingAfter) })
         }
 
     override fun newSessionId(): String = "new-${System.nanoTime()}"

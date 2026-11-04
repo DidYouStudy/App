@@ -27,7 +27,7 @@ class InMemoryEventsRepository : EventsRepository {
    * @property subjects subject uses keyed by trimmed, lowercase subject.
    */
   private data class OwnerData(
-      val events: Map<String, Event> = emptyMap(),
+      val events: Map<String, PersonalEvent> = emptyMap(),
       val subjects: Map<String, SubjectUse> = emptyMap(),
   )
 
@@ -38,7 +38,7 @@ class InMemoryEventsRepository : EventsRepository {
       ownerId: String,
       from: Instant,
       to: Instant,
-  ): Flow<Result<List<Event>>> {
+  ): Flow<Result<List<PersonalEvent>>> {
     if (ownerId.isBlank() || !to.isAfter(from)) return flowOf(invalidArgument())
     return data
         .map { byOwner ->
@@ -46,8 +46,14 @@ class InMemoryEventsRepository : EventsRepository {
               ?.events
               .orEmpty()
               .values
-              .filter { it.startsAt.isBefore(to) && it.endsAt.isAfter(from) }
-              .sortedWith(compareBy<Event>({ it.startsAt }, { it.endsAt }, { it.id }))
+              .filter { it.details.startsAt.isBefore(to) && it.details.endsAt.isAfter(from) }
+              .sortedWith(
+                  compareBy<PersonalEvent>(
+                      { it.details.startsAt },
+                      { it.details.endsAt },
+                      { it.id },
+                  )
+              )
         }
         .distinctUntilChanged()
         .map { Result.success(it) }
@@ -70,7 +76,7 @@ class InMemoryEventsRepository : EventsRepository {
 
   override fun newEventId(): String = UUID.randomUUID().toString()
 
-  override suspend fun getEvent(ownerId: String, eventId: String): Result<Event> {
+  override suspend fun getEvent(ownerId: String, eventId: String): Result<PersonalEvent> {
     if (ownerId.isBlank() || eventId.isBlank()) return invalidArgument()
     val event =
         data.value[ownerId]?.events?.get(eventId)
@@ -78,7 +84,7 @@ class InMemoryEventsRepository : EventsRepository {
     return Result.success(event)
   }
 
-  override suspend fun getImportedEvents(ownerId: String): Result<List<Event>> {
+  override suspend fun getImportedEvents(ownerId: String): Result<List<PersonalEvent>> {
     if (ownerId.isBlank()) return invalidArgument()
     val imported =
         data.value[ownerId]
@@ -86,14 +92,16 @@ class InMemoryEventsRepository : EventsRepository {
             .orEmpty()
             .values
             .filter { it.importKey != null }
-            .sortedWith(compareBy<Event>({ it.startsAt }, { it.endsAt }, { it.id }))
+            .sortedWith(
+                compareBy<PersonalEvent>({ it.details.startsAt }, { it.details.endsAt }, { it.id })
+            )
     return Result.success(imported)
   }
 
-  override suspend fun saveEvent(event: Event): Result<Unit> {
+  override suspend fun saveEvent(event: PersonalEvent): Result<Unit> {
     data.update { byOwner ->
       val owned = byOwner[event.ownerId] ?: OwnerData()
-      val subject = event.subject?.trim()
+      val subject = event.details.subject?.trim()
       val subjects =
           if (subject == null) owned.subjects
           else owned.subjects + (subject.lowercase() to SubjectUse(subject, event.updatedAt))
@@ -102,7 +110,7 @@ class InMemoryEventsRepository : EventsRepository {
     return Result.success(Unit)
   }
 
-  override suspend fun saveEvents(events: List<Event>): Result<Unit> {
+  override suspend fun saveEvents(events: List<PersonalEvent>): Result<Unit> {
     if (events.isEmpty()) return Result.success(Unit)
     if (events.any { it.ownerId != events.first().ownerId }) return invalidArgument()
 
@@ -110,7 +118,7 @@ class InMemoryEventsRepository : EventsRepository {
       var currentMap = byOwner
       for (event in events) {
         val owned = currentMap[event.ownerId] ?: OwnerData()
-        val subject = event.subject?.trim()
+        val subject = event.details.subject?.trim()
         val subjects =
             if (subject == null) owned.subjects
             else owned.subjects + (subject.lowercase() to SubjectUse(subject, event.updatedAt))

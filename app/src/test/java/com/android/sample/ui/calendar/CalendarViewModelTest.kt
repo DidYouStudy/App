@@ -3,10 +3,11 @@ package com.android.sample.ui.calendar
 
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
-import com.android.sample.model.event.Event
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.InMemoryEventsRepository
+import com.android.sample.model.event.PersonalEvent
 import com.android.sample.ui.auth.TestAuthRepository
 import java.time.Clock
 import java.time.Instant
@@ -261,16 +262,19 @@ class CalendarViewModelTest {
   private fun account(uid: String) = UserAccount(uid, null, null, null)
 
   /** Creates a one-hour course event on [date] in the test time zone. */
-  private fun event(id: String, ownerId: String, date: LocalDate): Event {
+  private fun event(id: String, ownerId: String, date: LocalDate): PersonalEvent {
     val startsAt = date.atTime(LocalTime.of(9, 0)).atZone(zone).toInstant()
     val endsAt = date.atTime(LocalTime.of(10, 0)).atZone(zone).toInstant()
-    return Event(
+    return PersonalEvent(
         id = id,
         ownerId = ownerId,
-        type = EventType.COURSE,
-        subject = "Algebra",
-        startsAt = startsAt,
-        endsAt = endsAt,
+        details =
+            EventDetails(
+                type = EventType.COURSE,
+                subject = "Algebra",
+                startsAt = startsAt,
+                endsAt = endsAt,
+            ),
         createdAt = startsAt,
     )
   }
@@ -298,7 +302,7 @@ class CalendarViewModelTest {
         ownerId: String,
         from: Instant,
         to: Instant,
-    ): Flow<Result<List<Event>>> {
+    ): Flow<Result<List<PersonalEvent>>> {
       queries += Query(ownerId, from, to)
       if (throwOnObserve) return flow { throw IllegalStateException("observation failed") }
       val observationFailure = failure

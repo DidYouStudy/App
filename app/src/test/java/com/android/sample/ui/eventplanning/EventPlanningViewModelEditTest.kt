@@ -1,10 +1,11 @@
 // Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.eventplanning
 
-import com.android.sample.model.event.Event
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
+import com.android.sample.model.event.PersonalEvent
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -74,22 +75,27 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
       startsAt: Instant = this.startsAt,
       endsAt: Instant = this.endsAt,
   ) =
-      Event(
+      PersonalEvent(
           id = id,
           ownerId = "user123",
-          type = type,
-          subject = subject,
-          startsAt = startsAt,
-          endsAt = endsAt,
+          details =
+              EventDetails(
+                  type = type,
+                  subject = subject,
+                  startsAt = startsAt,
+                  endsAt = endsAt,
+                  location = location,
+                  description = description,
+              ),
           createdAt = createdAt,
           updatedAt = createdAt,
-          location = location,
-          description = description,
           tasks = tasks,
       )
 
   /** A view model with the stored event already loaded into its form. */
-  private suspend fun loadedViewModel(event: Event = storedEvent()): EventPlanningViewModel {
+  private suspend fun loadedViewModel(
+      event: PersonalEvent = storedEvent()
+  ): EventPlanningViewModel {
     whenever(eventsRepository.getEvent("user123", event.id)).thenReturn(Result.success(event))
     val viewModel = createViewModel()
     viewModel.loadEvent(event.id)
@@ -243,10 +249,10 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     val saved = savedEvents().single()
     assertEquals("stored-1", saved.id)
     assertEquals("user123", saved.ownerId)
-    assertEquals("Algebra", saved.subject)
-    assertEquals(startsAt, saved.startsAt)
-    assertEquals(Instant.parse("2026-10-27T11:00:00Z"), saved.endsAt)
-    assertNull(saved.location)
+    assertEquals("Algebra", saved.details.subject)
+    assertEquals(startsAt, saved.details.startsAt)
+    assertEquals(Instant.parse("2026-10-27T11:00:00Z"), saved.details.endsAt)
+    assertNull(saved.details.location)
     assertEquals(createdAt, saved.createdAt)
     assertEquals(now, saved.updatedAt)
     verify(eventsRepository, never()).newEventId()
@@ -593,8 +599,8 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     val saved = savedEvents().single()
-    assertEquals(Instant.parse("2026-10-27T21:00:00Z"), saved.startsAt) // 22:00 on the 27th
-    assertEquals(Instant.parse("2026-10-28T00:00:00Z"), saved.endsAt) // 01:00 on the 28th
+    assertEquals(Instant.parse("2026-10-27T21:00:00Z"), saved.details.startsAt) // 22:00 on the 27th
+    assertEquals(Instant.parse("2026-10-28T00:00:00Z"), saved.details.endsAt) // 01:00 on the 28th
     assertTrue(viewModel.uiState.value.isEventAdded)
   }
 
@@ -617,8 +623,8 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     val saved = savedEvents().single()
-    assertEquals(startsAt, saved.startsAt)
-    assertEquals(endsAt, saved.endsAt)
+    assertEquals(startsAt, saved.details.startsAt)
+    assertEquals(endsAt, saved.details.endsAt)
   }
 
   @Test
@@ -634,8 +640,8 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     val saved = savedEvents().single()
-    assertEquals(Instant.parse("2026-10-24T20:00:00Z"), saved.startsAt)
-    assertEquals(Instant.parse("2026-10-25T03:00:00Z"), saved.endsAt)
+    assertEquals(Instant.parse("2026-10-24T20:00:00Z"), saved.details.startsAt)
+    assertEquals(Instant.parse("2026-10-25T03:00:00Z"), saved.details.endsAt)
   }
 
   @Test
@@ -648,8 +654,8 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
 
     val saved = savedEvents().single()
     assertEquals("stored-1", saved.id)
-    assertEquals(Instant.parse("2026-10-27T22:00:00Z"), saved.startsAt)
-    assertEquals(Instant.parse("2026-10-28T06:00:00Z"), saved.endsAt)
+    assertEquals(Instant.parse("2026-10-27T22:00:00Z"), saved.details.startsAt)
+    assertEquals(Instant.parse("2026-10-28T06:00:00Z"), saved.details.endsAt)
   }
 
   @Test
@@ -667,7 +673,7 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     viewModel.editEvent()
 
     val saved = savedEvents().single()
-    assertEquals(overnight.startsAt, saved.startsAt)
-    assertEquals(overnight.endsAt, saved.endsAt)
+    assertEquals(overnight.details.startsAt, saved.details.startsAt)
+    assertEquals(overnight.details.endsAt, saved.details.endsAt)
   }
 }

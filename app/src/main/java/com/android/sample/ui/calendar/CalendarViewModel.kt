@@ -9,9 +9,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
-import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.EventsRepositoryProvider
+import com.android.sample.model.event.PersonalEvent
 import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -43,7 +43,7 @@ data class CalendarUiState(
     val today: LocalDate,
     val weekStart: LocalDate,
     val weekDates: List<LocalDate>,
-    val events: List<Event> = emptyList(),
+    val events: List<PersonalEvent> = emptyList(),
     val isLoading: Boolean = true,
     val error: CalendarViewModelError? = null,
     val midnightDelay: Duration = 0.toDuration(DurationUnit.SECONDS),
@@ -170,14 +170,17 @@ class CalendarViewModel(
   }
 
   /** Builds the local Monday-to-Monday time range and requests that week's event stream. */
-  private fun getWeekEvents(ownerId: String, weekStart: LocalDate): Flow<Result<List<Event>>> {
+  private fun getWeekEvents(
+      ownerId: String,
+      weekStart: LocalDate,
+  ): Flow<Result<List<PersonalEvent>>> {
     val from = weekStart.atStartOfDay(clock.zone).toInstant()
     val to = weekStart.plusDays(DAYS_PER_WEEK).atStartOfDay(clock.zone).toInstant()
     return eventsRepository.observeEvents(ownerId, from, to)
   }
 
   /** Updates the screen from one repository result, clearing events when the query fails. */
-  private fun updateEvents(result: Result<List<Event>>) {
+  private fun updateEvents(result: Result<List<PersonalEvent>>) {
     result.fold(
         onSuccess = { events ->
           _uiState.update { it.copy(events = events, isLoading = false, error = null) }

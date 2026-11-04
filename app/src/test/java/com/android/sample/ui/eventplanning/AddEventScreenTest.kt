@@ -191,7 +191,7 @@ class AddEventScreenTest {
     testDispatcher.scheduler.advanceUntilIdle()
     composeTestRule.waitForIdle()
 
-    // Event saved callback should be triggered via LaunchedEffect
+    // PersonalEvent saved callback should be triggered via LaunchedEffect
     assertTrue(eventSaved)
   }
 

@@ -3,10 +3,11 @@
 package com.android.sample.ui.groupsession
 
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
-import com.android.sample.model.groupsession.GroupSession
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
 import com.android.sample.ui.auth.TestAuthRepository
@@ -476,7 +477,7 @@ class GroupSessionsViewModelTest {
     val viewModel = GroupSessionsViewModel(authRepository, repository, mutableClock)
 
     assertEquals(listOf("expiring"), visibleIds(viewModel))
-    mutableClock.currentInstant = expiring.endsAt
+    mutableClock.currentInstant = expiring.details.endsAt
     assertEquals(listOf("expiring"), visibleIds(viewModel))
 
     viewModel.refresh()
@@ -513,13 +514,16 @@ class GroupSessionsViewModelTest {
           id = id,
           createdBy = creator,
           memberIds = members,
-          type = type,
-          subject = subject,
-          startsAt = startsAt,
-          endsAt = endsAt,
+          details =
+              EventDetails(
+                  type = type,
+                  subject = subject,
+                  startsAt = startsAt,
+                  endsAt = endsAt,
+                  location = location,
+                  description = description,
+              ),
           createdAt = now,
-          location = location,
-          description = description,
       )
 
   private class MutableTestClock(var currentInstant: Instant) : Clock() {
