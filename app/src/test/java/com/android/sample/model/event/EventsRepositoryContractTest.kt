@@ -37,7 +37,7 @@ abstract class EventsRepositoryContractTest {
 
   /** Builds a valid event; times are hours after Monday midnight UTC. */
   private fun event(id: String, startHour: Long, endHour: Long, ownerId: String = owner) =
-      Event(
+      PersonalEvent(
           id = id,
           ownerId = ownerId,
           type = EventType.STUDY_SESSION,
@@ -185,7 +185,7 @@ abstract class EventsRepositoryContractTest {
   @Test
   fun observeEvents_reEmitsOnEveryChange() = runTest {
     val event = event("a", 9, 10)
-    val emissions = mutableListOf<List<Event>>()
+    val emissions = mutableListOf<List<PersonalEvent>>()
     backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
       repository.observeEvents(owner, monday, wednesday).collect { emissions += it.getOrThrow() }
     }

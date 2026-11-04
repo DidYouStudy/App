@@ -1,5 +1,6 @@
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.event
 
 import java.time.Duration
@@ -30,10 +31,10 @@ class InMemoryEventsRepositorySaveEventsTest {
       subject: String,
       offsetHours: Long = 0,
       durationMinutes: Long = 60,
-  ): Event {
+  ): PersonalEvent {
     val start = baseInstant.plus(Duration.ofHours(offsetHours))
     val end = start.plus(Duration.ofMinutes(durationMinutes))
-    return Event(
+    return PersonalEvent(
         id = id,
         ownerId = ownerId,
         type = EventType.COURSE,
