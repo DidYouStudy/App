@@ -30,7 +30,7 @@ import java.time.Instant
  * @property importKey identifies the entry in the schedule file it was imported from (its `UID`),
  *   so a later import can update or remove it; null for events the user created by hand.
  */
-data class Event(
+data class PersonalEvent(
     val id: String,
     val ownerId: String,
     val type: EventType,
