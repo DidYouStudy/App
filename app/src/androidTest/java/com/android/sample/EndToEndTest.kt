@@ -12,6 +12,8 @@ import androidx.compose.ui.test.performClick
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
+import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.PreferencesRepositoryProvider
 import com.android.sample.model.preferences.TimeOfDay
@@ -233,12 +235,14 @@ private class FakeEnvironment : ExternalResource() {
     setProviderInstance(AuthRepositoryProvider, auth)
     setProviderInstance(PreferencesRepositoryProvider, preferences)
     setProviderInstance(ProfileRepositoryProvider, profiles)
+    GroupSessionsRepositoryProvider.setRepository(InMemoryGroupSessionsRepository())
   }
 
   override fun after() {
     setProviderInstance(AuthRepositoryProvider, null)
     setProviderInstance(PreferencesRepositoryProvider, null)
     setProviderInstance(ProfileRepositoryProvider, null)
+    GroupSessionsRepositoryProvider.setRepository(null)
   }
 
   /** The providers expose no injection point, so their private `instance` field is set directly. */

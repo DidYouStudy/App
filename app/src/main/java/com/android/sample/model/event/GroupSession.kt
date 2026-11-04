@@ -52,6 +52,9 @@ data class GroupSession(
   }
 
   companion object {
+    /** Maximum number of members allowed in a group session. */
+    const val MAX_MEMBERS = 30
+
     /** Longest allowed session duration; catches scheduling mistakes such as a wrong end date. */
     val MAX_DURATION: Duration = Duration.ofHours(24)
   }

@@ -17,6 +17,8 @@ import com.android.sample.MainActivity
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
+import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.PreferencesRepositoryProvider
 import com.android.sample.model.preferences.UserPreferences
@@ -34,6 +36,7 @@ import com.android.sample.ui.settings.SettingsScreenTestTags
 import junit.framework.TestCase.assertEquals
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import org.junit.After
 import org.junit.AfterClass
 import org.junit.Assert.assertFalse
 import org.junit.Before
@@ -50,7 +53,13 @@ class NavigationTests {
   @Before
   fun setUp() {
     installFakeRepositories()
+    GroupSessionsRepositoryProvider.setRepository(InMemoryGroupSessionsRepository())
     composeTestRule.setContent { DidYouStudyApp() }
+  }
+
+  @After
+  fun tearDown() {
+    GroupSessionsRepositoryProvider.setRepository(null)
   }
 
   private fun installFakeRepositories() {

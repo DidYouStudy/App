@@ -1,20 +1,18 @@
 // Co-authored-by: GitHub Copilot
 package com.android.sample.model.groupsession
 
-/** App-wide group sessions repository: in memory until the Firestore implementation exists. */
+/** Provides a shared in-memory repository while allowing callers to replace it for tests. */
 object GroupSessionsRepositoryProvider {
   private var instance: GroupSessionsRepository? = null
 
-  /**
-   * Returns the shared in-memory repository, creating it on the first call.
-   *
-   * Subsequent calls return the same repository instance.
-   */
+  /** Returns the shared in-memory repository, creating it on first use. */
   @Synchronized
-  fun getRepository(): GroupSessionsRepository {
-    instance?.let {
-      return it
-    }
-    return InMemoryGroupSessionsRepository().also { instance = it }
+  fun getRepository(): GroupSessionsRepository =
+      instance ?: InMemoryGroupSessionsRepository().also { instance = it }
+
+  /** Replaces the shared repository; null makes the next call create a new default. */
+  @Synchronized
+  fun setRepository(newRepository: GroupSessionsRepository?) {
+    instance = newRepository
   }
 }

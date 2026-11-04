@@ -1,0 +1,146 @@
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+package com.android.sample.model.groupsession
+
+import com.android.sample.model.event.EventType
+import com.android.sample.model.event.EventsError
+import com.android.sample.model.event.EventsException
+import com.google.android.gms.tasks.Tasks
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.DocumentReference
+import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
+import java.time.Instant
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.verifyNoInteractions
+import org.mockito.kotlin.whenever
+
+/** Checks input validation, storage error translation, decoding, and cancellation behavior. */
+class GroupSessionsRepositoryFirestoreTest {
+  private val firestore: FirebaseFirestore = mock()
+  private val auth: FirebaseAuth = mock()
+  private val user: FirebaseUser = mock()
+  private val collection: CollectionReference = mock()
+  private val document: DocumentReference = mock()
+  private val repository = GroupSessionsRepositoryFirestore(firestore, auth)
+
+  /** Sets up one authenticated user and one document path. */
+  @Before
+  fun setUp() {
+    whenever(auth.currentUser).thenReturn(user)
+    whenever(user.uid).thenReturn("owner")
+    whenever(firestore.collection("groupSessions")).thenReturn(collection)
+    whenever(collection.document("id")).thenReturn(document)
+  }
+
+  /** Blank and slash-containing IDs fail before touching Firestore. */
+  @Test
+  fun invalidIdsAreRejectedBeforeFirestoreAccess() = runTest {
+    val session = session("invalid/id")
+
+    assertError(repository.getSession(" "), EventsError.INVALID_ARGUMENT)
+    assertError(repository.getSession("invalid/id"), EventsError.INVALID_ARGUMENT)
+    assertError(repository.saveSession("owner", session), EventsError.INVALID_ARGUMENT)
+    assertError(repository.saveSession(" ", session("id")), EventsError.INVALID_ARGUMENT)
+    assertError(repository.saveSession("invalid/id", session("id")), EventsError.INVALID_ARGUMENT)
+    assertError(repository.deleteSession("owner", " "), EventsError.INVALID_ARGUMENT)
+    assertError(repository.deleteSession("owner", "invalid/id"), EventsError.INVALID_ARGUMENT)
+    assertError(repository.deleteSession("invalid/id", "id"), EventsError.INVALID_ARGUMENT)
+    assertError(repository.joinSession("owner", " "), EventsError.INVALID_ARGUMENT)
+    assertError(repository.joinSession("owner", "invalid/id"), EventsError.INVALID_ARGUMENT)
+    assertError(repository.joinSession("invalid/id", "id"), EventsError.INVALID_ARGUMENT)
+    assertError(repository.leaveSession("owner", " "), EventsError.INVALID_ARGUMENT)
+    assertError(repository.leaveSession("owner", "invalid/id"), EventsError.INVALID_ARGUMENT)
+    assertError(repository.leaveSession("invalid/id", "id"), EventsError.INVALID_ARGUMENT)
+
+    verifyNoInteractions(firestore)
+  }
+
+  /** A caller cannot act using a user ID other than the authenticated user's ID. */
+  @Test
+  fun rejectsUserIdDifferentFromSignedInUser() = runTest {
+    val otherUserSession = session("id", createdBy = "other")
+    assertError(repository.saveSession("other", otherUserSession), EventsError.PERMISSION_DENIED)
+    assertError(repository.deleteSession("other", "id"), EventsError.PERMISSION_DENIED)
+    assertError(repository.joinSession("other", "id"), EventsError.PERMISSION_DENIED)
+    assertError(repository.leaveSession("other", "id"), EventsError.PERMISSION_DENIED)
+
+    verifyNoInteractions(firestore)
+  }
+
+  /** Firestore permission and availability errors map to stable domain categories. */
+  @Test
+  fun mapsFirestoreErrors() = runTest {
+    whenever(document.get())
+        .thenReturn(
+            Tasks.forException(
+                FirebaseFirestoreException(
+                    "denied",
+                    FirebaseFirestoreException.Code.PERMISSION_DENIED,
+                )
+            )
+        )
+    assertError(repository.getSession("id"), EventsError.PERMISSION_DENIED)
+
+    whenever(document.get())
+        .thenReturn(
+            Tasks.forException(
+                FirebaseFirestoreException("offline", FirebaseFirestoreException.Code.UNAVAILABLE)
+            )
+        )
+    assertError(repository.getSession("id"), EventsError.STORAGE_FAILURE)
+  }
+
+  /** A present but malformed document reports invalid event data. */
+  @Test
+  fun rejectsUndecodableStoredDocument() = runTest {
+    val snapshot: DocumentSnapshot = mock()
+    whenever(snapshot.exists()).thenReturn(true)
+    whenever(snapshot.data).thenReturn(emptyMap())
+    whenever(document.get()).thenReturn(Tasks.forResult(snapshot))
+
+    assertError(repository.getSession("id"), EventsError.INVALID_EVENT_DATA)
+  }
+
+  /** Coroutine cancellation escapes instead of becoming a failed result. */
+  @Test
+  fun propagatesCancellation() = runTest {
+    val cancellation = CancellationException("read cancelled")
+    whenever(document.get()).thenReturn(Tasks.forException(cancellation))
+
+    try {
+      repository.getSession("id")
+      throw AssertionError("Cancellation must be thrown, not returned as a failure")
+    } catch (caught: CancellationException) {
+      assertSame(cancellation, caught)
+    }
+  }
+
+  /** Builds a valid session with the requested ID. */
+  private fun session(id: String, createdBy: String = "owner") =
+      GroupSession(
+          id = id,
+          createdBy = createdBy,
+          memberIds = listOf(createdBy),
+          type = EventType.COURSE,
+          subject = "Analysis",
+          startsAt = Instant.parse("2026-11-05T10:00:00Z"),
+          endsAt = Instant.parse("2026-11-05T11:00:00Z"),
+          createdAt = Instant.parse("2026-11-04T10:00:00Z"),
+      )
+
+  /** Asserts a failed result has the expected domain error. */
+  private fun assertError(result: Result<*>, expected: EventsError) {
+    assertTrue(result.isFailure)
+    assertEquals(expected, (result.exceptionOrNull() as EventsException).error)
+  }
+}
