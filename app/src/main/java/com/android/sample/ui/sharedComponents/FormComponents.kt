@@ -79,7 +79,6 @@ import androidx.compose.ui.window.DialogProperties
 import com.android.sample.R
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
-import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
 import com.android.sample.ui.theme.AlphaTokens
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
@@ -628,13 +627,13 @@ fun FormContent(
                   horizontal = Dimens.formHorizontalPadding,
                   vertical = Dimens.formVerticalPadding,
               )
-              .testTag(Tags.SCROLL_CONTAINER),
+              .testTag(FormComponentsTestTags.SCROLL_CONTAINER),
       verticalArrangement = Arrangement.spacedBy(Dimens.formSpacing),
   ) {
     // Type
     SectionLabel(
         text = stringResource(R.string.event_planning_type_label),
-        testTag = Tags.TYPE_LABEL,
+        testTag = FormComponentsTestTags.TYPE_LABEL,
     )
     Box(
         modifier =
@@ -653,7 +652,7 @@ fun FormContent(
               showTypeMenu = true
             }
           },
-          testTag = Tags.TYPE_SELECTOR,
+          testTag = FormComponentsTestTags.TYPE_SELECTOR,
           hasDropdownArrow = true,
       )
 
@@ -671,7 +670,7 @@ fun FormContent(
     // Date
     SectionLabel(
         text = stringResource(R.string.event_planning_date_label),
-        testTag = Tags.DATE_LABEL,
+        testTag = FormComponentsTestTags.DATE_LABEL,
     )
     SelectorFieldPill(
         valueText = date?.format(dateFormatter),
@@ -680,14 +679,14 @@ fun FormContent(
           focusManager.clearFocus()
           onDateClick()
         },
-        testTag = Tags.DATE_SELECTOR,
+        testTag = FormComponentsTestTags.DATE_SELECTOR,
         isError = isDateMissing,
     )
 
     // Start time
     SectionLabel(
         text = stringResource(R.string.event_planning_start_time_label),
-        testTag = Tags.START_TIME_LABEL,
+        testTag = FormComponentsTestTags.START_TIME_LABEL,
     )
     SelectorFieldPill(
         valueText = startTime?.format(timeFormatter),
@@ -696,14 +695,14 @@ fun FormContent(
           focusManager.clearFocus()
           onStartTimeClick()
         },
-        testTag = Tags.START_TIME_SELECTOR,
+        testTag = FormComponentsTestTags.START_TIME_SELECTOR,
         isError = isStartTimeMissing,
     )
 
     // End time
     SectionLabel(
         text = stringResource(R.string.event_planning_end_time_label),
-        testTag = Tags.END_TIME_LABEL,
+        testTag = FormComponentsTestTags.END_TIME_LABEL,
     )
     SelectorFieldPill(
         valueText = endTime?.format(timeFormatter),
@@ -712,7 +711,7 @@ fun FormContent(
           focusManager.clearFocus()
           onEndTimeClick()
         },
-        testTag = Tags.END_TIME_SELECTOR,
+        testTag = FormComponentsTestTags.END_TIME_SELECTOR,
         isError = isEndTimeMissing,
     )
 
@@ -724,7 +723,7 @@ fun FormContent(
           verticalAlignment = Alignment.CenterVertically,
           modifier =
               Modifier.padding(start = Dimens.cornerSmall, top = Spacing.extraSmall)
-                  .testTag(Tags.ENDS_NEXT_DAY_WARNING),
+                  .testTag(FormComponentsTestTags.ENDS_NEXT_DAY_WARNING),
       ) {
         Icon(
             imageVector = Icons.Outlined.Info,
@@ -745,7 +744,7 @@ fun FormContent(
     val subjectLabelText =
         if (isSubjectRequired) stringResource(R.string.event_planning_subject_label)
         else stringResource(R.string.event_planning_subject_optional_label)
-    SectionLabel(text = subjectLabelText, testTag = Tags.SUBJECT_LABEL)
+    SectionLabel(text = subjectLabelText, testTag = FormComponentsTestTags.SUBJECT_LABEL)
     SelectorFieldPill(
         valueText = subject,
         placeholderText = stringResource(R.string.event_planning_select_or_enter_placeholder),
@@ -753,7 +752,7 @@ fun FormContent(
           focusManager.clearFocus()
           onSubjectClick()
         },
-        testTag = Tags.SUBJECT_SELECTOR,
+        testTag = FormComponentsTestTags.SUBJECT_SELECTOR,
         hasDropdownArrow = true,
         isError = isSubjectMissing,
     )
@@ -761,36 +760,36 @@ fun FormContent(
     // Location (optional)
     SectionLabel(
         text = stringResource(R.string.event_planning_location_optional_label),
-        testTag = Tags.LOCATION_LABEL,
+        testTag = FormComponentsTestTags.LOCATION_LABEL,
     )
     OutlinedInputField(
         value = location,
         onValueChange = onLocationChange,
         placeholder = stringResource(R.string.event_planning_select_or_enter_placeholder),
-        testTag = Tags.LOCATION_INPUT,
+        testTag = FormComponentsTestTags.LOCATION_INPUT,
     )
 
     // Description (optional)
     SectionLabel(
         text = stringResource(R.string.event_planning_description_optional_label),
-        testTag = Tags.DESCRIPTION_LABEL,
+        testTag = FormComponentsTestTags.DESCRIPTION_LABEL,
     )
     OutlinedInputField(
         value = description,
         onValueChange = onDescriptionChange,
         placeholder = stringResource(R.string.event_planning_description_placeholder),
-        testTag = Tags.DESCRIPTION_INPUT,
+        testTag = FormComponentsTestTags.DESCRIPTION_INPUT,
     )
 
     // Tasks (optional)
     if (showTasksSection && onAddTask != null) {
       SectionLabel(
           text = stringResource(R.string.event_planning_tasks_optional_label),
-          testTag = Tags.TASKS_LABEL,
+          testTag = FormComponentsTestTags.TASKS_LABEL,
       )
       AddTaskInputField(
           onAddTask = onAddTask,
-          testTag = Tags.ADD_TASK_BUTTON,
+          testTag = FormComponentsTestTags.ADD_TASK_BUTTON,
       )
 
       tasks.forEachIndexed { index, task ->
@@ -804,9 +803,9 @@ fun FormContent(
               focusManager.clearFocus()
               onDeleteTask?.invoke(index)
             },
-            itemTag = "${Tags.TASK_ITEM_PREFIX}$index",
-            checkboxTag = "${Tags.TASK_CHECKBOX_PREFIX}$index",
-            deleteTag = "${Tags.TASK_DELETE_PREFIX}$index",
+            itemTag = "${FormComponentsTestTags.TASK_ITEM_PREFIX}$index",
+            checkboxTag = "${FormComponentsTestTags.TASK_CHECKBOX_PREFIX}$index",
+            deleteTag = "${FormComponentsTestTags.TASK_DELETE_PREFIX}$index",
         )
       }
     }
@@ -825,3 +824,36 @@ private fun formTextFieldColors(): TextFieldColors =
         focusedIndicatorColor = Color.Transparent,
         unfocusedIndicatorColor = Color.Transparent,
     )
+
+/** Test tags for reusable form components. */
+object FormComponentsTestTags {
+  const val SCROLL_CONTAINER = "form_components_scroll_container"
+
+  // Section Labels
+  const val TYPE_LABEL = "form_components_type_label"
+  const val DATE_LABEL = "form_components_date_label"
+  const val START_TIME_LABEL = "form_components_start_time_label"
+  const val END_TIME_LABEL = "form_components_end_time_label"
+  const val SUBJECT_LABEL = "form_components_subject_label"
+  const val LOCATION_LABEL = "form_components_location_label"
+  const val DESCRIPTION_LABEL = "form_components_description_label"
+  const val TASKS_LABEL = "form_components_tasks_label"
+
+  // Interactive Elements / Selectors
+  const val TYPE_SELECTOR = "form_components_type_selector"
+  const val DATE_SELECTOR = "form_components_date_selector"
+  const val START_TIME_SELECTOR = "form_components_start_time_selector"
+  const val END_TIME_SELECTOR = "form_components_end_time_selector"
+  const val SUBJECT_SELECTOR = "form_components_subject_selector"
+  const val LOCATION_INPUT = "form_components_location_input"
+  const val DESCRIPTION_INPUT = "form_components_description_input"
+
+  // Tasks
+  const val ADD_TASK_BUTTON = "form_components_add_task_button"
+  const val TASK_ITEM_PREFIX = "form_components_task_item_"
+  const val TASK_CHECKBOX_PREFIX = "form_components_task_checkbox_"
+  const val TASK_DELETE_PREFIX = "form_components_task_delete_"
+
+  // Actions & Feedback
+  const val ENDS_NEXT_DAY_WARNING = "form_components_ends_next_day_warning"
+}

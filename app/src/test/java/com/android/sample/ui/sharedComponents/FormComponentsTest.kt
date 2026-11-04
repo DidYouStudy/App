@@ -21,7 +21,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
-import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
+import com.android.sample.ui.sharedComponents.FormComponentsTestTags as Tags
 import java.time.LocalDate
 import java.time.LocalTime
 import org.junit.Assert.assertEquals
