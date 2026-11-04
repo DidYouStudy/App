@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.sample
 
 import androidx.compose.ui.test.assertIsDisplayed

@@ -203,6 +203,76 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
     assertError(outsider.repository.getSession(uniqueId()), EventsError.NOT_FOUND)
   }
 
+  /** A malformed stored session does not hide a valid session from public observation. */
+  @Test
+  fun observeSessionsSkipsUndecodableSession() = runBlocking {
+    val valid = session(creator, uniqueId())
+    val badId = uniqueId()
+    try {
+      creator.repository.saveSession(creator.uid, valid).getOrThrow()
+      sync(creator)
+      writeUndecodableSession(badId)
+
+      val emission =
+          withTimeout(TIMEOUT_MILLIS) {
+            outsider.repository.observeSessions(now()).first { result ->
+              result.isFailure || result.getOrNull()?.any { it.id == valid.id } == true
+            }
+          }
+
+      assertTrue(emission.isSuccess)
+      assertTrue(emission.getOrThrow().any { it.id == valid.id })
+      assertFalse(emission.getOrThrow().any { it.id == badId })
+    } finally {
+      deleteDocument(creator, badId)
+      deleteDocument(creator, valid.id)
+    }
+  }
+
+  /** Reading an individually malformed document reports INVALID_EVENT_DATA. */
+  @Test
+  fun getUndecodableSessionReturnsInvalidEventData() = runBlocking {
+    val badId = uniqueId()
+    try {
+      writeUndecodableSession(badId)
+
+      assertError(outsider.repository.getSession(badId), EventsError.INVALID_EVENT_DATA)
+    } finally {
+      deleteDocument(creator, badId)
+    }
+  }
+
+  /** A creator can delete a malformed session and it is gone afterward. */
+  @Test
+  fun creatorCanDeleteUndecodableSession() = runBlocking {
+    val badId = uniqueId()
+    try {
+      writeUndecodableSession(badId)
+
+      creator.repository.deleteSession(creator.uid, badId).getOrThrow()
+      assertFalse(serverDocument(outsider, badId).exists())
+    } finally {
+      deleteDocument(creator, badId)
+    }
+  }
+
+  /** A non-creator is denied deletion of a malformed session and it remains stored. */
+  @Test
+  fun nonCreatorCannotDeleteUndecodableSession() = runBlocking {
+    val badId = uniqueId()
+    try {
+      writeUndecodableSession(badId)
+
+      assertError(
+          member.repository.deleteSession(member.uid, badId),
+          EventsError.PERMISSION_DENIED,
+      )
+      assertTrue(serverDocument(outsider, badId).exists())
+    } finally {
+      deleteDocument(creator, badId)
+    }
+  }
+
   /** Public observations filter end boundaries and sort by start, end, then document ID. */
   @Test
   fun observeSessionsFiltersAndSortsForAnotherUser() = runBlocking {
@@ -421,6 +491,58 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
     assertEquals(before, serverData(outsider, original.id)["memberIds"])
   }
 
+  /** Two users racing for the final place yield exactly one successful join. */
+  @Test
+  fun concurrentJoinsForLastPlaceAllowExactlyOneWinner() = runBlocking {
+    val filler = newClient("last-place-filler")
+    val sessionIds = mutableListOf<String>()
+    try {
+      repeat(3) { round ->
+        val value = session(creator, uniqueId())
+        sessionIds += value.id
+        creator.repository.saveSession(creator.uid, value).getOrThrow()
+        sync(creator)
+
+        val memberIds = mutableSetOf(creator.uid)
+        repeat(GroupSession.MAX_MEMBERS - 2) { index ->
+          val fillerId = signUp(filler, "last-place-$round-$index")
+          filler.repository.joinSession(fillerId, value.id).getOrThrow()
+          sync(filler)
+          memberIds += fillerId
+        }
+        assertEquals(GroupSession.MAX_MEMBERS - 1, memberIds.size)
+
+        val joiners = listOf(member, outsider)
+        val start = CompletableDeferred<Unit>()
+        val results =
+            joiners
+                .map { client ->
+                  async(Dispatchers.IO) {
+                    start.await()
+                    client.repository.joinSession(client.uid, value.id)
+                  }
+                }
+                .also { start.complete(Unit) }
+                .awaitAll()
+
+        assertEquals(1, results.count { it.isSuccess })
+        val failure = results.single { it.isFailure }
+        assertError(failure, EventsError.PERMISSION_DENIED)
+        val winnerId = joiners[results.indexOfFirst { it.isSuccess }].uid
+        val loserId = joiners[results.indexOfFirst { it.isFailure }].uid
+        sync(member)
+        sync(outsider)
+
+        val storedMembers = serverData(creator, value.id)["memberIds"] as List<*>
+        assertEquals(GroupSession.MAX_MEMBERS, storedMembers.size)
+        assertTrue(storedMembers.contains(winnerId))
+        assertFalse(storedMembers.contains(loserId))
+      }
+    } finally {
+      sessionIds.forEach { deleteDocument(creator, it) }
+    }
+  }
+
   /** Concurrent joins and a simultaneous join/leave retain both intended membership changes. */
   @Test
   fun concurrentMembershipChangesAreNotLostAcrossSeveralSessions() = runBlocking {
@@ -618,6 +740,25 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
   /** Waits until all local writes for [client] have reached Firestore. */
   private suspend fun sync(client: Client) {
     timed { client.db.waitForPendingWrites().await() }
+  }
+
+  /** Writes a rule-valid but undecodable payload directly, bypassing the repository mapper. */
+  private suspend fun writeUndecodableSession(id: String) {
+    val payload = GroupSessionFirestoreMapper.encode(session(creator, id)) + ("subject" to "\u00A0")
+    timed {
+      creator.db
+          .collection(GroupSessionFirestoreMapper.COLLECTION)
+          .document(id)
+          .set(payload)
+          .await()
+    }
+  }
+
+  /** Deletes one document directly so cleanup also works when repository decoding fails. */
+  private suspend fun deleteDocument(client: Client, id: String) {
+    timed {
+      client.db.collection(GroupSessionFirestoreMapper.COLLECTION).document(id).delete().await()
+    }
   }
 
   /** Requires an unreachable-port operation to fail with STORAGE_FAILURE within 30 seconds. */
