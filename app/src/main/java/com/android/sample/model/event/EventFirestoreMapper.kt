@@ -1,4 +1,5 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.sample.model.event
 
 import com.google.firebase.Timestamp
@@ -62,11 +63,11 @@ internal object EventFirestoreMapper {
   }
 
   /** Converts a stored timestamp without using the device time zone. */
-  private fun instant(value: Any?): Instant =
+  internal fun instant(value: Any?): Instant =
       (value as Timestamp).let { Instant.ofEpochSecond(it.seconds, it.nanoseconds.toLong()) }
 
   /** Optional strings tolerate absence and null, but reject incorrect field types. */
-  private fun Map<String, Any?>.optionalString(key: String): String? =
+  internal fun Map<String, Any?>.optionalString(key: String): String? =
       get(key)?.let { it as String }
 
   /** Makes malformed document failures independent of Firebase and casting exceptions. */
