@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import com.android.sample.R
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
+import com.android.sample.ui.theme.calendarDateLabelStyle
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
@@ -248,7 +249,7 @@ fun CalendarDayHeader(
             text = date.dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.US),
             modifier = Modifier.testTag(CalendarTestTags.dayName(date)).offset(y = dateTopSpacing),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 10.sp,
+            fontSize = calendarDateLabelStyle.fontSize,
         )
         Spacer(modifier = Modifier.height(Spacing.extraExtraSmall))
 
@@ -271,7 +272,7 @@ fun CalendarDayHeader(
                   if (isToday) MaterialTheme.colorScheme.onPrimary
                   else MaterialTheme.colorScheme.onSurface,
               fontWeight = FontWeight.Bold,
-              fontSize = 10.sp, // TODO:remove hardcoded value
+              fontSize = calendarDateLabelStyle.fontSize,
           )
         }
       }
