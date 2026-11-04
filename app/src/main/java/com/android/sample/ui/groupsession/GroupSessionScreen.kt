@@ -1,6 +1,7 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Copilot
 // Co-authored-by: Gemini
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.groupsession
 
 import androidx.compose.foundation.BorderStroke
