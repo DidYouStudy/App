@@ -35,6 +35,7 @@ val Typography =
         */
     )
 val calendarDateLabelStyle: TextStyle = TextStyle(fontSize = 10.sp)
-val calendarEventTitleStyle: TextStyle = TextStyle(fontSize = 9.sp, fontWeight = FontWeight.Bold)
-val calendarEventSubjectStyle: TextStyle = TextStyle(fontSize = 9.sp)
-val calendarEventTimeStyle: TextStyle = TextStyle(fontSize = 8.sp)
+val calendarEventTitleStyle: TextStyle =
+    TextStyle(fontSize = 9.sp, lineHeight = 11.sp, fontWeight = FontWeight.Bold)
+val calendarEventSubjectStyle: TextStyle = TextStyle(fontSize = 9.sp, lineHeight = 11.sp)
+val calendarEventTimeStyle: TextStyle = TextStyle(fontSize = 8.sp, lineHeight = 11.sp)

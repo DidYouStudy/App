@@ -2,9 +2,11 @@ package com.android.sample.ui.calendar
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,7 +15,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventType
 import com.android.sample.ui.theme.DidYouStudyTheme
@@ -30,7 +35,7 @@ import java.time.format.DateTimeFormatter
 
 private val EVENT_TIME_FORMAT = DateTimeFormatter.ofPattern("H:mm").withZone(ZoneId.systemDefault())
 
-/** Clickable event card which * */
+/** Displays an event with a type label, subject, and space-aware start-time label. */
 @Composable
 fun CalendarEventCard(
     event: Event,
@@ -46,12 +51,14 @@ fun CalendarEventCard(
   val startingTime = EVENT_TIME_FORMAT.format(event.startsAt)
   val cardShape = RoundedCornerShape(Dimens.calendarEventCardCorner)
 
+  // The surface provides one clickable, rounded container for the complete event card.
   Surface(
       modifier = modifier,
       onClick = {}, // shows the event details screen
       shape = cardShape,
       color = color,
   ) {
+    // Keep the dark event-type accent separate from the text content.
     Row {
       Box(
           modifier =
@@ -65,15 +72,44 @@ fun CalendarEventCard(
           modifier =
               Modifier.padding(
                   start = Spacing.extraSmall,
-                  end = Spacing.small,
                   top = Spacing.extraSmall,
-                  bottom = Spacing.small,
+                  bottom = 1.dp,
               ),
           horizontalAlignment = Alignment.Start,
       ) {
-        Text(text = title, style = calendarEventTitleStyle)
-        Text(text = subject, style = calendarEventSubjectStyle)
-        Text(text = startingTime, style = calendarEventTimeStyle, color = EventTimeLabel)
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+          val density = LocalDensity.current
+
+          // Calculate the space required for the title and the subject. The time is always one
+          // line.
+          val titleHeight = with(density) { calendarEventTitleStyle.lineHeight.toDp() }
+          val subjectLineHeight = with(density) { calendarEventSubjectStyle.lineHeight.toDp() }
+
+          // The title is mandatory, so only the space below it can be shared by subject and time.
+          val remainingHeight = (maxHeight - titleHeight).coerceAtLeast(0.dp)
+          val remainingLines = (remainingHeight / subjectLineHeight).toInt()
+
+          // Reserve the final available line for the time whenever at least two lines remain.
+          val showTime = remainingLines >= 2
+          val subjectLines = if (showTime) remainingLines - 1 else remainingLines
+
+          Column {
+            Text(text = title, style = calendarEventTitleStyle)
+            if (subjectLines > 0) {
+              // The subject receives every remaining line and truncates with an ellipsis if needed.
+              Text(
+                  text = subject,
+                  style = calendarEventSubjectStyle,
+                  maxLines = subjectLines,
+                  overflow = TextOverflow.Ellipsis,
+              )
+            }
+            if (showTime) {
+              // The time is always the last line when the card has room for it.
+              Text(text = startingTime, style = calendarEventTimeStyle, color = EventTimeLabel)
+            }
+          }
+        }
       }
     }
   }
