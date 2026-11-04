@@ -1,5 +1,6 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: GitHub Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.sample.model.event
 
 import java.time.Duration
@@ -41,6 +42,7 @@ data class GroupSession(
     require(memberIds.all { it.isNotBlank() }) { "Member IDs must not be blank" }
     require(createdBy in memberIds) { "Creator must be a member" }
     require(memberIds.distinct().size == memberIds.size) { "Member IDs must be unique" }
+    require(memberIds.size <= MAX_MEMBERS) { "Group session must not exceed $MAX_MEMBERS members" }
     require(subject?.isNotBlank() ?: (type == EventType.OTHER)) {
       "Subject must not be blank, and may only be absent for OTHER"
     }
