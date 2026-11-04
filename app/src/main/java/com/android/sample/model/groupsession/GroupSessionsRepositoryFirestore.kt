@@ -5,7 +5,6 @@ import com.android.sample.model.event.EventFirestoreMapper
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
@@ -32,14 +31,12 @@ class GroupSessionsRepositoryFirestore(
       observe { emit ->
         sessions()
             .whereGreaterThan("endsAt", EventFirestoreMapper.timestamp(endingAfter))
-            .orderBy("endsAt")
-            .orderBy("startsAt")
-            .orderBy(FieldPath.documentId())
             .addSnapshotListener { snapshot, error ->
               emit(
                   capture {
                     checkSignedIn()
                     if (error != null) throw error
+                    // Sorting on the device keeps this query free of a composite index.
                     requireNotNull(snapshot)
                         .documents
                         .map { GroupSessionFirestoreMapper.decode(it.id, requireNotNull(it.data)) }
