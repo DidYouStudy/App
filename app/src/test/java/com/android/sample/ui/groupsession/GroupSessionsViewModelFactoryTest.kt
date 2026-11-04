@@ -9,7 +9,7 @@ import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.EventType
-import com.android.sample.model.groupsession.GroupSession
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
 import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository

@@ -43,6 +43,15 @@ class PersonalEventTest {
     assertTrue(event.tasks.isEmpty())
   }
 
+  /** A personal event is an [Event], so shared code can read its identity without a cast. */
+  @Test
+  fun personalEvent_isAnEvent() {
+    val event: Event = event()
+
+    assertEquals("event-1", event.id)
+    assertEquals(created, event.createdAt)
+  }
+
   /** Hand-made events carry no import key, and a key, when present, must have text. */
   @Test
   fun importKey_isNullByDefaultAndMustNotBeBlank() {

@@ -4,6 +4,7 @@ package com.android.sample.model.groupsession
 
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
+import com.android.sample.model.event.GroupSession
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow

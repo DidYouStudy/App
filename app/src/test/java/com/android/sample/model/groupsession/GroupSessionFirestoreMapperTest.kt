@@ -4,6 +4,7 @@ package com.android.sample.model.groupsession
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
+import com.android.sample.model.event.GroupSession
 import com.google.firebase.Timestamp
 import java.time.Instant
 import org.junit.Assert.assertEquals
