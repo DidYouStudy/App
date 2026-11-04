@@ -445,7 +445,7 @@ fun SubjectPickerDialogContent(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
 ) {
-  var searchQuery by remember { mutableStateOf("") }
+  var searchQuery by rememberSaveable { mutableStateOf("") }
 
   val filteredSubjects =
       remember(searchQuery, allSubjects) {

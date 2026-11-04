@@ -328,7 +328,7 @@ class AddEventScreenTest {
             date = null,
             startTime = null,
             endTime = null,
-            error = "Validation error",
+            error = EventPlanningViewModel.EVENT_DATE_AND_TIMES_REQUIRED_ERROR,
         )
 
     composeTestRule.setContent {

@@ -267,7 +267,7 @@ class EventFormContentTest {
             startTime = null,
             endTime = null,
             subject = "",
-            error = "Missing fields",
+            error = EventPlanningViewModel.EVENT_DATE_AND_TIMES_REQUIRED_ERROR,
         )
 
     composeTestRule.setContent {
@@ -313,5 +313,42 @@ class EventFormContentTest {
     }
 
     composeTestRule.onNodeWithTag(Tags.SCROLL_CONTAINER).performClick()
+  }
+
+  @Test
+  fun formContentDoesNotHighlightMissingFieldsWhenErrorIsNotValidationError() {
+    val uiState =
+        EventPlanningUiState(
+            type = EventType.COURSE,
+            date = null, // Missing fields
+            startTime = null,
+            endTime = null,
+            subject = "",
+            error =
+                EventPlanningViewModel
+                    .FAILED_TO_ADD_EVENT_ERROR, // Backend error, NOT validation error
+        )
+
+    composeTestRule.setContent {
+      EventFormContent(
+          uiState = uiState,
+          onTypeChange = {},
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationChange = {},
+          onDescriptionChange = {},
+          onAddTask = {},
+          onToggleTask = {},
+          onDeleteTask = {},
+      )
+    }
+
+    // Verify pills render in their default state without error borders
+    composeTestRule.onNodeWithTag(Tags.DATE_SELECTOR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(Tags.START_TIME_SELECTOR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(Tags.END_TIME_SELECTOR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(Tags.SUBJECT_SELECTOR).assertIsDisplayed()
   }
 }

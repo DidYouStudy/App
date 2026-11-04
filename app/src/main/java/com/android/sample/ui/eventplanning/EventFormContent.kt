@@ -83,12 +83,14 @@ fun EventFormContent(
   var pillWidth by remember { mutableStateOf(Dimens.noPadding) }
 
   /** Per-component errors: */
-  val hasValidationError = uiState.error != null
-  val isDateMissing = hasValidationError && uiState.date == null
-  val isStartTimeMissing = hasValidationError && uiState.startTime == null
-  val isEndTimeMissing = hasValidationError && uiState.endTime == null
-  val isSubjectMissing =
-      hasValidationError && uiState.isSubjectRequired && uiState.subject.isBlank()
+  val isValidationError =
+      uiState.error == EventPlanningViewModel.EVENT_DATE_AND_TIMES_REQUIRED_ERROR ||
+          uiState.error == EventPlanningViewModel.INVALID_EVENT_ERROR
+
+  val isDateMissing = isValidationError && uiState.date == null
+  val isStartTimeMissing = isValidationError && uiState.startTime == null
+  val isEndTimeMissing = isValidationError && uiState.endTime == null
+  val isSubjectMissing = isValidationError && uiState.isSubjectRequired && uiState.subject.isBlank()
 
   Column(
       modifier =

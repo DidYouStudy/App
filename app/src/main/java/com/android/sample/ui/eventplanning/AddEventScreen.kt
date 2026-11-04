@@ -187,11 +187,9 @@ fun AddEventScreenStateless(
     modifier: Modifier = Modifier,
     onTypeClick: (() -> Unit)? = null,
 ) {
-  val hasMissingFields =
-      uiState.date == null ||
-          uiState.startTime == null ||
-          uiState.endTime == null ||
-          (uiState.isSubjectRequired && uiState.subject.isBlank())
+  val isValidationError =
+      uiState.error == EventPlanningViewModel.EVENT_DATE_AND_TIMES_REQUIRED_ERROR ||
+          uiState.error == EventPlanningViewModel.INVALID_EVENT_ERROR
 
   Scaffold(
       topBar = {
@@ -234,8 +232,9 @@ fun AddEventScreenStateless(
               horizontalAlignment = Alignment.CenterHorizontally,
           ) {
             uiState.error?.let {
+              // Map the error directly based on ViewModel error state
               val errorMessageRes =
-                  if (hasMissingFields) {
+                  if (isValidationError) {
                     R.string.event_planning_error_required_fields
                   } else {
                     R.string.event_planning_error_save_failed

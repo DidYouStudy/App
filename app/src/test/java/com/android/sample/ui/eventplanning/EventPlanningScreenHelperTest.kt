@@ -4,7 +4,10 @@ package com.android.sample.ui.eventplanning
 import android.content.Context
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -355,5 +358,33 @@ class EventPlanningScreenHelperTest {
 
     composeTestRule.onNodeWithTag("focus_task_input").performClick()
     composeTestRule.waitForIdle()
+  }
+
+  @Test
+  fun subjectPickerDialogQuerySurvivesScreenRestoration() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val restorationTester = StateRestorationTester(composeTestRule)
+    val query = "Linear Algebra"
+    val placeholder = context.getString(R.string.event_planning_subject_search_placeholder)
+
+    restorationTester.setContent {
+      SubjectPickerDialogContent(
+          currentSelection = "",
+          allSubjects = listOf("Linear Algebra", "Analysis I"),
+          onDismiss = {},
+          onConfirm = {},
+      )
+    }
+
+    // Target the input field explicitly
+    val searchInputNode = composeTestRule.onNode(hasSetTextAction())
+    searchInputNode.assertIsDisplayed().performTextInput(query)
+    searchInputNode.assertTextContains(query)
+
+    // Simulate screen rotation / configuration change
+    restorationTester.emulateSavedInstanceStateRestore()
+
+    // Verify the query is retained inside the text input node
+    composeTestRule.onNode(hasSetTextAction()).assertIsDisplayed().assertTextContains(query)
   }
 }
