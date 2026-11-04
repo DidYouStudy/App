@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -40,6 +41,7 @@ import com.android.sample.ui.profile.ProfileButton
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
+import com.android.sample.ui.theme.Typography
 import java.time.LocalDate
 
 /** Renders the calendar scaffold from the supplied state and action callbacks. */
@@ -124,6 +126,11 @@ fun CalendarScreen(
               Spacer(modifier = Modifier.height(Spacing.small))
               Button(
                   onClick = onRetry,
+                  modifier =
+                      Modifier.size(
+                          width = Dimens.calendarRetryButtonWidth,
+                          height = Dimens.calendarRetryButtonHeight,
+                      ),
                   enabled = !uiState.isLoading,
                   colors =
                       ButtonDefaults.buttonColors(
@@ -132,9 +139,12 @@ fun CalendarScreen(
                       ),
               ) {
                 if (uiState.isLoading) {
-                  CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
+                  CircularProgressIndicator(
+                      modifier = Modifier.size(Dimens.calendarLoadingSignSize),
+                      color = MaterialTheme.colorScheme.onPrimary,
+                  )
                 } else {
-                  Text(text = stringResource(R.string.calendar_retry_button))
+                  Text(text = stringResource(R.string.calendar_retry_button), fontSize = Typography.bodyLarge.fontSize)
                 }
               }
             }
@@ -167,14 +177,14 @@ fun CalendarScreenPreview() {
   }
 }
 
-/** Renders a preview of the calendar screen's event-loading error state. */
+/** Renders a preview of the calendar screen's event-loading error state. Allows users to reattempt loading. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
 @Composable
 fun CalendarScreenErrorPreview() {
   DidYouStudyTheme {
     CalendarScreen(
-        uiState = previewUiState(error = CalendarViewModelError.LOAD_EVENTS_FAILED),
+        uiState = previewUiState(error = CalendarViewModelError.LOAD_EVENTS_FAILED, isLoading = false),
         onToday = {},
         onPreviousWeek = {},
         onNextWeek = {},
@@ -183,9 +193,26 @@ fun CalendarScreenErrorPreview() {
   }
 }
 
+/** Renders a preview of the calendar screen's event-loading error state, when a reattempt is in progress. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true)
+@Composable
+fun CalendarScreenErrorReloadPreview() {
+    DidYouStudyTheme {
+        CalendarScreen(
+            uiState = previewUiState(error = CalendarViewModelError.LOAD_EVENTS_FAILED, isLoading = true),
+            onToday = {},
+            onPreviousWeek = {},
+            onNextWeek = {},
+            onRetry = {},
+        )
+    }
+}
+
 /** Creates deterministic date state for the calendar screen previews. */
 private fun previewUiState(
     error: CalendarViewModelError? = null,
+    isLoading: Boolean = false
 ): CalendarUiState {
   val today = LocalDate.of(2026, 10, 28)
   val dates = CalendarDateHelper().weekDates(today)
@@ -193,7 +220,7 @@ private fun previewUiState(
       today = today,
       weekStart = dates.first(),
       weekDates = dates,
-      isLoading = false,
+      isLoading = isLoading,
       error = error,
   )
 }
