@@ -1,9 +1,10 @@
-// Co-authored-by: Gemini AI Agent
-package com.android.sample.ui.eventplanning
+// Co-authored-by: Claude AI Agent
+package com.android.sample.ui.sharedComponents
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,18 +14,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
@@ -62,6 +67,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -71,14 +79,18 @@ import androidx.compose.ui.window.DialogProperties
 import com.android.sample.R
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
+import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
 import com.android.sample.ui.theme.AlphaTokens
 import com.android.sample.ui.theme.Dimens
+import com.android.sample.ui.theme.Spacing
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 
+/** Renders a bold section title label for form fields. */
 @Composable
 fun SectionLabel(text: String, testTag: String) {
   Text(
@@ -323,8 +335,6 @@ fun AddTaskInputField(
   )
 }
 
-/** Dialog & Picker components: */
-
 /** Material 3 Type dropdown menu matching the types from EventType. */
 @Composable
 fun EventTypeDropdownMenu(
@@ -362,7 +372,7 @@ fun EventTypeDropdownMenu(
   }
 }
 
-/** Material 3 DatePickerDialog configured for text input mode (matches Screenshot). */
+/** Material 3 DatePickerDialog configured for text input mode. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventDatePickerDialog(
@@ -402,7 +412,7 @@ fun EventDatePickerDialog(
   }
 }
 
-/** Material 3 TimePickerDialog using the dial clock picker (matches Screenshot). */
+/** Material 3 TimePickerDialog using the dial clock picker. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventTimePickerDialog(
@@ -546,6 +556,7 @@ fun SubjectPickerDialogContent(
   }
 }
 
+/** Subject Picker Dialog wrapper. */
 @Composable
 fun SubjectPickerDialog(
     currentSelection: String,
@@ -566,7 +577,242 @@ fun SubjectPickerDialog(
   }
 }
 
-/** Extracted color palette to eliminate SonarCloud duplication smells across form fields. */
+/** Generic scrollable form layout that can be shared between events and group sessions. */
+@Composable
+fun FormContent(
+    type: EventType,
+    subject: String,
+    date: LocalDate?,
+    startTime: LocalTime?,
+    endTime: LocalTime?,
+    location: String,
+    description: String,
+    isSubjectRequired: Boolean,
+    onTypeChange: (EventType) -> Unit,
+    onDateClick: () -> Unit,
+    onStartTimeClick: () -> Unit,
+    onEndTimeClick: () -> Unit,
+    onSubjectClick: () -> Unit,
+    onLocationChange: (String) -> Unit,
+    onDescriptionChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    tasks: List<EventTask> = emptyList(),
+    showTasksSection: Boolean = true,
+    isDateMissing: Boolean = false,
+    isStartTimeMissing: Boolean = false,
+    isEndTimeMissing: Boolean = false,
+    isSubjectMissing: Boolean = false,
+    onAddTask: ((String) -> Unit)? = null,
+    onToggleTask: ((Int) -> Unit)? = null,
+    onDeleteTask: ((Int) -> Unit)? = null,
+    onTypeClick: (() -> Unit)? = null,
+) {
+  val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+  val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+  var showTypeMenu by rememberSaveable { mutableStateOf(false) }
+  val focusManager = LocalFocusManager.current
+  val density = LocalDensity.current
+  var pillWidth by remember { mutableStateOf(Dimens.noPadding) }
+
+  Column(
+      modifier =
+          modifier
+              .verticalScroll(rememberScrollState())
+              .clickable(
+                  interactionSource = remember { MutableInteractionSource() },
+                  indication = null,
+              ) {
+                focusManager.clearFocus()
+              }
+              .padding(
+                  horizontal = Dimens.formHorizontalPadding,
+                  vertical = Dimens.formVerticalPadding,
+              )
+              .testTag(Tags.SCROLL_CONTAINER),
+      verticalArrangement = Arrangement.spacedBy(Dimens.formSpacing),
+  ) {
+    // Type
+    SectionLabel(
+        text = stringResource(R.string.event_planning_type_label),
+        testTag = Tags.TYPE_LABEL,
+    )
+    Box(
+        modifier =
+            Modifier.fillMaxWidth().onSizeChanged { size ->
+              pillWidth = with(density) { size.width.toDp() }
+            }
+    ) {
+      SelectorFieldPill(
+          valueText = type.name.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() },
+          placeholderText = stringResource(R.string.event_planning_type_placeholder),
+          onClick = {
+            focusManager.clearFocus()
+            if (onTypeClick != null) {
+              onTypeClick()
+            } else {
+              showTypeMenu = true
+            }
+          },
+          testTag = Tags.TYPE_SELECTOR,
+          hasDropdownArrow = true,
+      )
+
+      EventTypeDropdownMenu(
+          expanded = showTypeMenu,
+          onDismissRequest = { showTypeMenu = false },
+          onTypeSelected = { selectedType ->
+            onTypeChange(selectedType)
+            showTypeMenu = false
+          },
+          modifier = Modifier.width(pillWidth),
+      )
+    }
+
+    // Date
+    SectionLabel(
+        text = stringResource(R.string.event_planning_date_label),
+        testTag = Tags.DATE_LABEL,
+    )
+    SelectorFieldPill(
+        valueText = date?.format(dateFormatter),
+        placeholderText = stringResource(R.string.event_planning_date_placeholder),
+        onClick = {
+          focusManager.clearFocus()
+          onDateClick()
+        },
+        testTag = Tags.DATE_SELECTOR,
+        isError = isDateMissing,
+    )
+
+    // Start time
+    SectionLabel(
+        text = stringResource(R.string.event_planning_start_time_label),
+        testTag = Tags.START_TIME_LABEL,
+    )
+    SelectorFieldPill(
+        valueText = startTime?.format(timeFormatter),
+        placeholderText = stringResource(R.string.event_planning_time_placeholder),
+        onClick = {
+          focusManager.clearFocus()
+          onStartTimeClick()
+        },
+        testTag = Tags.START_TIME_SELECTOR,
+        isError = isStartTimeMissing,
+    )
+
+    // End time
+    SectionLabel(
+        text = stringResource(R.string.event_planning_end_time_label),
+        testTag = Tags.END_TIME_LABEL,
+    )
+    SelectorFieldPill(
+        valueText = endTime?.format(timeFormatter),
+        placeholderText = stringResource(R.string.event_planning_time_placeholder),
+        onClick = {
+          focusManager.clearFocus()
+          onEndTimeClick()
+        },
+        testTag = Tags.END_TIME_SELECTOR,
+        isError = isEndTimeMissing,
+    )
+
+    // Informational warning for overnight events
+    val endsNextDay = startTime != null && endTime != null && endTime.isBefore(startTime)
+
+    if (endsNextDay) {
+      Row(
+          verticalAlignment = Alignment.CenterVertically,
+          modifier =
+              Modifier.padding(start = Dimens.cornerSmall, top = Spacing.extraSmall)
+                  .testTag(Tags.ENDS_NEXT_DAY_WARNING),
+      ) {
+        Icon(
+            imageVector = Icons.Outlined.Info,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(Dimens.iconSizeSmall),
+        )
+        Spacer(modifier = Modifier.width(Spacing.extraSmall))
+        Text(
+            text = stringResource(R.string.event_planning_ends_next_day_warning),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary,
+        )
+      }
+    }
+
+    // Subject
+    val subjectLabelText =
+        if (isSubjectRequired) stringResource(R.string.event_planning_subject_label)
+        else stringResource(R.string.event_planning_subject_optional_label)
+    SectionLabel(text = subjectLabelText, testTag = Tags.SUBJECT_LABEL)
+    SelectorFieldPill(
+        valueText = subject,
+        placeholderText = stringResource(R.string.event_planning_select_or_enter_placeholder),
+        onClick = {
+          focusManager.clearFocus()
+          onSubjectClick()
+        },
+        testTag = Tags.SUBJECT_SELECTOR,
+        hasDropdownArrow = true,
+        isError = isSubjectMissing,
+    )
+
+    // Location (optional)
+    SectionLabel(
+        text = stringResource(R.string.event_planning_location_optional_label),
+        testTag = Tags.LOCATION_LABEL,
+    )
+    OutlinedInputField(
+        value = location,
+        onValueChange = onLocationChange,
+        placeholder = stringResource(R.string.event_planning_select_or_enter_placeholder),
+        testTag = Tags.LOCATION_INPUT,
+    )
+
+    // Description (optional)
+    SectionLabel(
+        text = stringResource(R.string.event_planning_description_optional_label),
+        testTag = Tags.DESCRIPTION_LABEL,
+    )
+    OutlinedInputField(
+        value = description,
+        onValueChange = onDescriptionChange,
+        placeholder = stringResource(R.string.event_planning_description_placeholder),
+        testTag = Tags.DESCRIPTION_INPUT,
+    )
+
+    // Tasks (optional)
+    if (showTasksSection && onAddTask != null) {
+      SectionLabel(
+          text = stringResource(R.string.event_planning_tasks_optional_label),
+          testTag = Tags.TASKS_LABEL,
+      )
+      AddTaskInputField(
+          onAddTask = onAddTask,
+          testTag = Tags.ADD_TASK_BUTTON,
+      )
+
+      tasks.forEachIndexed { index, task ->
+        TaskRowItem(
+            task = task,
+            onToggle = {
+              focusManager.clearFocus()
+              onToggleTask?.invoke(index)
+            },
+            onDelete = {
+              focusManager.clearFocus()
+              onDeleteTask?.invoke(index)
+            },
+            itemTag = "${Tags.TASK_ITEM_PREFIX}$index",
+            checkboxTag = "${Tags.TASK_CHECKBOX_PREFIX}$index",
+            deleteTag = "${Tags.TASK_DELETE_PREFIX}$index",
+        )
+      }
+    }
+  }
+}
+
 @Composable
 private fun formTextFieldColors(): TextFieldColors =
     TextFieldDefaults.colors(
