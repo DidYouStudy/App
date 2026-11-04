@@ -32,6 +32,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.sample.R
+import com.android.sample.model.event.Event
+import com.android.sample.model.event.EventType
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -42,6 +44,7 @@ import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.Typography
+import java.time.Instant
 import java.time.LocalDate
 
 /** Renders the calendar scaffold from the supplied state and action callbacks. */
@@ -227,11 +230,63 @@ private fun previewUiState(
 ): CalendarUiState {
   val today = LocalDate.of(2026, 10, 28)
   val dates = CalendarDateHelper().weekDates(today)
+  val previewEvents =
+      listOf(
+          previewEvent(
+              "preview-study",
+              EventType.STUDY_SESSION,
+              "Veryverylongsubjectname",
+              "2026-10-26T00:00:00Z",
+              "2026-10-26T01:00:00Z",
+          ),
+          previewEvent(
+              "preview-course",
+              EventType.COURSE,
+              "Physics",
+              "2026-10-27T22:00:00Z",
+              "2026-10-28T01:00:00Z",
+          ),
+          previewEvent(
+              "preview-lab",
+              EventType.LAB,
+              "Chemistry",
+              "2026-10-28T10:30:00Z",
+              "2026-10-28T11:00:00Z",
+          ),
+          previewEvent(
+              "preview-exam",
+              EventType.EXAM,
+              "History",
+              "2026-10-30T08:00:00Z",
+              "2026-10-30T10:00:00Z",
+          ),
+      )
   return CalendarUiState(
       today = today,
       weekStart = dates.first(),
       weekDates = dates,
+      events = previewEvents,
       isLoading = isLoading,
       error = error,
+  )
+}
+
+/** Creates a valid event used by the calendar screen previews. */
+private fun previewEvent(
+    id: String,
+    type: EventType,
+    subject: String,
+    startsAt: String,
+    endsAt: String,
+): Event {
+  val createdAt = Instant.parse("2026-10-20T12:00:00Z")
+  return Event(
+      id = id,
+      ownerId = "preview-owner",
+      type = type,
+      subject = subject,
+      startsAt = Instant.parse(startsAt),
+      endsAt = Instant.parse(endsAt),
+      createdAt = createdAt,
   )
 }

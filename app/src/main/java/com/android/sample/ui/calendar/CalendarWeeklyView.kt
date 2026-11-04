@@ -45,12 +45,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.android.sample.R
+import com.android.sample.model.event.Event
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.calendarDateLabelStyle
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
@@ -61,6 +63,7 @@ private const val FIRST_VISIBLE_HOUR = 8
 private const val DEFAULT_VISIBLE_HOURS = 10
 private val WEEK_RANGE_FORMAT = DateTimeFormatter.ofPattern("MMM d", Locale.US)
 private val HOUR_FORMAT = DateTimeFormatter.ofPattern("h a", Locale.US)
+private val CALENDAR_ZONE: ZoneId = ZoneId.systemDefault()
 
 /** Test tags for the weekly calendar controls and date headings. */
 object CalendarTestTags {
@@ -119,7 +122,11 @@ internal fun CalendarWeeklyView(
         onNextWeek = onNextWeek,
     )
     CalendarDayHeader(weekDates = uiState.weekDates, today = uiState.today)
-    CalendarTimeGrid(modifier = Modifier.weight(1f))
+    CalendarTimeGrid(
+        events = uiState.events,
+        weekDates = uiState.weekDates,
+        modifier = Modifier.weight(1f),
+    )
   }
 }
 
@@ -305,6 +312,8 @@ private fun CalendarTodayCircle(modifier: Modifier = Modifier) {
 @Composable
 fun CalendarTimeGrid(
     modifier: Modifier = Modifier,
+    events: List<Event> = emptyList(),
+    weekDates: List<LocalDate> = emptyList(),
 ) {
   // Keep the grid vertically scrollable
   val scrollState = remember { ScrollState(0) }
@@ -356,12 +365,26 @@ fun CalendarTimeGrid(
       // Divide the remaining width evenly among the seven empty day columns.
       Row(modifier = Modifier.weight(1f)) {
         repeat(DAYS_PER_WEEK) { dayIndex ->
-          Column(modifier = Modifier.weight(1f)) {
-            repeat(HOURS_PER_DAY) { hour ->
-              CalendarEmptyHourCell(
-                  hourHeight = hourHeight,
-                  isLastHour = hour == HOURS_PER_DAY - 1,
-                  isFirstDay = dayIndex == 0,
+          val placements =
+              events
+                  .mapNotNull { event -> calculateEventPlacement(event, weekDates, hourHeight) }
+                  .filter { placement -> placement.dayIndex == dayIndex }
+
+          Box(modifier = Modifier.weight(1f)) {
+            Column {
+              repeat(HOURS_PER_DAY) { hour ->
+                CalendarEmptyHourCell(
+                    hourHeight = hourHeight,
+                    isLastHour = hour == HOURS_PER_DAY - 1,
+                    isFirstDay = dayIndex == 0,
+                )
+              }
+            }
+            placements.forEach { placement ->
+              CalendarEventCard(
+                  event = placement.event,
+                  modifier =
+                      Modifier.fillMaxWidth().offset(y = placement.top).height(placement.height),
               )
             }
           }
@@ -369,6 +392,40 @@ fun CalendarTimeGrid(
       }
     }
   }
+}
+
+/** Provides the grid coordinates calculated for an event in the displayed week. */
+internal data class CalendarEventPlacement(
+    val event: Event,
+    val dayIndex: Int,
+    val top: Dp,
+    val height: Dp,
+)
+
+/**
+ * Converts an event's absolute times to the calendar time zone and calculates its grid position.
+ *
+ * Events outside [weekDates] return null because they do not belong to one of the displayed day
+ * columns.
+ */
+internal fun calculateEventPlacement(
+    event: Event,
+    weekDates: List<LocalDate>,
+    hourHeight: Dp,
+): CalendarEventPlacement? {
+  val start = event.startsAt.atZone(CALENDAR_ZONE)
+  val end = event.endsAt.atZone(CALENDAR_ZONE)
+  val dayIndex = weekDates.indexOf(start.toLocalDate())
+  if (dayIndex < 0) return null
+
+  val startMinutes = start.hour * 60 + start.minute
+  val durationMinutes = java.time.Duration.between(start, end).toMinutes()
+  return CalendarEventPlacement(
+      event = event,
+      dayIndex = dayIndex,
+      top = hourHeight * (startMinutes / 60f),
+      height = hourHeight * (durationMinutes / 60f),
+  )
 }
 
 /**
