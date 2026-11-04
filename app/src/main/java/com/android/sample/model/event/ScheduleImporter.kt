@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.event
 
 import java.io.IOException
@@ -12,7 +13,7 @@ import kotlinx.coroutines.withContext
  * Imports a course schedule (.ics file) into a user's calendar through an [EventsRepository],
  * replacing what an earlier import created.
  *
- * Each imported event gets an [PersonalEvent.importKey] made of the file's `UID` and the event's
+ * Each imported event gets a [PersonalEvent.importKey] made of the file's `UID` and the event's
  * start. On a new import, events with a known key are updated in place (same ID, creation time and
  * tasks), new ones are added, and events of an earlier import that are missing from the file are
  * deleted. An occurrence that moves to another time therefore counts as a new event. Events the

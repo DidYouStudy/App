@@ -1,4 +1,5 @@
 // Co-authored-by: GitHub Copilot
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.eventplanning
 
 import androidx.compose.runtime.Composable

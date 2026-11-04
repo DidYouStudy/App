@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.eventplanning
 
 import androidx.lifecycle.ViewModel
@@ -93,8 +94,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
   }
 
   /**
-   * PersonalEvent creation is rejected when authentication observation failed before identifying a
-   * user.
+   * Event creation is rejected when authentication observation failed before identifying a user.
    */
   @Test
   fun init_userFlowFails_noUserIsKnownAndAddingIsRejected() = runTest {
@@ -339,10 +339,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
   // ---------------------------------------------------------------- addEvent: rejected before
   // saving
 
-  /**
-   * PersonalEvent creation without a signed-in user reports an error and does not call the
-   * repository.
-   */
+  /** Event creation without a signed-in user reports an error and does not call the repository. */
   @Test
   fun addEvent_withoutSignedInUser_reportsErrorAndDoesNotSave() = runTest {
     currentUserFlow.value = null
@@ -559,7 +556,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertTrue(viewModel.uiState.value.isEventAdded)
   }
 
-  /** PersonalEvent ownership uses the latest signed-in account rather than an earlier account. */
+  /** Event ownership uses the latest signed-in account rather than an earlier account. */
   @Test
   fun addEvent_usesTheLatestSignedInUserAsOwner() = runTest {
     val viewModel = createViewModel()

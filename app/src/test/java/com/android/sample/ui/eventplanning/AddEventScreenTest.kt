@@ -1,4 +1,5 @@
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.eventplanning
 
 import android.content.Context
@@ -191,7 +192,7 @@ class AddEventScreenTest {
     testDispatcher.scheduler.advanceUntilIdle()
     composeTestRule.waitForIdle()
 
-    // PersonalEvent saved callback should be triggered via LaunchedEffect
+    // Event saved callback should be triggered via LaunchedEffect
     assertTrue(eventSaved)
   }
 

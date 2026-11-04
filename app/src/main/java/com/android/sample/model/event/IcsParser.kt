@@ -1,4 +1,5 @@
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.event
 
 import java.io.InputStream
@@ -143,7 +144,7 @@ object IcsParser {
     val categories = properties["CATEGORIES"].orEmpty().map { it.second }
     val type = mapCategoryToEventType(categories)
 
-    // Enforce PersonalEvent domain invariant: non-OTHER types require a non-blank subject
+    // Enforce Event domain invariant: non-OTHER types require a non-blank subject
     if (summary == null && type != EventType.OTHER) {
       return null
     }

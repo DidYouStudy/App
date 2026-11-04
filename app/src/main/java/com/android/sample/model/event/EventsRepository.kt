@@ -6,7 +6,7 @@ import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Stores a user's personal [PersonalEvent]s without exposing Firestore to ViewModels or screens.
+ * Stores a user's [PersonalEvent]s without exposing Firestore to ViewModels or screens.
  *
  * Failures are returned as [Result.failure] containing an [EventsException]; cancellation is
  * propagated rather than converted into a failed [Result].
