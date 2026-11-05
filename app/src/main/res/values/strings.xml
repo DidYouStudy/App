@@ -129,11 +129,21 @@
     <string name="group_session_location_fallback">Location TBD</string>
     <string name="group_session_date_today">Today</string>
     <string name="group_session_status_started">Started</string>
-    <string name="group_session_status_in_minutes">In %1$d min</string>
-    <string name="group_session_status_in_hours_one">In %1$d hour</string>
-    <string name="group_session_status_in_hours_other">In %1$d hours</string>
-    <string name="group_session_status_in_days_one">In %1$d day</string>
-    <string name="group_session_status_in_days_other">In %1$d days</string>
+    <!-- %1$d: minutes until the session starts (always under 60) -->
+    <plurals name="group_session_status_in_minutes">
+        <item quantity="one">In %1$d min</item>
+        <item quantity="other">In %1$d min</item>
+    </plurals>
+    <!-- %1$d: hours until the session starts (always under 24) -->
+    <plurals name="group_session_status_in_hours">
+        <item quantity="one">In %1$d hour</item>
+        <item quantity="other">In %1$d hours</item>
+    </plurals>
+    <!-- %1$d: days until the session starts -->
+    <plurals name="group_session_status_in_days">
+        <item quantity="one">In %1$d day</item>
+        <item quantity="other">In %1$d days</item>
+    </plurals>
     <string name="group_session_action_edit">Edit</string>
     <string name="group_session_action_leave">Leave</string>
     <string name="group_session_action_joined">Joined</string>
