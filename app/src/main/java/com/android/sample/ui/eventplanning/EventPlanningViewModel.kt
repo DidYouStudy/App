@@ -26,6 +26,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.onEach
@@ -198,14 +199,18 @@ class EventPlanningViewModel(
    * [editEvent] afterwards to save the changes.
    */
   fun loadEvent(eventId: String) {
-    val ownerId = currentUserId
-    if (ownerId == null) {
-      fail(NO_SIGNED_IN_USER_ERROR)
-      return
-    }
+    // Already loaded (e.g. after rotation) or loading right now: keep the user's edits.
+    if (editingEvent?.id == eventId || _uiState.value.isLoading) return
+
     _uiState.update { it.withoutResults().copy(isLoading = true) }
     viewModelScope.launch {
       try {
+        // Suspends until the auth flow has delivered its first value.
+        val ownerId = authRepository.currentUser.first()?.uid
+        if (ownerId == null) {
+          fail(NO_SIGNED_IN_USER_ERROR)
+          return@launch
+        }
         eventsRepository
             .getEvent(ownerId, eventId)
             .onSuccess { event -> populateForm(event) }

@@ -83,7 +83,7 @@ class FormContentTest {
         .onNodeWithTag(Tags.DATE_LABEL, useUnmergedTree = true)
         .assertTextEquals(context.getString(R.string.event_planning_date_label))
     composeTestRule.onNodeWithTag(Tags.DATE_SELECTOR).performClick()
-    composeTestRule.onNodeWithText("2026-10-27").assertIsDisplayed()
+    composeTestRule.onNodeWithText("27/10/2026").assertIsDisplayed()
     assertTrue(dateClicked)
 
     composeTestRule

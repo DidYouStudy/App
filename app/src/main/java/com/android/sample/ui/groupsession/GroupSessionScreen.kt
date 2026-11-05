@@ -66,7 +66,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
 import com.android.sample.model.event.EventType
@@ -78,6 +77,8 @@ import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.profile.ProfileButton
 import com.android.sample.ui.sharedComponents.AddButton
 import com.android.sample.ui.theme.Dimens
+import com.android.sample.ui.theme.ParticipantInitialTextStyle
+import com.android.sample.ui.theme.ParticipantOverflowTextStyle
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.color
 import com.android.sample.ui.theme.onColor
@@ -463,7 +464,13 @@ private fun GroupSessionCard(
                   modifier = Modifier.size(Dimens.iconSizeSmall),
               )
             },
-            text = "$dateLabel · $startLabel – $endLabel",
+            text =
+                stringResource(
+                    R.string.group_session_date_time_range,
+                    dateLabel,
+                    startLabel,
+                    endLabel,
+                ),
         )
       }
 
@@ -506,7 +513,7 @@ private fun GroupSessionCard(
               Text(
                   "M",
                   fontWeight = FontWeight.Bold,
-                  fontSize = 10.sp,
+                  fontSize = ParticipantInitialTextStyle.fontSize,
                   color = MaterialTheme.colorScheme.onPrimaryContainer,
               )
             }
@@ -520,7 +527,7 @@ private fun GroupSessionCard(
               Text(
                   "A",
                   fontWeight = FontWeight.Bold,
-                  fontSize = 10.sp,
+                  fontSize = ParticipantInitialTextStyle.fontSize,
                   color = MaterialTheme.colorScheme.onSecondaryContainer,
               )
             }
@@ -533,8 +540,8 @@ private fun GroupSessionCard(
               ) {
                 Box(contentAlignment = Alignment.Center) {
                   Text(
-                      "+$extraCount",
-                      fontSize = 9.sp,
+                      stringResource(R.string.group_session_extra_members, extraCount),
+                      fontSize = ParticipantOverflowTextStyle.fontSize,
                       fontWeight = FontWeight.Bold,
                       color = MaterialTheme.colorScheme.onTertiaryContainer,
                   )

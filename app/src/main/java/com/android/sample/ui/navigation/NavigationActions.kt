@@ -1,4 +1,5 @@
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.navigation
 
 import androidx.navigation.NavHostController
@@ -20,6 +21,8 @@ sealed class Screen(
 
   object GroupSession :
       Screen(route = "group_session", name = "GroupSession", isTopLevelDestination = true)
+
+  object AddEvent : Screen(route = "add_event", name = "AddEvent")
 }
 
 open class NavigationActions(

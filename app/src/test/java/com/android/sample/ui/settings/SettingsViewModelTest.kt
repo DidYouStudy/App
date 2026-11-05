@@ -1,4 +1,5 @@
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.settings
 
 import com.android.sample.model.auth.AuthRepository
@@ -78,7 +79,7 @@ class SettingsViewModelTest {
 
     val resetState = viewModel.uiState.value
     assertFalse(resetState.isLoading)
-    assertEquals("", resetState.username)
+    assertNull(resetState.username)
     assertNull(resetState.profilePictureUrl)
     assertNull(resetState.error)
   }
@@ -151,7 +152,7 @@ class SettingsViewModelTest {
   }
 
   @Test
-  fun init_fallsBackToDefaultUser_whenNoNameOrEmailAvailable() = runTest {
+  fun init_leavesUsernameNull_whenNoNameOrEmailAvailable() = runTest {
     val userAccount =
         UserAccount(uid = "user123", email = null, displayName = null, photoUrl = null)
     `when`(profileRepository.getProfile("user123")).thenReturn(Result.success(null))
@@ -161,7 +162,8 @@ class SettingsViewModelTest {
 
     val state = viewModel.uiState.value
     assertFalse(state.isLoading)
-    assertEquals("User", state.username)
+    // The screen, not the ViewModel, supplies the translated default name.
+    assertNull(state.username)
     assertNull(state.profilePictureUrl)
   }
 
@@ -193,11 +195,12 @@ class SettingsViewModelTest {
 
     val state = viewModel.uiState.value
     assertFalse(state.isLoading)
-    assertEquals("Flow error", state.error)
+    // The raw exception text is not exposed; the UI shows the translated message.
+    assertEquals(SettingsError.LOAD_PROFILE_FAILED, state.error)
   }
 
   @Test
-  fun init_handlesExceptionWithNullMessage_usesDefaultErrorMessage() = runTest {
+  fun init_handlesExceptionWithNullMessage_setsLoadProfileFailedError() = runTest {
     val exception = object : RuntimeException(null as String?) {}
     `when`(authRepository.currentUser).thenReturn(flow { throw exception })
 
@@ -205,7 +208,7 @@ class SettingsViewModelTest {
 
     val state = viewModel.uiState.value
     assertFalse(state.isLoading)
-    assertEquals("Failed to load user profile", state.error)
+    assertEquals(SettingsError.LOAD_PROFILE_FAILED, state.error)
   }
 
   @Test
@@ -236,11 +239,11 @@ class SettingsViewModelTest {
     viewModel.signOut()
 
     val state = viewModel.uiState.value
-    assertEquals("Sign out failed", state.error)
+    assertEquals(SettingsError.SIGN_OUT_FAILED, state.error)
   }
 
   @Test
-  fun signOut_failureWithNullMessage_usesDefaultErrorMessage() = runTest {
+  fun signOut_failureWithNullMessage_setsSignOutFailedError() = runTest {
     val exception = object : RuntimeException(null as String?) {}
     `when`(authRepository.signOut()).thenThrow(exception)
     val viewModel = SettingsViewModel(authRepository, profileRepository)
@@ -248,6 +251,6 @@ class SettingsViewModelTest {
     viewModel.signOut()
 
     val state = viewModel.uiState.value
-    assertEquals("Failed to sign out", state.error)
+    assertEquals(SettingsError.SIGN_OUT_FAILED, state.error)
   }
 }
