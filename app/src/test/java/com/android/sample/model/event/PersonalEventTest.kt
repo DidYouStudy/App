@@ -42,6 +42,8 @@ class PersonalEventTest {
 
     assertEquals("event-1", event.id)
     assertEquals("Analysis", event.details.subject)
+    assertEquals(created, event.createdAt)
+    assertEquals(created, event.updatedAt)
   }
 
   /** Hand-made events carry no import key, and a key, when present, must have text. */

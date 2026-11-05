@@ -50,6 +50,8 @@ class GroupSessionTest {
 
     assertEquals("session-1", event.id)
     assertEquals("Analysis", event.details.subject)
+    assertEquals(created, event.createdAt)
+    assertEquals(created, event.updatedAt)
   }
 
   /** Identity and required membership labels reject blank or incomplete values. */
