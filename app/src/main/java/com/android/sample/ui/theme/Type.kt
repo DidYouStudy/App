@@ -38,10 +38,11 @@ val Typography =
 
 /**
  * Heading of a dashboard card. Material 3 has no 18sp style (titleMedium is 16sp, titleLarge is
- * 22sp), so this derives one from titleLarge with a matching line height.
+ * 22sp), so this derives one from titleLarge with a matching line height. It is built once rather
+ * than on every read; deriving it from [Typography] is safe because DidYouStudyTheme always uses
+ * that object.
  */
-val Typography.cardTitle: TextStyle
-  get() = titleLarge.copy(fontSize = 18.sp, lineHeight = 24.sp)
+val CardTitleTextStyle: TextStyle = Typography.titleLarge.copy(fontSize = 18.sp, lineHeight = 24.sp)
 
 /**
  * Label of the Google sign-in button. Like the Google brand colours, it is fixed by Google's

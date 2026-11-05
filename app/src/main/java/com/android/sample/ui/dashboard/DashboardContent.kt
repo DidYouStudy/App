@@ -29,10 +29,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.sample.R
+import com.android.sample.ui.theme.CardTitleTextStyle
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
-import com.android.sample.ui.theme.cardTitle
 
 /**
  * One planned study slot shown in 'Your day' (display model with preformatted times, not a domain
@@ -106,7 +106,7 @@ private fun DashboardDayCard(sessions: List<DashboardSession>, modifier: Modifie
   ) {
     Text(
         text = stringResource(R.string.dashboard_your_day),
-        style = MaterialTheme.typography.cardTitle,
+        style = CardTitleTextStyle,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.testTag(DashboardContentTestTags.YOUR_DAY_TITLE),
@@ -215,7 +215,7 @@ private fun DashboardStatsCard(stats: DashboardStats, modifier: Modifier = Modif
   ) {
     Text(
         text = stringResource(R.string.dashboard_your_stats),
-        style = MaterialTheme.typography.cardTitle,
+        style = CardTitleTextStyle,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.testTag(DashboardContentTestTags.STATS_TITLE),
