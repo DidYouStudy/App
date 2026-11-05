@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -20,6 +21,7 @@ import com.android.sample.ui.theme.Dimens
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -86,7 +88,7 @@ class CalendarEventCardTest {
     composeTestRule.setContent {
       DidYouStudyTheme {
         CalendarEventCard(
-            modifier = Modifier.width(120.dp).height(60.dp),
+            modifier = Modifier.width(120.dp).height(64.dp),
             event = previewEvent(type = EventType.STUDY_SESSION, subject = "Linear Algebra"),
         )
       }
@@ -121,6 +123,25 @@ class CalendarEventCardTest {
   }
 
   @Test
+  fun omitsOptionalSubjectWhenOtherEventHasNoSubject() {
+    composeTestRule.setContent {
+      DidYouStudyTheme {
+        CalendarEventCard(
+            event =
+                previewEvent(
+                    type = EventType.OTHER,
+                    subject = null,
+                )
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithText("Other").assertIsDisplayed()
+    composeTestRule.onNodeWithText(expectedStartTime()).assertIsDisplayed()
+    assertTrue(composeTestRule.onAllNodesWithText("null").fetchSemanticsNodes().isEmpty())
+  }
+
+  @Test
   fun cardExposesClickAction() {
     composeTestRule.setContent {
       DidYouStudyTheme {
@@ -131,7 +152,7 @@ class CalendarEventCardTest {
     composeTestRule.onNodeWithText("Exam").assertHasClickAction()
   }
 
-  private fun previewEvent(type: EventType, subject: String): Event {
+  private fun previewEvent(type: EventType, subject: String?): Event {
     return Event(
         id = "event-${type.name}",
         ownerId = "test-owner",

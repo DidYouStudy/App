@@ -232,6 +232,34 @@ class CalendarWeeklyViewTest {
     assertEquals(10.dp, placements.single().height)
   }
 
+  /** Produces no card for an event that does not intersect the displayed week. */
+  @Test
+  fun eventPlacementOmitsEventOutsideDisplayedWeek() {
+    val weekDates = CalendarDateHelper().weekDates(LocalDate.of(2026, 10, 14))
+    val event =
+        eventOn(
+            weekDates.last().plusDays(1),
+            LocalTime.of(9, 0),
+            weekDates.last().plusDays(1),
+            LocalTime.of(10, 0),
+        )
+
+    assertTrue(calculateEventPlacements(event, weekDates, 10.dp).isEmpty())
+  }
+
+  /** Does not create a zero-height segment when an event ends exactly at midnight. */
+  @Test
+  fun eventPlacementDoesNotCreateZeroLengthMidnightSegment() {
+    val weekDates = CalendarDateHelper().weekDates(LocalDate.of(2026, 10, 14))
+    val event = eventOn(weekDates[2], LocalTime.of(23, 0), weekDates[3], LocalTime.MIDNIGHT)
+
+    val placements = calculateEventPlacements(event, weekDates, 10.dp)
+
+    assertEquals(1, placements.size)
+    assertEquals(2, placements.single().dayIndex)
+    assertEquals(10.dp, placements.single().height)
+  }
+
   /** Renders event cards from the supplied events in the weekly time grid. */
   @Test
   fun timeGridRendersEventCardForAnInWeekEvent() {
@@ -249,7 +277,7 @@ class CalendarWeeklyViewTest {
     }
 
     composeTestRule.onNodeWithText("Course").assertExists()
-    composeTestRule.onNodeWithText("Weekly course").assertExists()
+    composeTestRule.onNodeWithTag(CalendarTestTags.eventCard(event.id, 1)).assertIsDisplayed()
   }
 
   /** Applies the calculated time and day placement to the rendered event card bounds. */
