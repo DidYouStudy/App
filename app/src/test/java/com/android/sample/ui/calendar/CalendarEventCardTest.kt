@@ -1,5 +1,6 @@
 package com.android.sample.ui.calendar
 
+import android.content.Context
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
@@ -11,11 +12,13 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.dp
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.PersonalEvent
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
+import com.android.sample.ui.theme.labelRes
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -109,11 +112,9 @@ class CalendarEventCardTest {
       }
     }
 
+    val context = ApplicationProvider.getApplicationContext<Context>()
     EventType.entries.forEach { type ->
-      val expectedTitle =
-          type.name.lowercase().replace('_', ' ').replaceFirstChar { character ->
-            character.titlecase()
-          }
+      val expectedTitle = context.getString(type.labelRes())
       composeTestRule.onNodeWithText(expectedTitle).assertExists()
     }
   }

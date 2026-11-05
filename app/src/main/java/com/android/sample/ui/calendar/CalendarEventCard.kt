@@ -33,6 +33,7 @@ import com.android.sample.ui.theme.calendarEventSubjectStyle
 import com.android.sample.ui.theme.calendarEventTimeStyle
 import com.android.sample.ui.theme.calendarEventTitleStyle
 import com.android.sample.ui.theme.eventColor
+import com.android.sample.ui.theme.label
 import com.android.sample.ui.theme.onEventColor
 import java.time.Instant
 import java.time.ZoneId
@@ -56,10 +57,7 @@ fun CalendarEventCard(
   val color = eventColor(event.type)
   val colorDark = eventColor(event.type, true)
   val contentColor = onEventColor()
-  val title =
-      event.type.name.lowercase().replace('_', ' ').replaceFirstChar { character ->
-        character.titlecase()
-      }
+  val title = event.type.label()
   val subject = event.subject
   val startingTime = EVENT_TIME_FORMAT.format(event.startsAt)
   val cardShape = RoundedCornerShape(Dimens.calendarEventCardCorner)
@@ -165,9 +163,7 @@ fun CalendarEventCardPreview() {
 @Preview(showBackground = true)
 @Composable
 fun CalendarEventCardDarkThemePreview() {
-    DidYouStudyTheme (
-        darkTheme = true
-    ){ CalendarEventCard(previewEvent) }
+  DidYouStudyTheme(darkTheme = true) { CalendarEventCard(previewEvent) }
 }
 
 private val previewEvent =

@@ -79,6 +79,7 @@ import com.android.sample.model.event.EventType
 import com.android.sample.ui.theme.AlphaTokens
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
+import com.android.sample.ui.theme.label
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -398,10 +399,13 @@ fun EventTypeDropdownMenu(
         modifier = modifier.background(MaterialTheme.colorScheme.surfaceContainer),
     ) {
       EventType.entries.forEach { type ->
-        val formattedLabel =
-            type.name.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() }
         DropdownMenuItem(
-            text = { Text(text = formattedLabel, style = MaterialTheme.typography.bodyLarge) },
+            text = {
+              Text(
+                  text = type.label(),
+                  style = MaterialTheme.typography.bodyLarge,
+              )
+            },
             onClick = {
               onTypeSelected(type)
               onDismissRequest()
