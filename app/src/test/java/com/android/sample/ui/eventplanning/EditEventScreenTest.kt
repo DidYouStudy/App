@@ -11,6 +11,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -93,7 +94,11 @@ class EditEventScreenTest {
     Dispatchers.resetMain()
   }
 
-  private fun createViewModel() = EventPlanningViewModel(authRepository, eventsRepository, clock)
+  private fun createViewModel(): EventPlanningViewModel {
+    val viewModel = EventPlanningViewModel(authRepository, eventsRepository, clock)
+    testDispatcher.scheduler.advanceUntilIdle()
+    return viewModel
+  }
 
   private fun finishPendingComposeAndViewModelWork() {
     composeTestRule.waitForIdle()
@@ -211,6 +216,111 @@ class EditEventScreenTest {
     assertTrue(
         composeTestRule.onAllNodesWithTag(Tags.DELETE_BUTTON).fetchSemanticsNodes().isEmpty()
     )
+  }
+
+  @Test
+  fun editStatelessScreenShowsRequiredFieldErrorForInvalidEvent() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    setEditStatelessScreen(
+        uiState = EventPlanningUiState(error = EventPlanningViewModel.INVALID_EVENT_ERROR)
+    )
+
+    composeTestRule
+        .onNodeWithTag(Tags.ERROR_TEXT)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.event_planning_error_required_fields))
+  }
+
+  @Test
+  fun sharedScreenBuiltInPickersReturnSelectedValues() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var selectedDate: LocalDate? = null
+    var selectedStartTime: LocalTime? = null
+    var selectedEndTime: LocalTime? = null
+    var selectedSubject: String? = null
+
+    composeTestRule.setContent {
+      EventPlanningScreen(
+          uiState =
+              EventPlanningUiState(
+                  date = LocalDate.of(2026, 10, 27),
+                  startTime = LocalTime.of(9, 0),
+                  endTime = LocalTime.of(11, 0),
+                  subject = "Operating Systems",
+                  recommendedSubjects = listOf("Operating Systems"),
+                  isEditing = true,
+              ),
+          onBackClick = {},
+          onTypeChange = {},
+          onDateSelected = { selectedDate = it },
+          onStartTimeSelected = { selectedStartTime = it },
+          onEndTimeSelected = { selectedEndTime = it },
+          onSubjectSelected = { selectedSubject = it },
+          onLocationChange = {},
+          onDescriptionChange = {},
+          onAddTask = {},
+          onToggleTask = {},
+          onDeleteTask = {},
+          onSaveClick = {},
+          onDeleteClick = {},
+          isEditing = true,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(Tags.DATE_SELECTOR).performClick()
+    composeTestRule.onNodeWithText(context.getString(R.string.confirm)).performClick()
+    assertEquals(LocalDate.of(2026, 10, 27), selectedDate)
+
+    composeTestRule.onNodeWithTag(Tags.START_TIME_SELECTOR).performClick()
+    composeTestRule.onNodeWithText(context.getString(R.string.confirm)).performClick()
+    assertEquals(LocalTime.of(9, 0), selectedStartTime)
+
+    composeTestRule.onNodeWithTag(Tags.END_TIME_SELECTOR).performClick()
+    composeTestRule.onNodeWithText(context.getString(R.string.confirm)).performClick()
+    assertEquals(LocalTime.of(11, 0), selectedEndTime)
+
+    composeTestRule.onNodeWithTag(Tags.SUBJECT_SELECTOR).performClick()
+    composeTestRule.onNodeWithText(context.getString(R.string.confirm)).performClick()
+    assertEquals("Operating Systems", selectedSubject)
+  }
+
+  @Test
+  fun editScreenInvokesExternalPickerCallbacks() {
+    val viewModel = createViewModel()
+    var typePickerOpened = false
+    var datePickerOpened = false
+    var startTimePickerOpened = false
+    var endTimePickerOpened = false
+    var subjectPickerOpened = false
+
+    composeTestRule.setContent {
+      EditEventScreen(
+          eventId = storedEvent.id,
+          viewModel = viewModel,
+          onBackClick = {},
+          onEventSaved = {},
+          onEventDelete = {},
+          onPickTypeClick = { typePickerOpened = true },
+          onPickDateClick = { datePickerOpened = true },
+          onPickStartTimeClick = { startTimePickerOpened = true },
+          onPickEndTimeClick = { endTimePickerOpened = true },
+          onPickSubjectClick = { subjectPickerOpened = true },
+      )
+    }
+    finishPendingComposeAndViewModelWork()
+    assertTrue(viewModel.uiState.value.isEditing)
+
+    composeTestRule.onNodeWithTag(Tags.TYPE_SELECTOR).performClick()
+    composeTestRule.onNodeWithTag(Tags.DATE_SELECTOR).performClick()
+    composeTestRule.onNodeWithTag(Tags.START_TIME_SELECTOR).performClick()
+    composeTestRule.onNodeWithTag(Tags.END_TIME_SELECTOR).performClick()
+    composeTestRule.onNodeWithTag(Tags.SUBJECT_SELECTOR).performClick()
+
+    assertTrue(typePickerOpened)
+    assertTrue(datePickerOpened)
+    assertTrue(startTimePickerOpened)
+    assertTrue(endTimePickerOpened)
+    assertTrue(subjectPickerOpened)
   }
 
   @Test
