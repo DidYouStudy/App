@@ -358,6 +358,68 @@ class AddEditGroupSessionViewModelTest {
   }
 
   @Test
+  fun loadSessionWithBlankIdDoesNothing() {
+    viewModel.loadSession("   ")
+    val state = viewModel.uiState.value
+    assertFalse(state.isLoading)
+    assertFalse(state.isEditing)
+  }
+
+  @Test
+  fun saveSessionFailsWhenRepositorySaveReturnsFailure() = runTest {
+    val failingRepo =
+        object : GroupSessionsRepository by repository {
+          override suspend fun saveSession(userId: String, session: GroupSession): Result<Unit> =
+              Result.failure(RuntimeException("Firestore persistence failure"))
+        }
+    val failingViewModel = AddEditGroupSessionViewModel(authRepository, failingRepo, clock)
+    failingViewModel.setType(EventType.OTHER)
+    failingViewModel.setDate(LocalDate.of(2026, 11, 15))
+    failingViewModel.setStartTime(LocalTime.of(10, 0))
+    failingViewModel.setEndTime(LocalTime.of(12, 0))
+
+    failingViewModel.saveSession()
+
+    val state = failingViewModel.uiState.value
+    assertFalse(state.isSaving)
+    assertEquals(AddEditGroupSessionError.SAVE_FAILED, state.error)
+  }
+
+  @Test
+  fun saveSessionWhileBusyDoesNothing() = runTest {
+    // Hang saveSession in progress using an unresolved CompletableDeferred in the repository
+    val saveStarted = kotlinx.coroutines.CompletableDeferred<Unit>()
+    val saveHang = kotlinx.coroutines.CompletableDeferred<Unit>()
+    val hangingRepo =
+        object : GroupSessionsRepository by repository {
+          override suspend fun saveSession(userId: String, session: GroupSession): Result<Unit> {
+            saveStarted.complete(Unit)
+            saveHang.await()
+            return Result.success(Unit)
+          }
+        }
+    val hangingViewModel = AddEditGroupSessionViewModel(authRepository, hangingRepo, clock)
+    hangingViewModel.setType(EventType.OTHER)
+    hangingViewModel.setDate(LocalDate.of(2026, 11, 15))
+    hangingViewModel.setStartTime(LocalTime.of(10, 0))
+    hangingViewModel.setEndTime(LocalTime.of(12, 0))
+
+    // Start first save session which hangs
+    hangingViewModel.saveSession()
+    saveStarted.await()
+    assertTrue(hangingViewModel.uiState.value.isBusy)
+
+    // Second call while busy should return early without modifying state
+    hangingViewModel.saveSession()
+    assertTrue(hangingViewModel.uiState.value.isBusy)
+
+    // Complete the first save
+    saveHang.complete(Unit)
+    assertFalse(hangingViewModel.uiState.value.isBusy)
+    assertTrue(hangingViewModel.uiState.value.isSessionSaved)
+  }
+
+  @Test
   fun factoryCreatesViewModelOrThrows() {
     val factory = AddEditGroupSessionViewModelFactory(authRepository, repository)
     val instance = factory.create(AddEditGroupSessionViewModel::class.java)
