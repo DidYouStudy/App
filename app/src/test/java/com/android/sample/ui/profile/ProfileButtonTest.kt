@@ -1,4 +1,5 @@
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.profile
 
 import android.content.Context
@@ -14,6 +15,7 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
+import com.android.sample.ui.theme.Dimens
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -31,8 +33,8 @@ class ProfileButtonTest {
         .onNodeWithTag(ProfileButtonTestTags.PROFILE_BUTTON)
         .assertIsDisplayed()
         .assertHasClickAction()
-        .assertWidthIsEqualTo(ProfileButtonSize)
-        .assertHeightIsEqualTo(ProfileButtonSize)
+        .assertWidthIsEqualTo(Dimens.profileButtonSize)
+        .assertHeightIsEqualTo(Dimens.profileButtonSize)
   }
 
   @Test
