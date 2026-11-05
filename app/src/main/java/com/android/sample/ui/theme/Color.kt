@@ -1,3 +1,4 @@
+// Co-authored-by: Codex AI Agent
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Opus 5.5
@@ -38,8 +39,6 @@ val EventTypeLabDark = Color(0xFF6B6000)
 val EventTypeProjectDark = Color(0xFF8B4210)
 val EventTypeExamDark = Color(0xFF8C1D18)
 val EventTypeOtherDark = Color(0xFF424242)
-
-val EventTimeLabel = Color(0xFF6F6F6F)
 
 /** Returns a theme-adaptive background color for the given [EventType]. */
 @Composable

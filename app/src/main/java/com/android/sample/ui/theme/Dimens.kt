@@ -1,3 +1,4 @@
+// Co-authored-by: Codex AI Agent
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Opus 5.5

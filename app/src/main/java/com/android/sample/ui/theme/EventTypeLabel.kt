@@ -1,3 +1,4 @@
+// Co-authored-by: Codex AI Agent
 package com.android.sample.ui.theme
 
 import androidx.annotation.StringRes
@@ -6,6 +7,7 @@ import androidx.compose.ui.res.stringResource
 import com.android.sample.R
 import com.android.sample.model.event.EventType
 
+/** Returns the string resource for this event type's localized display label. */
 @StringRes
 fun EventType.labelRes(): Int =
     when (this) {
@@ -18,4 +20,5 @@ fun EventType.labelRes(): Int =
       EventType.OTHER -> R.string.event_type_other
     }
 
+/** Resolves this event type's localized display label for Compose UI. */
 @Composable fun EventType.label(): String = stringResource(labelRes())

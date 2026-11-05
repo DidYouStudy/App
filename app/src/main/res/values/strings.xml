@@ -137,7 +137,7 @@
     <string name="group_session_date_time_range">%1$s · %2$s – %3$s</string>
     <!-- Number of members not shown as an avatar in the participants pill -->
     <string name="group_session_extra_members">+%1$d</string>
-    <string name="event_type_study_session">Study Session</string>
+    <string name="event_type_study_session">Study session</string>
     <string name="event_type_course">Course</string>
     <string name="event_type_exercise_session">Exercise session</string>
     <string name="event_type_lab">Lab</string>

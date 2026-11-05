@@ -1,3 +1,4 @@
+// Co-authored-by: Codex AI Agent
 package com.android.sample.ui.calendar
 
 import android.content.Context
@@ -47,7 +48,7 @@ class CalendarEventCardTest {
       }
     }
 
-    composeTestRule.onNodeWithText(expectedTitle(EventType.STUDY_SESSION)).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Study session").assertIsDisplayed()
     composeTestRule.onNodeWithText("Linear Algebra").assertIsDisplayed()
     val expectedTime =
         DateTimeFormatter.ofPattern("H:mm")
@@ -67,7 +68,7 @@ class CalendarEventCardTest {
       }
     }
 
-    composeTestRule.onNodeWithText(expectedTitle(EventType.STUDY_SESSION)).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Study session").assertIsDisplayed()
     composeTestRule.onNodeWithText(expectedStartTime()).assertIsDisplayed()
   }
 
@@ -81,7 +82,7 @@ class CalendarEventCardTest {
         )
       }
     }
-    composeTestRule.onNodeWithText(expectedTitle(EventType.STUDY_SESSION)).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Study session").assertIsDisplayed()
     composeTestRule.onNodeWithText(expectedStartTime()).assertIsDisplayed()
   }
 
@@ -163,12 +164,6 @@ class CalendarEventCardTest {
             ),
         createdAt = Instant.parse("2026-11-01T12:00:00Z"),
     )
-  }
-
-  /** Resolves the localized event type title expected on the card. */
-  private fun expectedTitle(type: EventType): String {
-    val context = ApplicationProvider.getApplicationContext<Context>()
-    return context.getString(type.labelRes())
   }
 
   private fun expectedStartTime(): String =

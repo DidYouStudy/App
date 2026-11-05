@@ -1,3 +1,4 @@
+// Co-authored-by: Codex AI Agent
 // Co-authored-by: Claude AI Agent
 package com.android.sample.ui.sharedComponents
 
