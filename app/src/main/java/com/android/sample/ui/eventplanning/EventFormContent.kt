@@ -10,7 +10,8 @@ import com.android.sample.ui.sharedComponents.FormContent
 /**
  * Renders the complete scrollable event planning form for personal events.
  *
- * Delegated to [FormContent] in `sharedComponents` with tasks section enabled.
+ * Wrapper for [FormContent] in `sharedComponents` with tasks section enabled. Adapts the shared
+ * form to the event planning screens
  *
  * @param uiState Current UI state containing form values, tasks, and validation errors.
  * @param onTypeChange Callback when event type is selected.
@@ -29,6 +30,9 @@ import com.android.sample.ui.sharedComponents.FormContent
 @Composable
 fun EventFormContent(
     uiState: EventPlanningUiState,
+    isValidationError: Boolean =
+        uiState.error == EventPlanningViewModel.EVENT_DATE_AND_TIMES_REQUIRED_ERROR ||
+            uiState.error == EventPlanningViewModel.INVALID_EVENT_ERROR,
     onTypeChange: (EventType) -> Unit,
     onDateClick: () -> Unit,
     onStartTimeClick: () -> Unit,
@@ -42,9 +46,6 @@ fun EventFormContent(
     modifier: Modifier = Modifier,
     onTypeClick: (() -> Unit)? = null,
 ) {
-  val isValidationError =
-      uiState.error == EventPlanningViewModel.EVENT_DATE_AND_TIMES_REQUIRED_ERROR ||
-          uiState.error == EventPlanningViewModel.INVALID_EVENT_ERROR
 
   val isDateMissing = isValidationError && uiState.date == null
   val isStartTimeMissing = isValidationError && uiState.startTime == null
