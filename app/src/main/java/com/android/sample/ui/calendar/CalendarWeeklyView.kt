@@ -368,12 +368,15 @@ fun CalendarTimeGrid(
         }
       }
       // Divide the remaining width evenly among the seven empty day columns.
+      val placementsByDay =
+          remember(events, weekDates, hourHeight) {
+            events
+                .flatMap { event -> calculateEventPlacements(event, weekDates, hourHeight) }
+                .groupBy { placement -> placement.dayIndex }
+          }
       Row(modifier = Modifier.weight(1f)) {
         repeat(DAYS_PER_WEEK) { dayIndex ->
-          val placements =
-              events
-                  .flatMap { event -> calculateEventPlacements(event, weekDates, hourHeight) }
-                  .filter { placement -> placement.dayIndex == dayIndex }
+          val placements = placementsByDay[dayIndex].orEmpty()
 
           Box(modifier = Modifier.weight(1f)) {
             Column {
@@ -391,7 +394,7 @@ fun CalendarTimeGrid(
                   modifier =
                       Modifier.fillMaxWidth()
                           .offset(y = placement.top)
-                          .height(placement.height)
+                          .height(maxOf(Dimens.calendarEventCardMinHeight, placement.height))
                           .testTag(CalendarTestTags.eventCard(placement.event.id, dayIndex)),
               )
             }

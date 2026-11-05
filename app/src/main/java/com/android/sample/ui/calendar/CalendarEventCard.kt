@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -59,14 +58,13 @@ fun CalendarEventCard(
       event.type.name.lowercase().replace('_', ' ').replaceFirstChar { character ->
         character.titlecase()
       }
-  val subject = event.subject.toString()
+  val subject = event.subject
   val startingTime = EVENT_TIME_FORMAT.format(event.startsAt)
   val cardShape = RoundedCornerShape(Dimens.calendarEventCardCorner)
-  val minCardHeight = Dimens.calendarEventCardMinHeight
 
   // The surface provides one clickable, rounded container for the complete event card.
   Surface(
-      modifier = modifier.heightIn(min = minCardHeight),
+      modifier = modifier,
       onClick = {}, // shows the event details screen
       shape = cardShape,
       color = color,
@@ -89,7 +87,6 @@ fun CalendarEventCard(
                         start = Spacing.extraSmall,
                         end = Spacing.extraSmall,
                         top = Spacing.extraSmall,
-                        bottom = Spacing.extraSmall,
                     ),
             horizontalAlignment = Alignment.Start,
         ) {
@@ -100,7 +97,9 @@ fun CalendarEventCard(
               maxLines = EVENT_TITLE_MAX_LINES,
               overflow = TextOverflow.Ellipsis,
           )
-          FittingSubject(text = subject, style = calendarEventSubjectStyle)
+          if (subject != null) {
+            FittingSubject(text = subject, style = calendarEventSubjectStyle)
+          }
           // The time is always displayed.
           Text(
               text = startingTime,
@@ -142,12 +141,6 @@ private fun ColumnScope.FittingSubject(text: String, style: TextStyle) {
         } else {
           fullLayout.lineCount
         }
-    println(
-        "CalendarEventCard subject: height=${constraints.maxHeight}, " +
-            "width=${constraints.maxWidth}, lines=${fullLayout.lineCount}, " +
-            "bottoms=${(0 until fullLayout.lineCount).map(fullLayout::getLineBottom)}"
-    )
-
     if (fittingLines > 0) {
       Text(
           text = text,
