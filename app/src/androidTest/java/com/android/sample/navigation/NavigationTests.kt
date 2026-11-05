@@ -10,6 +10,7 @@ import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import com.android.sample.DidYouStudyApp
@@ -25,6 +26,7 @@ import com.android.sample.model.profile.ProfileRepositoryProvider
 import com.android.sample.model.profile.UserProfile
 import com.android.sample.ui.auth.SignInScreenTestTags
 import com.android.sample.ui.calendar.CalendarTestTags
+import com.android.sample.ui.dashboard.DashboardContentTestTags
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.preferences.PreferencesScreenTestTags
@@ -346,6 +348,55 @@ class NavigationTests {
     checkDashboardScreenIsDisplayed()
     composeTestRule.onNodeWithTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU).assertIsDisplayed()
     composeTestRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
+    checkCalendarScreenIsDisplayed()
+  }
+
+  @Test
+  fun canNavigateToAddEventFromDashboardFabMenu() {
+    checkDashboardScreenIsDisplayed()
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON).performClick()
+
+    checkAddEventScreenIsDisplayed()
+  }
+
+  @Test
+  fun savingEventOnAddEventScreenNavigatesBackToPreviousScreen() {
+    composeTestRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
+    checkCalendarScreenIsDisplayed()
+
+    composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).performClick()
+    checkAddEventScreenIsDisplayed()
+
+    // Select 'Other' type which does not require subject
+    composeTestRule
+        .onNodeWithTag(EventPlanningScreenTestTags.TYPE_SELECTOR, useUnmergedTree = true)
+        .performClick()
+    composeTestRule.onNodeWithText("Other").performClick()
+
+    // Select Date
+    composeTestRule
+        .onNodeWithTag(EventPlanningScreenTestTags.DATE_SELECTOR, useUnmergedTree = true)
+        .performClick()
+    composeTestRule.onNodeWithText("OK").performClick()
+
+    // Select Start Time
+    composeTestRule
+        .onNodeWithTag(EventPlanningScreenTestTags.START_TIME_SELECTOR, useUnmergedTree = true)
+        .performClick()
+    composeTestRule.onNodeWithText("OK").performClick()
+
+    // Select End Time
+    composeTestRule
+        .onNodeWithTag(EventPlanningScreenTestTags.END_TIME_SELECTOR, useUnmergedTree = true)
+        .performClick()
+    composeTestRule.onNodeWithText("OK").performClick()
+
+    // Save event
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.SAVE_BUTTON).performClick()
+
+    // Verifies onEventSaved branch in MainActivity safely returns to Calendar screen
     checkCalendarScreenIsDisplayed()
   }
 
