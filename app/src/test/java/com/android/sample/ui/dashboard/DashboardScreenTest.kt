@@ -89,6 +89,20 @@ class DashboardScreenTest {
   }
 
   @Test
+  fun dashboardFabMenuOptionsDisplayLocalizedLabels() {
+    composeTestRule.setContent { DashboardScreen(navigationActions = null, onEventClick = {}) }
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
+
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON)
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.FAB_MENU_GROUP_SESSION_BUTTON)
+        .assertIsDisplayed()
+  }
+
+  @Test
   fun topBarShowsLocalizedBoldDashboardTitle() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     composeTestRule.setContent { DashboardScreen(navigationActions = null, onEventClick = {}) }
