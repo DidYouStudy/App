@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
@@ -27,12 +28,12 @@ import com.android.sample.model.event.EventType
 import com.android.sample.model.event.PersonalEvent
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
-import com.android.sample.ui.theme.EventTimeLabel
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.calendarEventSubjectStyle
 import com.android.sample.ui.theme.calendarEventTimeStyle
 import com.android.sample.ui.theme.calendarEventTitleStyle
 import com.android.sample.ui.theme.eventColor
+import com.android.sample.ui.theme.onEventColor
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -54,6 +55,7 @@ fun CalendarEventCard(
 ) {
   val color = eventColor(event.type)
   val colorDark = eventColor(event.type, true)
+  val contentColor = onEventColor()
   val title =
       event.type.name.lowercase().replace('_', ' ').replaceFirstChar { character ->
         character.titlecase()
@@ -94,17 +96,18 @@ fun CalendarEventCard(
           Text(
               text = title,
               style = calendarEventTitleStyle,
+              color = contentColor,
               maxLines = EVENT_TITLE_MAX_LINES,
               overflow = TextOverflow.Ellipsis,
           )
           if (subject != null) {
-            FittingSubject(text = subject, style = calendarEventSubjectStyle)
+            FittingSubject(text = subject, style = calendarEventSubjectStyle, color = contentColor)
           }
           // The time is always displayed.
           Text(
               text = startingTime,
               style = calendarEventTimeStyle,
-              color = EventTimeLabel,
+              color = contentColor,
               maxLines = EVENT_TIME_MAX_LINES,
               overflow = TextOverflow.Ellipsis,
           )
@@ -121,9 +124,9 @@ fun CalendarEventCard(
  * from an estimate based on the style's nominal line height.
  */
 @Composable
-private fun ColumnScope.FittingSubject(text: String, style: TextStyle) {
+private fun ColumnScope.FittingSubject(text: String, style: TextStyle, color: Color) {
   val textMeasurer = rememberTextMeasurer()
-  val resolvedStyle = LocalTextStyle.current.merge(style)
+  val resolvedStyle = LocalTextStyle.current.merge(style).copy(color = color)
 
   // Do not fill unused space so the time follows a short subject.
   BoxWithConstraints(modifier = Modifier.weight(1f, fill = false)) {
@@ -145,7 +148,7 @@ private fun ColumnScope.FittingSubject(text: String, style: TextStyle) {
       Text(
           text = text,
           modifier = Modifier.testTag(CalendarEventCardTestTags.SUBJECT),
-          style = style,
+          style = style.copy(color = color),
           maxLines = fittingLines,
           overflow = TextOverflow.Ellipsis,
       )

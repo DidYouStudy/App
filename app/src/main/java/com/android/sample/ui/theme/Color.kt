@@ -71,10 +71,10 @@ val EventType.color: Color
 
 /** Returns a theme-adaptive text/icon color for content displayed on top of an [eventColor]. */
 @Composable
-fun onEventColor(type: EventType, darkTheme: Boolean = isSystemInDarkTheme()): Color {
+fun onEventColor(darkTheme: Boolean = isSystemInDarkTheme()): Color {
   return if (darkTheme) Color.White else Color(0xFF1D1B20)
 }
 
 /** Extension property to conveniently obtain a theme-adapted on-color for an [EventType]. */
 val EventType.onColor: Color
-  @Composable get() = onEventColor(this)
+  @Composable get() = onEventColor()
