@@ -2,8 +2,9 @@
 package com.android.sample.ui.groupsession
 
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
-import com.android.sample.model.groupsession.GroupSession
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
 import com.android.sample.ui.auth.TestAuthRepository
@@ -99,13 +100,16 @@ class AddEditGroupSessionViewModelTest {
             id = "sess_1",
             createdBy = "user_123",
             memberIds = listOf("user_123"),
-            type = EventType.COURSE,
-            subject = "Algorithms",
-            startsAt = Instant.parse("2026-11-15T10:00:00Z"),
-            endsAt = Instant.parse("2026-11-15T12:00:00Z"),
+            details =
+                EventDetails(
+                    type = EventType.COURSE,
+                    subject = "Algorithms",
+                    startsAt = Instant.parse("2026-11-15T10:00:00Z"),
+                    endsAt = Instant.parse("2026-11-15T12:00:00Z"),
+                    location = "INM 202",
+                    description = "Problem set 3",
+                ),
             createdAt = fixedInstant,
-            location = "INM 202",
-            description = "Problem set 3",
         )
     repository.saveSession("user_123", session)
 
@@ -130,10 +134,13 @@ class AddEditGroupSessionViewModelTest {
             id = "sess_1",
             createdBy = "user_123",
             memberIds = listOf("user_123"),
-            type = EventType.COURSE,
-            subject = "Algorithms",
-            startsAt = Instant.parse("2026-11-15T10:00:00Z"),
-            endsAt = Instant.parse("2026-11-15T12:00:00Z"),
+            details =
+                EventDetails(
+                    type = EventType.COURSE,
+                    subject = "Algorithms",
+                    startsAt = Instant.parse("2026-11-15T10:00:00Z"),
+                    endsAt = Instant.parse("2026-11-15T12:00:00Z"),
+                ),
             createdAt = fixedInstant,
         )
     repository.saveSession("user_123", session)
@@ -238,10 +245,10 @@ class AddEditGroupSessionViewModelTest {
     val saved = resultList!!.first()
     assertEquals("user_123", saved.createdBy)
     assertEquals(listOf("user_123"), saved.memberIds)
-    assertEquals(EventType.STUDY_SESSION, saved.type)
-    assertEquals("Stochastic Models", saved.subject)
-    assertEquals("CM 3", saved.location)
-    assertEquals("Chapter 5 prep", saved.description)
+    assertEquals(EventType.STUDY_SESSION, saved.details.type)
+    assertEquals("Stochastic Models", saved.details.subject)
+    assertEquals("CM 3", saved.details.location)
+    assertEquals("Chapter 5 prep", saved.details.description)
 
     viewModel.onSessionSavedHandled()
     assertFalse(viewModel.uiState.value.isSessionSaved)
@@ -254,10 +261,13 @@ class AddEditGroupSessionViewModelTest {
             id = "sess_99",
             createdBy = "user_123",
             memberIds = listOf("user_123", "user_456"),
-            type = EventType.STUDY_SESSION,
-            subject = "Initial Subject",
-            startsAt = Instant.parse("2026-11-15T10:00:00Z"),
-            endsAt = Instant.parse("2026-11-15T12:00:00Z"),
+            details =
+                EventDetails(
+                    type = EventType.STUDY_SESSION,
+                    subject = "Initial Subject",
+                    startsAt = Instant.parse("2026-11-15T10:00:00Z"),
+                    endsAt = Instant.parse("2026-11-15T12:00:00Z"),
+                ),
             createdAt = fixedInstant,
         )
     repository.saveSession("user_123", initial)
@@ -273,8 +283,8 @@ class AddEditGroupSessionViewModelTest {
 
     val updated = repository.getSession("sess_99").getOrNull()
     assertNotNull(updated)
-    assertEquals("Updated Subject", updated?.subject)
-    assertEquals("New Room", updated?.location)
+    assertEquals("Updated Subject", updated?.details?.subject)
+    assertEquals("New Room", updated?.details?.location)
   }
 
   @Test
@@ -311,8 +321,8 @@ class AddEditGroupSessionViewModelTest {
 
     // Start at 23:00 on 2026-11-15 UTC -> 2026-11-15T23:00:00Z
     // End at 01:00 next day UTC -> 2026-11-16T01:00:00Z (2 hours later)
-    assertEquals(Instant.parse("2026-11-15T23:00:00Z"), saved.startsAt)
-    assertEquals(Instant.parse("2026-11-16T01:00:00Z"), saved.endsAt)
+    assertEquals(Instant.parse("2026-11-15T23:00:00Z"), saved.details.startsAt)
+    assertEquals(Instant.parse("2026-11-16T01:00:00Z"), saved.details.endsAt)
   }
 
   @Test
@@ -331,9 +341,9 @@ class AddEditGroupSessionViewModelTest {
     assertNotNull(resultList)
     val saved = resultList!!.first()
 
-    assertEquals("Computer Graphics", saved.subject)
-    assertEquals("BC 02", saved.location)
-    assertEquals("Lab 1", saved.description)
+    assertEquals("Computer Graphics", saved.details.subject)
+    assertEquals("BC 02", saved.details.location)
+    assertEquals("Lab 1", saved.details.description)
   }
 
   @Test

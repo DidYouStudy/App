@@ -9,8 +9,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
-import com.android.sample.model.groupsession.GroupSession
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
 import java.time.Clock
@@ -108,20 +109,20 @@ class AddEditGroupSessionViewModel(
           onSuccess = { session ->
             loadedSession = session
             val zoneId = clock.zone
-            val startZdt = session.startsAt.atZone(zoneId)
-            val endZdt = session.endsAt.atZone(zoneId)
+            val startZdt = session.details.startsAt.atZone(zoneId)
+            val endZdt = session.details.endsAt.atZone(zoneId)
 
             _uiState.update {
               it.copy(
                   isLoading = false,
                   isEditing = true,
-                  type = session.type,
-                  subject = session.subject ?: "",
+                  type = session.details.type,
+                  subject = session.details.subject ?: "",
                   date = startZdt.toLocalDate(),
                   startTime = startZdt.toLocalTime(),
                   endTime = endZdt.toLocalTime(),
-                  location = session.location ?: "",
-                  description = session.description ?: "",
+                  location = session.details.location ?: "",
+                  description = session.details.description ?: "",
                   error = null,
               )
             }
@@ -200,7 +201,7 @@ class AddEditGroupSessionViewModel(
 
     if (
         !endInstant.isAfter(startInstant) ||
-            Duration.between(startInstant, endInstant) > GroupSession.MAX_DURATION
+            Duration.between(startInstant, endInstant) > EventDetails.MAX_DURATION
     ) {
       _uiState.update { it.copy(error = AddEditGroupSessionError.INVALID_SESSION) }
       return
@@ -224,15 +225,19 @@ class AddEditGroupSessionViewModel(
 
       val sessionToSave =
           try {
-            if (state.isEditing && loadedSession != null) {
-              val existing = loadedSession!!
-              existing.copy(
-                  type = state.type,
-                  subject = subject,
-                  startsAt = startInstant,
-                  endsAt = endInstant,
-                  location = location,
-                  description = description,
+            val details =
+                EventDetails(
+                    type = state.type,
+                    subject = subject,
+                    startsAt = startInstant,
+                    endsAt = endInstant,
+                    location = location,
+                    description = description,
+                )
+            val currentLoaded = loadedSession
+            if (state.isEditing && currentLoaded != null) {
+              currentLoaded.copy(
+                  details = details,
                   updatedAt = now,
               )
             } else {
@@ -241,14 +246,9 @@ class AddEditGroupSessionViewModel(
                   id = id,
                   createdBy = userId,
                   memberIds = listOf(userId),
-                  type = state.type,
-                  subject = subject,
-                  startsAt = startInstant,
-                  endsAt = endInstant,
+                  details = details,
                   createdAt = now,
                   updatedAt = now,
-                  location = location,
-                  description = description,
               )
             }
           } catch (e: IllegalArgumentException) {
