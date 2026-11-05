@@ -6,6 +6,8 @@ import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.EventsRepositoryProvider
+import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.PreferencesRepositoryProvider
 import com.android.sample.model.profile.ProfileRepository
@@ -30,6 +32,7 @@ class RepositoryOverridesRule(
     private val preferences: PreferencesRepository,
     private val profile: ProfileRepository,
     private val events: EventsRepository,
+    private val groupSessions: GroupSessionsRepository,
     private val credentialManager: CredentialManager? = null,
 ) : ExternalResource() {
 
@@ -40,6 +43,7 @@ class RepositoryOverridesRule(
     PreferencesRepositoryProvider.setRepository(preferences)
     ProfileRepositoryProvider.setRepository(profile)
     EventsRepositoryProvider.setRepository(events)
+    GroupSessionsRepositoryProvider.setRepository(groupSessions)
   }
 
   /** Removes every override, so the next test starts from the production defaults again. */
@@ -49,5 +53,6 @@ class RepositoryOverridesRule(
     PreferencesRepositoryProvider.setRepository(null)
     ProfileRepositoryProvider.setRepository(null)
     EventsRepositoryProvider.setRepository(null)
+    GroupSessionsRepositoryProvider.setRepository(null)
   }
 }
