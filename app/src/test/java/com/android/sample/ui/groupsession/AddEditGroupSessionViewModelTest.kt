@@ -4,6 +4,7 @@ package com.android.sample.ui.groupsession
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.EventType
 import com.android.sample.model.groupsession.GroupSession
+import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
 import com.android.sample.ui.auth.TestAuthRepository
 import java.time.Clock
@@ -317,6 +318,27 @@ class AddEditGroupSessionViewModelTest {
     assertEquals("Computer Graphics", saved.subject)
     assertEquals("BC 02", saved.location)
     assertEquals("Lab 1", saved.description)
+  }
+
+  @Test
+  fun saveSessionCatchesIllegalArgumentExceptionFromConstructor() = runTest {
+    // If the repository produces an invalid blank ID, GroupSession's init require() throws
+    // IllegalArgumentException
+    val invalidIdRepo =
+        object : GroupSessionsRepository by repository {
+          override fun newSessionId(): String = "   "
+        }
+    val testViewModel = AddEditGroupSessionViewModel(authRepository, invalidIdRepo, clock)
+    testViewModel.setType(EventType.OTHER)
+    testViewModel.setDate(LocalDate.of(2026, 11, 15))
+    testViewModel.setStartTime(LocalTime.of(10, 0))
+    testViewModel.setEndTime(LocalTime.of(12, 0))
+
+    testViewModel.saveSession()
+
+    val state = testViewModel.uiState.value
+    assertFalse(state.isSaving)
+    assertEquals(AddEditGroupSessionError.INVALID_SESSION, state.error)
   }
 
   @Test

@@ -223,32 +223,39 @@ class AddEditGroupSessionViewModel(
       val subject = trimmedSubject.ifBlank { null }
 
       val sessionToSave =
-          if (state.isEditing && loadedSession != null) {
-            val existing = loadedSession!!
-            existing.copy(
-                type = state.type,
-                subject = subject,
-                startsAt = startInstant,
-                endsAt = endInstant,
-                location = location,
-                description = description,
-                updatedAt = now,
-            )
-          } else {
-            val id = groupSessionsRepository.newSessionId()
-            GroupSession(
-                id = id,
-                createdBy = userId,
-                memberIds = listOf(userId),
-                type = state.type,
-                subject = subject,
-                startsAt = startInstant,
-                endsAt = endInstant,
-                createdAt = now,
-                updatedAt = now,
-                location = location,
-                description = description,
-            )
+          try {
+            if (state.isEditing && loadedSession != null) {
+              val existing = loadedSession!!
+              existing.copy(
+                  type = state.type,
+                  subject = subject,
+                  startsAt = startInstant,
+                  endsAt = endInstant,
+                  location = location,
+                  description = description,
+                  updatedAt = now,
+              )
+            } else {
+              val id = groupSessionsRepository.newSessionId()
+              GroupSession(
+                  id = id,
+                  createdBy = userId,
+                  memberIds = listOf(userId),
+                  type = state.type,
+                  subject = subject,
+                  startsAt = startInstant,
+                  endsAt = endInstant,
+                  createdAt = now,
+                  updatedAt = now,
+                  location = location,
+                  description = description,
+              )
+            }
+          } catch (e: IllegalArgumentException) {
+            _uiState.update {
+              it.copy(isSaving = false, error = AddEditGroupSessionError.INVALID_SESSION)
+            }
+            return@launch
           }
 
       val result = groupSessionsRepository.saveSession(userId, sessionToSave)
