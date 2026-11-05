@@ -76,10 +76,13 @@ class ScheduleImporterTest {
         PersonalEvent(
             id = "manual",
             ownerId = owner,
-            type = EventType.OTHER,
-            subject = null,
-            startsAt = Instant.parse("2026-10-20T08:00:00Z"),
-            endsAt = Instant.parse("2026-10-20T09:00:00Z"),
+            details =
+                EventDetails(
+                    type = EventType.OTHER,
+                    subject = null,
+                    startsAt = Instant.parse("2026-10-20T08:00:00Z"),
+                    endsAt = Instant.parse("2026-10-20T09:00:00Z"),
+                ),
             createdAt = from,
         )
     repo.saveEvent(manual).getOrThrow()
@@ -150,7 +153,8 @@ class ScheduleImporterTest {
     val week1 = vevent("rec@x", "20261015T080000")
     val week2 = vevent("rec@x", "20261022T080000")
     importer.import(owner, stream(ics(week1, week2)))
-    val sibling = stored(repo).first { it.startsAt == Instant.parse("2026-10-22T06:00:00Z") }
+    val sibling =
+        stored(repo).first { it.details.startsAt == Instant.parse("2026-10-22T06:00:00Z") }
     val task = EventTask("Prepare quiz")
     repo.saveEvent(sibling.copy(tasks = listOf(task))).getOrThrow()
 
@@ -248,7 +252,7 @@ class ScheduleImporterTest {
     importer.import(owner, stream(ics(vevent("a@x", "20261015T080000", "New"))))
 
     val updated = stored(repo).single()
-    assertEquals("New", updated.subject)
+    assertEquals("New", updated.details.subject)
     assertEquals(first.id, updated.id)
     assertEquals(first.createdAt, updated.createdAt)
     assertEquals(listOf(task), updated.tasks)
@@ -276,10 +280,13 @@ class ScheduleImporterTest {
         PersonalEvent(
             id = "manual",
             ownerId = owner,
-            type = EventType.OTHER,
-            subject = null,
-            startsAt = Instant.parse("2026-10-20T08:00:00Z"),
-            endsAt = Instant.parse("2026-10-20T09:00:00Z"),
+            details =
+                EventDetails(
+                    type = EventType.OTHER,
+                    subject = null,
+                    startsAt = Instant.parse("2026-10-20T08:00:00Z"),
+                    endsAt = Instant.parse("2026-10-20T09:00:00Z"),
+                ),
             createdAt = from,
         )
     repo.saveEvent(manual).getOrThrow()

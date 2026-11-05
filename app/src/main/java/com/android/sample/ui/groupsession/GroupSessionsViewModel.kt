@@ -227,9 +227,9 @@ class GroupSessionsViewModel(
               .filter { item ->
                 (query.isEmpty() ||
                     listOfNotNull(
-                            item.session.subject,
-                            item.session.location,
-                            item.session.description,
+                            item.session.details.subject,
+                            item.session.details.location,
+                            item.session.details.description,
                         )
                         .any { it.contains(query, ignoreCase = true) }) &&
                     (state.filter != GroupSessionFilter.JOINED || item.isMember)

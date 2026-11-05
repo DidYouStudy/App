@@ -4,6 +4,7 @@ package com.android.sample.ui.calendar
 
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.InMemoryEventsRepository
@@ -268,10 +269,13 @@ class CalendarViewModelTest {
     return PersonalEvent(
         id = id,
         ownerId = ownerId,
-        type = EventType.COURSE,
-        subject = "Algebra",
-        startsAt = startsAt,
-        endsAt = endsAt,
+        details =
+            EventDetails(
+                type = EventType.COURSE,
+                subject = "Algebra",
+                startsAt = startsAt,
+                endsAt = endsAt,
+            ),
         createdAt = startsAt,
     )
   }
