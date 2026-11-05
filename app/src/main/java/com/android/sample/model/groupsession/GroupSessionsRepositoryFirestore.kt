@@ -43,14 +43,7 @@ class GroupSessionsRepositoryFirestore(
                     requireNotNull(snapshot)
                         .documents
                         .mapNotNull { document ->
-                          document.data?.let { data ->
-                            try {
-                              GroupSessionFirestoreMapper.decode(document.id, data)
-                            } catch (exception: EventsException) {
-                              if (exception.error == EventsError.INVALID_EVENT_DATA) null
-                              else throw exception
-                            }
-                          }
+                          document.data?.let { data -> decodeObservedSession(document.id, data) }
                         }
                         .sortedWith(
                             compareBy<GroupSession>(
@@ -63,6 +56,14 @@ class GroupSessionsRepositoryFirestore(
                   error != null,
               )
             }
+      }
+
+  /** Decodes one observed document, skipping only documents with invalid event data. */
+  private fun decodeObservedSession(id: String, data: Map<String, Any?>): GroupSession? =
+      try {
+        GroupSessionFirestoreMapper.decode(id, data)
+      } catch (exception: EventsException) {
+        if (exception.error == EventsError.INVALID_EVENT_DATA) null else throw exception
       }
 
   /** Generates a unique session ID locally without contacting Firestore. */
