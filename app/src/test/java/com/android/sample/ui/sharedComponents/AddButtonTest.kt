@@ -75,6 +75,8 @@ class AddButtonTest {
 
   @Test
   fun dashboardAddFabMenuTogglesAndExecutesCallbacks() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val addDesc = context.getString(R.string.dashboard_add_description)
     var eventClicks = 0
     var groupSessionClicks = 0
     composeTestRule.setContent {
@@ -91,7 +93,7 @@ class AddButtonTest {
         .onNodeWithTag(DashboardContentTestTags.FAB_MENU_GROUP_SESSION_BUTTON)
         .assertDoesNotExist()
 
-    composeTestRule.onNodeWithContentDescription("Add").performClick()
+    composeTestRule.onNodeWithContentDescription(addDesc).performClick()
 
     composeTestRule
         .onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON)
@@ -99,7 +101,7 @@ class AddButtonTest {
         .performClick()
     assertEquals(1, eventClicks)
 
-    composeTestRule.onNodeWithContentDescription("Add").performClick()
+    composeTestRule.onNodeWithContentDescription(addDesc).performClick()
     composeTestRule
         .onNodeWithTag(DashboardContentTestTags.FAB_MENU_GROUP_SESSION_BUTTON)
         .assertIsDisplayed()
