@@ -8,27 +8,32 @@ import com.android.sample.model.event.EventType
 import com.android.sample.ui.sharedComponents.FormContent
 
 /**
- * Renders the complete scrollable event planning form for personal events.
+ * Renders the complete scrollable event-planning form for personal events.
  *
- * Wrapper for [FormContent] in `sharedComponents` with tasks section enabled. Adapts the shared
- * form to the event planning screens
+ * Adapts [FormContent] from `sharedComponents` to [EventPlanningUiState] and enables the task
+ * section. When [isValidationError] is true, missing required date, times and subject are marked
+ * invalid; by default, this is derived from the ViewModel's required-field and invalid-event
+ * errors.
  *
- * @param uiState Current UI state containing form values, tasks, and validation errors.
- * @param onTypeChange Callback when event type is selected.
- * @param onDateClick Invoked when the user taps the date selector pill.
- * @param onStartTimeClick Invoked when the user taps the start time selector pill.
- * @param onEndTimeClick Invoked when the user taps the end time selector pill.
- * @param onSubjectClick Invoked when the user taps the subject selector pill.
- * @param onLocationChange Callback when the text in the location field changes.
- * @param onDescriptionChange Callback when the text in the description field changes.
- * @param onAddTask Callback invoked with the non-blank task title when submitted via IME Done.
- * @param onToggleTask Callback invoked with the index of the task to toggle completion.
- * @param onDeleteTask Callback invoked with the index of the task to delete.
- * @param modifier Modifier applied to the outer scrollable container.
- * @param onTypeClick Invoked when the user taps the event type selector pill.
+ * @param modifier Modifier applied to the scrollable form container.
+ * @param uiState Current field values, event tasks and ViewModel error state.
+ * @param isValidationError Whether required inputs should display validation error states.
+ * @param onTypeChange Called when the event type changes.
+ * @param onDateClick Invoked when the date selector is pressed.
+ * @param onStartTimeClick Invoked when the start-time selector is pressed.
+ * @param onEndTimeClick Invoked when the end-time selector is pressed.
+ * @param onSubjectClick Invoked when the subject selector is pressed.
+ * @param onLocationChange Called when the location field changes.
+ * @param onDescriptionChange Called when the description field changes.
+ * @param onAddTask Called with a non-blank task title submitted via the keyboard action.
+ * @param onToggleTask Called with the index of the task to toggle completion.
+ * @param onDeleteTask Called with the index of the task to delete.
+ * @param onTypeClick Optional external event-type picker action; when null, [FormContent] uses its
+ *   built-in type dropdown.
  */
 @Composable
 fun EventFormContent(
+    modifier: Modifier = Modifier,
     uiState: EventPlanningUiState,
     isValidationError: Boolean =
         uiState.error == EventPlanningViewModel.EVENT_DATE_AND_TIMES_REQUIRED_ERROR ||
@@ -43,7 +48,6 @@ fun EventFormContent(
     onAddTask: (String) -> Unit,
     onToggleTask: (Int) -> Unit,
     onDeleteTask: (Int) -> Unit,
-    modifier: Modifier = Modifier,
     onTypeClick: (() -> Unit)? = null,
 ) {
 

@@ -45,7 +45,41 @@ import com.android.sample.ui.theme.Spacing
 import java.time.LocalDate
 import java.time.LocalTime
 
-/** Renders the shared event form and owns its standard date, time and subject pickers. */
+/**
+ * Stateful shared event-planning UI used by the Add and Edit destinations.
+ *
+ * Owns the built-in date, time and subject picker state, while allowing destinations to provide
+ * optional external picker actions. The [isEditing] and [isLoading] flags control the shared
+ * screen's mode-specific title, actions and form loading display.
+ *
+ * @param modifier Modifier applied to the shared screen.
+ * @param uiState Current form values, loading/saving state and any validation or persistence error.
+ * @param onBackClick Invoked when the top-bar back button is pressed.
+ * @param onTypeChange Called when the event type changes.
+ * @param onDateSelected Called with the selected event date.
+ * @param onStartTimeSelected Called with the selected start time.
+ * @param onEndTimeSelected Called with the selected end time.
+ * @param onSubjectSelected Called with the selected subject.
+ * @param onLocationChange Called when the location field changes.
+ * @param onDescriptionChange Called when the description field changes.
+ * @param onAddTask Called when a non-blank task is submitted.
+ * @param onToggleTask Called with the index of the task to toggle.
+ * @param onDeleteTask Called with the index of the task to remove.
+ * @param onSaveClick Invoked when Save is pressed.
+ * @param onDeleteClick Optional delete action. The Delete button is shown only in edit mode when
+ *   this callback is supplied.
+ * @param isEditing Whether the shared screen is being used to edit an existing event.
+ * @param isLoading Whether to show the loading indicator instead of the form.
+ * @param onTypeClick Optional external event-type picker action; null uses the shared form's
+ *   built-in type dropdown.
+ * @param onPickDateClick Optional external date picker action; null uses the built-in date picker.
+ * @param onPickStartTimeClick Optional external start-time picker action; null uses the built-in
+ *   time picker.
+ * @param onPickEndTimeClick Optional external end-time picker action; null uses the built-in time
+ *   picker.
+ * @param onPickSubjectClick Optional external subject picker action; null uses the built-in subject
+ *   picker.
+ */
 @Composable
 internal fun EventPlanningScreen(
     modifier: Modifier = Modifier,
@@ -146,7 +180,29 @@ internal fun EventPlanningScreen(
 }
 
 /**
- * Stateless event planning screen: top bar, form content and the pinned Save (and Delete) buttons.
+ * Renders the stateless shared event-planning layout for Add or Edit mode.
+ *
+ * Displays the top bar, form or loading indicator, and pinned Save action. In edit mode, it also
+ * displays the optional Delete action. Form state and all user actions are supplied by the caller.
+ *
+ * @param modifier Modifier applied to the screen scaffold.
+ * @param uiState Current form values, operation state and any validation or persistence error.
+ * @param onBackClick Invoked when the top-bar back button is pressed.
+ * @param onTypeChange Called when the event type changes.
+ * @param onDateClick Invoked when the date selector is pressed.
+ * @param onStartTimeClick Invoked when the start-time selector is pressed.
+ * @param onEndTimeClick Invoked when the end-time selector is pressed.
+ * @param onSubjectClick Invoked when the subject selector is pressed.
+ * @param onLocationChange Called when the location field changes.
+ * @param onDescriptionChange Called when the description field changes.
+ * @param onAddTask Called when a non-blank task is submitted.
+ * @param onToggleTask Called with the index of the task to toggle.
+ * @param onDeleteTask Called with the index of the task to remove.
+ * @param onSaveClick Invoked when Save is pressed.
+ * @param onDeleteClick Optional delete action; when null, no Delete button is shown.
+ * @param isEditing Whether to render Edit mode; defaults to Add mode.
+ * @param isLoading Whether to show a loading indicator instead of the form.
+ * @param onTypeClick Optional event-type picker action passed to the form.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -16,18 +16,25 @@ import com.android.sample.model.event.EventType
 /**
  * Stateful destination screen for creating and saving a new event.
  *
- * Collects state from [EventPlanningViewModel], handles the event-saved navigation side effect, and
- * delegates all rendering (form, pickers, Save button) to the shared [EventPlanningScreen].
+ * Collects form state from [EventPlanningViewModel], handles successful-save acknowledgement and
+ * navigation, and delegates form and picker rendering to [EventPlanningScreen]. The event is
+ * persisted only when the user presses Save.
  *
  * @param modifier Modifier applied to the root screen layout.
- * @param viewModel ViewModel backing the event creation workflow.
- * @param onBackClick Invoked when the top app bar navigation icon is pressed.
- * @param onEventSaved Invoked once the event has been successfully persisted.
- * @param onPickTypeClick Intent to trigger the type selection modal.
- * @param onPickDateClick Intent to trigger the date picker dialog.
- * @param onPickStartTimeClick Intent to trigger the start time picker dialog.
- * @param onPickEndTimeClick Intent to trigger the end time picker dialog.
- * @param onPickSubjectClick Intent to trigger the subject search modal.
+ * @param viewModel ViewModel backing the event creation workflow; defaults to the screen's
+ *   repository-backed ViewModel.
+ * @param onBackClick Invoked by the top-bar back button or system back action.
+ * @param onEventSaved Invoked after a successful save has been acknowledged by the ViewModel.
+ * @param onPickTypeClick Optional external event-type picker action; when null, the screen uses its
+ *   built-in type selector.
+ * @param onPickDateClick Optional external date picker action; when null, the screen uses its
+ *   built-in date picker.
+ * @param onPickStartTimeClick Optional external start-time picker action; when null, the screen
+ *   uses its built-in time picker.
+ * @param onPickEndTimeClick Optional external end-time picker action; when null, the screen uses
+ *   its built-in time picker.
+ * @param onPickSubjectClick Optional external subject picker action; when null, the screen uses its
+ *   built-in subject picker.
  */
 @Composable
 fun AddEventScreen(

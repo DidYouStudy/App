@@ -16,22 +16,31 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 /**
- * Loads an existing event into the shared event form and saves edits only when Save is pressed.
+ * Loads an existing event into the shared event form and persists edits only when Save is pressed.
  *
- * The ViewModel owns form validation and persistence; shared components render the form and
- * pickers, while this screen handles the edit-specific loading and navigation callbacks.
+ * The ViewModel owns form validation and persistence. This screen coordinates loading, successful
+ * save/delete acknowledgements and navigation; [EventPlanningScreen] renders the shared form and
+ * built-in pickers. Leaving the screen discards the current form state.
  *
  * @param eventId ID of the event to load for editing.
  * @param modifier Modifier applied to the screen.
- * @param viewModel ViewModel backing the event editing workflow.
- * @param onBackClick Invoked when the top bar back button is pressed; unsaved edits are discarded.
- * @param onEventSaved Invoked after the edited event has been persisted successfully.
- * @param onEventDelete Invoked after the user has decided to delete the current event
- * @param onPickTypeClick Optional external event type selector.
- * @param onPickDateClick Optional external date picker.
- * @param onPickStartTimeClick Optional external start time picker.
- * @param onPickEndTimeClick Optional external end time picker.
- * @param onPickSubjectClick Optional external subject selector.
+ * @param viewModel ViewModel backing the event editing workflow; defaults to the screen's
+ *   repository-backed ViewModel.
+ * @param onBackClick Invoked by the top-bar back button or system back action; unsaved edits are
+ *   discarded.
+ * @param onEventSaved Invoked after edited event persistence succeeds and the ViewModel result is
+ *   acknowledged.
+ * @param onEventDelete Invoked after deletion succeeds and the ViewModel result is acknowledged.
+ * @param onPickTypeClick Optional external event-type picker action; when null, the screen uses its
+ *   built-in type selector.
+ * @param onPickDateClick Optional external date picker action; when null, the screen uses its
+ *   built-in date picker.
+ * @param onPickStartTimeClick Optional external start-time picker action; when null, the screen
+ *   uses its built-in time picker.
+ * @param onPickEndTimeClick Optional external end-time picker action; when null, the screen uses
+ *   its built-in time picker.
+ * @param onPickSubjectClick Optional external subject picker action; when null, the screen uses its
+ *   built-in subject picker.
  */
 @Composable
 fun EditEventScreen(
