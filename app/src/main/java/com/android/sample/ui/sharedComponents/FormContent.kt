@@ -73,7 +73,7 @@ fun FormContent(
 ) {
   val focusManager = LocalFocusManager.current
   val density = LocalDensity.current
-  val dateFormatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
+  val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
   val timeFormatter = remember { DateTimeFormatter.ofPattern("HH:mm") }
   var showTypeMenu by rememberSaveable { mutableStateOf(false) }
   var pillWidth by remember { mutableStateOf(Dimens.noPadding) }

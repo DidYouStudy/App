@@ -30,5 +30,7 @@ object EventPlanningScreenTestTags {
   // Actions & Feedback
   const val SAVE_BUTTON = "event_planning_save_button"
   const val SAVE_BUTTON_PROGRESS = "event_planning_save_button_progress"
+  const val DELETE_BUTTON = "event_planning_delete_button"
+  const val DELETE_BUTTON_PROGRESS = "event_planning_delete_button_progress"
   const val ERROR_TEXT = "event_planning_error_text"
 }

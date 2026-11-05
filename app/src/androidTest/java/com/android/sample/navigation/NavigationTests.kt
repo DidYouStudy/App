@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Gemini AI Agent
 package com.android.sample.navigation
 
@@ -15,16 +16,14 @@ import androidx.compose.ui.test.performTouchInput
 import com.android.sample.DidYouStudyApp
 import com.android.sample.MainActivity
 import com.android.sample.model.auth.AuthRepository
-import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.auth.UserAccount
-import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
+import com.android.sample.model.event.InMemoryEventsRepository
 import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
 import com.android.sample.model.preferences.PreferencesRepository
-import com.android.sample.model.preferences.PreferencesRepositoryProvider
 import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.model.profile.ProfileRepository
-import com.android.sample.model.profile.ProfileRepositoryProvider
 import com.android.sample.model.profile.UserProfile
+import com.android.sample.testing.RepositoryOverridesRule
 import com.android.sample.ui.auth.SignInScreenTestTags
 import com.android.sample.ui.calendar.CalendarTestTags
 import com.android.sample.ui.dashboard.DashboardContentTestTags
@@ -36,50 +35,26 @@ import com.android.sample.ui.settings.SettingsScreenTestTags
 import junit.framework.TestCase.assertEquals
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import org.junit.After
-import org.junit.AfterClass
 import org.junit.Assert.assertFalse
 import org.junit.Before
-import org.junit.BeforeClass
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.RuleChain
 
 // some tests inspired from NavigationB1Test.kt from the bootcamp repo
 // TODO add firebase conditions for testing + new screens navigation tests
 // TODO state management tests for the new screens
 class NavigationTests {
-  @get:Rule val composeTestRule = createAndroidComposeRule<ComponentActivity>()
+  private val composeTestRule = createAndroidComposeRule<ComponentActivity>()
+
+  // Fresh fakes for every test, installed before the app starts and removed after it ends.
+  @get:Rule
+  val rules: RuleChain =
+      RuleChain.outerRule(signedInRepositories("navigation-test-user")).around(composeTestRule)
 
   @Before
   fun setUp() {
-    installFakeRepositories()
-    GroupSessionsRepositoryProvider.setRepository(InMemoryGroupSessionsRepository())
     composeTestRule.setContent { DidYouStudyApp() }
-  }
-
-  @After
-  fun tearDown() {
-    GroupSessionsRepositoryProvider.setRepository(null)
-  }
-
-  private fun installFakeRepositories() {
-    val user = UserAccount("navigation-test-user", null, null, null)
-    setProviderInstance(
-        AuthRepositoryProvider,
-        FakeAuthRepository(user),
-    )
-    setProviderInstance(
-        PreferencesRepositoryProvider,
-        FakePreferencesRepository(UserPreferences(userId = user.uid)),
-    )
-    setProviderInstance(ProfileRepositoryProvider, FakeProfileRepository())
-  }
-
-  private fun setProviderInstance(provider: Any, repository: Any?) {
-    provider.javaClass.getDeclaredField("instance").apply {
-      isAccessible = true
-      set(provider, repository)
-    }
   }
 
   private fun checkDashboardScreenIsDisplayed() {
@@ -400,7 +375,13 @@ class NavigationTests {
 
 /** Verifies that the real activity hosts the Compose navigation graph. */
 class MainActivityNavigationTests {
-  @get:Rule val composeTestRule = createAndroidComposeRule<MainActivity>()
+  private val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+  // Installed per test, before MainActivity launches, so one test's logout cannot leak into the
+  // next test's signed-in session.
+  @get:Rule
+  val rules: RuleChain =
+      RuleChain.outerRule(signedInRepositories("main-activity-test-user")).around(composeTestRule)
 
   @Test
   fun activityStartsOnDashboardForAnAuthenticatedUser() {
@@ -430,33 +411,21 @@ class MainActivityNavigationTests {
     composeTestRule.waitUntil(timeoutMillis = 20_000) { composeTestRule.activity.isFinishing }
     assertEquals(true, composeTestRule.activity.isFinishing)
   }
+}
 
-  companion object {
-    @JvmStatic
-    @BeforeClass
-    fun installFakeRepositories() {
-      val user = UserAccount("main-activity-test-user", null, null, null)
-      setProviderInstance(AuthRepositoryProvider, FakeAuthRepository(user))
-      setProviderInstance(
-          PreferencesRepositoryProvider,
-          FakePreferencesRepository(UserPreferences(userId = user.uid)),
-      )
-    }
-
-    @JvmStatic
-    @AfterClass
-    fun clearFakeRepositories() {
-      setProviderInstance(AuthRepositoryProvider, null)
-      setProviderInstance(PreferencesRepositoryProvider, null)
-    }
-
-    private fun setProviderInstance(provider: Any, repository: Any?) {
-      provider.javaClass.getDeclaredField("instance").apply {
-        isAccessible = true
-        set(provider, repository)
-      }
-    }
-  }
+/**
+ * Fakes for a signed-in user [uid] who already saved preferences, so the app opens on the
+ * dashboard. No repository falls back to the real Firebase project.
+ */
+private fun signedInRepositories(uid: String): RepositoryOverridesRule {
+  val user = UserAccount(uid, null, null, null)
+  return RepositoryOverridesRule(
+      auth = FakeAuthRepository(user),
+      preferences = FakePreferencesRepository(UserPreferences(userId = user.uid)),
+      profile = FakeProfileRepository(),
+      events = InMemoryEventsRepository(),
+      groupSessions = InMemoryGroupSessionsRepository(),
+  )
 }
 
 private class FakeAuthRepository(private val user: UserAccount) : AuthRepository {

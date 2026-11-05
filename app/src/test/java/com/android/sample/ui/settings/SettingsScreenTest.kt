@@ -1,4 +1,5 @@
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.settings
 
 import androidx.compose.ui.test.assertIsDisplayed
@@ -8,6 +9,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -323,14 +325,16 @@ class SettingsScreenTest {
   }
 
   @Test
-  fun failedSignOutShowsTheErrorMessageInSnackbar() {
+  fun failedSignOutShowsTranslatedMessageInSnackbar() {
     makeSignOutFail(RuntimeException(SIGN_OUT_ERROR))
     setStatefulContent(createViewModel())
 
     composeTestRule.onNodeWithTag(SettingsScreenTestTags.LOGOUT_BUTTON).performClick()
 
-    waitForText(SIGN_OUT_ERROR)
-    composeTestRule.onAllNodesWithText(SIGN_OUT_ERROR)[0].assertIsDisplayed()
+    waitForText(signOutFailedMessage())
+    composeTestRule.onAllNodesWithText(signOutFailedMessage())[0].assertIsDisplayed()
+    // The raw exception text never reaches the user.
+    composeTestRule.onNodeWithText(SIGN_OUT_ERROR).assertDoesNotExist()
   }
 
   @Test
@@ -340,10 +344,8 @@ class SettingsScreenTest {
 
     composeTestRule.onNodeWithTag(SettingsScreenTestTags.LOGOUT_BUTTON).performClick()
 
-    waitForText(SettingsViewModel.FAILED_TO_SIGN_OUT_ERROR)
-    composeTestRule
-        .onAllNodesWithText(SettingsViewModel.FAILED_TO_SIGN_OUT_ERROR)[0]
-        .assertIsDisplayed()
+    waitForText(signOutFailedMessage())
+    composeTestRule.onAllNodesWithText(signOutFailedMessage())[0].assertIsDisplayed()
   }
 
   @Test
@@ -353,14 +355,39 @@ class SettingsScreenTest {
     setStatefulContent(viewModel)
 
     composeTestRule.onNodeWithTag(SettingsScreenTestTags.LOGOUT_BUTTON).performClick()
-    waitForText(SIGN_OUT_ERROR)
+    waitForText(signOutFailedMessage())
 
     // The snackbar times out on its own, after which the screen asks the ViewModel to clear it.
     composeTestRule.waitUntil(timeoutMillis = 15_000) { viewModel.uiState.value.error == null }
-    waitForTextToDisappear(SIGN_OUT_ERROR)
+    waitForTextToDisappear(signOutFailedMessage())
 
     assertNull(viewModel.uiState.value.error)
   }
+
+  /** Without any known name, the stateful screen greets the user with the translated default. */
+  @Test
+  fun statefulScreenGreetsDefaultUsernameWhenNoNameIsKnown() {
+    setStatefulContent(createViewModel())
+
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      composeTestRule
+          .onAllNodesWithTag(SettingsScreenTestTags.GREETING)
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    composeTestRule
+        .onNodeWithTag(SettingsScreenTestTags.GREETING)
+        .assertTextEquals(
+            context.getString(
+                R.string.settings_greeting,
+                context.getString(R.string.default_username),
+            )
+        )
+  }
+
+  /** Returns the sign-out failure message in the device language. */
+  private fun signOutFailedMessage(): String =
+      context.getString(R.string.settings_error_failed_to_sign_out)
 
   private companion object {
     const val SIGN_OUT_ERROR = "Sign out failed (test)"

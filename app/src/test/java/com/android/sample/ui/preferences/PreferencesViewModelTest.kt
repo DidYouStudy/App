@@ -77,9 +77,8 @@ class PreferencesViewModelTest {
 
     val viewModel = PreferencesViewModel(repository, authRepository)
 
-    val state = viewModel.uiState.value
-    assertTrue(state is PreferencesUiState.Error)
-    assertEquals("Network error", (state as PreferencesUiState.Error).message)
+    // The raw exception text is not exposed; the UI shows the translated load-failure message.
+    assertEquals(PreferencesUiState.Error(PreferencesError.LOAD_FAILED), viewModel.uiState.value)
   }
 
   @Test
@@ -88,20 +87,20 @@ class PreferencesViewModelTest {
 
     val viewModel = PreferencesViewModel(repository, authRepository)
 
-    assertEquals(PreferencesUiState.Error("No signed-in user"), viewModel.uiState.value)
+    assertEquals(
+        PreferencesUiState.Error(PreferencesError.NO_SIGNED_IN_USER),
+        viewModel.uiState.value,
+    )
   }
 
   @Test
-  fun init_loadsPreferences_failureWithoutMessage_usesFallback() = runTest {
+  fun init_loadsPreferences_failureWithoutMessage_setsLoadFailedError() = runTest {
     val exception = RuntimeException(null as String?)
     `when`(repository.getPreferences(userId)).thenReturn(Result.failure(exception))
 
     val viewModel = PreferencesViewModel(repository, authRepository)
 
-    assertEquals(
-        PreferencesUiState.Error("Failed to load preferences"),
-        viewModel.uiState.value,
-    )
+    assertEquals(PreferencesUiState.Error(PreferencesError.LOAD_FAILED), viewModel.uiState.value)
   }
 
   @Test
@@ -148,9 +147,9 @@ class PreferencesViewModelTest {
 
     viewModel.updatePreferences(updatedPrefs)
 
-    val state = viewModel.uiState.value
-    assertTrue(state is PreferencesUiState.Error)
-    assertEquals("Save failed", (state as PreferencesUiState.Error).message)
+    assertEquals(PreferencesUiState.Error(PreferencesError.SAVE_FAILED), viewModel.uiState.value)
+    // Save is re-enabled so the user can try again.
+    assertFalse(viewModel.isSaving.value)
   }
 
   @Test
