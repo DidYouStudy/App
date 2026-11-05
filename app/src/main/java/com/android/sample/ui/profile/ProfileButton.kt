@@ -1,4 +1,5 @@
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.profile
 
 import androidx.compose.foundation.layout.size
@@ -14,16 +15,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import com.android.sample.R
 import com.android.sample.ui.theme.DidYouStudyTheme
+import com.android.sample.ui.theme.Dimens
 
 object ProfileButtonTestTags {
   const val PROFILE_BUTTON = "profileButton"
 }
-
-/** Size of the profile button, matching the "Generic avatar" of the Figma app bar. */
-val ProfileButtonSize = 49.dp
 
 /**
  * Circular avatar button shown at the end of the top app bar that opens the user's profile.
@@ -35,7 +33,8 @@ val ProfileButtonSize = 49.dp
 fun ProfileButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
   FilledIconButton(
       onClick = onClick,
-      modifier = modifier.size(ProfileButtonSize).testTag(ProfileButtonTestTags.PROFILE_BUTTON),
+      modifier =
+          modifier.size(Dimens.profileButtonSize).testTag(ProfileButtonTestTags.PROFILE_BUTTON),
       shape = CircleShape,
       colors =
           IconButtonDefaults.filledIconButtonColors(
@@ -46,7 +45,7 @@ fun ProfileButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     Icon(
         imageVector = Icons.Outlined.Person,
         contentDescription = stringResource(R.string.profile_button_description),
-        modifier = Modifier.size(28.dp),
+        modifier = Modifier.size(Dimens.profileButtonIconSize),
     )
   }
 }

@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -25,7 +25,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -34,12 +33,13 @@ import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.sp
 import com.android.sample.R
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
+import com.android.sample.ui.theme.GoogleButtonBackground
 import com.android.sample.ui.theme.GoogleButtonBorder
 import com.android.sample.ui.theme.GoogleButtonText
+import com.android.sample.ui.theme.GoogleButtonTextStyle
 import com.android.sample.ui.theme.Spacing
 
 /** Test tags for the sign-in screen, shared by the UI and its tests. */
@@ -90,7 +90,7 @@ fun SignInScreen(
     // The bold black title introduces the sign-in action.
     Text(
         text = stringResource(R.string.sign_in_title),
-        fontSize = 36.sp,
+        style = MaterialTheme.typography.displaySmall,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onBackground,
         textAlign = TextAlign.Center,
@@ -103,8 +103,8 @@ fun SignInScreen(
     Surface(
         onClick = onSignInClick,
         enabled = !isLoading,
-        shape = RoundedCornerShape(50),
-        color = Color.White,
+        shape = CircleShape,
+        color = GoogleButtonBackground,
         contentColor = GoogleButtonText,
         border = BorderStroke(Dimens.borderThin, GoogleButtonBorder),
         modifier =
@@ -132,9 +132,7 @@ fun SignInScreen(
         )
         Text(
             text = stringResource(R.string.sign_in_google_button),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            letterSpacing = 0.25.sp,
+            style = GoogleButtonTextStyle,
             color = GoogleButtonText,
             textAlign = TextAlign.Center,
             modifier = Modifier.weight(1f).alpha(contentAlpha),

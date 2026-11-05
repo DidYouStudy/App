@@ -1,5 +1,6 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.settings
 
 import androidx.compose.foundation.layout.Column
@@ -26,9 +27,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
+import com.android.sample.ui.theme.Dimens
+import com.android.sample.ui.theme.Spacing
 
 /**
  * Collects the settings UI state and connects screen actions to the [SettingsViewModel].
@@ -58,9 +60,12 @@ fun SettingsScreen(
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val snackbarHostState = remember { SnackbarHostState() }
 
+  // Resolve the error text here rather than in the ViewModel, so it follows the device language.
+  val errorMessage = uiState.error?.let { stringResource(it.toMessageRes()) }
+
   // Show errors from the ViewModel in a snackbar, then clear them.
-  LaunchedEffect(uiState.error) {
-    uiState.error?.let { message ->
+  LaunchedEffect(errorMessage) {
+    errorMessage?.let { message ->
       snackbarHostState.showSnackbar(message)
       viewModel.clearError()
     }
@@ -69,7 +74,7 @@ fun SettingsScreen(
   // Render the UI from the latest state and route user actions to their handlers.
   SettingsScreenStateless(
       modifier = modifier,
-      username = uiState.username,
+      username = uiState.username ?: stringResource(R.string.default_username),
       profilePictureUrl = uiState.profilePictureUrl,
       isLoading = uiState.isLoading,
       snackbarHostState = snackbarHostState,
@@ -124,10 +129,13 @@ fun SettingsScreenStateless(
       },
   ) { innerPadding ->
     Column(
-        modifier = Modifier.fillMaxSize().padding(innerPadding).padding(horizontal = 7.dp),
+        modifier =
+            Modifier.fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = Dimens.settingsHorizontalPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-      Spacer(Modifier.height(12.dp))
+      Spacer(Modifier.height(Spacing.medium))
 
       // Shows the user's name and profile actions; displays a loading indicator while needed.
       ProfileCard(
@@ -138,7 +146,7 @@ fun SettingsScreenStateless(
           onChangeProfilePictureClick = onChangeProfilePictureClick,
       )
 
-      Spacer(Modifier.height(16.dp))
+      Spacer(Modifier.height(Spacing.large))
 
       // Opens the study preference settings.
       SettingsPillButton(
@@ -148,7 +156,7 @@ fun SettingsScreenStateless(
           testTag = SettingsScreenTestTags.PREFERENCES_BUTTON,
       )
 
-      Spacer(Modifier.height(16.dp))
+      Spacer(Modifier.height(Spacing.large))
 
       // Opens the friends-management screen.
       SettingsPillButton(
@@ -158,7 +166,7 @@ fun SettingsScreenStateless(
           testTag = SettingsScreenTestTags.FRIENDS_BUTTON,
       )
       Text(
-          text = "(Not implemented)",
+          text = stringResource(R.string.not_implemented),
           style = MaterialTheme.typography.labelSmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
@@ -169,7 +177,7 @@ fun SettingsScreenStateless(
       // Signs the user out through the callback supplied by the stateful screen.
       LogoutButton(onClick = onLogoutClick)
 
-      Spacer(Modifier.navigationBarsPadding().height(24.dp))
+      Spacer(Modifier.navigationBarsPadding().height(Spacing.extraExtraLarge))
     }
   }
 }
