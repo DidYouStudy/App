@@ -22,6 +22,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.PersonalEvent
@@ -204,14 +205,17 @@ class AddEventScreenTest {
         PersonalEvent(
             id = "existing-event",
             ownerId = "user123",
-            type = EventType.COURSE,
-            subject = "Algorithms",
-            startsAt = Instant.parse("2026-10-27T08:00:00Z"),
-            endsAt = Instant.parse("2026-10-27T10:00:00Z"),
+            details =
+                EventDetails(
+                    type = EventType.COURSE,
+                    subject = "Algorithms",
+                    startsAt = Instant.parse("2026-10-27T08:00:00Z"),
+                    endsAt = Instant.parse("2026-10-27T10:00:00Z"),
+                    location = "INF 1",
+                    description = "Review graphs",
+                ),
             createdAt = Instant.parse("2026-10-20T09:00:00Z"),
             updatedAt = Instant.parse("2026-10-20T09:00:00Z"),
-            location = "INF 1",
-            description = "Review graphs",
         )
     runBlocking {
       `when`(eventsRepository.getEvent("user123", existingEvent.id))

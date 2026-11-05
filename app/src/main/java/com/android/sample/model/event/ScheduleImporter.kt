@@ -106,7 +106,12 @@ class ScheduleImporter(
      */
     fun withStableKeys(events: List<PersonalEvent>): List<PersonalEvent> =
         events
-            .map { it.copy(importKey = "${it.importKey ?: it.subject}@${it.startsAt.epochSecond}") }
+            .map {
+              it.copy(
+                  importKey =
+                      "${it.importKey ?: it.details.subject}@${it.details.startsAt.epochSecond}"
+              )
+            }
             .associateBy { it.importKey }
             .values
             .toList()

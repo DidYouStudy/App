@@ -47,8 +47,8 @@ class GroupSessionsRepositoryFirestore(
                         }
                         .sortedWith(
                             compareBy<GroupSession>(
-                                { it.startsAt },
-                                { it.endsAt },
+                                { it.details.startsAt },
+                                { it.details.endsAt },
                                 { it.id },
                             )
                         )

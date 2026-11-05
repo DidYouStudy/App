@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.groupsession
 
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
@@ -241,10 +242,13 @@ class GroupSessionsRepositoryFirestoreTest {
           id = id,
           createdBy = createdBy,
           memberIds = listOf(createdBy),
-          type = EventType.COURSE,
-          subject = "Analysis",
-          startsAt = Instant.parse("2026-11-05T10:00:00Z"),
-          endsAt = Instant.parse("2026-11-05T11:00:00Z"),
+          details =
+              EventDetails(
+                  type = EventType.COURSE,
+                  subject = "Analysis",
+                  startsAt = Instant.parse("2026-11-05T10:00:00Z"),
+                  endsAt = Instant.parse("2026-11-05T11:00:00Z"),
+              ),
           createdAt = Instant.parse("2026-11-04T10:00:00Z"),
       )
 
