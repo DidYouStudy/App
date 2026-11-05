@@ -10,8 +10,6 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.printToLog
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.model.event.Event
@@ -93,8 +91,6 @@ class CalendarEventCardTest {
         )
       }
     }
-
-    composeTestRule.onRoot(useUnmergedTree = true).printToLog("CalendarEventCard")
     composeTestRule
         .onNodeWithTag(CalendarEventCardTestTags.SUBJECT, useUnmergedTree = true)
         .assertIsDisplayed()
