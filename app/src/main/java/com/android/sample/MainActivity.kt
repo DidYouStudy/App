@@ -2,6 +2,7 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Gemini AI Agent
 package com.android.sample
 
 import android.os.Bundle
@@ -26,6 +27,7 @@ import com.android.sample.ui.app.appViewModel
 import com.android.sample.ui.auth.SignInRoute
 import com.android.sample.ui.calendar.CalendarRoute
 import com.android.sample.ui.dashboard.DashboardScreen
+import com.android.sample.ui.eventplanning.AddEventScreen
 import com.android.sample.ui.groupsession.GroupSessionScreen
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.Screen
@@ -132,6 +134,32 @@ fun DidYouStudyApp() {
       composable(Screen.Calendar.route) {
         CalendarRoute(
             navigationActions = navigationActions,
+            onAddClick = {
+              navigationActions.navigateIfAllowed(
+                  Screen.AddEvent,
+                  applicationViewModel::canNavigateTo,
+              )
+            },
+        )
+      }
+    }
+
+    navigation(
+        startDestination = Screen.AddEvent.route,
+        route = Screen.AddEvent.name,
+    ) {
+      composable(Screen.AddEvent.route) {
+        AddEventScreen(
+            onBackClick = {
+              if (navigationActions.currentRoute() == Screen.AddEvent.route) {
+                navigationActions.goBack()
+              }
+            },
+            onEventSaved = {
+              if (navigationActions.currentRoute() == Screen.AddEvent.route) {
+                navigationActions.goBack()
+              }
+            },
         )
       }
     }

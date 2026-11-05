@@ -1,4 +1,5 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.calendar
 
 import androidx.compose.foundation.layout.Box
@@ -54,6 +55,7 @@ fun CalendarScreen(
     onNextWeek: () -> Unit,
     onRetry: () -> Unit,
     navigationActions: NavigationActions? = null,
+    onAddClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
 ) {
   Scaffold(
       topBar = {
@@ -104,7 +106,7 @@ fun CalendarScreen(
       },
       floatingActionButton = {
         FloatingActionButton(
-            onClick = {},
+            onClick = onAddClick,
             modifier = Modifier.testTag(CalendarTestTags.ADD_BUTTON),
         ) {
           Icon(imageVector = Icons.Default.Add, contentDescription = "Add calendar event")
