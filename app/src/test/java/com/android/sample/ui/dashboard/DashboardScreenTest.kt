@@ -28,7 +28,7 @@ class DashboardScreenTest {
   @Test
   fun screenWiresLocalizedDashboardCardsEmptyStateAndNavigationBars() {
     val context = ApplicationProvider.getApplicationContext<Context>()
-    composeTestRule.setContent { DashboardScreen(navigationActions = null, onAddClick = {}) }
+    composeTestRule.setContent { DashboardScreen(navigationActions = null, onEventClick = {}) }
 
     composeTestRule.onNodeWithTag(DashboardContentTestTags.CONTENT).assertIsDisplayed()
     composeTestRule.onNodeWithTag(DashboardContentTestTags.YOUR_DAY_CARD).assertIsDisplayed()
@@ -49,7 +49,7 @@ class DashboardScreenTest {
   fun screenAddButtonInvokesCallbackExactlyOnce() {
     var callbackCount = 0
     composeTestRule.setContent {
-      DashboardScreen(navigationActions = null, onAddClick = { callbackCount++ })
+      DashboardScreen(navigationActions = null, onEventClick = { callbackCount++ })
     }
 
     composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
@@ -91,7 +91,7 @@ class DashboardScreenTest {
   @Test
   fun topBarShowsLocalizedBoldDashboardTitle() {
     val context = ApplicationProvider.getApplicationContext<Context>()
-    composeTestRule.setContent { DashboardScreen(navigationActions = null, onAddClick = {}) }
+    composeTestRule.setContent { DashboardScreen(navigationActions = null, onEventClick = {}) }
 
     val results = mutableListOf<TextLayoutResult>()
     composeTestRule

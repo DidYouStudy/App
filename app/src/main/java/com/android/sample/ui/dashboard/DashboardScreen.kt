@@ -36,11 +36,7 @@ fun DashboardScreen(
     // TODO: add onSignedOut as parameter
     // onSignedOut: () -> Unit = {},
     navigationActions: NavigationActions? = null,
-    onAddClick: () -> Unit = {},
-    onEventClick: () -> Unit = {
-      onAddClick()
-      navigationActions?.navigateTo(Screen.AddEvent)
-    },
+    onEventClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
     onGroupSessionClick: () -> Unit = {},
 ) {
   Scaffold(
