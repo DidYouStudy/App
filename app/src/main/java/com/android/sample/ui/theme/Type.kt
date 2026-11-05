@@ -51,3 +51,9 @@ val CardTitleTextStyle: TextStyle = Typography.titleLarge.copy(fontSize = 18.sp,
 val GoogleButtonTextStyle =
     TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.25.sp)
 val calendarDateLabelStyle: TextStyle = TextStyle(fontSize = 10.sp)
+
+/** Initial drawn inside a small participant avatar of the group-session participants pill. */
+val ParticipantInitialTextStyle: TextStyle = TextStyle(fontSize = 10.sp)
+
+/** "+N" count of members without an avatar in the participants pill, slightly smaller. */
+val ParticipantOverflowTextStyle: TextStyle = TextStyle(fontSize = 9.sp)
