@@ -1,7 +1,7 @@
 // Co-authored-by: GitHub Copilot
-package com.android.sample.model.groupsession
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+package com.android.sample.model.event
 
-import com.android.sample.model.event.EventType
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -54,6 +54,16 @@ class GroupSessionTest {
     assertEquals("Library", value.location)
     assertEquals("Review integration exercises", value.description)
     assertEquals(created, session().updatedAt)
+  }
+
+  /** A group session is an [Event], so shared code can read its identity without a cast. */
+  @Test
+  fun groupSession_isAnEvent() {
+    val event: Event = session()
+
+    assertEquals("session-1", event.id)
+    assertEquals(created, event.createdAt)
+    assertEquals(created, event.updatedAt)
   }
 
   /** Identity and required membership labels reject blank or incomplete values. */
