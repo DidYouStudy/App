@@ -46,7 +46,7 @@ class CalendarEventCardTest {
       }
     }
 
-    composeTestRule.onNodeWithText("Study session").assertIsDisplayed()
+    composeTestRule.onNodeWithText(expectedTitle(EventType.STUDY_SESSION)).assertIsDisplayed()
     composeTestRule.onNodeWithText("Linear Algebra").assertIsDisplayed()
     val expectedTime =
         DateTimeFormatter.ofPattern("H:mm")
@@ -66,7 +66,7 @@ class CalendarEventCardTest {
       }
     }
 
-    composeTestRule.onNodeWithText("Study session").assertIsDisplayed()
+    composeTestRule.onNodeWithText(expectedTitle(EventType.STUDY_SESSION)).assertIsDisplayed()
     composeTestRule.onNodeWithText(expectedStartTime()).assertIsDisplayed()
   }
 
@@ -80,7 +80,7 @@ class CalendarEventCardTest {
         )
       }
     }
-    composeTestRule.onNodeWithText("Study session").assertIsDisplayed()
+    composeTestRule.onNodeWithText(expectedTitle(EventType.STUDY_SESSION)).assertIsDisplayed()
     composeTestRule.onNodeWithText(expectedStartTime()).assertIsDisplayed()
   }
 
@@ -159,6 +159,12 @@ class CalendarEventCardTest {
         endsAt = Instant.parse("2026-11-04T10:00:00Z"),
         createdAt = Instant.parse("2026-11-01T12:00:00Z"),
     )
+  }
+
+  /** Resolves the localized event type title expected on the card. */
+  private fun expectedTitle(type: EventType): String {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    return context.getString(type.labelRes())
   }
 
   private fun expectedStartTime(): String =
