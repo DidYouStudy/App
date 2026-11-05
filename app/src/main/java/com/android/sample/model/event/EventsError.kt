@@ -17,7 +17,7 @@ enum class EventsError {
   /** The storage rejected the operation for the current user. */
   PERMISSION_DENIED,
 
-  /** A stored event could not be converted to [Event]. */
+  /** A stored event could not be converted to [PersonalEvent]. */
   INVALID_EVENT_DATA,
 
   /** The storage failed or could not complete the operation. */

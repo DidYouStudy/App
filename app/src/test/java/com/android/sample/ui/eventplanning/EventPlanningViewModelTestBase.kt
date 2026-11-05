@@ -3,10 +3,10 @@ package com.android.sample.ui.eventplanning
 
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
-import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsRepository
+import com.android.sample.model.event.PersonalEvent
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -77,8 +77,8 @@ abstract class EventPlanningViewModelTestBase {
   }
 
   /** Returns the events passed to saveEvent after verifying the expected number of saves. */
-  protected suspend fun savedEvents(count: Int = 1): List<Event> {
-    val captor = argumentCaptor<Event>()
+  protected suspend fun savedEvents(count: Int = 1): List<PersonalEvent> {
+    val captor = argumentCaptor<PersonalEvent>()
     verify(eventsRepository, times(count)).saveEvent(captor.capture())
     return captor.allValues
   }

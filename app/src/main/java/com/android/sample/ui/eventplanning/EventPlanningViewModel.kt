@@ -9,13 +9,13 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
-import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.EventsRepositoryProvider
+import com.android.sample.model.event.PersonalEvent
 import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalTime
@@ -109,7 +109,7 @@ class EventPlanningViewModel(
   /**
    * The event loaded by [loadEvent]; [editEvent] replaces it and keeps its ID and creation time.
    */
-  private var editingEvent: Event? = null
+  private var editingEvent: PersonalEvent? = null
 
   init {
     viewModelScope.launch {
@@ -318,7 +318,7 @@ class EventPlanningViewModel(
   }
 
   /** Adds the form as a new event, or replaces [editing] with it. */
-  private fun save(editing: Event?) {
+  private fun save(editing: PersonalEvent?) {
     val state = _uiState.value
     if (state.isBusy) return
 
@@ -349,7 +349,7 @@ class EventPlanningViewModel(
           val description = state.description.trim().takeIf(String::isNotEmpty)
           if (editing == null) {
             val id = pendingEventId ?: eventsRepository.newEventId().also { pendingEventId = it }
-            Event(
+            PersonalEvent(
                 id = id,
                 ownerId = ownerId,
                 type = state.type,
@@ -412,7 +412,7 @@ class EventPlanningViewModel(
   }
 
   /** Fills the form from [event] and remembers it for [editEvent]. */
-  private fun populateForm(event: Event) {
+  private fun populateForm(event: PersonalEvent) {
     val start = event.startsAt.atZone(clock.zone)
     val end = event.endsAt.atZone(clock.zone)
     editingEvent = event

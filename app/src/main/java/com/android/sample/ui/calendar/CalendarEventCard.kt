@@ -23,8 +23,8 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
-import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventType
+import com.android.sample.model.event.PersonalEvent
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.EventTimeLabel
@@ -49,7 +49,7 @@ object CalendarEventCardTestTags {
 /** Displays an event with a type label, subject, and space-aware start-time label. */
 @Composable
 fun CalendarEventCard(
-    event: Event,
+    event: PersonalEvent,
     modifier: Modifier = Modifier,
 ) {
   val color = eventColor(event.type)
@@ -160,7 +160,7 @@ fun CalendarEventCardPreview() {
 }
 
 private val previewEvent =
-    Event(
+    PersonalEvent(
         id = "preview-event",
         ownerId = "preview-owner",
         type = EventType.STUDY_SESSION,

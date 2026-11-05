@@ -45,7 +45,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.android.sample.R
-import com.android.sample.model.event.Event
+import com.android.sample.model.event.PersonalEvent
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.calendarDateLabelStyle
@@ -317,7 +317,7 @@ private fun CalendarTodayCircle(modifier: Modifier = Modifier) {
 @Composable
 fun CalendarTimeGrid(
     modifier: Modifier = Modifier,
-    events: List<Event> = emptyList(),
+    events: List<PersonalEvent> = emptyList(),
     weekDates: List<LocalDate> = emptyList(),
 ) {
   // Keep the grid vertically scrollable
@@ -407,7 +407,7 @@ fun CalendarTimeGrid(
 
 /** Provides the grid coordinates calculated for an event in the displayed week. */
 internal data class CalendarEventPlacement(
-    val event: Event,
+    val event: PersonalEvent,
     val dayIndex: Int,
     val top: Dp,
     val height: Dp,
@@ -420,7 +420,7 @@ internal data class CalendarEventPlacement(
  * created for separate day segments display identical contents.
  */
 internal fun calculateEventPlacements(
-    event: Event,
+    event: PersonalEvent,
     weekDates: List<LocalDate>,
     hourHeight: Dp,
 ): List<CalendarEventPlacement> {

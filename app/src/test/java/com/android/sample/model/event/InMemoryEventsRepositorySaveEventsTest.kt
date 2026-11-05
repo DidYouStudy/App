@@ -30,10 +30,10 @@ class InMemoryEventsRepositorySaveEventsTest {
       subject: String,
       offsetHours: Long = 0,
       durationMinutes: Long = 60,
-  ): Event {
+  ): PersonalEvent {
     val start = baseInstant.plus(Duration.ofHours(offsetHours))
     val end = start.plus(Duration.ofMinutes(durationMinutes))
-    return Event(
+    return PersonalEvent(
         id = id,
         ownerId = ownerId,
         type = EventType.COURSE,

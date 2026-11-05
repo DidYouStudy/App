@@ -62,7 +62,15 @@ class EventsRepositoryFirestoreTest {
     val subjects: DocumentReference = mock()
     val start = Instant.parse("2026-01-01T10:00:00Z")
     val event =
-        Event("id", "owner", EventType.COURSE, "Analysis", start, start.plusSeconds(3600), start)
+        PersonalEvent(
+            "id",
+            "owner",
+            EventType.COURSE,
+            "Analysis",
+            start,
+            start.plusSeconds(3600),
+            start,
+        )
     val other = event.copy(id = "second", subject = "Physics")
     whenever(events.document("second")).thenReturn(second)
     whenever(owner.collection("meta")).thenReturn(meta)
@@ -86,7 +94,8 @@ class EventsRepositoryFirestoreTest {
   @Test
   fun rejectsLaterInvalidEventBeforeWriting() = runTest {
     val start = Instant.parse("2026-01-01T10:00:00Z")
-    val event = Event("id", "owner", EventType.OTHER, null, start, start.plusSeconds(3600), start)
+    val event =
+        PersonalEvent("id", "owner", EventType.OTHER, null, start, start.plusSeconds(3600), start)
 
     assertEquals(
         EventsError.INVALID_ARGUMENT,
@@ -99,7 +108,8 @@ class EventsRepositoryFirestoreTest {
   @Test
   fun rejectsMixedOwnersBeforeWriting() = runTest {
     val start = Instant.parse("2026-01-01T10:00:00Z")
-    val event = Event("id", "owner", EventType.OTHER, null, start, start.plusSeconds(3600), start)
+    val event =
+        PersonalEvent("id", "owner", EventType.OTHER, null, start, start.plusSeconds(3600), start)
 
     assertEquals(
         EventsError.INVALID_ARGUMENT,
@@ -115,7 +125,8 @@ class EventsRepositoryFirestoreTest {
     whenever(otherUser.uid).thenReturn("other")
     whenever(auth.currentUser).thenReturn(user, otherUser)
     val start = Instant.parse("2026-01-01T10:00:00Z")
-    val event = Event("id", "owner", EventType.OTHER, null, start, start.plusSeconds(3600), start)
+    val event =
+        PersonalEvent("id", "owner", EventType.OTHER, null, start, start.plusSeconds(3600), start)
 
     assertEquals(
         EventsError.INVALID_ARGUMENT,
@@ -128,7 +139,8 @@ class EventsRepositoryFirestoreTest {
   @Test
   fun rejectsInvalidNestedTaskBeforeWriting() = runTest {
     val start = Instant.parse("2026-01-01T10:00:00Z")
-    val event = Event("id", "owner", EventType.OTHER, null, start, start.plusSeconds(3600), start)
+    val event =
+        PersonalEvent("id", "owner", EventType.OTHER, null, start, start.plusSeconds(3600), start)
     val invalidTask: EventTask = mock()
     whenever(invalidTask.text).thenReturn("")
     val tasks = mutableListOf<EventTask>()
@@ -186,7 +198,7 @@ class EventsRepositoryFirestoreTest {
     val base = Instant.parse("2026-10-15T08:00:00Z")
     fun importedDocument(id: String, startsAt: Instant): DocumentSnapshot {
       val event =
-          Event(
+          PersonalEvent(
               id = id,
               ownerId = "owner",
               type = EventType.OTHER,
@@ -271,7 +283,15 @@ class EventsRepositoryFirestoreTest {
     val changed: DocumentSnapshot = mock()
     val start = Instant.parse("2026-01-01T10:00:00Z")
     val event =
-        Event("id", "owner", EventType.COURSE, "Physics", start, start.plusSeconds(3600), start)
+        PersonalEvent(
+            "id",
+            "owner",
+            EventType.COURSE,
+            "Physics",
+            start,
+            start.plusSeconds(3600),
+            start,
+        )
     whenever(owner.collection("meta")).thenReturn(meta)
     whenever(meta.document("subjects")).thenReturn(subjects)
     whenever(subjects.addSnapshotListener(any<EventListener<DocumentSnapshot>>()))

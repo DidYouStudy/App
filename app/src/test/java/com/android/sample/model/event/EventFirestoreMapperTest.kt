@@ -9,7 +9,7 @@ import org.junit.Test
 class EventFirestoreMapperTest {
   private val time = Instant.parse("2026-10-20T12:00:00.123456Z")
   private val event =
-      Event(
+      PersonalEvent(
           "id",
           "owner",
           EventType.COURSE,

@@ -12,8 +12,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventType
+import com.android.sample.model.event.PersonalEvent
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import java.time.Instant
@@ -148,8 +148,8 @@ class CalendarEventCardTest {
     composeTestRule.onNodeWithText("Exam").assertHasClickAction()
   }
 
-  private fun previewEvent(type: EventType, subject: String?): Event {
-    return Event(
+  private fun previewEvent(type: EventType, subject: String?): PersonalEvent {
+    return PersonalEvent(
         id = "event-${type.name}",
         ownerId = "test-owner",
         type = type,

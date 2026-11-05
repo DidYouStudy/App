@@ -22,8 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
-import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventType
+import com.android.sample.model.event.PersonalEvent
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -382,7 +382,7 @@ class CalendarWeeklyViewTest {
       start: LocalTime,
       end: LocalTime,
       id: String = "weekly-test-event",
-  ): Event = eventOn(date, start, date, end, id)
+  ): PersonalEvent = eventOn(date, start, date, end, id)
 
   private fun eventOn(
       startDate: LocalDate,
@@ -390,9 +390,9 @@ class CalendarWeeklyViewTest {
       endDate: LocalDate,
       end: LocalTime,
       id: String = "weekly-test-event",
-  ): Event {
+  ): PersonalEvent {
     val zone = ZoneId.systemDefault()
-    return Event(
+    return PersonalEvent(
         id = id,
         ownerId = "test-owner",
         type = EventType.COURSE,

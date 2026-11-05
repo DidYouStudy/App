@@ -32,8 +32,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.sample.R
-import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventType
+import com.android.sample.model.event.PersonalEvent
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -280,10 +280,10 @@ private fun previewEvent(
     subject: String,
     startsAt: String,
     endsAt: String,
-): Event {
+): PersonalEvent {
   val createdAt = Instant.parse("2026-10-20T12:00:00Z")
   val previewZone = ZoneId.systemDefault()
-  return Event(
+  return PersonalEvent(
       id = id,
       ownerId = "preview-owner",
       type = type,
