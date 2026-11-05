@@ -23,6 +23,8 @@
     <string name="dashboard_stat_average_focus">Average focus duration</string>
     <string name="dashboard_stat_empty_value">—</string>
     <string name="dashboard_add_description">Add</string>
+    <string name="dashboard_fab_event">Event</string>
+    <string name="dashboard_fab_group_session">Group session</string>
     <string name="default_username">User</string>
     <string name="settings_error_failed_to_load_profile">Failed to load user profile.</string>
     <string name="settings_error_failed_to_sign_out">Failed to sign out.</string>
