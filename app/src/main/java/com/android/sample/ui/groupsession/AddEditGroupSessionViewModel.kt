@@ -174,6 +174,43 @@ class AddEditGroupSessionViewModel(
     _uiState.update { it.copy(isSessionSaved = false) }
   }
 
+  /** Builds the [GroupSession] instance to save, or throws [IllegalArgumentException]. */
+  private fun buildSessionToSave(
+      state: AddEditGroupSessionUiState,
+      userId: String,
+      trimmedSubject: String,
+      startInstant: java.time.Instant,
+      endInstant: java.time.Instant,
+      now: java.time.Instant,
+  ): GroupSession {
+    val details =
+        EventDetails(
+            type = state.type,
+            subject = trimmedSubject.ifBlank { null },
+            startsAt = startInstant,
+            endsAt = endInstant,
+            location = state.location.trim().ifBlank { null },
+            description = state.description.trim().ifBlank { null },
+        )
+    val currentLoaded = loadedSession
+    return if (state.isEditing && currentLoaded != null) {
+      currentLoaded.copy(
+          details = details,
+          updatedAt = now,
+      )
+    } else {
+      val id = groupSessionsRepository.newSessionId()
+      GroupSession(
+          id = id,
+          createdBy = userId,
+          memberIds = listOf(userId),
+          details = details,
+          createdAt = now,
+          updatedAt = now,
+      )
+    }
+  }
+
   /** Validates the current form inputs and creates or updates the group session. */
   fun saveSession() {
     val state = _uiState.value
@@ -219,38 +256,16 @@ class AddEditGroupSessionViewModel(
       }
 
       val now = clock.instant()
-      val location = state.location.trim().ifBlank { null }
-      val description = state.description.trim().ifBlank { null }
-      val subject = trimmedSubject.ifBlank { null }
-
       val sessionToSave =
           try {
-            val details =
-                EventDetails(
-                    type = state.type,
-                    subject = subject,
-                    startsAt = startInstant,
-                    endsAt = endInstant,
-                    location = location,
-                    description = description,
-                )
-            val currentLoaded = loadedSession
-            if (state.isEditing && currentLoaded != null) {
-              currentLoaded.copy(
-                  details = details,
-                  updatedAt = now,
-              )
-            } else {
-              val id = groupSessionsRepository.newSessionId()
-              GroupSession(
-                  id = id,
-                  createdBy = userId,
-                  memberIds = listOf(userId),
-                  details = details,
-                  createdAt = now,
-                  updatedAt = now,
-              )
-            }
+            buildSessionToSave(
+                state = state,
+                userId = userId,
+                trimmedSubject = trimmedSubject,
+                startInstant = startInstant,
+                endInstant = endInstant,
+                now = now,
+            )
           } catch (e: IllegalArgumentException) {
             _uiState.update {
               it.copy(isSaving = false, error = AddEditGroupSessionError.INVALID_SESSION)
