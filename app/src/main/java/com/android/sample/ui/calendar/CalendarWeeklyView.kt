@@ -440,8 +440,13 @@ internal fun calculateEventPlacements(
     val dayIndex = weekDates.indexOf(date)
 
     if (dayIndex >= 0 && segmentStart.isBefore(segmentEnd)) {
-      val minutesFromMidnight = Duration.between(dayStart, segmentStart).toMinutes()
-      val segmentMinutes = Duration.between(segmentStart, segmentEnd).toMinutes()
+      // Position by wall-clock time because every displayed day has 24 equal hour rows.
+      val localDayStart = date.atStartOfDay()
+      val localSegmentStart = segmentStart.atZone(CALENDAR_ZONE).toLocalDateTime()
+      val localSegmentEnd = segmentEnd.atZone(CALENDAR_ZONE).toLocalDateTime()
+      val minutesFromMidnight = Duration.between(localDayStart, localSegmentStart).toMinutes()
+      val segmentMinutes =
+          Duration.between(localSegmentStart, localSegmentEnd).toMinutes().coerceAtLeast(0)
       placements +=
           CalendarEventPlacement(
               event = event,

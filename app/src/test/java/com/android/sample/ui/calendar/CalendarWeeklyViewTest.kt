@@ -194,6 +194,127 @@ class CalendarWeeklyViewTest {
     assertEquals(15.dp, placement.height)
   }
 
+  /** Positions a Zurich event by wall-clock time on the 2026 autumn clock-change day. */
+  @Test
+  fun eventPlacementUsesLocalClockOnZurichAutumnClockChange() {
+    val zone = ZoneId.of("Europe/Zurich")
+    val date = LocalDate.of(2026, 10, 25)
+    val weekDates = CalendarDateHelper().weekDates(date)
+    val event =
+        PersonalEvent(
+            id = "zurich-clock-change",
+            ownerId = "test-owner",
+            type = EventType.COURSE,
+            subject = "Zurich event",
+            startsAt = date.atTime(9, 0).atZone(zone).toInstant(),
+            endsAt = date.atTime(10, 0).atZone(zone).toInstant(),
+            createdAt = Instant.parse("2026-10-01T12:00:00Z"),
+        )
+
+    val placement = calculateEventPlacements(event, weekDates, 10.dp).single()
+
+    assertEquals(6, placement.dayIndex)
+    assertEquals(90.dp, placement.top)
+    assertEquals(10.dp, placement.height)
+  }
+
+  /** A half-day event is 13 real hours but must fill exactly the 12 rows of its column. */
+  @Test
+  fun fullDayEventOnAutumnClockChangeFillsColumn() {
+    val zone = ZoneId.of("Europe/Zurich")
+    val autumnDay = LocalDate.of(2026, 10, 25)
+    val weekDates = CalendarDateHelper().weekDates(autumnDay)
+    val event =
+        PersonalEvent(
+            id = "half-day",
+            ownerId = "test-owner",
+            type = EventType.COURSE,
+            subject = "Zurich event",
+            startsAt = autumnDay.atStartOfDay(zone).toInstant(),
+            endsAt = autumnDay.atTime(12, 0).atZone(zone).toInstant(),
+            createdAt = Instant.parse("2026-10-01T12:00:00Z"),
+        )
+
+    val placement = calculateEventPlacements(event, weekDates, 10.dp).single()
+
+    assertEquals(6, placement.dayIndex)
+    assertEquals(0.dp, placement.top)
+    assertEquals(120.dp, placement.height)
+  }
+
+  /** Documents current behavior: 01:30 CEST -> 03:30 CET is 3 real hours but is drawn as 2. */
+  @Test
+  fun eventSpanningAutumnClockChangeIsDrawnByWallClockDuration() {
+    val zone = ZoneId.of("Europe/Zurich")
+    val autumnDay = LocalDate.of(2026, 10, 25)
+    val weekDates = CalendarDateHelper().weekDates(autumnDay)
+    val event =
+        PersonalEvent(
+            id = "two-hours",
+            ownerId = "test-owner",
+            type = EventType.COURSE,
+            subject = "Zurich event",
+            startsAt = autumnDay.atTime(1, 30).atZone(zone).toInstant(),
+            endsAt = autumnDay.atTime(3, 30).atZone(zone).toInstant(),
+            createdAt = Instant.parse("2026-10-01T12:00:00Z"),
+        )
+
+    val placement = calculateEventPlacements(event, weekDates, 10.dp).single()
+
+    assertEquals(15.dp, placement.top)
+    assertEquals(20.dp, placement.height)
+  }
+
+  /** 02:30 CEST (first pass) -> 02:15 CET (second pass) is 45 real minutes. */
+  @Test
+  fun eventInsideRepeatedHourNeverHasNegativeHeight() {
+    val zone = ZoneId.of("Europe/Zurich")
+    val autumnDay = LocalDate.of(2026, 10, 25)
+    val weekDates = CalendarDateHelper().weekDates(autumnDay)
+    val event =
+        PersonalEvent(
+            id = "45_mins",
+            ownerId = "test-owner",
+            type = EventType.COURSE,
+            subject = "Zurich event",
+            startsAt =
+                autumnDay.atTime(2, 30).atZone(zone).withEarlierOffsetAtOverlap().toInstant(),
+            endsAt = autumnDay.atTime(2, 15).atZone(zone).withLaterOffsetAtOverlap().toInstant(),
+            createdAt = Instant.parse("2026-10-01T12:00:00Z"),
+        )
+
+    val placement = calculateEventPlacements(event, weekDates, 10.dp).single()
+
+    assertEquals(25.dp, placement.top)
+    assert(placement.height == 0.dp)
+  }
+
+  /**
+   * 02:30 doesn't exist on 29 Mar; java.time moves it to 03:30 CEST, so it lands on the 3 AM row.
+   */
+  @Test
+  fun eventInSkippedSpringHourIsShiftedForward() {
+    val zone = ZoneId.of("Europe/Zurich")
+    val springDay = LocalDate.of(2026, 3, 29)
+    val weekDates = CalendarDateHelper().weekDates(springDay)
+    val start = springDay.atTime(2, 30).atZone(zone) // resolves to 03:30 CEST
+    val event =
+        PersonalEvent(
+            id = "non-existent",
+            ownerId = "test-owner",
+            type = EventType.COURSE,
+            subject = "Zurich event",
+            startsAt = start.toInstant(),
+            endsAt = start.plusHours(1).toInstant(),
+            createdAt = Instant.parse("2026-10-01T12:00:00Z"),
+        )
+
+    val placement = calculateEventPlacements(event, weekDates, 10.dp).single()
+
+    assertEquals(35.dp, placement.top)
+    assertEquals(10.dp, placement.height)
+  }
+
   /** Splits an event crossing midnight into adjacent cards with the same event contents. */
   @Test
   fun eventPlacementSplitsAtMidnight() {
