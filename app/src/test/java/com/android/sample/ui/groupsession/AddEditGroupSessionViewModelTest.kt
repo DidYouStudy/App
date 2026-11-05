@@ -1,11 +1,23 @@
 // Co-authored-by: Claude AI Agent
 package com.android.sample.ui.groupsession
 
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
 import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
 import com.android.sample.ui.auth.TestAuthRepository
 import java.time.Clock
@@ -28,10 +40,15 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
 
+@RunWith(AndroidJUnit4::class)
 @OptIn(ExperimentalCoroutinesApi::class)
 class AddEditGroupSessionViewModelTest {
+
+  @get:Rule val composeTestRule = createComposeRule()
 
   private val testDispatcher = UnconfinedTestDispatcher()
   private val fixedInstant = Instant.parse("2026-11-01T10:00:00Z")
@@ -53,6 +70,8 @@ class AddEditGroupSessionViewModelTest {
   @After
   fun tearDown() {
     Dispatchers.resetMain()
+    AuthRepositoryProvider.setRepository(null)
+    GroupSessionsRepositoryProvider.setRepository(null)
   }
 
   @Test
@@ -438,5 +457,31 @@ class AddEditGroupSessionViewModelTest {
     assertThrows(IllegalArgumentException::class.java) {
       factory.create(GroupSessionsViewModel::class.java)
     }
+  }
+
+  /**
+   * Fake screen composable that receives the ViewModel produced by [addEditGroupSessionViewModel].
+   */
+  @Composable
+  private fun FakeAddEditGroupSessionScreen(
+      viewModel: AddEditGroupSessionViewModel = addEditGroupSessionViewModel()
+  ) {
+    val uiState by viewModel.uiState.collectAsState()
+    Text(
+        text = "Type: ${uiState.type.name}, Busy: ${uiState.isBusy}",
+        modifier = Modifier.testTag("fake_screen_text"),
+    )
+  }
+
+  @Test
+  fun addEditGroupSessionViewModelInjectsProvidersAndInstantiatesFakeScreen() {
+    AuthRepositoryProvider.setRepository(authRepository)
+    GroupSessionsRepositoryProvider.setRepository(repository)
+
+    composeTestRule.setContent { FakeAddEditGroupSessionScreen() }
+
+    composeTestRule
+        .onNodeWithTag("fake_screen_text")
+        .assertTextEquals("Type: STUDY_SESSION, Busy: false")
   }
 }
