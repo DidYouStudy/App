@@ -146,6 +146,7 @@ fun FormContent(
         },
         testTag = FormContentTestTags.DATE_SELECTOR,
         isError = isDateMissing,
+        errorTestTag = FormContentTestTags.DATE_SELECTOR_ERROR,
     )
 
     // Start time
@@ -162,6 +163,7 @@ fun FormContent(
         },
         testTag = FormContentTestTags.START_TIME_SELECTOR,
         isError = isStartTimeMissing,
+        errorTestTag = FormContentTestTags.START_TIME_SELECTOR_ERROR,
     )
 
     // End time
@@ -178,6 +180,7 @@ fun FormContent(
         },
         testTag = FormContentTestTags.END_TIME_SELECTOR,
         isError = isEndTimeMissing,
+        errorTestTag = FormContentTestTags.END_TIME_SELECTOR_ERROR,
     )
 
     // Informational warning for overnight events
@@ -220,6 +223,7 @@ fun FormContent(
         testTag = FormContentTestTags.SUBJECT_SELECTOR,
         hasDropdownArrow = true,
         isError = isSubjectMissing,
+        errorTestTag = FormContentTestTags.SUBJECT_SELECTOR_ERROR,
     )
 
     // Location (optional)

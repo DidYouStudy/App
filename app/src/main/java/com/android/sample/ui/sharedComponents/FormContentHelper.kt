@@ -101,6 +101,7 @@ fun SelectorFieldPill(
     modifier: Modifier = Modifier,
     hasDropdownArrow: Boolean = false,
     isError: Boolean = false,
+    errorTestTag: String? = null,
 ) {
   val shape = RoundedCornerShape(Dimens.cornerPill)
   Box(
@@ -110,9 +111,13 @@ fun SelectorFieldPill(
               .heightIn(min = Dimens.pillMinHeight)
               .clip(shape)
               .background(MaterialTheme.colorScheme.secondaryContainer)
+              .testTag(testTag)
               .then(
                   if (isError) {
-                    Modifier.border(Dimens.borderMedium, MaterialTheme.colorScheme.error, shape)
+                    val borderModifier =
+                        Modifier.border(Dimens.borderMedium, MaterialTheme.colorScheme.error, shape)
+                    if (errorTestTag != null) borderModifier.testTag(errorTestTag)
+                    else borderModifier
                   } else {
                     Modifier
                   }
@@ -121,8 +126,7 @@ fun SelectorFieldPill(
               .padding(
                   horizontal = Dimens.pillHorizontalPadding,
                   vertical = Dimens.pillVerticalPadding,
-              )
-              .testTag(testTag),
+              ),
       contentAlignment = Alignment.CenterStart,
   ) {
     Row(
@@ -323,6 +327,8 @@ fun AddTaskInputField(
               .testTag(testTag),
   )
 }
+
+/** Dialog & Picker components: */
 
 /** Material 3 Type dropdown menu matching the types from EventType. */
 @Composable
@@ -609,4 +615,10 @@ object FormContentTestTags {
 
   // Actions & Feedback
   const val ENDS_NEXT_DAY_WARNING = "form_content_ends_next_day_warning"
+
+  // Errors
+  const val DATE_SELECTOR_ERROR = "form_content_date_selector_error"
+  const val START_TIME_SELECTOR_ERROR = "form_content_start_time_selector_error"
+  const val END_TIME_SELECTOR_ERROR = "form_content_end_time_selector_error"
+  const val SUBJECT_SELECTOR_ERROR = "form_content_subject_selector_error"
 }
