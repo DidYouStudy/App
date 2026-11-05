@@ -345,39 +345,39 @@ fun PillActionButton(
     progressTag: String,
     icon: ImageVector? = null,
 ) {
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        colors =
-            ButtonDefaults.buttonColors(
-                containerColor = containerColor,
-                contentColor = contentColor,
-                disabledContainerColor = containerColor.copy(alpha = AlphaTokens.DISABLED),
-                disabledContentColor = contentColor.copy(alpha = AlphaTokens.DISABLED),
-            ),
-        shape = RoundedCornerShape(Dimens.cornerPill),
-        modifier = Modifier.fillMaxWidth().height(Dimens.saveButtonHeight).testTag(buttonTag),
-    ) {
-        if (isInProgress) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(Dimens.saveButtonProgressSize).testTag(progressTag),
-                color = contentColor,
-                strokeWidth = Dimens.progressIndicatorStrokeWidth,
-            )
-        } else {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (icon != null) {
-                    Icon(imageVector = icon, contentDescription = null, tint = contentColor)
-                    Spacer(modifier = Modifier.width(Spacing.extraSmall))
-                }
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = contentColor,
-                )
-            }
+  Button(
+      onClick = onClick,
+      enabled = enabled,
+      colors =
+          ButtonDefaults.buttonColors(
+              containerColor = containerColor,
+              contentColor = contentColor,
+              disabledContainerColor = containerColor.copy(alpha = AlphaTokens.DISABLED),
+              disabledContentColor = contentColor.copy(alpha = AlphaTokens.DISABLED),
+          ),
+      shape = RoundedCornerShape(Dimens.cornerPill),
+      modifier = Modifier.fillMaxWidth().height(Dimens.saveButtonHeight).testTag(buttonTag),
+  ) {
+    if (isInProgress) {
+      CircularProgressIndicator(
+          modifier = Modifier.size(Dimens.saveButtonProgressSize).testTag(progressTag),
+          color = contentColor,
+          strokeWidth = Dimens.progressIndicatorStrokeWidth,
+      )
+    } else {
+      Row(verticalAlignment = Alignment.CenterVertically) {
+        if (icon != null) {
+          Icon(imageVector = icon, contentDescription = null, tint = contentColor)
+          Spacer(modifier = Modifier.width(Spacing.extraSmall))
         }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            color = contentColor,
+        )
+      }
     }
+  }
 }
 
 /** Material 3 Type dropdown menu matching the types from EventType. */

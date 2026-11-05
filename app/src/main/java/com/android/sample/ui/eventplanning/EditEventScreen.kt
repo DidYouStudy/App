@@ -104,34 +104,34 @@ fun EditEventScreen(
 @Preview
 @Composable
 private fun EditEventScreenPreview() {
-    MaterialTheme {
-        EventPlanningScreenStateless(
-            uiState =
-                EventPlanningUiState(
-                    type = EventType.STUDY_SESSION,
-                    subject = "ModStoch",
-                    date = LocalDate.of(2026, 10, 24),
-                    startTime = LocalTime.of(14, 0),
-                    endTime = LocalTime.of(17, 0),
-                    location = "1018, Lausanne",
-                    description = "REVISE FOR MIDTERM!!!",
-                    tasks = listOf(EventTask("Read Chapter 4"), EventTask("Do homework 2")),
-                    isEditing = true,
-                ),
-            onBackClick = {},
-            onTypeChange = {},
-            onDateClick = {},
-            onStartTimeClick = {},
-            onEndTimeClick = {},
-            onSubjectClick = {},
-            onLocationChange = {},
-            onDescriptionChange = {},
-            onAddTask = {},
-            onToggleTask = {},
-            onDeleteTask = {},
-            onSaveClick = {},
-            onDeleteClick = {},
-            isEditing = true,
-        )
-    }
+  MaterialTheme {
+    EventPlanningScreenStateless(
+        uiState =
+            EventPlanningUiState(
+                type = EventType.STUDY_SESSION,
+                subject = "ModStoch",
+                date = LocalDate.of(2026, 10, 24),
+                startTime = LocalTime.of(14, 0),
+                endTime = LocalTime.of(17, 0),
+                location = "1018, Lausanne",
+                description = "REVISE FOR MIDTERM!!!",
+                tasks = listOf(EventTask("Read Chapter 4"), EventTask("Do homework 2")),
+                isEditing = true,
+            ),
+        onBackClick = {},
+        onTypeChange = {},
+        onDateClick = {},
+        onStartTimeClick = {},
+        onEndTimeClick = {},
+        onSubjectClick = {},
+        onLocationChange = {},
+        onDescriptionChange = {},
+        onAddTask = {},
+        onToggleTask = {},
+        onDeleteTask = {},
+        onSaveClick = {},
+        onDeleteClick = {},
+        isEditing = true,
+    )
+  }
 }
