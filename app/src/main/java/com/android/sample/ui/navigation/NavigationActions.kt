@@ -91,9 +91,18 @@ open class NavigationActions(
     if (completedFlow == null) navigateTo(screen) else navigateToAndClear(screen, completedFlow)
   }
 
-  /** Navigate back to the previous screen. */
+  /**
+   * Navigate back without allowing an explicit back action to remove the dashboard.
+   *
+   * System Back remains owned by Navigation, so it can still finish the activity from the
+   * dashboard. If a non-dashboard destination is the only remaining entry, recover to Dashboard.
+   */
   open fun goBack() {
+    if (currentRoute() == Screen.Dashboard.route) return
     navController.popBackStack()
+    if (currentRoute().isEmpty()) {
+      navController.navigate(Screen.Dashboard.route) { launchSingleTop = true }
+    }
   }
 
   /**

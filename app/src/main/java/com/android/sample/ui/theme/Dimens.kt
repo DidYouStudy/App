@@ -74,6 +74,9 @@ object Dimens {
   val taskRowVerticalPadding = 4.dp
   val taskTextStartPadding = 4.dp
   val errorVerticalPadding = 4.dp
+  val calendarLoadingSignSize = 24.dp
+  val calendarRetryButtonWidth = 90.dp
+  val calendarRetryButtonHeight = 48.dp
   val dialogCornerRadius = 28.dp
   val subjectPickerMaxHeight = 350.dp
   val noPadding = 0.dp
