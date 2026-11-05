@@ -1,5 +1,5 @@
-// Co-authored-by: Gemini AI Agent
-package com.android.sample.ui.eventplanning
+// Co-authored-by: Claude AI Agent
+package com.android.sample.ui.sharedComponents
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -79,6 +79,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import kotlinx.coroutines.launch
 
+/** Renders a bold section title label for form fields. */
 @Composable
 fun SectionLabel(text: String, testTag: String) {
   Text(
@@ -323,8 +324,6 @@ fun AddTaskInputField(
   )
 }
 
-/** Dialog & Picker components: */
-
 /** Material 3 Type dropdown menu matching the types from EventType. */
 @Composable
 fun EventTypeDropdownMenu(
@@ -362,8 +361,7 @@ fun EventTypeDropdownMenu(
   }
 }
 
-/** Material 3 DatePickerDialog configured for text input mode (matches Screenshot). */
-@OptIn(ExperimentalMaterial3Api::class)
+/** Material 3 DatePickerDialog configured for text input mode. */
 @Composable
 fun EventDatePickerDialog(
     initialDate: LocalDate?,
@@ -402,7 +400,7 @@ fun EventDatePickerDialog(
   }
 }
 
-/** Material 3 TimePickerDialog using the dial clock picker (matches Screenshot). */
+/** Material 3 TimePickerDialog using the dial clock picker. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventTimePickerDialog(
@@ -546,6 +544,7 @@ fun SubjectPickerDialogContent(
   }
 }
 
+/** Subject Picker Dialog wrapper. */
 @Composable
 fun SubjectPickerDialog(
     currentSelection: String,
@@ -566,7 +565,6 @@ fun SubjectPickerDialog(
   }
 }
 
-/** Extracted color palette to eliminate SonarCloud duplication smells across form fields. */
 @Composable
 private fun formTextFieldColors(): TextFieldColors =
     TextFieldDefaults.colors(
@@ -579,3 +577,36 @@ private fun formTextFieldColors(): TextFieldColors =
         focusedIndicatorColor = Color.Transparent,
         unfocusedIndicatorColor = Color.Transparent,
     )
+
+/** Test tags for reusable form components. */
+object FormContentTestTags {
+  const val SCROLL_CONTAINER = "form_content_scroll_container"
+
+  // Section Labels
+  const val TYPE_LABEL = "form_content_type_label"
+  const val DATE_LABEL = "form_content_date_label"
+  const val START_TIME_LABEL = "form_content_start_time_label"
+  const val END_TIME_LABEL = "form_content_end_time_label"
+  const val SUBJECT_LABEL = "form_content_subject_label"
+  const val LOCATION_LABEL = "form_content_location_label"
+  const val DESCRIPTION_LABEL = "form_content_description_label"
+  const val TASKS_LABEL = "form_content_tasks_label"
+
+  // Interactive Elements / Selectors
+  const val TYPE_SELECTOR = "form_content_type_selector"
+  const val DATE_SELECTOR = "form_content_date_selector"
+  const val START_TIME_SELECTOR = "form_content_start_time_selector"
+  const val END_TIME_SELECTOR = "form_content_end_time_selector"
+  const val SUBJECT_SELECTOR = "form_content_subject_selector"
+  const val LOCATION_INPUT = "form_content_location_input"
+  const val DESCRIPTION_INPUT = "form_content_description_input"
+
+  // Tasks
+  const val ADD_TASK_BUTTON = "form_content_add_task_button"
+  const val TASK_ITEM_PREFIX = "form_content_task_item_"
+  const val TASK_CHECKBOX_PREFIX = "form_content_task_checkbox_"
+  const val TASK_DELETE_PREFIX = "form_content_task_delete_"
+
+  // Actions & Feedback
+  const val ENDS_NEXT_DAY_WARNING = "form_content_ends_next_day_warning"
+}

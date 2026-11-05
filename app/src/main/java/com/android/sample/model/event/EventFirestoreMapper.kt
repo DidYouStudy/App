@@ -1,5 +1,6 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.event
 
 import com.google.firebase.Timestamp
@@ -9,7 +10,7 @@ import java.time.temporal.ChronoUnit
 /** Explicit wire format; missing optional values default, malformed values fail the whole read. */
 internal object EventFirestoreMapper {
   /** Serializes caller-supplied UTC timestamps at Firestore microsecond precision. */
-  fun encode(event: Event): Map<String, Any?> =
+  fun encode(event: PersonalEvent): Map<String, Any?> =
       with(event) {
         mapOf(
             "ownerId" to ownerId,
@@ -30,9 +31,9 @@ internal object EventFirestoreMapper {
       }
 
   /** Uses the document path as the event ID and verifies the stored owner. */
-  fun decode(id: String, owner: String, data: Map<String, Any?>): Event = decodeData {
+  fun decode(id: String, owner: String, data: Map<String, Any?>): PersonalEvent = decodeData {
     require(data["ownerId"] == owner)
-    Event(
+    PersonalEvent(
         id,
         owner,
         EventType.valueOf(data["type"] as String),
