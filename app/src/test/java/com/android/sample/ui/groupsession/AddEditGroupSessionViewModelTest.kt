@@ -320,38 +320,6 @@ class AddEditGroupSessionViewModelTest {
   }
 
   @Test
-  fun recommendedSubjectsPopulatesFromRepositorySessions() = runTest {
-    val session1 =
-        GroupSession(
-            id = "sess_1",
-            createdBy = "user_123",
-            memberIds = listOf("user_123"),
-            type = EventType.COURSE,
-            subject = "Algorithms",
-            startsAt = Instant.parse("2026-11-15T10:00:00Z"),
-            endsAt = Instant.parse("2026-11-15T12:00:00Z"),
-            createdAt = fixedInstant,
-        )
-    val session2 =
-        GroupSession(
-            id = "sess_2",
-            createdBy = "user_456",
-            memberIds = listOf("user_456"),
-            type = EventType.COURSE,
-            subject = "Calculus",
-            startsAt = Instant.parse("2026-11-16T10:00:00Z"),
-            endsAt = Instant.parse("2026-11-16T12:00:00Z"),
-            createdAt = fixedInstant,
-        )
-    repository.saveSession("user_123", session1)
-    repository.saveSession("user_456", session2)
-
-    val subjects = viewModel.uiState.value.recommendedSubjects
-    assertTrue(subjects.contains("Algorithms"))
-    assertTrue(subjects.contains("Calculus"))
-  }
-
-  @Test
   fun factoryCreatesViewModelOrThrows() {
     val factory = AddEditGroupSessionViewModelFactory(authRepository, repository)
     val instance = factory.create(AddEditGroupSessionViewModel::class.java)

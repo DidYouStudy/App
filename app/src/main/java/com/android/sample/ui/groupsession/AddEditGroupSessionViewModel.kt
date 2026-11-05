@@ -15,7 +15,6 @@ import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
 import java.time.Clock
 import java.time.Duration
-import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import kotlinx.coroutines.Job
@@ -26,7 +25,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** Form values, subject suggestions and state of the latest group session save request. */
+/** Form values and state of the latest group session save request. */
 data class AddEditGroupSessionUiState(
     val type: EventType = EventType.STUDY_SESSION,
     val subject: String = "",
@@ -35,7 +34,6 @@ data class AddEditGroupSessionUiState(
     val endTime: LocalTime? = null,
     val location: String = "",
     val description: String = "",
-    val recommendedSubjects: List<String> = emptyList(),
     val isEditing: Boolean = false,
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
@@ -74,18 +72,6 @@ class AddEditGroupSessionViewModel(
 
   private var loadedSession: GroupSession? = null
   private var loadJob: Job? = null
-
-  init {
-    viewModelScope.launch {
-      groupSessionsRepository.observeSessions(Instant.EPOCH).collect { result ->
-        result.getOrNull()?.let { sessions ->
-          val subjects =
-              sessions.mapNotNull { it.subject?.trim() }.filter { it.isNotBlank() }.distinct()
-          _uiState.update { it.copy(recommendedSubjects = subjects) }
-        }
-      }
-    }
-  }
 
   /** Loads an existing group session into the form state for editing. */
   fun loadSession(sessionId: String) {
