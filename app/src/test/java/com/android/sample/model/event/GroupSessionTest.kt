@@ -71,4 +71,16 @@ class GroupSessionTest {
       session().copy(memberIds = listOf("creator", "creator"))
     }
   }
+
+  /** Membership at the advertised limit is valid and one additional member is rejected. */
+  @Test
+  fun memberCount_acceptsMaximumAndRejectsOneMore() {
+    val members = (0 until GroupSession.MAX_MEMBERS - 1).map { "member-$it" }
+    val atLimit = session().copy(memberIds = members + "creator")
+    assertEquals(GroupSession.MAX_MEMBERS, atLimit.memberIds.size)
+
+    assertThrows(IllegalArgumentException::class.java) {
+      session().copy(memberIds = members + listOf("creator", "extra"))
+    }
+  }
 }
