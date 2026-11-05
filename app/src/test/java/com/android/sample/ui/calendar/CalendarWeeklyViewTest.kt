@@ -211,7 +211,7 @@ class CalendarWeeklyViewTest {
             createdAt = Instant.parse("2026-10-01T12:00:00Z"),
         )
 
-    val placement = calculateEventPlacements(event, weekDates, 10.dp).single()
+    val placement = calculateEventPlacements(event, weekDates, 10.dp, zone).single()
 
     assertEquals(6, placement.dayIndex)
     assertEquals(90.dp, placement.top)
@@ -235,7 +235,7 @@ class CalendarWeeklyViewTest {
             createdAt = Instant.parse("2026-10-01T12:00:00Z"),
         )
 
-    val placement = calculateEventPlacements(event, weekDates, 10.dp).single()
+    val placement = calculateEventPlacements(event, weekDates, 10.dp, zone).single()
 
     assertEquals(6, placement.dayIndex)
     assertEquals(0.dp, placement.top)
@@ -259,7 +259,7 @@ class CalendarWeeklyViewTest {
             createdAt = Instant.parse("2026-10-01T12:00:00Z"),
         )
 
-    val placement = calculateEventPlacements(event, weekDates, 10.dp).single()
+    val placement = calculateEventPlacements(event, weekDates, 10.dp, zone).single()
 
     assertEquals(15.dp, placement.top)
     assertEquals(20.dp, placement.height)
@@ -283,7 +283,7 @@ class CalendarWeeklyViewTest {
             createdAt = Instant.parse("2026-10-01T12:00:00Z"),
         )
 
-    val placement = calculateEventPlacements(event, weekDates, 10.dp).single()
+    val placement = calculateEventPlacements(event, weekDates, 10.dp, zone).single()
 
     assertEquals(25.dp, placement.top)
     assert(placement.height == 0.dp)
@@ -309,7 +309,7 @@ class CalendarWeeklyViewTest {
             createdAt = Instant.parse("2026-10-01T12:00:00Z"),
         )
 
-    val placement = calculateEventPlacements(event, weekDates, 10.dp).single()
+    val placement = calculateEventPlacements(event, weekDates, 10.dp, zone).single()
 
     assertEquals(35.dp, placement.top)
     assertEquals(10.dp, placement.height)

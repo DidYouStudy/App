@@ -64,7 +64,6 @@ private const val FIRST_VISIBLE_HOUR = 8
 private const val DEFAULT_VISIBLE_HOURS = 10
 private val WEEK_RANGE_FORMAT = DateTimeFormatter.ofPattern("MMM d", Locale.US)
 private val HOUR_FORMAT = DateTimeFormatter.ofPattern("h a", Locale.US)
-private val CALENDAR_ZONE: ZoneId = ZoneId.systemDefault()
 
 /** Test tags for the weekly calendar controls and date headings. */
 object CalendarTestTags {
@@ -423,16 +422,17 @@ internal fun calculateEventPlacements(
     event: PersonalEvent,
     weekDates: List<LocalDate>,
     hourHeight: Dp,
+    zone: ZoneId = ZoneId.systemDefault(),
 ): List<CalendarEventPlacement> {
-  val start = event.startsAt.atZone(CALENDAR_ZONE)
-  val end = event.endsAt.atZone(CALENDAR_ZONE)
+  val start = event.startsAt.atZone(zone)
+  val end = event.endsAt.atZone(zone)
   val placements = mutableListOf<CalendarEventPlacement>()
   var date = start.toLocalDate()
 
   // Visit the start date and every following date touched before the event ends.
   while (!date.isAfter(end.toLocalDate())) {
-    val dayStart = date.atStartOfDay(CALENDAR_ZONE).toInstant()
-    val nextDayStart = date.plusDays(1).atStartOfDay(CALENDAR_ZONE).toInstant()
+    val dayStart = date.atStartOfDay(zone).toInstant()
+    val nextDayStart = date.plusDays(1).atStartOfDay(zone).toInstant()
 
     // Clamp this segment to the current day: start at the event time, and end at midnight.
     val segmentStart = maxOf(event.startsAt, dayStart)
@@ -442,8 +442,8 @@ internal fun calculateEventPlacements(
     if (dayIndex >= 0 && segmentStart.isBefore(segmentEnd)) {
       // Position by wall-clock time because every displayed day has 24 equal hour rows.
       val localDayStart = date.atStartOfDay()
-      val localSegmentStart = segmentStart.atZone(CALENDAR_ZONE).toLocalDateTime()
-      val localSegmentEnd = segmentEnd.atZone(CALENDAR_ZONE).toLocalDateTime()
+      val localSegmentStart = segmentStart.atZone(zone).toLocalDateTime()
+      val localSegmentEnd = segmentEnd.atZone(zone).toLocalDateTime()
       val minutesFromMidnight = Duration.between(localDayStart, localSegmentStart).toMinutes()
       val segmentMinutes =
           Duration.between(localSegmentStart, localSegmentEnd).toMinutes().coerceAtLeast(0)
