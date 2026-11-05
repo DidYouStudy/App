@@ -138,8 +138,8 @@ class GroupSessionsFirestoreRulesEmulatorTest {
   fun signedInUserCanDeleteMissingSessionButSignedOutUserCannot() = runBlocking {
     timed { document(outsider, uniqueId()).delete().await() }
 
-    outsider.auth.signOut()
-    denied { timed { document(outsider, uniqueId()).delete().await() } }
+    val signedOut = newSignedOutClient("signed-out")
+    denied { timed { document(signedOut, uniqueId()).delete().await() } }
   }
 
   /** A member can join and later remove only their own ID. */
@@ -606,6 +606,19 @@ class GroupSessionsFirestoreRulesEmulatorTest {
 
   /** Creates an emulator user with a dedicated Firebase app, auth instance and Firestore client. */
   private suspend fun newClient(label: String): Client {
+    val client = newSignedOutClient(label)
+    client.uid = signUp(client.auth, client.app.name)
+    return client
+  }
+
+  /**
+   * Creates a dedicated Firebase app and Firestore client that has never signed in.
+   *
+   * Use it to test signed-out access. Signing out an existing client is racy for writes: Firestore
+   * learns about the sign-out asynchronously, and a write queued before that is held for the
+   * previous user and never completes.
+   */
+  private fun newSignedOutClient(label: String): Client {
     val name = "group-rules-$label-${UUID.randomUUID()}"
     val app =
         FirebaseApp.initializeApp(
@@ -621,8 +634,7 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     auth.useEmulator("10.0.2.2", 9099)
     val db = FirebaseFirestore.getInstance(app)
     db.useEmulator("10.0.2.2", 8080)
-    val uid = signUp(auth, name)
-    return Client(app, auth, db, uid).also(clients::add)
+    return Client(app, auth, db, uid = "").also(clients::add)
   }
 
   /** Creates another unique emulator account on a reusable Firebase Auth client. */
