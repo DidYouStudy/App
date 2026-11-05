@@ -180,14 +180,9 @@ class AddEditGroupSessionViewModelTest {
   }
 
   @Test
-  fun saveSessionFailsWhenDurationExceedsMaxLimit() {
+  fun saveSessionFailsWhenDurationIsZero() {
     viewModel.setType(EventType.OTHER)
     viewModel.setDate(LocalDate.of(2026, 11, 15))
-    viewModel.setStartTime(LocalTime.of(10, 0))
-    // Duration > 24 hours
-    viewModel.setEndTime(LocalTime.of(10, 1))
-
-    // Same start and end time = 0 duration -> invalid
     viewModel.setStartTime(LocalTime.of(10, 0))
     viewModel.setEndTime(LocalTime.of(10, 0))
 
@@ -196,6 +191,27 @@ class AddEditGroupSessionViewModelTest {
     assertEquals(
         AddEditGroupSessionError.INVALID_SESSION,
         viewModel.uiState.value.error,
+    )
+  }
+
+  @Test
+  fun saveSessionFailsWhenDurationExceedsMaxLimit() {
+    // When a time zone undergoes daylight saving fall-back (repeating 1 hour),
+    // a session from 01:30 to 01:00 next day spans 24.5 hours in UTC.
+    // This exercises the ViewModel's Duration > MAX_DURATION validation check.
+    val dstClock = Clock.fixed(fixedInstant, ZoneId.of("Europe/Paris"))
+    val dstViewModel = AddEditGroupSessionViewModel(authRepository, repository, dstClock)
+
+    dstViewModel.setType(EventType.OTHER)
+    dstViewModel.setDate(LocalDate.of(2026, 10, 25))
+    dstViewModel.setStartTime(LocalTime.of(1, 30))
+    dstViewModel.setEndTime(LocalTime.of(1, 0)) // VieModel adds 24h if endTime < startTime
+
+    dstViewModel.saveSession()
+
+    assertEquals(
+        AddEditGroupSessionError.INVALID_SESSION,
+        dstViewModel.uiState.value.error,
     )
   }
 
