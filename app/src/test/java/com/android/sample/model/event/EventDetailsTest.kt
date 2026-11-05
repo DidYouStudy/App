@@ -104,6 +104,21 @@ class EventDetailsTest {
     }
   }
 
+  /**
+   * The limit is exact: a single nanosecond over is rejected, a single nanosecond under is valid.
+   */
+  @Test
+  fun duration_limitIsCheckedBelowOneSecond() {
+    val limit = start.plus(EventDetails.MAX_DURATION)
+
+    assertEquals(limit.minusNanos(1), details().copy(endsAt = limit.minusNanos(1)).endsAt)
+    for (excess in listOf(1L, 1_000L, 999_999_999L)) {
+      assertThrows(IllegalArgumentException::class.java) {
+        details().copy(endsAt = limit.plusNanos(excess))
+      }
+    }
+  }
+
   /** Null means absent; a blank place label is invalid instead of acting as missing data. */
   @Test
   fun blankLocation_isRejected() {

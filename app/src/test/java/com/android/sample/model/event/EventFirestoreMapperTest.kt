@@ -71,6 +71,33 @@ class EventFirestoreMapperTest {
     )
   }
 
+  /**
+   * The 24-hour limit holds across the microsecond normalization: a stored duration one microsecond
+   * over is rejected, and a valid duration with sub-microsecond parts never becomes too long.
+   */
+  @Test
+  fun durationLimit_holdsAcrossMicrosecondNormalization() {
+    val limit = EventDetails.MAX_DURATION
+    val overLimit =
+        EventFirestoreMapper.encode(event) +
+            ("endsAt" to EventFirestoreMapper.timestamp(time.plus(limit).plusNanos(1000)))
+    val error =
+        assertThrows(EventsException::class.java) {
+          EventFirestoreMapper.decode("id", "owner", overLimit)
+        }
+    assertEquals(EventsError.INVALID_EVENT_DATA, error.error)
+
+    val precise = time.plusNanos(789)
+    val justUnder =
+        event.copy(
+            details =
+                event.details.copy(startsAt = precise, endsAt = precise.plus(limit).minusNanos(1))
+        )
+    val decoded = EventFirestoreMapper.decode("id", "owner", EventFirestoreMapper.encode(justUnder))
+    assertEquals(time, decoded.details.startsAt)
+    assertEquals(time.plus(limit), decoded.details.endsAt)
+  }
+
   /** Absent optional fields follow the model defaults. */
   @Test
   fun missingOptionals() {
