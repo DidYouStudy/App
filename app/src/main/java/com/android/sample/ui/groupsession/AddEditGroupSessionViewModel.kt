@@ -25,6 +25,23 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/** Distinct failure modes encountered when loading, validating, or saving a group session. */
+enum class AddEditGroupSessionError {
+  /** Session date, start time, or end time was not specified. */
+  DATE_AND_TIMES_REQUIRED,
+
+  /** Missing subject when required, invalid time order, or duration constraints violated. */
+  INVALID_SESSION,
+
+  /** Existing session could not be retrieved from the repository. */
+  LOAD_FAILED,
+
+  /**
+   * Failed to persist changes or session creation failed (e.g. unauthenticated or network error).
+   */
+  SAVE_FAILED,
+}
+
 /** Form values and state of the latest group session save request. */
 data class AddEditGroupSessionUiState(
     val type: EventType = EventType.STUDY_SESSION,
@@ -38,7 +55,7 @@ data class AddEditGroupSessionUiState(
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val isSessionSaved: Boolean = false,
-    val error: String? = null,
+    val error: AddEditGroupSessionError? = null,
 ) {
   /** The subject is required for every type except [EventType.OTHER]. */
   val isSubjectRequired: Boolean
@@ -59,13 +76,6 @@ class AddEditGroupSessionViewModel(
     private val groupSessionsRepository: GroupSessionsRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
-
-  companion object {
-    const val SESSION_DATE_AND_TIMES_REQUIRED_ERROR =
-        "Session date, start time, and end time are required"
-    const val INVALID_SESSION_ERROR = "Invalid session details"
-    const val FAILED_TO_SAVE_SESSION_ERROR = "Failed to save group session"
-  }
 
   private val _uiState = MutableStateFlow(AddEditGroupSessionUiState())
   val uiState: StateFlow<AddEditGroupSessionUiState> = _uiState.asStateFlow()
@@ -123,7 +133,7 @@ class AddEditGroupSessionViewModel(
                   isLoading = false,
                   isEditing = false,
                   type = EventType.STUDY_SESSION,
-                  error = FAILED_TO_SAVE_SESSION_ERROR,
+                  error = AddEditGroupSessionError.LOAD_FAILED,
               )
             }
           },
@@ -170,13 +180,13 @@ class AddEditGroupSessionViewModel(
     if (state.isBusy) return
 
     if (state.date == null || state.startTime == null || state.endTime == null) {
-      _uiState.update { it.copy(error = SESSION_DATE_AND_TIMES_REQUIRED_ERROR) }
+      _uiState.update { it.copy(error = AddEditGroupSessionError.DATE_AND_TIMES_REQUIRED) }
       return
     }
 
     val trimmedSubject = state.subject.trim()
     if (state.isSubjectRequired && trimmedSubject.isBlank()) {
-      _uiState.update { it.copy(error = INVALID_SESSION_ERROR) }
+      _uiState.update { it.copy(error = AddEditGroupSessionError.INVALID_SESSION) }
       return
     }
 
@@ -192,7 +202,7 @@ class AddEditGroupSessionViewModel(
         !endInstant.isAfter(startInstant) ||
             Duration.between(startInstant, endInstant) > GroupSession.MAX_DURATION
     ) {
-      _uiState.update { it.copy(error = INVALID_SESSION_ERROR) }
+      _uiState.update { it.copy(error = AddEditGroupSessionError.INVALID_SESSION) }
       return
     }
 
@@ -203,7 +213,7 @@ class AddEditGroupSessionViewModel(
       val userId = currentUser?.uid
 
       if (userId == null) {
-        _uiState.update { it.copy(isSaving = false, error = FAILED_TO_SAVE_SESSION_ERROR) }
+        _uiState.update { it.copy(isSaving = false, error = AddEditGroupSessionError.SAVE_FAILED) }
         return@launch
       }
 
@@ -247,7 +257,9 @@ class AddEditGroupSessionViewModel(
             _uiState.update { it.copy(isSaving = false, isSessionSaved = true, error = null) }
           },
           onFailure = {
-            _uiState.update { it.copy(isSaving = false, error = FAILED_TO_SAVE_SESSION_ERROR) }
+            _uiState.update {
+              it.copy(isSaving = false, error = AddEditGroupSessionError.SAVE_FAILED)
+            }
           },
       )
     }

@@ -148,7 +148,7 @@ class AddEditGroupSessionViewModelTest {
     assertFalse(state.isEditing)
     assertEquals(EventType.STUDY_SESSION, state.type)
     assertEquals("", state.subject)
-    assertEquals(AddEditGroupSessionViewModel.FAILED_TO_SAVE_SESSION_ERROR, state.error)
+    assertEquals(AddEditGroupSessionError.LOAD_FAILED, state.error)
   }
 
   @Test
@@ -157,7 +157,7 @@ class AddEditGroupSessionViewModelTest {
     viewModel.saveSession()
 
     assertEquals(
-        AddEditGroupSessionViewModel.SESSION_DATE_AND_TIMES_REQUIRED_ERROR,
+        AddEditGroupSessionError.DATE_AND_TIMES_REQUIRED,
         viewModel.uiState.value.error,
     )
   }
@@ -173,7 +173,7 @@ class AddEditGroupSessionViewModelTest {
     viewModel.saveSession()
 
     assertEquals(
-        AddEditGroupSessionViewModel.INVALID_SESSION_ERROR,
+        AddEditGroupSessionError.INVALID_SESSION,
         viewModel.uiState.value.error,
     )
   }
@@ -193,7 +193,7 @@ class AddEditGroupSessionViewModelTest {
     viewModel.saveSession()
 
     assertEquals(
-        AddEditGroupSessionViewModel.INVALID_SESSION_ERROR,
+        AddEditGroupSessionError.INVALID_SESSION,
         viewModel.uiState.value.error,
     )
   }
@@ -273,7 +273,7 @@ class AddEditGroupSessionViewModelTest {
 
     val state = viewModel.uiState.value
     assertFalse(state.isSaving)
-    assertEquals(AddEditGroupSessionViewModel.FAILED_TO_SAVE_SESSION_ERROR, state.error)
+    assertEquals(AddEditGroupSessionError.SAVE_FAILED, state.error)
   }
 
   @Test
