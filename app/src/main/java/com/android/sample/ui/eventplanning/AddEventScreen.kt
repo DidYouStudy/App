@@ -44,6 +44,9 @@ import com.android.sample.R
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
+import com.android.sample.ui.sharedComponents.EventDatePickerDialog
+import com.android.sample.ui.sharedComponents.EventTimePickerDialog
+import com.android.sample.ui.sharedComponents.SubjectPickerDialog
 import com.android.sample.ui.theme.AlphaTokens
 import com.android.sample.ui.theme.Dimens
 

@@ -6,7 +6,7 @@ import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Stores a user's personal [PersonalEvent]s without exposing Firestore to ViewModels or screens.
+ * Stores a user's [PersonalEvent]s without exposing Firestore to ViewModels or screens.
  *
  * Failures are returned as [Result.failure] containing an [EventsException]; cancellation is
  * propagated rather than converted into a failed [Result].
@@ -28,7 +28,7 @@ interface EventsRepository {
   fun observeEvents(ownerId: String, from: Instant, to: Instant): Flow<Result<List<PersonalEvent>>>
 
   /**
-   * Returns a new unique event ID, available offline, to build an [PersonalEvent] before saving it.
+   * Returns a new unique event ID, available offline, to build a [PersonalEvent] before saving it.
    *
    * Saving again with the same ID replaces the event, so a retried save never creates a duplicate.
    */

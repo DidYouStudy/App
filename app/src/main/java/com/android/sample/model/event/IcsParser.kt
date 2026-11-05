@@ -1,4 +1,5 @@
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.event
 
 import java.io.InputStream
@@ -122,7 +123,7 @@ object IcsParser {
   }
 
   /**
-   * Parses a single `VEVENT` property map into an [PersonalEvent] domain model.
+   * Parses a single `VEVENT` property map into a [PersonalEvent] domain model.
    *
    * @param properties Map of property keys to lists of values extracted from a `VEVENT` block.
    * @param ownerId User ID owning the event.

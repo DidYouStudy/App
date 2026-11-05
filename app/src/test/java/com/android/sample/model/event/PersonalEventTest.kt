@@ -9,8 +9,11 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Tests the event model's validation and optional scheduling data without Android or Firebase. */
-class EventTest {
+/**
+ * Tests the personal event model's validation and optional scheduling data without Android or
+ * Firebase.
+ */
+class PersonalEventTest {
   private val start = Instant.parse("2026-10-19T23:30:00Z")
   private val end = Instant.parse("2026-10-20T00:30:00Z")
   private val created = Instant.parse("2026-10-18T12:00:00Z")

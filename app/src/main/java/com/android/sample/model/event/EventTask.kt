@@ -4,7 +4,7 @@ package com.android.sample.model.event
 import java.time.Instant
 
 /**
- * One item of an [PersonalEvent]'s planned checklist, such as "Exercises 1 to 3".
+ * One item of a [PersonalEvent]'s planned checklist, such as "Exercises 1 to 3".
  *
  * A task is a value stored inside its event: it has no identifier and no schedule of its own.
  *
