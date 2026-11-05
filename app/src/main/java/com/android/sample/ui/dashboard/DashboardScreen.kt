@@ -1,6 +1,7 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.dashboard
 
 import androidx.compose.foundation.layout.padding
@@ -23,7 +24,7 @@ import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.profile.ProfileButton
-import com.android.sample.ui.sharedComponents.AddButton
+import com.android.sample.ui.sharedComponents.DashboardAddFabMenu
 import com.android.sample.ui.theme.Dimens
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,6 +37,11 @@ fun DashboardScreen(
     // onSignedOut: () -> Unit = {},
     navigationActions: NavigationActions? = null,
     onAddClick: () -> Unit = {},
+    onEventClick: () -> Unit = {
+      onAddClick()
+      navigationActions?.navigateTo(Screen.AddEvent)
+    },
+    onGroupSessionClick: () -> Unit = {},
 ) {
   Scaffold(
       topBar = {
@@ -70,9 +76,9 @@ fun DashboardScreen(
         )
       },
       floatingActionButton = {
-        AddButton(
-            onClick = onAddClick,
-            contentDescription = stringResource(R.string.dashboard_add_description),
+        DashboardAddFabMenu(
+            onEventClick = onEventClick,
+            onGroupSessionClick = onGroupSessionClick,
             modifier = Modifier.testTag(DashboardContentTestTags.ADD_BUTTON),
         )
       },

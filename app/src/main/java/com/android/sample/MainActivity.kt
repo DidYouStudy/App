@@ -123,6 +123,12 @@ fun DidYouStudyApp() {
       composable(Screen.Dashboard.route) {
         DashboardScreen(
             navigationActions = navigationActions,
+            onEventClick = {
+              navigationActions.navigateIfAllowed(
+                  Screen.AddEvent,
+                  applicationViewModel::canNavigateTo,
+              )
+            },
         )
       }
     }

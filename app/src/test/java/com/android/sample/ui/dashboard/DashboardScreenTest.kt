@@ -53,8 +53,39 @@ class DashboardScreenTest {
     }
 
     composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON).performClick()
 
     assertEquals(1, callbackCount)
+  }
+
+  @Test
+  fun dashboardFabMenuTogglesAndInvokesEventAndGroupSessionCallbacks() {
+    var eventClicks = 0
+    var groupSessionClicks = 0
+
+    composeTestRule.setContent {
+      DashboardScreen(
+          navigationActions = null,
+          onEventClick = { eventClicks++ },
+          onGroupSessionClick = { groupSessionClicks++ },
+      )
+    }
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
+
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON)
+        .assertIsDisplayed()
+        .performClick()
+    assertEquals(1, eventClicks)
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
+
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.FAB_MENU_GROUP_SESSION_BUTTON)
+        .assertIsDisplayed()
+        .performClick()
+    assertEquals(1, groupSessionClicks)
   }
 
   @Test
