@@ -1,3 +1,4 @@
+// Co-authored-by: Codex AI Agent
 // Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.theme
 
@@ -51,6 +52,10 @@ val CardTitleTextStyle: TextStyle = Typography.titleLarge.copy(fontSize = 18.sp,
 val GoogleButtonTextStyle =
     TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.25.sp)
 val calendarDateLabelStyle: TextStyle = TextStyle(fontSize = 10.sp)
+val calendarEventTitleStyle: TextStyle =
+    TextStyle(fontSize = 9.sp, lineHeight = 11.sp, fontWeight = FontWeight.Bold)
+val calendarEventSubjectStyle: TextStyle = TextStyle(fontSize = 9.sp, lineHeight = 11.sp)
+val calendarEventTimeStyle: TextStyle = TextStyle(fontSize = 8.sp, lineHeight = 11.sp)
 
 /** Initial drawn inside a small participant avatar of the group-session participants pill. */
 val ParticipantInitialTextStyle: TextStyle = TextStyle(fontSize = 10.sp)

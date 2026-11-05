@@ -45,12 +45,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.android.sample.R
+import com.android.sample.model.event.Event
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.calendarDateLabelStyle
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
@@ -70,6 +73,10 @@ object CalendarTestTags {
   const val TIME_GRID = "calendar_timeGrid"
   const val ADD_BUTTON = "calendar_addButton"
   const val TODAY_BUTTON = "calendar_todayButton"
+
+  /** Creates a stable tag for an event card in a specific day column. */
+  fun eventCard(eventId: String, dayIndex: Int): String =
+      "calendar_eventCard_${eventId}_day_$dayIndex"
 
   /**
    * Creates the test tag used to identify a date number in a weekly day header.
@@ -119,7 +126,11 @@ internal fun CalendarWeeklyView(
         onNextWeek = onNextWeek,
     )
     CalendarDayHeader(weekDates = uiState.weekDates, today = uiState.today)
-    CalendarTimeGrid(modifier = Modifier.weight(1f))
+    CalendarTimeGrid(
+        events = uiState.events,
+        weekDates = uiState.weekDates,
+        modifier = Modifier.weight(1f),
+    )
   }
 }
 
@@ -305,6 +316,8 @@ private fun CalendarTodayCircle(modifier: Modifier = Modifier) {
 @Composable
 fun CalendarTimeGrid(
     modifier: Modifier = Modifier,
+    events: List<Event> = emptyList(),
+    weekDates: List<LocalDate> = emptyList(),
 ) {
   // Keep the grid vertically scrollable
   val scrollState = remember { ScrollState(0) }
@@ -354,14 +367,34 @@ fun CalendarTimeGrid(
         }
       }
       // Divide the remaining width evenly among the seven empty day columns.
+      val placementsByDay =
+          remember(events, weekDates, hourHeight) {
+            events
+                .flatMap { event -> calculateEventPlacements(event, weekDates, hourHeight) }
+                .groupBy { placement -> placement.dayIndex }
+          }
       Row(modifier = Modifier.weight(1f)) {
         repeat(DAYS_PER_WEEK) { dayIndex ->
-          Column(modifier = Modifier.weight(1f)) {
-            repeat(HOURS_PER_DAY) { hour ->
-              CalendarEmptyHourCell(
-                  hourHeight = hourHeight,
-                  isLastHour = hour == HOURS_PER_DAY - 1,
-                  isFirstDay = dayIndex == 0,
+          val placements = placementsByDay[dayIndex].orEmpty()
+
+          Box(modifier = Modifier.weight(1f)) {
+            Column {
+              repeat(HOURS_PER_DAY) { hour ->
+                CalendarEmptyHourCell(
+                    hourHeight = hourHeight,
+                    isLastHour = hour == HOURS_PER_DAY - 1,
+                    isFirstDay = dayIndex == 0,
+                )
+              }
+            }
+            placements.forEach { placement ->
+              CalendarEventCard(
+                  event = placement.event,
+                  modifier =
+                      Modifier.fillMaxWidth()
+                          .offset(y = placement.top)
+                          .height(maxOf(Dimens.calendarEventCardMinHeight, placement.height))
+                          .testTag(CalendarTestTags.eventCard(placement.event.id, dayIndex)),
               )
             }
           }
@@ -369,6 +402,65 @@ fun CalendarTimeGrid(
       }
     }
   }
+}
+
+/** Provides the grid coordinates calculated for an event in the displayed week. */
+internal data class CalendarEventPlacement(
+    val event: Event,
+    val dayIndex: Int,
+    val top: Dp,
+    val height: Dp,
+)
+
+/**
+ * Splits an event at local midnight and calculates each segment's grid position.
+ *
+ * Events outside [weekDates] produce no placements. A placement keeps the original event, so cards
+ * created for separate day segments display identical contents.
+ */
+internal fun calculateEventPlacements(
+    event: Event,
+    weekDates: List<LocalDate>,
+    hourHeight: Dp,
+    zone: ZoneId = ZoneId.systemDefault(),
+): List<CalendarEventPlacement> {
+  val start = event.details.startsAt.atZone(zone)
+  val end = event.details.endsAt.atZone(zone)
+  val placements = mutableListOf<CalendarEventPlacement>()
+  var date = start.toLocalDate()
+
+  // Visit the start date and every following date touched before the event ends.
+  while (!date.isAfter(end.toLocalDate())) {
+    val dayStart = date.atStartOfDay(zone).toInstant()
+    val nextDayStart = date.plusDays(1).atStartOfDay(zone).toInstant()
+
+    // Clamp this segment to the current day: start at the event time, and end at midnight.
+    val segmentStart = maxOf(event.details.startsAt, dayStart)
+    val segmentEnd = minOf(event.details.endsAt, nextDayStart)
+    val dayIndex = weekDates.indexOf(date)
+
+    if (dayIndex >= 0 && segmentStart.isBefore(segmentEnd)) {
+      // Position by wall-clock time because every displayed day has 24 equal hour rows.
+      val localDayStart = date.atStartOfDay()
+      val localSegmentStart = segmentStart.atZone(zone).toLocalDateTime()
+      val localSegmentEnd = segmentEnd.atZone(zone).toLocalDateTime()
+      val minutesFromMidnight = Duration.between(localDayStart, localSegmentStart).toMinutes()
+      val segmentMinutes =
+          Duration.between(localSegmentStart, localSegmentEnd).toMinutes().coerceAtLeast(0)
+      placements +=
+          CalendarEventPlacement(
+              event = event,
+              dayIndex = dayIndex,
+              top = hourHeight * (minutesFromMidnight / 60f),
+              height = hourHeight * (segmentMinutes / 60f),
+          )
+    }
+
+    // Move to the next local date; the loop stops after the event's ending date.
+    date = date.plusDays(1)
+  }
+
+  return placements
 }
 
 /**

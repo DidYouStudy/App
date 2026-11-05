@@ -1,3 +1,4 @@
+// Co-authored-by: Codex AI Agent
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Copilot
 // Co-authored-by: Gemini
@@ -68,7 +69,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
-import com.android.sample.model.event.EventType
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -81,6 +81,7 @@ import com.android.sample.ui.theme.ParticipantInitialTextStyle
 import com.android.sample.ui.theme.ParticipantOverflowTextStyle
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.color
+import com.android.sample.ui.theme.label
 import com.android.sample.ui.theme.onColor
 import java.time.Duration
 import java.time.Instant
@@ -370,7 +371,7 @@ private fun GroupSessionCard(
 
         Column(modifier = Modifier.weight(1f)) {
           Text(
-              text = session.details.subject ?: session.details.type.displayName(),
+              text = session.details.subject ?: session.details.type.label(),
               fontWeight = FontWeight.Bold,
               maxLines = 2, // Allows title to expand vertically before truncating
               overflow = TextOverflow.Ellipsis,
@@ -416,7 +417,7 @@ private fun GroupSessionCard(
           color = session.details.type.color,
       ) {
         Text(
-            text = session.details.type.displayName(),
+            text = session.details.type.label(),
             modifier = Modifier.padding(horizontal = Spacing.medium, vertical = Spacing.extraSmall),
             color = session.details.type.onColor,
             fontWeight = FontWeight.Bold,
@@ -687,9 +688,6 @@ private fun sessionDateLabel(start: Instant, now: Instant): String {
 
 private fun sessionTimeLabel(instant: Instant): String =
     DateTimeFormatter.ofPattern("h:mm a").withZone(ZoneId.systemDefault()).format(instant)
-
-private fun EventType.displayName(): String =
-    name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
 
 @Preview(showBackground = true)
 @Composable
