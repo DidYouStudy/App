@@ -197,6 +197,9 @@ class EventPlanningViewModel(
    * [editEvent] afterwards to save the changes.
    */
   fun loadEvent(eventId: String) {
+      // Already loaded (e.g. after rotation) or loading right now: keep the user's edits.
+      if (editingEvent?.id == eventId || _uiState.value.isLoading) return
+
     val ownerId = currentUserId
     if (ownerId == null) {
       fail(NO_SIGNED_IN_USER_ERROR)
