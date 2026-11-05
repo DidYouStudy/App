@@ -95,9 +95,8 @@ fun DidYouStudyApp() {
             onAddLocationClick = {},
             onSaved = {
               if (isEditing) {
-                // Already in Dashboard state: just return to Settings instead of stacking the
-                // Dashboard on top of it. The route check keeps a late callback from popping past
-                // Settings and emptying the back stack.
+                // Only handle the save while its Preferences entry is current. goBack() separately
+                // protects Dashboard from being removed.
                 if (navigationActions.currentRoute() == Screen.Preferences.route) {
                   navigationActions.goBack()
                 }
