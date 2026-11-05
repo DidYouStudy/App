@@ -4,15 +4,19 @@ package com.android.sample.model.event
 
 import java.time.Instant
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
-/** Tests group-session fields and validation without Android or Firebase. */
+/**
+ * Tests group-session fields and membership validation without Android or Firebase; shared content
+ * is covered by [EventDetailsTest].
+ */
 class GroupSessionTest {
   private val start = Instant.parse("2026-10-19T09:00:00Z")
   private val end = Instant.parse("2026-10-19T10:00:00Z")
   private val created = Instant.parse("2026-10-18T12:00:00Z")
+  private val details = EventDetails(EventType.STUDY_SESSION, "Analysis", start, end)
 
   /** Builds a valid session with deterministic times and membership. */
   private fun session() =
@@ -20,10 +24,7 @@ class GroupSessionTest {
           id = "session-1",
           createdBy = "creator",
           memberIds = listOf("creator", "other"),
-          type = EventType.STUDY_SESSION,
-          subject = "Analysis",
-          startsAt = start,
-          endsAt = end,
+          details = details,
           createdAt = created,
       )
 
@@ -31,37 +32,24 @@ class GroupSessionTest {
   @Test
   fun validSession_retainsAllFields() {
     val editedAt = created.plusSeconds(60)
-    val value =
-        session()
-            .copy(
-                subject = "Analysis II",
-                startsAt = start,
-                endsAt = end,
-                updatedAt = editedAt,
-                location = "Library",
-                description = "Review integration exercises",
-            )
+    val value = session().copy(updatedAt = editedAt)
 
     assertEquals("session-1", value.id)
     assertEquals("creator", value.createdBy)
     assertEquals(listOf("creator", "other"), value.memberIds)
-    assertEquals(EventType.STUDY_SESSION, value.type)
-    assertEquals("Analysis II", value.subject)
-    assertEquals(start, value.startsAt)
-    assertEquals(end, value.endsAt)
+    assertSame(details, value.details)
     assertEquals(created, value.createdAt)
     assertEquals(editedAt, value.updatedAt)
-    assertEquals("Library", value.location)
-    assertEquals("Review integration exercises", value.description)
     assertEquals(created, session().updatedAt)
   }
 
-  /** A group session is an [Event], so shared code can read its identity without a cast. */
+  /** A group session is an [Event], so shared code can read its content without a cast. */
   @Test
   fun groupSession_isAnEvent() {
     val event: Event = session()
 
     assertEquals("session-1", event.id)
+    assertEquals("Analysis", event.details.subject)
     assertEquals(created, event.createdAt)
     assertEquals(created, event.updatedAt)
   }
@@ -84,38 +72,6 @@ class GroupSessionTest {
     }
   }
 
-  /** Subjects are nonblank for all types, and null is accepted only for OTHER. */
-  @Test
-  fun subject_isOptionalOnlyForOther() {
-    assertNull(session().copy(type = EventType.OTHER, subject = null).subject)
-    for (type in EventType.entries) {
-      for (blank in listOf("", " \t\n")) {
-        assertThrows(IllegalArgumentException::class.java) {
-          session().copy(type = type, subject = blank)
-        }
-      }
-      if (type != EventType.OTHER) {
-        assertThrows(IllegalArgumentException::class.java) {
-          session().copy(type = type, subject = null)
-        }
-      }
-    }
-  }
-
-  /** Session time must be positive and cannot exceed the exact 24-hour limit. */
-  @Test
-  fun duration_isPositiveAndLimitedToMaxDuration() {
-    assertThrows(IllegalArgumentException::class.java) { session().copy(endsAt = start) }
-    assertThrows(IllegalArgumentException::class.java) {
-      session().copy(endsAt = start.minusSeconds(1))
-    }
-    val longest = session().copy(endsAt = start.plus(GroupSession.MAX_DURATION))
-    assertEquals(start.plus(GroupSession.MAX_DURATION), longest.endsAt)
-    assertThrows(IllegalArgumentException::class.java) {
-      session().copy(endsAt = start.plus(GroupSession.MAX_DURATION).plusSeconds(1))
-    }
-  }
-
   /** Membership at the advertised limit is valid and one additional member is rejected. */
   @Test
   fun memberCount_acceptsMaximumAndRejectsOneMore() {
@@ -125,15 +81,6 @@ class GroupSessionTest {
 
     assertThrows(IllegalArgumentException::class.java) {
       session().copy(memberIds = members + listOf("creator", "extra"))
-    }
-  }
-
-  /** A location may be absent but cannot be blank. */
-  @Test
-  fun location_isOptionalButNotBlank() {
-    assertNull(session().copy(location = null).location)
-    for (blank in listOf("", " \t\n")) {
-      assertThrows(IllegalArgumentException::class.java) { session().copy(location = blank) }
     }
   }
 }

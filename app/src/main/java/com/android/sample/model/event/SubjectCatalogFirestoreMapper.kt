@@ -15,7 +15,7 @@ internal object SubjectCatalogFirestoreMapper {
 
   /** Returns only the entry being changed, so merging preserves other subjects offline. */
   fun encode(event: PersonalEvent): Map<String, Any>? =
-      event.subject?.trim()?.let {
+      event.details.subject?.trim()?.let {
         mapOf(
             "subjects" to
                 mapOf(

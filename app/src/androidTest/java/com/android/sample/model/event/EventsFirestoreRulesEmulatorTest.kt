@@ -71,7 +71,18 @@ class EventsFirestoreRulesEmulatorTest {
   /** Produces a valid event payload for direct SDK requests. */
   private fun eventData(): Map<String, Any?> =
       EventFirestoreMapper.encode(
-          PersonalEvent("a", uid, EventType.PROJECT, "Analysis", day, day.plusSeconds(3600), day)
+          PersonalEvent(
+              id = "a",
+              ownerId = uid,
+              details =
+                  EventDetails(
+                      type = EventType.PROJECT,
+                      subject = "Analysis",
+                      startsAt = day,
+                      endsAt = day.plusSeconds(3600),
+                  ),
+              createdAt = day,
+          )
       )
 
   /** Resolves an event document belonging to the test owner. */

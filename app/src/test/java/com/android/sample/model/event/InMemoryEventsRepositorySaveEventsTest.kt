@@ -37,10 +37,13 @@ class InMemoryEventsRepositorySaveEventsTest {
     return PersonalEvent(
         id = id,
         ownerId = ownerId,
-        type = EventType.COURSE,
-        subject = subject,
-        startsAt = start,
-        endsAt = end,
+        details =
+            EventDetails(
+                type = EventType.COURSE,
+                subject = subject,
+                startsAt = start,
+                endsAt = end,
+            ),
         createdAt = baseInstant,
         updatedAt = baseInstant,
     )
@@ -74,15 +77,16 @@ class InMemoryEventsRepositorySaveEventsTest {
     // Verify both events are present and queryable
     val fetched1 = repository.getEvent(ownerId1, "event_1").getOrThrow()
     val fetched2 = repository.getEvent(ownerId1, "event_2").getOrThrow()
-    assertEquals("Analysis I", fetched1.subject)
-    assertEquals("Algebra", fetched2.subject)
+    assertEquals("Analysis I", fetched1.details.subject)
+    assertEquals("Algebra", fetched2.details.subject)
 
     // Overwrite event_1 with updated subject via saveEvents
-    val updatedEvent1 = event1.copy(subject = "Analysis I - Advanced")
+    val updatedEvent1 =
+        event1.copy(details = event1.details.copy(subject = "Analysis I - Advanced"))
     repository.saveEvents(listOf(updatedEvent1))
 
     val refetched1 = repository.getEvent(ownerId1, "event_1").getOrThrow()
-    assertEquals("Analysis I - Advanced", refetched1.subject)
+    assertEquals("Analysis I - Advanced", refetched1.details.subject)
 
     // Verify list size remains 2, not 3
     val allEvents =

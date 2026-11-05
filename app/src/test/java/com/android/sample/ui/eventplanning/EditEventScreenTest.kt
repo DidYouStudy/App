@@ -18,6 +18,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsRepository
@@ -63,14 +64,17 @@ class EditEventScreenTest {
       PersonalEvent(
           id = "event-1",
           ownerId = "user-1",
-          type = EventType.COURSE,
-          subject = "Operating Systems",
-          startsAt = Instant.parse("2026-10-27T08:00:00Z"),
-          endsAt = Instant.parse("2026-10-27T10:00:00Z"),
+          details =
+              EventDetails(
+                  type = EventType.COURSE,
+                  subject = "Operating Systems",
+                  startsAt = Instant.parse("2026-10-27T08:00:00Z"),
+                  endsAt = Instant.parse("2026-10-27T10:00:00Z"),
+                  location = "INF 1",
+                  description = "Bring lecture notes",
+              ),
           createdAt = Instant.parse("2026-10-20T09:00:00Z"),
           updatedAt = Instant.parse("2026-10-20T09:00:00Z"),
-          location = "INF 1",
-          description = "Bring lecture notes",
       )
 
   @Before
@@ -384,7 +388,7 @@ class EditEventScreenTest {
     val savedEvent = org.mockito.kotlin.argumentCaptor<PersonalEvent>()
     runBlocking { verify(eventsRepository).saveEvent(savedEvent.capture()) }
     assertEquals(storedEvent.id, savedEvent.firstValue.id)
-    assertEquals("INF 2", savedEvent.firstValue.location)
+    assertEquals("INF 2", savedEvent.firstValue.details.location)
   }
 
   @Test

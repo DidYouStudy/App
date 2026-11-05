@@ -173,7 +173,7 @@ object IcsParser {
 
     // Validate Duration constraints: must end after start, and duration <= MAX_DURATION (24h)
     if (
-        !endsAt.isAfter(startsAt) || Duration.between(startsAt, endsAt) > PersonalEvent.MAX_DURATION
+        !endsAt.isAfter(startsAt) || Duration.between(startsAt, endsAt) > EventDetails.MAX_DURATION
     ) {
       return null
     }
@@ -188,14 +188,17 @@ object IcsParser {
     return PersonalEvent(
         id = idGenerator(uid),
         ownerId = ownerId,
-        type = type,
-        subject = summary,
-        startsAt = startsAt,
-        endsAt = endsAt,
+        details =
+            EventDetails(
+                type = type,
+                subject = summary,
+                startsAt = startsAt,
+                endsAt = endsAt,
+                location = location,
+                description = description,
+            ),
         createdAt = createdAt,
         updatedAt = createdAt,
-        location = location,
-        description = description,
         tasks = emptyList(),
         importKey = uid?.takeIf { it.isNotBlank() },
     )

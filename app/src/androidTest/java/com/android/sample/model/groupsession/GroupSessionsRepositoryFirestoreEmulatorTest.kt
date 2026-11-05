@@ -4,6 +4,7 @@ package com.android.sample.model.groupsession
 
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
@@ -143,8 +144,7 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
             memberIds = listOf(creator.uid),
             createdAt = original.createdAt.plusSeconds(30),
             updatedAt = now().plusSeconds(30),
-            subject = "Physics",
-            location = "Library",
+            details = original.details.copy(subject = "Physics", location = "Library"),
         )
     creator.repository.saveSession(creator.uid, edited).getOrThrow()
     sync(creator)
@@ -161,10 +161,15 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
   /** Clearing optional details through a save persists no location or description value. */
   @Test
   fun saveClearsOptionalLocationAndDescription() = runBlocking {
-    val original = session(creator, uniqueId()).copy(location = "Library", description = "Review")
+    val base = session(creator, uniqueId())
+    val original =
+        base.copy(details = base.details.copy(location = "Library", description = "Review"))
     creator.repository.saveSession(creator.uid, original).getOrThrow()
     val cleared =
-        original.copy(location = null, description = null, updatedAt = now().plusSeconds(1))
+        original.copy(
+            details = original.details.copy(location = null, description = null),
+            updatedAt = now().plusSeconds(1),
+        )
 
     creator.repository.saveSession(creator.uid, cleared).getOrThrow()
     sync(creator)
@@ -186,7 +191,10 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
     val before = serverData(outsider, original.id)
 
     assertError(
-        member.repository.saveSession(member.uid, original.copy(subject = "Physics")),
+        member.repository.saveSession(
+            member.uid,
+            original.copy(details = original.details.copy(subject = "Physics")),
+        ),
         EventsError.PERMISSION_DENIED,
     )
     assertEquals(before, serverData(outsider, original.id))
@@ -383,18 +391,26 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
         left.await().getOrThrow().first { it.id == original.id }.memberIds.contains(member.uid)
     )
 
-    val edited = original.copy(subject = "Updated", updatedAt = now().plusSeconds(10))
+    val edited =
+        original.copy(
+            details = original.details.copy(subject = "Updated"),
+            updatedAt = now().plusSeconds(10),
+        )
     val edit =
         async(Dispatchers.IO) {
           withTimeout(TIMEOUT_MILLIS) {
             flow.first { result ->
-              result.getOrThrow().firstOrNull { it.id == original.id }?.subject == edited.subject
+              result.getOrThrow().firstOrNull { it.id == original.id }?.details?.subject ==
+                  edited.details.subject
             }
           }
         }
     creator.repository.saveSession(creator.uid, edited).getOrThrow()
     sync(creator)
-    assertEquals(edited.subject, edit.await().getOrThrow().first { it.id == original.id }.subject)
+    assertEquals(
+        edited.details.subject,
+        edit.await().getOrThrow().first { it.id == original.id }.details.subject,
+    )
   }
 
   /** Signed-out observation emits a permission failure. */
@@ -467,8 +483,8 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
     val ended =
         original.copy(
             memberIds = listOf(creator.uid, member.uid),
-            startsAt = endedAt.minusSeconds(3600),
-            endsAt = endedAt,
+            details =
+                original.details.copy(startsAt = endedAt.minusSeconds(3600), endsAt = endedAt),
             updatedAt = now(),
         )
     creator.repository.saveSession(creator.uid, ended).getOrThrow()
@@ -655,7 +671,10 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
     assertUnreachableFailure(creator, "save") { repository ->
       repository.saveSession(
           creator.uid,
-          original.copy(subject = "Offline edit", updatedAt = now().plusSeconds(1)),
+          original.copy(
+              details = original.details.copy(subject = "Offline edit"),
+              updatedAt = now().plusSeconds(1),
+          ),
       )
     }
     assertEquals(before, serverData(outsider, original.id))
@@ -755,10 +774,13 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
           id = id,
           createdBy = owner.uid,
           memberIds = listOf(owner.uid),
-          type = EventType.COURSE,
-          subject = "Analysis",
-          startsAt = startsAt,
-          endsAt = endsAt,
+          details =
+              EventDetails(
+                  type = EventType.COURSE,
+                  subject = "Analysis",
+                  startsAt = startsAt,
+                  endsAt = endsAt,
+              ),
           createdAt = now(),
       )
 

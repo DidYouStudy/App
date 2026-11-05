@@ -9,6 +9,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
@@ -141,10 +142,13 @@ class GroupSessionsViewModelFactoryTest {
           id = id,
           createdBy = creator,
           memberIds = listOf(creator),
-          type = EventType.COURSE,
-          subject = "Biology",
-          startsAt = startsAt,
-          endsAt = endsAt,
+          details =
+              EventDetails(
+                  type = EventType.COURSE,
+                  subject = "Biology",
+                  startsAt = startsAt,
+                  endsAt = endsAt,
+              ),
           createdAt = Instant.now(),
       )
 

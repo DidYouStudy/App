@@ -64,15 +64,18 @@ class EventsRepositoryFirestoreTest {
     val start = Instant.parse("2026-01-01T10:00:00Z")
     val event =
         PersonalEvent(
-            "id",
-            "owner",
-            EventType.COURSE,
-            "Analysis",
-            start,
-            start.plusSeconds(3600),
-            start,
+            id = "id",
+            ownerId = "owner",
+            details =
+                EventDetails(
+                    type = EventType.COURSE,
+                    subject = "Analysis",
+                    startsAt = start,
+                    endsAt = start.plusSeconds(3600),
+                ),
+            createdAt = start,
         )
-    val other = event.copy(id = "second", subject = "Physics")
+    val other = event.copy(details = event.details.copy(subject = "Physics"), id = "second")
     whenever(events.document("second")).thenReturn(second)
     whenever(owner.collection("meta")).thenReturn(meta)
     whenever(meta.document("subjects")).thenReturn(subjects)
@@ -96,7 +99,18 @@ class EventsRepositoryFirestoreTest {
   fun rejectsLaterInvalidEventBeforeWriting() = runTest {
     val start = Instant.parse("2026-01-01T10:00:00Z")
     val event =
-        PersonalEvent("id", "owner", EventType.OTHER, null, start, start.plusSeconds(3600), start)
+        PersonalEvent(
+            id = "id",
+            ownerId = "owner",
+            details =
+                EventDetails(
+                    type = EventType.OTHER,
+                    subject = null,
+                    startsAt = start,
+                    endsAt = start.plusSeconds(3600),
+                ),
+            createdAt = start,
+        )
 
     assertEquals(
         EventsError.INVALID_ARGUMENT,
@@ -110,7 +124,18 @@ class EventsRepositoryFirestoreTest {
   fun rejectsMixedOwnersBeforeWriting() = runTest {
     val start = Instant.parse("2026-01-01T10:00:00Z")
     val event =
-        PersonalEvent("id", "owner", EventType.OTHER, null, start, start.plusSeconds(3600), start)
+        PersonalEvent(
+            id = "id",
+            ownerId = "owner",
+            details =
+                EventDetails(
+                    type = EventType.OTHER,
+                    subject = null,
+                    startsAt = start,
+                    endsAt = start.plusSeconds(3600),
+                ),
+            createdAt = start,
+        )
 
     assertEquals(
         EventsError.INVALID_ARGUMENT,
@@ -127,7 +152,18 @@ class EventsRepositoryFirestoreTest {
     whenever(auth.currentUser).thenReturn(user, otherUser)
     val start = Instant.parse("2026-01-01T10:00:00Z")
     val event =
-        PersonalEvent("id", "owner", EventType.OTHER, null, start, start.plusSeconds(3600), start)
+        PersonalEvent(
+            id = "id",
+            ownerId = "owner",
+            details =
+                EventDetails(
+                    type = EventType.OTHER,
+                    subject = null,
+                    startsAt = start,
+                    endsAt = start.plusSeconds(3600),
+                ),
+            createdAt = start,
+        )
 
     assertEquals(
         EventsError.INVALID_ARGUMENT,
@@ -141,7 +177,18 @@ class EventsRepositoryFirestoreTest {
   fun rejectsInvalidNestedTaskBeforeWriting() = runTest {
     val start = Instant.parse("2026-01-01T10:00:00Z")
     val event =
-        PersonalEvent("id", "owner", EventType.OTHER, null, start, start.plusSeconds(3600), start)
+        PersonalEvent(
+            id = "id",
+            ownerId = "owner",
+            details =
+                EventDetails(
+                    type = EventType.OTHER,
+                    subject = null,
+                    startsAt = start,
+                    endsAt = start.plusSeconds(3600),
+                ),
+            createdAt = start,
+        )
     val invalidTask: EventTask = mock()
     whenever(invalidTask.text).thenReturn("")
     val tasks = mutableListOf<EventTask>()
@@ -202,10 +249,13 @@ class EventsRepositoryFirestoreTest {
           PersonalEvent(
               id = id,
               ownerId = "owner",
-              type = EventType.OTHER,
-              subject = null,
-              startsAt = startsAt,
-              endsAt = startsAt.plusSeconds(3600),
+              details =
+                  EventDetails(
+                      type = EventType.OTHER,
+                      subject = null,
+                      startsAt = startsAt,
+                      endsAt = startsAt.plusSeconds(3600),
+                  ),
               createdAt = base,
               importKey = "key-$id",
           )
@@ -285,13 +335,16 @@ class EventsRepositoryFirestoreTest {
     val start = Instant.parse("2026-01-01T10:00:00Z")
     val event =
         PersonalEvent(
-            "id",
-            "owner",
-            EventType.COURSE,
-            "Physics",
-            start,
-            start.plusSeconds(3600),
-            start,
+            id = "id",
+            ownerId = "owner",
+            details =
+                EventDetails(
+                    type = EventType.COURSE,
+                    subject = "Physics",
+                    startsAt = start,
+                    endsAt = start.plusSeconds(3600),
+                ),
+            createdAt = start,
         )
     whenever(owner.collection("meta")).thenReturn(meta)
     whenever(meta.document("subjects")).thenReturn(subjects)
