@@ -25,8 +25,9 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
+import com.android.sample.ui.theme.Dimens
+import com.android.sample.ui.theme.Spacing
 
 // ---------------------------------------------------------------------------
 // Building blocks / Helper methods
@@ -61,7 +62,7 @@ internal fun SectionLabel(text: String, testTag: String, modifier: Modifier = Mo
       text = text,
       style = MaterialTheme.typography.titleMedium,
       fontWeight = FontWeight.Bold,
-      modifier = modifier.padding(top = 8.dp).testTag(testTag),
+      modifier = modifier.padding(top = Spacing.small).testTag(testTag),
   )
 }
 
@@ -85,7 +86,8 @@ internal fun WidePillButton(
       onClick = onClick,
       enabled = enabled,
       shape = CircleShape,
-      modifier = modifier.fillMaxWidth().height(56.dp).testTag(testTag),
+      modifier =
+          modifier.fillMaxWidth().height(Dimens.preferencesWideButtonHeight).testTag(testTag),
   ) {
     Text(text)
   }
@@ -150,7 +152,7 @@ internal fun segmentShape(index: Int, count: Int, selected: Boolean): Shape {
   if (selected) return CircleShape
 
   val full = CornerSize(50)
-  val small = CornerSize(4.dp)
+  val small = CornerSize(Dimens.cornerExtraSmall)
   val isFirst = index == 0
   val isLast = index == count - 1
 
@@ -181,14 +183,14 @@ internal fun <T : PreferenceOption> ChoiceRow(
 ) {
   Row(
       modifier = modifier.fillMaxWidth(),
-      horizontalArrangement = Arrangement.spacedBy(2.dp),
+      horizontalArrangement = Arrangement.spacedBy(Spacing.extraExtraSmall),
   ) {
     options.forEachIndexed { index, option ->
       val selected = isSelected(option)
       Box(
           modifier =
               Modifier.weight(1f)
-                  .height(40.dp)
+                  .height(Dimens.preferencesChoiceHeight)
                   .clip(segmentShape(index, options.size, selected))
                   .background(
                       if (selected) MaterialTheme.colorScheme.secondary

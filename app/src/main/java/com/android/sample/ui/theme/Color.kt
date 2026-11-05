@@ -1,5 +1,6 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -18,6 +19,7 @@ val Pink40 = Color(0xFF7D5260)
 // Google brand colours are fixed by Google's guidelines, not theme roles.
 val GoogleButtonBorder = Color(0xFFDADCE0)
 val GoogleButtonText = Color(0xFF3C4043)
+val GoogleButtonBackground = Color(0xFFFFFFFF)
 
 // Event Type Colors for Light Theme
 val EventTypeStudySession = Color(0xFFC09AF7)

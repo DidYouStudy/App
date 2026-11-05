@@ -28,7 +28,7 @@ class DashboardScreenTest {
   @Test
   fun screenWiresLocalizedDashboardCardsEmptyStateAndNavigationBars() {
     val context = ApplicationProvider.getApplicationContext<Context>()
-    composeTestRule.setContent { DashboardScreen(navigationActions = null, onAddClick = {}) }
+    composeTestRule.setContent { DashboardScreen(navigationActions = null, onEventClick = {}) }
 
     composeTestRule.onNodeWithTag(DashboardContentTestTags.CONTENT).assertIsDisplayed()
     composeTestRule.onNodeWithTag(DashboardContentTestTags.YOUR_DAY_CARD).assertIsDisplayed()
@@ -49,18 +49,63 @@ class DashboardScreenTest {
   fun screenAddButtonInvokesCallbackExactlyOnce() {
     var callbackCount = 0
     composeTestRule.setContent {
-      DashboardScreen(navigationActions = null, onAddClick = { callbackCount++ })
+      DashboardScreen(navigationActions = null, onEventClick = { callbackCount++ })
     }
 
     composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON).performClick()
 
     assertEquals(1, callbackCount)
   }
 
   @Test
+  fun dashboardFabMenuTogglesAndInvokesEventAndGroupSessionCallbacks() {
+    var eventClicks = 0
+    var groupSessionClicks = 0
+
+    composeTestRule.setContent {
+      DashboardScreen(
+          navigationActions = null,
+          onEventClick = { eventClicks++ },
+          onGroupSessionClick = { groupSessionClicks++ },
+      )
+    }
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
+
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON)
+        .assertIsDisplayed()
+        .performClick()
+    assertEquals(1, eventClicks)
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
+
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.FAB_MENU_GROUP_SESSION_BUTTON)
+        .assertIsDisplayed()
+        .performClick()
+    assertEquals(1, groupSessionClicks)
+  }
+
+  @Test
+  fun dashboardFabMenuOptionsDisplayLocalizedLabels() {
+    composeTestRule.setContent { DashboardScreen(navigationActions = null, onEventClick = {}) }
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
+
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON)
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.FAB_MENU_GROUP_SESSION_BUTTON)
+        .assertIsDisplayed()
+  }
+
+  @Test
   fun topBarShowsLocalizedBoldDashboardTitle() {
     val context = ApplicationProvider.getApplicationContext<Context>()
-    composeTestRule.setContent { DashboardScreen(navigationActions = null, onAddClick = {}) }
+    composeTestRule.setContent { DashboardScreen(navigationActions = null, onEventClick = {}) }
 
     val results = mutableListOf<TextLayoutResult>()
     composeTestRule

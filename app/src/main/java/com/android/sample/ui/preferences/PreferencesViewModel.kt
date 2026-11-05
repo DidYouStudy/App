@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.preferences
 
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -22,7 +23,8 @@ sealed interface PreferencesUiState {
 
   data class Success(val preferences: UserPreferences) : PreferencesUiState
 
-  data class Error(val message: String) : PreferencesUiState
+  /** Loading or saving failed; the screen shows the message for [error] and a Retry button. */
+  data class Error(val error: PreferencesError) : PreferencesUiState
 }
 
 class PreferencesViewModel(
@@ -43,7 +45,7 @@ class PreferencesViewModel(
       authRepository.currentUser.collect { user ->
         userId = user?.uid
         if (user == null) {
-          _uiState.value = PreferencesUiState.Error("No signed-in user")
+          _uiState.value = PreferencesUiState.Error(PreferencesError.NO_SIGNED_IN_USER)
         } else {
           loadPreferences()
         }
@@ -63,8 +65,9 @@ class PreferencesViewModel(
                 PreferencesUiState.Success(prefs ?: UserPreferences(userId = currentUserId))
           }
           .onFailure { exception ->
-            _uiState.value =
-                PreferencesUiState.Error(exception.localizedMessage ?: "Failed to load preferences")
+            // Users see only the translated message; the cause goes to the log for debugging.
+            Log.w(TAG, "Failed to load preferences", exception)
+            _uiState.value = PreferencesUiState.Error(PreferencesError.LOAD_FAILED)
           }
     }
   }
@@ -87,16 +90,19 @@ class PreferencesViewModel(
               onSuccess()
             }
             .onFailure { exception ->
-              _uiState.value =
-                  PreferencesUiState.Error(
-                      exception.localizedMessage ?: "Failed to save preferences"
-                  )
+              // Users see only the translated message; the cause goes to the log for debugging.
+              Log.w(TAG, "Failed to save preferences", exception)
+              _uiState.value = PreferencesUiState.Error(PreferencesError.SAVE_FAILED)
             }
       } finally {
         // Re-enable Save even if the save was cancelled or threw.
         _isSaving.value = false
       }
     }
+  }
+
+  private companion object {
+    const val TAG = "PreferencesViewModel"
   }
 }
 

@@ -1,8 +1,7 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Opus 5.5
-package com.android.sample.model.groupsession
+package com.android.sample.model.event
 
-import com.android.sample.model.event.EventType
 import java.time.Duration
 import java.time.Instant
 
@@ -24,18 +23,18 @@ import java.time.Instant
  * @property description optional free-form details.
  */
 data class GroupSession(
-    val id: String,
+    override val id: String,
     val createdBy: String,
     val memberIds: List<String>,
     val type: EventType,
     val subject: String?,
     val startsAt: Instant,
     val endsAt: Instant,
-    val createdAt: Instant,
-    val updatedAt: Instant = createdAt,
+    override val createdAt: Instant,
+    override val updatedAt: Instant = createdAt,
     val location: String? = null,
     val description: String? = null,
-) {
+) : Event {
   init {
     require(id.isNotBlank()) { "Group session ID must not be blank" }
     require(createdBy.isNotBlank()) { "Creator ID must not be blank" }
