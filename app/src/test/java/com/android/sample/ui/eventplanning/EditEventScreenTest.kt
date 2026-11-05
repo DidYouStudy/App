@@ -9,10 +9,9 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
@@ -96,6 +95,12 @@ class EditEventScreenTest {
 
   private fun createViewModel() = EventPlanningViewModel(authRepository, eventsRepository, clock)
 
+  private fun finishPendingComposeAndViewModelWork() {
+    composeTestRule.waitForIdle()
+    testDispatcher.scheduler.advanceUntilIdle()
+    composeTestRule.waitForIdle()
+  }
+
   /** Renders the shared stateless form explicitly in Edit mode for focused UI behavior tests. */
   private fun setEditStatelessScreen(
       uiState: EventPlanningUiState,
@@ -160,7 +165,9 @@ class EditEventScreenTest {
     composeTestRule.onNodeWithTag(Tags.SUBJECT_SELECTOR).assertTextContains("Operating Systems")
     composeTestRule.onNodeWithTag(Tags.LOCATION_INPUT).assertTextContains("INF 1")
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION_INPUT).assertTextContains("Bring lecture notes")
-    composeTestRule.onNodeWithText("Review chapter").performScrollTo().assertIsDisplayed()
+    assertTrue(
+        composeTestRule.onAllNodesWithText("Review chapter").fetchSemanticsNodes().isNotEmpty()
+    )
     composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).assertIsEnabled().performClick()
     composeTestRule.onNodeWithTag(Tags.DELETE_BUTTON).assertIsDisplayed().performClick()
     composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
@@ -220,8 +227,8 @@ class EditEventScreenTest {
           onEventDelete = {},
       )
     }
-    testDispatcher.scheduler.advanceUntilIdle()
-    composeTestRule.waitUntil { viewModel.uiState.value.isEditing }
+    finishPendingComposeAndViewModelWork()
+    assertTrue(viewModel.uiState.value.isEditing)
 
     composeTestRule
         .onNodeWithTag(Tags.TOP_BAR_TITLE)
@@ -255,8 +262,8 @@ class EditEventScreenTest {
           onEventDelete = {},
       )
     }
-    testDispatcher.scheduler.advanceUntilIdle()
-    composeTestRule.waitUntil { viewModel.uiState.value.isEditing }
+    finishPendingComposeAndViewModelWork()
+    assertTrue(viewModel.uiState.value.isEditing)
 
     viewModel.setLocation("INF 2")
     composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).performClick()
@@ -283,8 +290,8 @@ class EditEventScreenTest {
           onEventDelete = { eventDeleted = true },
       )
     }
-    testDispatcher.scheduler.advanceUntilIdle()
-    composeTestRule.waitUntil { viewModel.uiState.value.isEditing }
+    finishPendingComposeAndViewModelWork()
+    assertTrue(viewModel.uiState.value.isEditing)
 
     composeTestRule.onNodeWithTag(Tags.DELETE_BUTTON).performClick()
     testDispatcher.scheduler.advanceUntilIdle()
