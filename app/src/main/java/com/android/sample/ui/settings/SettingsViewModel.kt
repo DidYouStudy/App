@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.settings
 
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
@@ -82,6 +83,8 @@ class SettingsViewModel(
       } catch (exception: CancellationException) {
         throw exception
       } catch (exception: Exception) {
+        // Users see only the translated message; the cause goes to the log for debugging.
+        Log.w(TAG, "Failed to load the user profile", exception)
         _uiState.update { it.copy(isLoading = false, error = SettingsError.LOAD_PROFILE_FAILED) }
       }
     }
@@ -96,6 +99,8 @@ class SettingsViewModel(
       } catch (exception: CancellationException) {
         throw exception
       } catch (exception: Exception) {
+        // Users see only the translated message; the cause goes to the log for debugging.
+        Log.w(TAG, "Failed to sign out", exception)
         _uiState.update { it.copy(error = SettingsError.SIGN_OUT_FAILED) }
       }
     }
@@ -104,6 +109,10 @@ class SettingsViewModel(
   /** Clears any active error message. */
   fun clearError() {
     _uiState.update { it.copy(error = null) }
+  }
+
+  private companion object {
+    const val TAG = "SettingsViewModel"
   }
 }
 

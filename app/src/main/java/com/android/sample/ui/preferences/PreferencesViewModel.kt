@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.preferences
 
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -63,7 +64,11 @@ class PreferencesViewModel(
                 // Fallback to default preferences if none exist for the user
                 PreferencesUiState.Success(prefs ?: UserPreferences(userId = currentUserId))
           }
-          .onFailure { _uiState.value = PreferencesUiState.Error(PreferencesError.LOAD_FAILED) }
+          .onFailure { exception ->
+            // Users see only the translated message; the cause goes to the log for debugging.
+            Log.w(TAG, "Failed to load preferences", exception)
+            _uiState.value = PreferencesUiState.Error(PreferencesError.LOAD_FAILED)
+          }
     }
   }
 
@@ -84,12 +89,20 @@ class PreferencesViewModel(
               _uiState.value = PreferencesUiState.Success(updated)
               onSuccess()
             }
-            .onFailure { _uiState.value = PreferencesUiState.Error(PreferencesError.SAVE_FAILED) }
+            .onFailure { exception ->
+              // Users see only the translated message; the cause goes to the log for debugging.
+              Log.w(TAG, "Failed to save preferences", exception)
+              _uiState.value = PreferencesUiState.Error(PreferencesError.SAVE_FAILED)
+            }
       } finally {
         // Re-enable Save even if the save was cancelled or threw.
         _isSaving.value = false
       }
     }
+  }
+
+  private companion object {
+    const val TAG = "PreferencesViewModel"
   }
 }
 
