@@ -370,7 +370,7 @@ private fun GroupSessionCard(
 
         Column(modifier = Modifier.weight(1f)) {
           Text(
-              text = session.subject ?: session.type.label(),
+              text = session.details.subject ?: session.details.type.label(),
               fontWeight = FontWeight.Bold,
               maxLines = 2, // Allows title to expand vertically before truncating
               overflow = TextOverflow.Ellipsis,
@@ -416,7 +416,7 @@ private fun GroupSessionCard(
           color = session.details.type.color,
       ) {
         Text(
-            text = session.type.label(),
+            text = session.details.type.label(),
             modifier = Modifier.padding(horizontal = Spacing.medium, vertical = Spacing.extraSmall),
             color = session.details.type.onColor,
             fontWeight = FontWeight.Bold,

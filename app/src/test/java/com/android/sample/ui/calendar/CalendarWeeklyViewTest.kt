@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.PersonalEvent
 import java.time.Instant
@@ -204,10 +205,13 @@ class CalendarWeeklyViewTest {
         PersonalEvent(
             id = "zurich-clock-change",
             ownerId = "test-owner",
-            type = EventType.COURSE,
-            subject = "Zurich event",
-            startsAt = date.atTime(9, 0).atZone(zone).toInstant(),
-            endsAt = date.atTime(10, 0).atZone(zone).toInstant(),
+            details =
+                EventDetails(
+                    type = EventType.COURSE,
+                    subject = "Zurich event",
+                    startsAt = date.atTime(9, 0).atZone(zone).toInstant(),
+                    endsAt = date.atTime(10, 0).atZone(zone).toInstant(),
+                ),
             createdAt = Instant.parse("2026-10-01T12:00:00Z"),
         )
 
@@ -228,10 +232,13 @@ class CalendarWeeklyViewTest {
         PersonalEvent(
             id = "half-day",
             ownerId = "test-owner",
-            type = EventType.COURSE,
-            subject = "Zurich event",
-            startsAt = autumnDay.atStartOfDay(zone).toInstant(),
-            endsAt = autumnDay.atTime(12, 0).atZone(zone).toInstant(),
+            details =
+                EventDetails(
+                    type = EventType.COURSE,
+                    subject = "Zurich event",
+                    startsAt = autumnDay.atStartOfDay(zone).toInstant(),
+                    endsAt = autumnDay.atTime(12, 0).atZone(zone).toInstant(),
+                ),
             createdAt = Instant.parse("2026-10-01T12:00:00Z"),
         )
 
@@ -252,10 +259,13 @@ class CalendarWeeklyViewTest {
         PersonalEvent(
             id = "two-hours",
             ownerId = "test-owner",
-            type = EventType.COURSE,
-            subject = "Zurich event",
-            startsAt = autumnDay.atTime(1, 30).atZone(zone).toInstant(),
-            endsAt = autumnDay.atTime(3, 30).atZone(zone).toInstant(),
+            details =
+                EventDetails(
+                    type = EventType.COURSE,
+                    subject = "Zurich event",
+                    startsAt = autumnDay.atTime(1, 30).atZone(zone).toInstant(),
+                    endsAt = autumnDay.atTime(3, 30).atZone(zone).toInstant(),
+                ),
             createdAt = Instant.parse("2026-10-01T12:00:00Z"),
         )
 
@@ -275,11 +285,19 @@ class CalendarWeeklyViewTest {
         PersonalEvent(
             id = "45_mins",
             ownerId = "test-owner",
-            type = EventType.COURSE,
-            subject = "Zurich event",
-            startsAt =
-                autumnDay.atTime(2, 30).atZone(zone).withEarlierOffsetAtOverlap().toInstant(),
-            endsAt = autumnDay.atTime(2, 15).atZone(zone).withLaterOffsetAtOverlap().toInstant(),
+            details =
+                EventDetails(
+                    type = EventType.COURSE,
+                    subject = "Zurich event",
+                    startsAt =
+                        autumnDay
+                            .atTime(2, 30)
+                            .atZone(zone)
+                            .withEarlierOffsetAtOverlap()
+                            .toInstant(),
+                    endsAt =
+                        autumnDay.atTime(2, 15).atZone(zone).withLaterOffsetAtOverlap().toInstant(),
+                ),
             createdAt = Instant.parse("2026-10-01T12:00:00Z"),
         )
 
@@ -302,10 +320,13 @@ class CalendarWeeklyViewTest {
         PersonalEvent(
             id = "non-existent",
             ownerId = "test-owner",
-            type = EventType.COURSE,
-            subject = "Zurich event",
-            startsAt = start.toInstant(),
-            endsAt = start.plusHours(1).toInstant(),
+            details =
+                EventDetails(
+                    type = EventType.COURSE,
+                    subject = "Zurich event",
+                    startsAt = start.toInstant(),
+                    endsAt = start.plusHours(1).toInstant(),
+                ),
             createdAt = Instant.parse("2026-10-01T12:00:00Z"),
         )
 
@@ -516,10 +537,13 @@ class CalendarWeeklyViewTest {
     return PersonalEvent(
         id = id,
         ownerId = "test-owner",
-        type = EventType.COURSE,
-        subject = "Weekly course",
-        startsAt = startDate.atTime(start).atZone(zone).toInstant(),
-        endsAt = endDate.atTime(end).atZone(zone).toInstant(),
+        details =
+            EventDetails(
+                type = EventType.COURSE,
+                subject = "Weekly course",
+                startsAt = startDate.atTime(start).atZone(zone).toInstant(),
+                endsAt = endDate.atTime(end).atZone(zone).toInstant(),
+            ),
         createdAt = Instant.parse("2026-10-01T12:00:00Z"),
     )
   }

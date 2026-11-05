@@ -14,6 +14,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.PersonalEvent
 import com.android.sample.ui.theme.DidYouStudyTheme
@@ -153,10 +154,13 @@ class CalendarEventCardTest {
     return PersonalEvent(
         id = "event-${type.name}",
         ownerId = "test-owner",
-        type = type,
-        subject = subject,
-        startsAt = Instant.parse("2026-11-04T09:00:00Z"),
-        endsAt = Instant.parse("2026-11-04T10:00:00Z"),
+        details =
+            EventDetails(
+                type = type,
+                subject = subject,
+                startsAt = Instant.parse("2026-11-04T09:00:00Z"),
+                endsAt = Instant.parse("2026-11-04T10:00:00Z"),
+            ),
         createdAt = Instant.parse("2026-11-01T12:00:00Z"),
     )
   }

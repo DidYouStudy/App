@@ -33,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.sample.R
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.PersonalEvent
 import com.android.sample.ui.navigation.BottomNavigationMenu
@@ -288,10 +289,13 @@ private fun previewEvent(
   return PersonalEvent(
       id = id,
       ownerId = "preview-owner",
-      type = type,
-      subject = subject,
-      startsAt = LocalDateTime.parse(startsAt).atZone(previewZone).toInstant(),
-      endsAt = LocalDateTime.parse(endsAt).atZone(previewZone).toInstant(),
+      details =
+          EventDetails(
+              type = type,
+              subject = subject,
+              startsAt = LocalDateTime.parse(startsAt).atZone(previewZone).toInstant(),
+              endsAt = LocalDateTime.parse(endsAt).atZone(previewZone).toInstant(),
+          ),
       createdAt = createdAt,
   )
 }

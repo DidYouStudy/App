@@ -24,6 +24,8 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
+import com.android.sample.model.event.Event
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.PersonalEvent
 import com.android.sample.ui.theme.DidYouStudyTheme
@@ -51,15 +53,15 @@ object CalendarEventCardTestTags {
 /** Displays an event with a type label, subject, and space-aware start-time label. */
 @Composable
 fun CalendarEventCard(
-    event: PersonalEvent,
+    event: Event,
     modifier: Modifier = Modifier,
 ) {
-  val color = eventColor(event.type)
-  val colorDark = eventColor(event.type, true)
+  val color = eventColor(event.details.type)
+  val colorDark = eventColor(event.details.type, true)
   val contentColor = onEventColor()
-  val title = event.type.label()
-  val subject = event.subject
-  val startingTime = EVENT_TIME_FORMAT.format(event.startsAt)
+  val title = event.details.type.label()
+  val subject = event.details.subject
+  val startingTime = EVENT_TIME_FORMAT.format(event.details.startsAt)
   val cardShape = RoundedCornerShape(Dimens.calendarEventCardCorner)
 
   // The surface provides one clickable, rounded container for the complete event card.
@@ -170,9 +172,12 @@ private val previewEvent =
     PersonalEvent(
         id = "preview-event",
         ownerId = "preview-owner",
-        type = EventType.STUDY_SESSION,
-        subject = "Analysis",
-        startsAt = Instant.parse("2026-11-04T09:00:00Z"),
-        endsAt = Instant.parse("2026-11-04T10:00:00Z"),
+        details =
+            EventDetails(
+                type = EventType.STUDY_SESSION,
+                subject = "Analysis",
+                startsAt = Instant.parse("2026-11-04T09:00:00Z"),
+                endsAt = Instant.parse("2026-11-04T10:00:00Z"),
+            ),
         createdAt = Instant.parse("2026-11-01T12:00:00Z"),
     )

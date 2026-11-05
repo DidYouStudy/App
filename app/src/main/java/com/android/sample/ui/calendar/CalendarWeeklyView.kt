@@ -45,7 +45,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.android.sample.R
-import com.android.sample.model.event.PersonalEvent
+import com.android.sample.model.event.Event
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.calendarDateLabelStyle
@@ -316,7 +316,7 @@ private fun CalendarTodayCircle(modifier: Modifier = Modifier) {
 @Composable
 fun CalendarTimeGrid(
     modifier: Modifier = Modifier,
-    events: List<PersonalEvent> = emptyList(),
+    events: List<Event> = emptyList(),
     weekDates: List<LocalDate> = emptyList(),
 ) {
   // Keep the grid vertically scrollable
@@ -406,7 +406,7 @@ fun CalendarTimeGrid(
 
 /** Provides the grid coordinates calculated for an event in the displayed week. */
 internal data class CalendarEventPlacement(
-    val event: PersonalEvent,
+    val event: Event,
     val dayIndex: Int,
     val top: Dp,
     val height: Dp,
@@ -419,13 +419,13 @@ internal data class CalendarEventPlacement(
  * created for separate day segments display identical contents.
  */
 internal fun calculateEventPlacements(
-    event: PersonalEvent,
+    event: Event,
     weekDates: List<LocalDate>,
     hourHeight: Dp,
     zone: ZoneId = ZoneId.systemDefault(),
 ): List<CalendarEventPlacement> {
-  val start = event.startsAt.atZone(zone)
-  val end = event.endsAt.atZone(zone)
+  val start = event.details.startsAt.atZone(zone)
+  val end = event.details.endsAt.atZone(zone)
   val placements = mutableListOf<CalendarEventPlacement>()
   var date = start.toLocalDate()
 
@@ -435,8 +435,8 @@ internal fun calculateEventPlacements(
     val nextDayStart = date.plusDays(1).atStartOfDay(zone).toInstant()
 
     // Clamp this segment to the current day: start at the event time, and end at midnight.
-    val segmentStart = maxOf(event.startsAt, dayStart)
-    val segmentEnd = minOf(event.endsAt, nextDayStart)
+    val segmentStart = maxOf(event.details.startsAt, dayStart)
+    val segmentEnd = minOf(event.details.endsAt, nextDayStart)
     val dayIndex = weekDates.indexOf(date)
 
     if (dayIndex >= 0 && segmentStart.isBefore(segmentEnd)) {
