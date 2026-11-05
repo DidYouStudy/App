@@ -24,7 +24,7 @@ import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.ui.app.AppUiState
 import com.android.sample.ui.app.appViewModel
 import com.android.sample.ui.auth.SignInRoute
-import com.android.sample.ui.calendar.CalendarScreen
+import com.android.sample.ui.calendar.CalendarRoute
 import com.android.sample.ui.dashboard.DashboardScreen
 import com.android.sample.ui.groupsession.GroupSessionScreen
 import com.android.sample.ui.navigation.NavigationActions
@@ -95,9 +95,8 @@ fun DidYouStudyApp() {
             onAddLocationClick = {},
             onSaved = {
               if (isEditing) {
-                // Already in Dashboard state: just return to Settings instead of stacking the
-                // Dashboard on top of it. The route check keeps a late callback from popping past
-                // Settings and emptying the back stack.
+                // Only handle the save while its Preferences entry is current. goBack() separately
+                // protects Dashboard from being removed.
                 if (navigationActions.currentRoute() == Screen.Preferences.route) {
                   navigationActions.goBack()
                 }
@@ -131,7 +130,7 @@ fun DidYouStudyApp() {
         route = Screen.Calendar.name,
     ) {
       composable(Screen.Calendar.route) {
-        CalendarScreen(
+        CalendarRoute(
             navigationActions = navigationActions,
         )
       }

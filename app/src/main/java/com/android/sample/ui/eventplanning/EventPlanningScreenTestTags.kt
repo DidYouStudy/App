@@ -1,37 +1,31 @@
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Claude AI Agent
 package com.android.sample.ui.eventplanning
 
+import com.android.sample.ui.sharedComponents.FormContentTestTags
+
+/** Test tags for event planning screen and its components. */
 object EventPlanningScreenTestTags {
   const val SCREEN_CONTAINER = "event_planning_screen_container"
-  const val SCROLL_CONTAINER = "event_planning_scroll_container"
+  const val SCROLL_CONTAINER = FormContentTestTags.SCROLL_CONTAINER
   const val TOP_APP_BAR = "event_planning_top_bar"
   const val BACK_BUTTON = "event_planning_back_button"
   const val TOP_BAR_TITLE = "event_planning_top_bar_title"
 
   // Section Labels
-  const val TYPE_LABEL = "event_planning_type_label"
-  const val DATE_LABEL = "event_planning_date_label"
-  const val START_TIME_LABEL = "event_planning_start_time_label"
-  const val END_TIME_LABEL = "event_planning_end_time_label"
-  const val SUBJECT_LABEL = "event_planning_subject_label"
-  const val LOCATION_LABEL = "event_planning_location_label"
-  const val DESCRIPTION_LABEL = "event_planning_description_label"
-  const val TASKS_LABEL = "event_planning_tasks_label"
+  const val SUBJECT_LABEL = FormContentTestTags.SUBJECT_LABEL
 
   // Interactive Elements / Selectors
-  const val TYPE_SELECTOR = "event_planning_type_selector"
-  const val DATE_SELECTOR = "event_planning_date_selector"
-  const val START_TIME_SELECTOR = "event_planning_start_time_selector"
-  const val END_TIME_SELECTOR = "event_planning_end_time_selector"
-  const val SUBJECT_SELECTOR = "event_planning_subject_selector"
-  const val LOCATION_INPUT = "event_planning_location_input"
-  const val DESCRIPTION_INPUT = "event_planning_description_input"
+  const val TYPE_SELECTOR = FormContentTestTags.TYPE_SELECTOR
+  const val DATE_SELECTOR = FormContentTestTags.DATE_SELECTOR
+  const val START_TIME_SELECTOR = FormContentTestTags.START_TIME_SELECTOR
+  const val END_TIME_SELECTOR = FormContentTestTags.END_TIME_SELECTOR
+  const val SUBJECT_SELECTOR = FormContentTestTags.SUBJECT_SELECTOR
+  const val LOCATION_INPUT = FormContentTestTags.LOCATION_INPUT
+  const val DESCRIPTION_INPUT = FormContentTestTags.DESCRIPTION_INPUT
 
   // Tasks
-  const val ADD_TASK_BUTTON = "event_planning_add_task_button"
-  const val TASK_ITEM_PREFIX = "event_planning_task_item_"
-  const val TASK_CHECKBOX_PREFIX = "event_planning_task_checkbox_"
-  const val TASK_DELETE_PREFIX = "event_planning_task_delete_"
+  const val ADD_TASK_BUTTON = FormContentTestTags.ADD_TASK_BUTTON
 
   // Actions & Feedback
   const val SAVE_BUTTON = "event_planning_save_button"

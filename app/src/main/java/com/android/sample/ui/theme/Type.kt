@@ -49,3 +49,4 @@ val Typography.cardTitle: TextStyle
  */
 val GoogleButtonTextStyle =
     TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.25.sp)
+val calendarDateLabelStyle: TextStyle = TextStyle(fontSize = 10.sp)

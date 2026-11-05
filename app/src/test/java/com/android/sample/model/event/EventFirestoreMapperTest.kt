@@ -1,4 +1,5 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.event
 
 import java.time.Instant
@@ -9,7 +10,7 @@ import org.junit.Test
 class EventFirestoreMapperTest {
   private val time = Instant.parse("2026-10-20T12:00:00.123456Z")
   private val event =
-      Event(
+      PersonalEvent(
           "id",
           "owner",
           EventType.COURSE,
