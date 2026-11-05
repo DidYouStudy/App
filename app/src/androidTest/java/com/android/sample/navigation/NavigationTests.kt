@@ -18,6 +18,7 @@ import com.android.sample.MainActivity
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.InMemoryEventsRepository
+import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.model.profile.ProfileRepository
@@ -423,6 +424,7 @@ private fun signedInRepositories(uid: String): RepositoryOverridesRule {
       preferences = FakePreferencesRepository(UserPreferences(userId = user.uid)),
       profile = FakeProfileRepository(),
       events = InMemoryEventsRepository(),
+      groupSessions = InMemoryGroupSessionsRepository(),
   )
 }
 

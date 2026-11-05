@@ -234,7 +234,7 @@ abstract class GroupSessionsRepositoryContractTest {
   @Test
   fun joinSession_concurrentJoinsAreAllKept() = runTest {
     repository.saveSession(creator, session("a")).getOrThrow()
-    val joiners = (1..200).map { "user$it" }
+    val joiners = (1..GroupSession.MAX_MEMBERS - 2).map { "user$it" }
 
     withContext(Dispatchers.Default) {
       joiners.map { user -> launch { repository.joinSession(user, "a").getOrThrow() } }.joinAll()
@@ -256,6 +256,20 @@ abstract class GroupSessionsRepositoryContractTest {
     repository.leaveSession(other, "a").getOrThrow()
 
     assertEquals(original.updatedAt, repository.getSession("a").getOrThrow().updatedAt)
+  }
+
+  /** Joining a full session returns a permission failure without changing its members. */
+  @Test
+  fun joinSession_fullSessionReturnsPermissionFailureWithoutThrowing() = runTest {
+    val members = listOf(creator) + (1 until GroupSession.MAX_MEMBERS).map { "member-$it" }
+    val full = session("a", memberIds = members)
+    repository.saveSession(creator, full).getOrThrow()
+
+    val result = repository.joinSession("joining-user", "a")
+
+    assertTrue(result.isFailure)
+    assertEquals(EventsError.PERMISSION_DENIED, result.error())
+    assertEquals(members, repository.getSession("a").getOrThrow().memberIds)
   }
 
   /** A join against a missing session reports NOT_FOUND. */

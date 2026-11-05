@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.sample
 
 import androidx.compose.ui.test.assertIsDisplayed
@@ -12,6 +13,7 @@ import androidx.compose.ui.test.performClick
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.InMemoryEventsRepository
+import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.TimeOfDay
 import com.android.sample.model.preferences.UserPreferences
@@ -230,6 +232,7 @@ private class FakeEnvironment {
           preferences = preferences,
           profile = EmptyProfileRepository(),
           events = InMemoryEventsRepository(),
+          groupSessions = InMemoryGroupSessionsRepository(),
       )
 }
 
