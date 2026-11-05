@@ -78,6 +78,7 @@ object Dimens {
   val calendarRetryButtonWidth = 90.dp
   val calendarRetryButtonHeight = 48.dp
   val calendarEventCardCorner = 6.dp
+  val calendarEventCardMinHeight = 34.dp
   val dialogCornerRadius = 28.dp
   val subjectPickerMaxHeight = 350.dp
   val noPadding = 0.dp

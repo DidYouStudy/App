@@ -4,21 +4,26 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Constraints
 import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventType
 import com.android.sample.ui.theme.DidYouStudyTheme
@@ -34,6 +39,13 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 private val EVENT_TIME_FORMAT = DateTimeFormatter.ofPattern("H:mm").withZone(ZoneId.systemDefault())
+private const val EVENT_TITLE_MAX_LINES = 2
+private const val EVENT_TIME_MAX_LINES = 1
+
+/** Test tags for the event card's independently rendered content. */
+object CalendarEventCardTestTags {
+  const val SUBJECT = "calendar_eventCard_subject"
+}
 
 /** Displays an event with a type label, subject, and space-aware start-time label. */
 @Composable
@@ -50,67 +62,100 @@ fun CalendarEventCard(
   val subject = event.subject.toString()
   val startingTime = EVENT_TIME_FORMAT.format(event.startsAt)
   val cardShape = RoundedCornerShape(Dimens.calendarEventCardCorner)
+  val minCardHeight = Dimens.calendarEventCardMinHeight
 
   // The surface provides one clickable, rounded container for the complete event card.
   Surface(
-      modifier = modifier,
+      modifier = modifier.heightIn(min = minCardHeight),
       onClick = {}, // shows the event details screen
       shape = cardShape,
       color = color,
   ) {
     // Keep the dark event-type accent separate from the text content.
-    Row {
-      Box(
-          modifier =
-              Modifier.width(Spacing.extraSmall)
-                  .fillMaxHeight()
-                  .background(colorDark)
-                  .padding(Spacing.extraSmall)
-      )
+    Box(modifier = Modifier.fillMaxSize()) {
+      Row(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier =
+                Modifier.width(Spacing.extraSmall)
+                    .fillMaxHeight()
+                    .background(colorDark)
+                    .padding(Spacing.extraSmall)
+        )
 
-      Column(
-          modifier =
-              Modifier.padding(
-                  start = Spacing.extraSmall,
-                  top = Spacing.extraSmall,
-                  bottom = 1.dp,
-              ),
-          horizontalAlignment = Alignment.Start,
-      ) {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-          val density = LocalDensity.current
-
-          // Calculate the space required for the title and the subject. The time is always one
-          // line.
-          val titleHeight = with(density) { calendarEventTitleStyle.lineHeight.toDp() }
-          val subjectLineHeight = with(density) { calendarEventSubjectStyle.lineHeight.toDp() }
-
-          // The title is mandatory, so only the space below it can be shared by subject and time.
-          val remainingHeight = (maxHeight - titleHeight).coerceAtLeast(0.dp)
-          val remainingLines = (remainingHeight / subjectLineHeight).toInt()
-
-          // Reserve the final available line for the time whenever at least two lines remain.
-          val showTime = remainingLines >= 2
-          val subjectLines = if (showTime) remainingLines - 1 else remainingLines
-
-          Column {
-            Text(text = title, style = calendarEventTitleStyle)
-            if (subjectLines > 0) {
-              // The subject receives every remaining line and truncates with an ellipsis if needed.
-              Text(
-                  text = subject,
-                  style = calendarEventSubjectStyle,
-                  maxLines = subjectLines,
-                  overflow = TextOverflow.Ellipsis,
-              )
-            }
-            if (showTime) {
-              // The time is always the last line when the card has room for it.
-              Text(text = startingTime, style = calendarEventTimeStyle, color = EventTimeLabel)
-            }
-          }
+        Column(
+            modifier =
+                Modifier.fillMaxSize()
+                    .padding(
+                        start = Spacing.extraSmall,
+                        end = Spacing.extraSmall,
+                        top = Spacing.extraSmall,
+                        bottom = Spacing.extraSmall,
+                    ),
+            horizontalAlignment = Alignment.Start,
+        ) {
+          // The title is always displayed.
+          Text(
+              text = title,
+              style = calendarEventTitleStyle,
+              maxLines = EVENT_TITLE_MAX_LINES,
+              overflow = TextOverflow.Ellipsis,
+          )
+          FittingSubject(text = subject, style = calendarEventSubjectStyle)
+          // The time is always displayed.
+          Text(
+              text = startingTime,
+              style = calendarEventTimeStyle,
+              color = EventTimeLabel,
+              maxLines = EVENT_TIME_MAX_LINES,
+              overflow = TextOverflow.Ellipsis,
+          )
         }
       }
+    }
+  }
+}
+
+/**
+ * Shows [text] using as many whole lines as fit in the height allocated by the parent.
+ *
+ * The line count comes from Compose's text measurement at the actual width and style, rather than
+ * from an estimate based on the style's nominal line height.
+ */
+@Composable
+private fun ColumnScope.FittingSubject(text: String, style: TextStyle) {
+  val textMeasurer = rememberTextMeasurer()
+  val resolvedStyle = LocalTextStyle.current.merge(style)
+
+  // Do not fill unused space so the time follows a short subject.
+  BoxWithConstraints(modifier = Modifier.weight(1f, fill = false)) {
+    val fullLayout =
+        textMeasurer.measure(
+            text = text,
+            style = resolvedStyle,
+            constraints = Constraints(maxWidth = constraints.maxWidth),
+        )
+    val fittingLines =
+        if (constraints.hasBoundedHeight) {
+          (0 until fullLayout.lineCount).count {
+            fullLayout.getLineBottom(it) <= constraints.maxHeight
+          }
+        } else {
+          fullLayout.lineCount
+        }
+    println(
+        "CalendarEventCard subject: height=${constraints.maxHeight}, " +
+            "width=${constraints.maxWidth}, lines=${fullLayout.lineCount}, " +
+            "bottoms=${(0 until fullLayout.lineCount).map(fullLayout::getLineBottom)}"
+    )
+
+    if (fittingLines > 0) {
+      Text(
+          text = text,
+          modifier = Modifier.testTag(CalendarEventCardTestTags.SUBJECT),
+          style = style,
+          maxLines = fittingLines,
+          overflow = TextOverflow.Ellipsis,
+      )
     }
   }
 }
