@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.navigation
 
 import androidx.activity.ComponentActivity
@@ -23,6 +24,9 @@ import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.ProfileRepositoryProvider
 import com.android.sample.model.profile.UserProfile
 import com.android.sample.ui.auth.SignInScreenTestTags
+import com.android.sample.ui.calendar.CalendarTestTags
+import com.android.sample.ui.dashboard.DashboardContentTestTags
+import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.preferences.PreferencesScreenTestTags
 import com.android.sample.ui.profile.ProfileButtonTestTags
@@ -101,6 +105,11 @@ class NavigationTests {
   private fun checkPreferencesScreenIsDisplayed() {
     composeTestRule.onNodeWithTag(PreferencesScreenTestTags.PREFERENCE_SCREEN).assertIsDisplayed()
     composeTestRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).assertIsDisplayed()
+  }
+
+  private fun checkAddEventScreenIsDisplayed() {
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.SCREEN_CONTAINER).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.TOP_BAR_TITLE).assertIsDisplayed()
   }
 
   private fun pressBack(shouldFinish: Boolean) {
@@ -339,6 +348,44 @@ class NavigationTests {
     composeTestRule.onNodeWithTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU).assertIsDisplayed()
     composeTestRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
     checkCalendarScreenIsDisplayed()
+  }
+
+  @Test
+  fun canNavigateToAddEventFromDashboardFabMenu() {
+    checkDashboardScreenIsDisplayed()
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON).performClick()
+
+    checkAddEventScreenIsDisplayed()
+  }
+
+  @Test
+  fun canNavigateToAddEventFromCalendarFabAndBackToCalendar() {
+    composeTestRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
+    checkCalendarScreenIsDisplayed()
+
+    composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).performClick()
+    checkAddEventScreenIsDisplayed()
+
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.BACK_BUTTON).performClick()
+    checkCalendarScreenIsDisplayed()
+  }
+
+  @Test
+  fun rapidBackArrowPressesFromAddEventOpenedFromCalendarReturnToCalendarWithoutBlanking() {
+    composeTestRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
+    checkCalendarScreenIsDisplayed()
+
+    composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).performClick()
+    checkAddEventScreenIsDisplayed()
+
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.BACK_BUTTON).performTouchInput {
+      repeat(5) { click(center) }
+    }
+
+    checkCalendarScreenIsDisplayed()
+    composeTestRule.onNodeWithTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU).assertIsDisplayed()
   }
 }
 
