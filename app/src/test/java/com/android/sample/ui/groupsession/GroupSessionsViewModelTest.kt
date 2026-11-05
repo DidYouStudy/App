@@ -6,7 +6,7 @@ import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
-import com.android.sample.model.groupsession.GroupSession
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
 import com.android.sample.ui.auth.TestAuthRepository

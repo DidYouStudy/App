@@ -31,19 +31,19 @@ import java.time.Instant
  *   so a later import can update or remove it; null for events the user created by hand.
  */
 data class PersonalEvent(
-    val id: String,
+    override val id: String,
     val ownerId: String,
     val type: EventType,
     val subject: String?,
     val startsAt: Instant,
     val endsAt: Instant,
-    val createdAt: Instant,
-    val updatedAt: Instant = createdAt,
+    override val createdAt: Instant,
+    override val updatedAt: Instant = createdAt,
     val location: String? = null,
     val description: String? = null,
     val tasks: List<EventTask> = emptyList(),
     val importKey: String? = null,
-) {
+) : Event {
   init {
     require(id.isNotBlank()) { "Event ID must not be blank" }
     require(ownerId.isNotBlank()) { "Owner ID must not be blank" }

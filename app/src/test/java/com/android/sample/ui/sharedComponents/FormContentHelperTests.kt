@@ -3,12 +3,17 @@ package com.android.sample.ui.sharedComponents
 
 import android.content.Context
 import androidx.compose.foundation.layout.Column
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -20,6 +25,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
+import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as EventTags
 import java.time.LocalDate
 import java.time.LocalTime
 import org.junit.Assert.assertEquals
@@ -87,6 +93,125 @@ class FormContentHelperTests {
 
     composeTestRule.onNodeWithTag("pill_tag").assertIsDisplayed()
     composeTestRule.onNodeWithText("Select something...").assertIsDisplayed()
+  }
+
+  @Test
+  fun pillActionButtonSaveTagRendersLabelAndInvokesCallback() {
+    var clicked = false
+    composeTestRule.setContent {
+      MaterialTheme {
+        PillActionButton(
+            onClick = { clicked = true },
+            enabled = true,
+            isInProgress = false,
+            label = "Save",
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            buttonTag = EventTags.SAVE_BUTTON,
+            progressTag = EventTags.SAVE_BUTTON_PROGRESS,
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(EventTags.SAVE_BUTTON).assertIsDisplayed().performClick()
+    composeTestRule.onNodeWithText("Save").assertIsDisplayed()
+    assertTrue(clicked)
+  }
+
+  @Test
+  fun pillActionButtonDeleteTagRendersLabelAndInvokesCallback() {
+    var clicked = false
+    composeTestRule.setContent {
+      MaterialTheme {
+        PillActionButton(
+            onClick = { clicked = true },
+            enabled = true,
+            isInProgress = false,
+            label = "Delete",
+            containerColor = MaterialTheme.colorScheme.error,
+            contentColor = MaterialTheme.colorScheme.onError,
+            buttonTag = EventTags.DELETE_BUTTON,
+            progressTag = EventTags.DELETE_BUTTON_PROGRESS,
+            icon = Icons.Outlined.Delete,
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(EventTags.DELETE_BUTTON).assertIsDisplayed().performClick()
+    composeTestRule.onNodeWithText("Delete").assertIsDisplayed()
+    assertTrue(clicked)
+  }
+
+  @Test
+  fun pillActionButtonDisabledSaveAndDeleteCannotBeClicked() {
+    var clicked = false
+    composeTestRule.setContent {
+      MaterialTheme {
+        Column {
+          PillActionButton(
+              onClick = { clicked = true },
+              enabled = false,
+              isInProgress = false,
+              label = "Save",
+              containerColor = MaterialTheme.colorScheme.primary,
+              contentColor = MaterialTheme.colorScheme.onPrimary,
+              buttonTag = EventTags.SAVE_BUTTON,
+              progressTag = EventTags.SAVE_BUTTON_PROGRESS,
+          )
+          PillActionButton(
+              onClick = { clicked = true },
+              enabled = false,
+              isInProgress = false,
+              label = "Delete",
+              containerColor = MaterialTheme.colorScheme.error,
+              contentColor = MaterialTheme.colorScheme.onError,
+              buttonTag = EventTags.DELETE_BUTTON,
+              progressTag = EventTags.DELETE_BUTTON_PROGRESS,
+              icon = Icons.Outlined.Delete,
+          )
+        }
+      }
+    }
+
+    composeTestRule.onNodeWithTag(EventTags.SAVE_BUTTON).assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(EventTags.DELETE_BUTTON).assertIsNotEnabled()
+    assertFalse(clicked)
+  }
+
+  @Test
+  fun pillActionButtonShowsSaveAndDeleteProgressInsteadOfLabels() {
+    composeTestRule.setContent {
+      MaterialTheme {
+        Column {
+          PillActionButton(
+              onClick = {},
+              enabled = false,
+              isInProgress = true,
+              label = "Save",
+              containerColor = MaterialTheme.colorScheme.primary,
+              contentColor = MaterialTheme.colorScheme.onPrimary,
+              buttonTag = EventTags.SAVE_BUTTON,
+              progressTag = EventTags.SAVE_BUTTON_PROGRESS,
+          )
+          PillActionButton(
+              onClick = {},
+              enabled = false,
+              isInProgress = true,
+              label = "Delete",
+              containerColor = MaterialTheme.colorScheme.error,
+              contentColor = MaterialTheme.colorScheme.onError,
+              buttonTag = EventTags.DELETE_BUTTON,
+              progressTag = EventTags.DELETE_BUTTON_PROGRESS,
+              icon = Icons.Outlined.Delete,
+          )
+        }
+      }
+    }
+
+    composeTestRule.onNodeWithTag(EventTags.SAVE_BUTTON_PROGRESS).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventTags.DELETE_BUTTON_PROGRESS).assertIsDisplayed()
+    assertTrue(composeTestRule.onAllNodesWithText("Save").fetchSemanticsNodes().isEmpty())
+    assertTrue(composeTestRule.onAllNodesWithText("Delete").fetchSemanticsNodes().isEmpty())
   }
 
   @Test

@@ -1,8 +1,10 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.groupsession
 
 import com.android.sample.model.event.EventFirestoreMapper
 import com.android.sample.model.event.EventType
+import com.android.sample.model.event.GroupSession
 
 /** Maps group sessions to their explicit Firestore wire format. */
 internal object GroupSessionFirestoreMapper {

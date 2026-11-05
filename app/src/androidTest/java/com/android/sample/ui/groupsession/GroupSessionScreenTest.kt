@@ -1,5 +1,6 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.groupsession
 
 import android.content.Context
@@ -21,7 +22,7 @@ import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.EventType
-import com.android.sample.model.groupsession.GroupSession
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.ui.navigation.NavigationTestTags
 import java.time.Duration
