@@ -91,7 +91,7 @@ class AddEventScreenTest {
     val uiState = EventPlanningUiState(isSaving = false)
 
     composeTestRule.setContent {
-      AddEventScreenStateless(
+      EventPlanningScreenStateless(
           uiState = uiState,
           onBackClick = {},
           onTypeChange = {},
@@ -128,7 +128,7 @@ class AddEventScreenTest {
     val uiState = EventPlanningUiState(isSaving = true)
 
     composeTestRule.setContent {
-      AddEventScreenStateless(
+      EventPlanningScreenStateless(
           uiState = uiState,
           onBackClick = {},
           onTypeChange = {},
@@ -246,7 +246,7 @@ class AddEventScreenTest {
     val draftTask = "Review analysis lecture notes"
 
     restorationTester.setContent {
-      AddEventScreenStateless(
+      EventPlanningScreenStateless(
           uiState = EventPlanningUiState(),
           onBackClick = {},
           onTypeChange = {},
@@ -288,7 +288,7 @@ class AddEventScreenTest {
     val draftTask = "Prepare lab presentation"
 
     restorationTester.setContent {
-      AddEventScreenStateless(
+      EventPlanningScreenStateless(
           uiState = EventPlanningUiState(),
           onBackClick = {},
           onTypeChange = {},
@@ -333,7 +333,7 @@ class AddEventScreenTest {
         )
 
     composeTestRule.setContent {
-      AddEventScreenStateless(
+      EventPlanningScreenStateless(
           uiState = uiState,
           onBackClick = {},
           onTypeChange = {},
@@ -369,7 +369,7 @@ class AddEventScreenTest {
         )
 
     composeTestRule.setContent {
-      AddEventScreenStateless(
+      EventPlanningScreenStateless(
           uiState = uiState,
           onBackClick = {},
           onTypeChange = {},
