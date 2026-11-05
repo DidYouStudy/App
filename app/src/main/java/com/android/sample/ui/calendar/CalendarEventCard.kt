@@ -162,6 +162,14 @@ fun CalendarEventCardPreview() {
   DidYouStudyTheme { CalendarEventCard(previewEvent) }
 }
 
+@Preview(showBackground = true)
+@Composable
+fun CalendarEventCardDarkThemePreview() {
+    DidYouStudyTheme (
+        darkTheme = true
+    ){ CalendarEventCard(previewEvent) }
+}
+
 private val previewEvent =
     PersonalEvent(
         id = "preview-event",
