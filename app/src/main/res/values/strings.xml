@@ -75,7 +75,9 @@
 
     <!-- Event Planning -->
     <string name="event_planning_add_title">Add new&#8230;</string>
+    <string name="event_planning_edit_title">Edit event</string>
     <string name="event_planning_save_button">Save</string>
+    <string name="event_planning_delete_button">Delete event</string>
     <string name="event_planning_type_label">Type</string>
     <string name="event_planning_type_placeholder">Select type</string>
     <string name="event_planning_date_label">Date</string>

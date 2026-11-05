@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -26,8 +27,11 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DisplayMode
@@ -62,6 +66,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -73,6 +78,7 @@ import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.ui.theme.AlphaTokens
 import com.android.sample.ui.theme.Dimens
+import com.android.sample.ui.theme.Spacing
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -322,6 +328,56 @@ fun AddTaskInputField(
               )
               .testTag(testTag),
   )
+}
+
+/**
+ * Full-width pill button that shows a progress indicator instead of its label while in progress.
+ */
+@Composable
+fun PillActionButton(
+    onClick: () -> Unit,
+    enabled: Boolean,
+    isInProgress: Boolean,
+    label: String,
+    containerColor: Color,
+    contentColor: Color,
+    buttonTag: String,
+    progressTag: String,
+    icon: ImageVector? = null,
+) {
+  Button(
+      onClick = onClick,
+      enabled = enabled,
+      colors =
+          ButtonDefaults.buttonColors(
+              containerColor = containerColor,
+              contentColor = contentColor,
+              disabledContainerColor = containerColor.copy(alpha = AlphaTokens.DISABLED),
+              disabledContentColor = contentColor.copy(alpha = AlphaTokens.DISABLED),
+          ),
+      shape = RoundedCornerShape(Dimens.cornerPill),
+      modifier = Modifier.fillMaxWidth().height(Dimens.saveButtonHeight).testTag(buttonTag),
+  ) {
+    if (isInProgress) {
+      CircularProgressIndicator(
+          modifier = Modifier.size(Dimens.saveButtonProgressSize).testTag(progressTag),
+          color = contentColor,
+          strokeWidth = Dimens.progressIndicatorStrokeWidth,
+      )
+    } else {
+      Row(verticalAlignment = Alignment.CenterVertically) {
+        if (icon != null) {
+          Icon(imageVector = icon, contentDescription = null, tint = contentColor)
+          Spacer(modifier = Modifier.width(Spacing.extraSmall))
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            color = contentColor,
+        )
+      }
+    }
+  }
 }
 
 /** Material 3 Type dropdown menu matching the types from EventType. */
