@@ -60,6 +60,8 @@ object DashboardContentTestTags {
   const val STATS_CARD = "dashboard_statsCard"
   const val STATS_TITLE = "dashboard_statsTitle"
   const val ADD_BUTTON = "dashboard_addButton"
+  const val FAB_MENU_EVENT_BUTTON = "dashboard_fabMenuEventButton"
+  const val FAB_MENU_GROUP_SESSION_BUTTON = "dashboard_fabMenuGroupSessionButton"
   const val STAT_AVERAGE_DAILY = "dashboard_statAverageDaily"
   const val STAT_TOTAL_SESSIONS = "dashboard_statTotalSessions"
   const val STAT_AVERAGE_FOCUS = "dashboard_statAverageFocus"

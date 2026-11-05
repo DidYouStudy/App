@@ -1,4 +1,5 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.calendar
 
 import android.content.Context
@@ -85,6 +86,26 @@ class CalendarScreenTest {
     composeTestRule.onNodeWithTag(CalendarTestTags.TODAY_BUTTON).assertIsDisplayed().performClick()
 
     composeTestRule.runOnIdle { assertEquals(1, todayClicks) }
+  }
+
+  /** Forwards the floating action button click to the onAddClick callback. */
+  @Test
+  fun addButtonForwardsClick() {
+    var addClicks = 0
+    composeTestRule.setContent {
+      CalendarScreen(
+          uiState = calendarUiState(LocalDate.of(2026, 10, 28)),
+          onToday = {},
+          onPreviousWeek = {},
+          onNextWeek = {},
+          onRetry = {},
+          onAddClick = { addClicks++ },
+      )
+    }
+
+    composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).assertIsDisplayed().performClick()
+
+    composeTestRule.runOnIdle { assertEquals(1, addClicks) }
   }
 
   /** Shows the error message and forwards the Retry button click. */

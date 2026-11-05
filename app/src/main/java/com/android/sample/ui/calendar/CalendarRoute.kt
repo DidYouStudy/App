@@ -1,4 +1,5 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.calendar
 
 import androidx.compose.runtime.Composable
@@ -10,6 +11,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.android.sample.ui.navigation.NavigationActions
+import com.android.sample.ui.navigation.Screen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -19,6 +21,7 @@ import kotlinx.coroutines.launch
 fun CalendarRoute(
     navigationActions: NavigationActions? = null,
     viewModel: CalendarViewModel = calendarViewModel(),
+    onAddClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val lifecycleOwner = LocalLifecycleOwner.current
@@ -45,5 +48,6 @@ fun CalendarRoute(
       onPreviousWeek = viewModel::previousWeek,
       onNextWeek = viewModel::nextWeek,
       onRetry = viewModel::retryEvents,
+      onAddClick = onAddClick,
   )
 }
