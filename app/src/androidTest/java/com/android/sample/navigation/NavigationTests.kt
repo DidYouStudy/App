@@ -8,10 +8,14 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import com.android.sample.DidYouStudyApp
 import com.android.sample.MainActivity
@@ -389,6 +393,7 @@ class NavigationTests {
 
   @Test
   fun canNavigateToEditGroupSessionFromSessionCardAndBack() {
+    val now = java.time.Instant.now()
     val session =
         com.android.sample.model.event.GroupSession(
             id = "session-1",
@@ -398,30 +403,88 @@ class NavigationTests {
                 com.android.sample.model.event.EventDetails(
                     type = com.android.sample.model.event.EventType.STUDY_SESSION,
                     subject = "Networks",
-                    startsAt = java.time.Instant.now().plus(java.time.Duration.ofHours(1)),
-                    endsAt = java.time.Instant.now().plus(java.time.Duration.ofHours(2)),
+                    startsAt = now.plus(java.time.Duration.ofHours(1)),
+                    endsAt = now.plus(java.time.Duration.ofHours(2)),
                 ),
+            createdAt = now,
         )
     kotlinx.coroutines.runBlocking {
-      com.android.sample.model.groupsession.GroupSessionsRepositoryProvider.repository.saveSession(
-          "navigation-test-user",
-          session,
-      )
+      com.android.sample.model.groupsession.GroupSessionsRepositoryProvider.getRepository()
+          .saveSession(
+              "navigation-test-user",
+              session,
+          )
     }
 
     composeTestRule.onNodeWithTag(NavigationTestTags.GROUP_SESSION_TAB).performClick()
     checkGroupSessionScreenIsDisplayed()
 
+    val cardMatcher = hasAnyDescendant(hasText(session.details.subject ?: ""))
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
-        .performScrollToNode(
-            androidx.compose.ui.test.hasTestTag(GroupSessionScreenTestTags.sessionItem(0))
-        )
+        .performScrollToNode(cardMatcher)
     composeTestRule
-        .onNodeWithText(
+        .onNode(
+            hasText(
+                composeTestRule.activity.getString(
+                    com.android.sample.R.string.group_session_action_edit
+                )
+            ) and hasAnyAncestor(cardMatcher)
+        )
+        .performClick()
+
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.SCREEN_CONTAINER).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventPlanningScreenTestTags.TOP_BAR_TITLE)
+        .assertTextContains(
             composeTestRule.activity.getString(
-                com.android.sample.R.string.group_session_action_edit
+                com.android.sample.R.string.event_planning_edit_title
             )
+        )
+
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.BACK_BUTTON).performClick()
+    checkGroupSessionScreenIsDisplayed()
+  }
+
+  @Test
+  fun canNavigateToEditGroupSessionWithSpecialCharactersInId() {
+    val now = java.time.Instant.now()
+    val session =
+        com.android.sample.model.event.GroupSession(
+            id = "session/1?special#key with space",
+            createdBy = "navigation-test-user",
+            memberIds = listOf("navigation-test-user"),
+            details =
+                com.android.sample.model.event.EventDetails(
+                    type = com.android.sample.model.event.EventType.STUDY_SESSION,
+                    subject = "Operating Systems",
+                    startsAt = now.plus(java.time.Duration.ofHours(1)),
+                    endsAt = now.plus(java.time.Duration.ofHours(2)),
+                ),
+            createdAt = now,
+        )
+    kotlinx.coroutines.runBlocking {
+      com.android.sample.model.groupsession.GroupSessionsRepositoryProvider.getRepository()
+          .saveSession(
+              "navigation-test-user",
+              session,
+          )
+    }
+
+    composeTestRule.onNodeWithTag(NavigationTestTags.GROUP_SESSION_TAB).performClick()
+    checkGroupSessionScreenIsDisplayed()
+
+    val cardMatcher = hasAnyDescendant(hasText(session.details.subject ?: ""))
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(cardMatcher)
+    composeTestRule
+        .onNode(
+            hasText(
+                composeTestRule.activity.getString(
+                    com.android.sample.R.string.group_session_action_edit
+                )
+            ) and hasAnyAncestor(cardMatcher)
         )
         .performClick()
 
