@@ -7,6 +7,9 @@ import org.junit.Test
 /** Unit tests for [DistanceCalculator] and domain location abstractions. */
 class DistanceCalculatorTest {
 
+  private val oneDegreeMeters = Math.PI * EARTH_RADIUS_METERS / 180.0
+  private val halfCircumference = Math.PI * EARTH_RADIUS_METERS
+
   @Test
   fun distanceMeters_identicalCoordinates_returnsZero() {
     val location = Location(latitude = 46.5186, longitude = 6.5619)
@@ -37,8 +40,7 @@ class DistanceCalculatorTest {
     val pointB = Location(latitude = 0.0, longitude = 1.0)
 
     val distance = DistanceCalculator.distanceMeters(pointA, pointB)
-    // 1 degree longitude at equator is approximately 111,195 meters
-    Assert.assertEquals(111195.0, distance, 500.0)
+    Assert.assertEquals(oneDegreeMeters, distance, 1.0)
   }
 
   @Test
@@ -47,8 +49,7 @@ class DistanceCalculatorTest {
     val southPole = Location(latitude = -90.0, longitude = 0.0)
 
     val distance = DistanceCalculator.distanceMeters(northPole, southPole)
-    // Half of Earth's circumference (~20,015,087 meters)
-    Assert.assertEquals(20015087.0, distance, 1000.0)
+    Assert.assertEquals(halfCircumference, distance, 1.0)
   }
 
   @Test
@@ -58,7 +59,7 @@ class DistanceCalculatorTest {
 
     val distance = DistanceCalculator.distanceMeters(pointA, pointB)
     Assert.assertFalse(distance.isNaN())
-    Assert.assertEquals(20015087.0, distance, 1000.0)
+    Assert.assertEquals(halfCircumference, distance, 1.0)
   }
 
   @Test
@@ -67,9 +68,29 @@ class DistanceCalculatorTest {
     val pointWest = Location(latitude = 0.0, longitude = -179.9)
 
     val distance = DistanceCalculator.distanceMeters(pointEast, pointWest)
-    // 0.2 degrees across the antimeridian at the equator (~22,239 meters)
     Assert.assertFalse(distance.isNaN())
-    Assert.assertEquals(22239.0, distance, 100.0)
+    Assert.assertEquals(0.2 * oneDegreeMeters, distance, 1.0)
+  }
+
+  @Test
+  fun distanceMeters_isSymmetric_returnsSameDistanceBothWays() {
+    val pointA = Location(latitude = 46.5186, longitude = 6.5619)
+    val pointB = Location(latitude = 46.5180, longitude = 6.5681)
+
+    val ab = DistanceCalculator.distanceMeters(pointA, pointB)
+    val ba = DistanceCalculator.distanceMeters(pointB, pointA)
+
+    Assert.assertEquals(ab, ba, 1e-5)
+  }
+
+  @Test
+  fun distanceMeters_shortDistance_returnsExpectedDistance() {
+    val pointA = Location(latitude = 0.0, longitude = 0.0)
+    val pointB = Location(latitude = 0.0, longitude = 0.0001)
+
+    val distance = DistanceCalculator.distanceMeters(pointA, pointB)
+    val expected = 0.0001 * oneDegreeMeters
+    Assert.assertEquals(expected, distance, 0.1)
   }
 
   @Test
@@ -113,5 +134,9 @@ class DistanceCalculatorTest {
   @Test(expected = IllegalArgumentException::class)
   fun location_longitudeNaN_throwsIllegalArgumentException() {
     Location(latitude = 0.0, longitude = Double.NaN)
+  }
+
+  companion object {
+    private const val EARTH_RADIUS_METERS = 6_371_000.0
   }
 }
