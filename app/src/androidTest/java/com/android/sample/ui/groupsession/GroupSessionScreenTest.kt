@@ -10,7 +10,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -26,7 +26,10 @@ import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.ui.eventplanning.EventKind
+import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
+import com.android.sample.ui.navigation.Screen
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -175,9 +178,17 @@ class GroupSessionScreenTest {
     assertTrue(addClicked)
   }
 
+  private class TestNavigationActions : NavigationActions() {
+    var lastNavigatedScreen: Screen? = null
+
+    override fun navigateTo(screen: Screen) {
+      lastNavigatedScreen = screen
+    }
+  }
+
   @Test
   fun default_add_session_click_navigates_to_add_group_session() {
-    val navActions = org.mockito.kotlin.mock<com.android.sample.ui.navigation.NavigationActions>()
+    val navActions = TestNavigationActions()
     val viewModel = GroupSessionsViewModel(authRepository, repo)
     composeTestRule.setContent {
       GroupSessionScreen(
@@ -187,13 +198,10 @@ class GroupSessionScreenTest {
     }
 
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ADD_BUTTON).performClick()
-    org.mockito.kotlin
-        .verify(navActions)
-        .navigateTo(
-            com.android.sample.ui.navigation.Screen.AddEvent(
-                com.android.sample.ui.eventplanning.EventKind.GROUP_SESSION
-            )
-        )
+    assertEquals(
+        Screen.AddEvent(EventKind.GROUP_SESSION),
+        navActions.lastNavigatedScreen,
+    )
   }
 
   @Test
@@ -220,7 +228,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun default_edit_session_click_navigates_to_edit_group_session() {
-    val navActions = org.mockito.kotlin.mock<com.android.sample.ui.navigation.NavigationActions>()
+    val navActions = TestNavigationActions()
     val viewModel = GroupSessionsViewModel(authRepository, repo)
     composeTestRule.setContent {
       GroupSessionScreen(
@@ -237,14 +245,13 @@ class GroupSessionScreenTest {
         .onNodeWithText(context.getString(R.string.group_session_action_edit))
         .performClick()
 
-    org.mockito.kotlin
-        .verify(navActions)
-        .navigateTo(
-            com.android.sample.ui.navigation.Screen.EditEvent(
-                "s1",
-                com.android.sample.ui.eventplanning.EventKind.GROUP_SESSION,
-            )
-        )
+    assertEquals(
+        Screen.EditEvent(
+            "s1",
+            EventKind.GROUP_SESSION,
+        ),
+        navActions.lastNavigatedScreen,
+    )
   }
 
   @Test

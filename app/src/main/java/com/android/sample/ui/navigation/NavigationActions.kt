@@ -31,15 +31,27 @@ sealed class Screen(
   }
 
   data class EditEvent(val eventId: String, val kind: EventKind = EventKind.PERSONAL) :
-      Screen(route = "edit_event/$eventId?kind=${kind.name}", name = "EditEvent") {
+      Screen(
+          route = "edit_event/${encodePathSegment(eventId)}?kind=${kind.name}",
+          name = "EditEvent",
+      ) {
     companion object {
       const val ROUTE = "edit_event/{eventId}?kind={kind}"
+
+      /** Encodes an event ID so special characters like '/', '?', or '#' do not corrupt routes. */
+      fun encodePathSegment(value: String): String =
+          java.net.URLEncoder.encode(value, java.nio.charset.StandardCharsets.UTF_8.name())
+              .replace("+", "%20")
+
+      /** Decodes a previously encoded route path segment back into the original ID. */
+      fun decodePathSegment(value: String): String =
+          java.net.URLDecoder.decode(value, java.nio.charset.StandardCharsets.UTF_8.name())
     }
   }
 }
 
 open class NavigationActions(
-    private val navController: NavHostController,
+    private val navController: NavHostController? = null,
 ) {
   /**
    * Navigate to the specified screen.
@@ -53,7 +65,7 @@ open class NavigationActions(
     }
 
     // Forward to another tab: fresh screen state (no restore)
-    navController.navigate(screen.route) {
+    navController?.navigate(screen.route) {
       if (screen.isTopLevelDestination) {
         // If the destination is already on top of stack, don’t push another copy to stack
         launchSingleTop = true
@@ -83,12 +95,12 @@ open class NavigationActions(
       clearAll: Boolean = false,
   ) {
     if (clearAll) {
-      while (navController.popBackStack()) {}
-      navController.navigate(screen.route) { launchSingleTop = true }
+      while (navController?.popBackStack() == true) {}
+      navController?.navigate(screen.route) { launchSingleTop = true }
       return
     }
 
-    navController.navigate(screen.route) {
+    navController?.navigate(screen.route) {
       popUpTo(completedFlow.name) {
         inclusive = true
         saveState = false
@@ -115,9 +127,9 @@ open class NavigationActions(
    */
   open fun goBack() {
     if (currentRoute() == Screen.Dashboard.route) return
-    navController.popBackStack()
+    navController?.popBackStack()
     if (currentRoute().isEmpty()) {
-      navController.navigate(Screen.Dashboard.route) { launchSingleTop = true }
+      navController?.navigate(Screen.Dashboard.route) { launchSingleTop = true }
     }
   }
 
@@ -127,6 +139,6 @@ open class NavigationActions(
    * @return The current route
    */
   open fun currentRoute(): String {
-    return navController.currentDestination?.route ?: ""
+    return navController?.currentDestination?.route ?: ""
   }
 }

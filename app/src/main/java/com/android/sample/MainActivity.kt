@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -169,21 +170,24 @@ fun DidYouStudyApp() {
               ),
       ) { backStackEntry ->
         val kindStr = backStackEntry.arguments?.getString("kind")
-        val kind =
-            kindStr?.let { runCatching { EventKind.valueOf(it) }.getOrNull() } ?: EventKind.PERSONAL
-        AddEventScreen(
-            initialKind = kind,
-            onBackClick = {
-              if (navigationActions.currentRoute().startsWith("add_event")) {
-                navigationActions.goBack()
-              }
-            },
-            onEventSaved = {
-              if (navigationActions.currentRoute().startsWith("add_event")) {
-                navigationActions.goBack()
-              }
-            },
-        )
+        val parsedKind = kindStr?.let { runCatching { EventKind.valueOf(it) }.getOrNull() }
+        if (parsedKind == null) {
+          LaunchedEffect(Unit) { navigationActions.goBack() }
+        } else {
+          AddEventScreen(
+              initialKind = parsedKind,
+              onBackClick = {
+                if (navigationActions.currentRoute().startsWith("add_event")) {
+                  navigationActions.goBack()
+                }
+              },
+              onEventSaved = {
+                if (navigationActions.currentRoute().startsWith("add_event")) {
+                  navigationActions.goBack()
+                }
+              },
+          )
+        }
       }
 
       composable(
@@ -197,17 +201,24 @@ fun DidYouStudyApp() {
                   },
               ),
       ) { backStackEntry ->
-        val eventId = backStackEntry.arguments?.getString("eventId").orEmpty()
+        val rawEventId = backStackEntry.arguments?.getString("eventId").orEmpty()
+        val eventId = runCatching {
+          Screen.EditEvent.decodePathSegment(rawEventId)
+        }
+            .getOrDefault(rawEventId)
         val kindStr = backStackEntry.arguments?.getString("kind")
-        val kind =
-            kindStr?.let { runCatching { EventKind.valueOf(it) }.getOrNull() } ?: EventKind.PERSONAL
-        EditEventScreen(
-            eventId = eventId,
-            eventKind = kind,
-            onBackClick = navigationActions::goBack,
-            onEventSaved = navigationActions::goBack,
-            onEventDelete = navigationActions::goBack,
-        )
+        val parsedKind = kindStr?.let { runCatching { EventKind.valueOf(it) }.getOrNull() }
+        if (eventId.isBlank() || parsedKind == null) {
+          LaunchedEffect(Unit) { navigationActions.goBack() }
+        } else {
+          EditEventScreen(
+              eventId = eventId,
+              eventKind = parsedKind,
+              onBackClick = navigationActions::goBack,
+              onEventSaved = navigationActions::goBack,
+              onEventDelete = navigationActions::goBack,
+          )
+        }
       }
     }
 
