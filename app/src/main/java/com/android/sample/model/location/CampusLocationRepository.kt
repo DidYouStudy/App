@@ -17,6 +17,11 @@ interface CampusLocationRepository {
    * Returns the locations that match [filter]. See [CampusLocationFilter] for how each criterion is
    * matched. An empty filter returns every location, and a filter that matches nothing returns an
    * empty list.
+   *
+   * Note: if shortcuts such as `findByRoom`, `findByZone` or `findByType` are added later, they
+   * would be one-line calls to this function with every other criterion left empty. They would not
+   * replace [CampusLocationFilter], which stays the way to combine criteria. Each call is
+   * independent: a shortcut never narrows the result of a previous call.
    */
   suspend fun search(filter: CampusLocationFilter): Result<List<CampusLocation>>
 
