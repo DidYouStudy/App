@@ -11,6 +11,9 @@ import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
 import com.android.sample.model.event.EventsRepository
+import com.android.sample.model.event.GroupSession
+import com.android.sample.model.groupsession.GroupSessionsRepository
+import java.time.Instant
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -33,6 +36,7 @@ import org.mockito.Mockito.never
 import org.mockito.Mockito.times
 import org.mockito.Mockito.`when`
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.doSuspendableAnswer
 import org.mockito.kotlin.verify
 
@@ -56,10 +60,17 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
   fun setUp() {
     authRepository = mock(AuthRepository::class.java)
     eventsRepository = mock(EventsRepository::class.java)
+    groupSessionsRepository = mock(GroupSessionsRepository::class.java)
     `when`(authRepository.currentUser).thenReturn(currentUserFlow)
     `when`(eventsRepository.newEventId()).thenReturn("event-1")
     `when`(eventsRepository.observeSubjects(any())).thenReturn(subjects())
-    runBlocking { `when`(eventsRepository.saveEvent(any())).thenReturn(Result.success(Unit)) }
+    `when`(groupSessionsRepository.newSessionId()).thenReturn("session-1")
+    runBlocking {
+      `when`(eventsRepository.saveEvent(any())).thenReturn(Result.success(Unit))
+      `when`(groupSessionsRepository.saveSession(any(), any())).thenReturn(Result.success(Unit))
+      `when`(eventsRepository.deleteEvent(any(), any())).thenReturn(Result.success(Unit))
+      `when`(groupSessionsRepository.deleteSession(any(), any())).thenReturn(Result.success(Unit))
+    }
     currentUserFlow.value = account("user123")
   }
 
@@ -786,7 +797,8 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
   /** The factory creates an event-planning ViewModel for its supported type. */
   @Test
   fun factory_createsEventPlanningViewModel() {
-    val factory = EventPlanningViewModelFactory(authRepository, eventsRepository)
+    val factory =
+        EventPlanningViewModelFactory(authRepository, eventsRepository, groupSessionsRepository)
 
     val viewModel = factory.create(EventPlanningViewModel::class.java)
 
@@ -796,7 +808,8 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
   /** The factory rejects ViewModel classes it does not support. */
   @Test
   fun factory_rejectsUnsupportedViewModelClass() {
-    val factory = EventPlanningViewModelFactory(authRepository, eventsRepository)
+    val factory =
+        EventPlanningViewModelFactory(authRepository, eventsRepository, groupSessionsRepository)
 
     val exception =
         assertThrows(IllegalArgumentException::class.java) {
@@ -804,5 +817,135 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
         }
 
     assertTrue(exception.message!!.contains(OtherViewModel::class.java.name))
+  }
+
+  // ---------------------------------------------------------------- group sessions
+
+  /** Adding a group session creates a session with the user as creator and member. */
+  @Test
+  fun addEvent_groupSession_savesWithCreatorAsOnlyMember() = runTest {
+    val viewModel = createViewModel()
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+    viewModel.fillValidForm()
+    viewModel.setLocation("CM 3")
+    viewModel.setDescription("Chapter 5 prep")
+
+    viewModel.addEvent()
+
+    val state = viewModel.uiState.value
+    assertTrue(state.isEventAdded)
+    assertNull(state.error)
+
+    val captor = argumentCaptor<GroupSession>()
+    verify(groupSessionsRepository).saveSession(org.mockito.kotlin.eq("user123"), captor.capture())
+    val saved = captor.firstValue
+    assertEquals("user123", saved.createdBy)
+    assertEquals(listOf("user123"), saved.memberIds)
+    assertEquals(EventType.STUDY_SESSION, saved.details.type)
+    assertEquals("Algebra", saved.details.subject)
+    assertEquals("CM 3", saved.details.location)
+    assertEquals("Chapter 5 prep", saved.details.description)
+  }
+
+  /** Editing a group session preserves existing member list and creation time. */
+  @Test
+  fun editEvent_groupSession_preservesExistingMembersAndCreatedAt() = runTest {
+    val initialCreatedAt = Instant.parse("2026-10-01T10:00:00Z")
+    val initial =
+        GroupSession(
+            id = "session-99",
+            createdBy = "user123",
+            memberIds = listOf("user123", "user456"),
+            details =
+                com.android.sample.model.event.EventDetails(
+                    type = EventType.STUDY_SESSION,
+                    subject = "Initial Subject",
+                    startsAt = startsAt,
+                    endsAt = endsAt,
+                ),
+            createdAt = initialCreatedAt,
+        )
+    `when`(groupSessionsRepository.getSession("session-99")).thenReturn(Result.success(initial))
+
+    val viewModel = createViewModel()
+    viewModel.loadEvent("session-99", EventKind.GROUP_SESSION)
+
+    val loadedState = viewModel.uiState.value
+    assertTrue(loadedState.isEditing)
+    assertEquals("Initial Subject", loadedState.subject)
+
+    viewModel.setSubject("Updated Subject")
+    viewModel.setLocation("New Room")
+    viewModel.editEvent()
+
+    val state = viewModel.uiState.value
+    assertTrue(state.isEventEdited)
+
+    val captor = argumentCaptor<GroupSession>()
+    verify(groupSessionsRepository).saveSession(org.mockito.kotlin.eq("user123"), captor.capture())
+    val updated = captor.firstValue
+    assertEquals("session-99", updated.id)
+    assertEquals("user123", updated.createdBy)
+    assertEquals(listOf("user123", "user456"), updated.memberIds)
+    assertEquals(initialCreatedAt, updated.createdAt)
+    assertEquals(now, updated.updatedAt)
+    assertEquals("Updated Subject", updated.details.subject)
+    assertEquals("New Room", updated.details.location)
+  }
+
+  /** Loading a group session with blank ID does nothing. */
+  @Test
+  fun loadEvent_blankId_doesNothing() {
+    val viewModel = createViewModel()
+    viewModel.loadEvent("   ", EventKind.GROUP_SESSION)
+    val state = viewModel.uiState.value
+    assertFalse(state.isLoading)
+    assertFalse(state.isEditing)
+  }
+
+  /** Loading a missing group session fails and resets editing state. */
+  @Test
+  fun loadEvent_groupSession_failsWhenNotFound() = runTest {
+    `when`(groupSessionsRepository.getSession("missing-session"))
+        .thenReturn(Result.failure(EventsException(EventsError.NOT_FOUND)))
+
+    val viewModel = createViewModel()
+    viewModel.loadEvent("missing-session", EventKind.GROUP_SESSION)
+
+    val state = viewModel.uiState.value
+    assertFalse(state.isLoading)
+    assertFalse(state.isEditing)
+    assertEquals(EventPlanningViewModel.EVENT_NOT_FOUND_ERROR, state.error)
+  }
+
+  /** Deleting a group session deletes from the group sessions repository. */
+  @Test
+  fun deleteEvent_groupSession_deletesFromGroupSessionsRepository() = runTest {
+    val viewModel = createViewModel()
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+
+    viewModel.deleteEvent("session-1")
+
+    val state = viewModel.uiState.value
+    assertTrue(state.isEventDeleted)
+    verify(groupSessionsRepository).deleteSession("user123", "session-1")
+    verify(eventsRepository, never()).deleteEvent(any(), any())
+  }
+
+  /** Group session repository save failure surfaces error. */
+  @Test
+  fun addEvent_groupSession_repositoryFailure_exposesError() = runTest {
+    `when`(groupSessionsRepository.saveSession(any(), any()))
+        .thenReturn(Result.failure(EventsException(EventsError.STORAGE_FAILURE)))
+
+    val viewModel = createViewModel()
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+    viewModel.fillValidForm()
+
+    viewModel.addEvent()
+
+    val state = viewModel.uiState.value
+    assertFalse(state.isEventAdded)
+    assertEquals(EventPlanningViewModel.STORAGE_FAILURE_ERROR, state.error)
   }
 }

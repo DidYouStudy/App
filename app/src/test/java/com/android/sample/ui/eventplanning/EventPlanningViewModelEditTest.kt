@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
 
 import com.android.sample.model.event.EventDetails
@@ -49,16 +50,22 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
   fun setUp() {
     authRepository = mock()
     eventsRepository = mock()
+    groupSessionsRepository = mock()
     whenever(authRepository.currentUser).thenReturn(currentUserFlow)
     whenever(eventsRepository.observeSubjects(any())).thenAnswer {
       subjectsOf(it.getArgument<String>(0))
     }
     whenever(eventsRepository.newEventId()).thenAnswer { "new-event-${++idCounter}" }
+    whenever(groupSessionsRepository.newSessionId()).thenAnswer { "new-session-${++idCounter}" }
     runBlocking {
       whenever(eventsRepository.saveEvent(any())).thenReturn(Result.success(Unit))
       whenever(eventsRepository.getEvent(any(), any()))
           .thenReturn(Result.failure(EventsException(EventsError.NOT_FOUND)))
       whenever(eventsRepository.deleteEvent(any(), any())).thenReturn(Result.success(Unit))
+      whenever(groupSessionsRepository.saveSession(any(), any())).thenReturn(Result.success(Unit))
+      whenever(groupSessionsRepository.getSession(any()))
+          .thenReturn(Result.failure(EventsException(EventsError.NOT_FOUND)))
+      whenever(groupSessionsRepository.deleteSession(any(), any())).thenReturn(Result.success(Unit))
     }
     currentUserFlow.value = account("user123")
   }
