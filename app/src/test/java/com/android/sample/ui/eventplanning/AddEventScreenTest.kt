@@ -469,4 +469,56 @@ class AddEventScreenTest {
     composeTestRule.onNodeWithTag(Tags.SUBJECT_SELECTOR).performClick()
     composeTestRule.onNodeWithText(context.getString(R.string.cancel)).performClick()
   }
+
+  @Test
+  fun addEventScreen_withGroupSessionKind_configuresGroupSessionAndHidesTasks() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      AddEventScreen(
+          viewModel = viewModel,
+          initialKind = EventKind.GROUP_SESSION,
+          onBackClick = {},
+          onEventSaved = {},
+      )
+    }
+
+    assertEquals(EventKind.GROUP_SESSION, viewModel.uiState.value.eventKind)
+    assertFalse(viewModel.uiState.value.showTasksSection)
+    composeTestRule.onNodeWithTag(Tags.ADD_TASK_BUTTON).assertDoesNotExist()
+  }
+
+  @Test
+  fun addEventScreen_withGroupSessionKind_savesToGroupSessionsRepository() {
+    runBlocking {
+      `when`(groupSessionsRepository.newSessionId()).thenReturn("session-1")
+      `when`(groupSessionsRepository.saveSession(any(), any())).thenReturn(Result.success(Unit))
+    }
+    val viewModel = createViewModel()
+    var savedCalled = false
+
+    composeTestRule.setContent {
+      AddEventScreen(
+          viewModel = viewModel,
+          initialKind = EventKind.GROUP_SESSION,
+          onBackClick = {},
+          onEventSaved = { savedCalled = true },
+      )
+    }
+
+    viewModel.setDate(LocalDate.of(2026, 11, 10))
+    viewModel.setStartTime(LocalTime.of(10, 0))
+    viewModel.setEndTime(LocalTime.of(11, 0))
+    viewModel.setSubject("Distributed Systems")
+
+    composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).performClick()
+    testDispatcher.scheduler.advanceUntilIdle()
+    composeTestRule.waitForIdle()
+
+    assertTrue(savedCalled)
+    runBlocking {
+      org.mockito.kotlin
+          .verify(groupSessionsRepository)
+          .saveSession(org.mockito.kotlin.eq("user123"), any())
+    }
+  }
 }

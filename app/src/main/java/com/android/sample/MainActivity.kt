@@ -177,6 +177,12 @@ fun DidYouStudyApp() {
       composable(Screen.GroupSession.route) {
         GroupSessionScreen(
             navigationActions = navigationActions,
+            onAddSessionClick = {
+              navigationActions.navigateIfAllowed(
+                  Screen.AddEvent,
+                  applicationViewModel::canNavigateTo,
+              )
+            },
         )
       }
     }

@@ -28,6 +28,7 @@ import com.android.sample.ui.auth.SignInScreenTestTags
 import com.android.sample.ui.calendar.CalendarTestTags
 import com.android.sample.ui.dashboard.DashboardContentTestTags
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags
+import com.android.sample.ui.groupsession.GroupSessionScreenTestTags
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.preferences.PreferencesScreenTestTags
 import com.android.sample.ui.profile.ProfileButtonTestTags
@@ -370,6 +371,18 @@ class NavigationTests {
 
     checkCalendarScreenIsDisplayed()
     composeTestRule.onNodeWithTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU).assertIsDisplayed()
+  }
+
+  @Test
+  fun canNavigateToAddEventFromGroupSessionFabAndBackToGroupSession() {
+    composeTestRule.onNodeWithTag(NavigationTestTags.GROUP_SESSION_TAB).performClick()
+    checkGroupSessionScreenIsDisplayed()
+
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ADD_BUTTON).performClick()
+    checkAddEventScreenIsDisplayed()
+
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.BACK_BUTTON).performClick()
+    checkGroupSessionScreenIsDisplayed()
   }
 }
 

@@ -23,6 +23,7 @@ import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsRepository
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.PersonalEvent
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
@@ -41,6 +42,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -415,5 +417,135 @@ class EditEventScreenTest {
 
     assertTrue(eventDeleted)
     runBlocking { verify(eventsRepository).deleteEvent("user-1", storedEvent.id) }
+  }
+
+  @Test
+  fun loadsAndDisplaysGroupSession_whenEventKindIsGroupSession() {
+    val session =
+        GroupSession(
+            id = "session-1",
+            createdBy = "user-1",
+            memberIds = listOf("user-1"),
+            details =
+                EventDetails(
+                    type = EventType.STUDY_SESSION,
+                    subject = "Computer Networks",
+                    startsAt = Instant.parse("2026-10-27T14:00:00Z"),
+                    endsAt = Instant.parse("2026-10-27T16:00:00Z"),
+                    location = "BC 01",
+                    description = "Midterm study",
+                ),
+            createdAt = Instant.parse("2026-10-20T09:00:00Z"),
+        )
+    runBlocking {
+      whenever(groupSessionsRepository.getSession("session-1")).thenReturn(Result.success(session))
+    }
+
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      EditEventScreen(
+          eventId = "session-1",
+          eventKind = EventKind.GROUP_SESSION,
+          viewModel = viewModel,
+          onBackClick = {},
+          onEventSaved = {},
+          onEventDelete = {},
+      )
+    }
+
+    finishPendingComposeAndViewModelWork()
+
+    assertEquals(EventKind.GROUP_SESSION, viewModel.uiState.value.eventKind)
+    assertFalse(viewModel.uiState.value.showTasksSection)
+    composeTestRule.onNodeWithTag(Tags.ADD_TASK_BUTTON).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(Tags.SUBJECT_SELECTOR).assertTextContains("Computer Networks")
+  }
+
+  @Test
+  fun saveButton_updatesGroupSessionInGroupSessionsRepository() {
+    val session =
+        GroupSession(
+            id = "session-1",
+            createdBy = "user-1",
+            memberIds = listOf("user-1", "user-2"),
+            details =
+                EventDetails(
+                    type = EventType.STUDY_SESSION,
+                    subject = "Original Subject",
+                    startsAt = Instant.parse("2026-10-27T14:00:00Z"),
+                    endsAt = Instant.parse("2026-10-27T16:00:00Z"),
+                ),
+            createdAt = Instant.parse("2026-10-20T09:00:00Z"),
+        )
+    runBlocking {
+      whenever(groupSessionsRepository.getSession("session-1")).thenReturn(Result.success(session))
+      whenever(groupSessionsRepository.saveSession(any(), any())).thenReturn(Result.success(Unit))
+    }
+
+    var saved = false
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      EditEventScreen(
+          eventId = "session-1",
+          eventKind = EventKind.GROUP_SESSION,
+          viewModel = viewModel,
+          onBackClick = {},
+          onEventSaved = { saved = true },
+          onEventDelete = {},
+      )
+    }
+
+    finishPendingComposeAndViewModelWork()
+
+    composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).performClick()
+    finishPendingComposeAndViewModelWork()
+
+    assertTrue(saved)
+    runBlocking {
+      verify(groupSessionsRepository).saveSession(org.mockito.kotlin.eq("user-1"), any())
+    }
+  }
+
+  @Test
+  fun deleteButton_deletesGroupSessionFromGroupSessionsRepository() {
+    val session =
+        GroupSession(
+            id = "session-1",
+            createdBy = "user-1",
+            memberIds = listOf("user-1"),
+            details =
+                EventDetails(
+                    type = EventType.STUDY_SESSION,
+                    subject = "Subject",
+                    startsAt = Instant.parse("2026-10-27T14:00:00Z"),
+                    endsAt = Instant.parse("2026-10-27T16:00:00Z"),
+                ),
+            createdAt = Instant.parse("2026-10-20T09:00:00Z"),
+        )
+    runBlocking {
+      whenever(groupSessionsRepository.getSession("session-1")).thenReturn(Result.success(session))
+      whenever(groupSessionsRepository.deleteSession(any(), any())).thenReturn(Result.success(Unit))
+    }
+
+    var deleted = false
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      EditEventScreen(
+          eventId = "session-1",
+          eventKind = EventKind.GROUP_SESSION,
+          viewModel = viewModel,
+          onBackClick = {},
+          onEventSaved = {},
+          onEventDelete = { deleted = true },
+      )
+    }
+
+    finishPendingComposeAndViewModelWork()
+
+    composeTestRule.onNodeWithTag(Tags.DELETE_BUTTON).performClick()
+    finishPendingComposeAndViewModelWork()
+
+    assertTrue(deleted)
+    runBlocking { verify(groupSessionsRepository).deleteSession("user-1", "session-1") }
   }
 }

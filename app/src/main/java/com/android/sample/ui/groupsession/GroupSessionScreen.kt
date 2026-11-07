@@ -110,6 +110,8 @@ object GroupSessionScreenTestTags {
 fun GroupSessionScreen(
     navigationActions: NavigationActions? = null,
     viewModel: GroupSessionsViewModel = groupSessionsViewModel(),
+    onAddSessionClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
+    onEditSessionClick: (String) -> Unit = {},
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val snackbarHostState = remember { SnackbarHostState() }
@@ -172,7 +174,7 @@ fun GroupSessionScreen(
       },
       floatingActionButton = {
         AddButton(
-            onClick = { /* TODO ADD GROUPSESSION */ },
+            onClick = onAddSessionClick,
             contentDescription = stringResource(R.string.group_session_add_description),
             modifier = Modifier.testTag(GroupSessionScreenTestTags.ADD_BUTTON),
         )
@@ -185,6 +187,7 @@ fun GroupSessionScreen(
             onFilterChange = viewModel::onFilterChange,
             onJoin = viewModel::join,
             onLeave = viewModel::leave,
+            onEdit = onEditSessionClick,
         )
       },
   )
@@ -198,6 +201,7 @@ private fun GroupSessionContent(
     onFilterChange: (GroupSessionFilter) -> Unit = {},
     onJoin: (String) -> Unit = {},
     onLeave: (String) -> Unit = {},
+    onEdit: (String) -> Unit = {},
 ) {
   Column(modifier = modifier.fillMaxSize().padding(horizontal = Spacing.large)) {
     OutlinedTextField(
@@ -306,6 +310,7 @@ private fun GroupSessionContent(
                   now = state.now,
                   onJoin = onJoin,
                   onLeave = onLeave,
+                  onEdit = onEdit,
                   modifier = Modifier.testTag(GroupSessionScreenTestTags.sessionItem(index)),
               )
             }
@@ -320,6 +325,7 @@ private fun GroupSessionCard(
     now: Instant,
     onJoin: (String) -> Unit,
     onLeave: (String) -> Unit,
+    onEdit: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
   val session = item.session
@@ -561,7 +567,7 @@ private fun GroupSessionCard(
         // Action Buttons (Host Edit vs Member Leave/Joined vs Join)
         if (shouldShowHost) {
           Button(
-              onClick = { /* TODO EDIT GROUP SESSION */ },
+              onClick = { onEdit(session.id) },
               shape = RoundedCornerShape(Dimens.cornerLarge),
               colors =
                   ButtonDefaults.buttonColors(
