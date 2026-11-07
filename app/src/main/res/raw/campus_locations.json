@@ -2,7 +2,7 @@
   {
     "name": "AAB 0 26",
     "zone": "AAB",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5207473,
     "longitude": 6.5632687
@@ -10,7 +10,7 @@
   {
     "name": "AAB 0 47",
     "zone": "AAB",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5206646,
     "longitude": 6.5627193
@@ -18,7 +18,7 @@
   {
     "name": "AAC 0 06",
     "zone": "AAC",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5209544,
     "longitude": 6.5637347
@@ -26,7 +26,7 @@
   {
     "name": "AAC 0 08",
     "zone": "AAC",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5209563,
     "longitude": 6.5636173
@@ -34,7 +34,7 @@
   {
     "name": "AAC 0 14",
     "zone": "AAC",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5209552,
     "longitude": 6.5634766
@@ -42,7 +42,7 @@
   {
     "name": "AAC 0 20",
     "zone": "AAC",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5209541,
     "longitude": 6.5633359
@@ -50,7 +50,7 @@
   {
     "name": "AAC 0 31",
     "zone": "AAC",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5209133,
     "longitude": 6.5629821
@@ -58,7 +58,7 @@
   {
     "name": "AAC 1 06",
     "zone": "AAC",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5209331,
     "longitude": 6.563735
@@ -66,7 +66,7 @@
   {
     "name": "AAC 1 08",
     "zone": "AAC",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5209322,
     "longitude": 6.5636177
@@ -74,7 +74,7 @@
   {
     "name": "AAC 1 14",
     "zone": "AAC",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5209311,
     "longitude": 6.563477
@@ -82,7 +82,7 @@
   {
     "name": "AAC 1 20",
     "zone": "AAC",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5209301,
     "longitude": 6.5633362
@@ -90,7 +90,7 @@
   {
     "name": "AAC 1 32",
     "zone": "AAC",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5209279,
     "longitude": 6.5630552
@@ -98,7 +98,7 @@
   {
     "name": "AAC 1 37",
     "zone": "AAC",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.520912,
     "longitude": 6.5629139
@@ -106,7 +106,7 @@
   {
     "name": "AAC 2 31",
     "zone": "AAC",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 2,
     "latitude": 46.5209125,
     "longitude": 6.5629847
@@ -114,7 +114,7 @@
   {
     "name": "AAD 0 01",
     "zone": "AAD",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5211259,
     "longitude": 6.5635208
@@ -122,7 +122,7 @@
   {
     "name": "AAD 0 31",
     "zone": "AAD",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5211231,
     "longitude": 6.5630641
@@ -130,7 +130,7 @@
   {
     "name": "AI 0111",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": 0,
     "latitude": 46.5204997,
     "longitude": 6.5644935
@@ -138,7 +138,7 @@
   {
     "name": "AI 0112",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204986,
     "longitude": 6.5643522
@@ -146,7 +146,7 @@
   {
     "name": "AI 0114",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5205002,
     "longitude": 6.5642815
@@ -154,7 +154,7 @@
   {
     "name": "AI 0117",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204936,
     "longitude": 6.5641489
@@ -162,7 +162,7 @@
   {
     "name": "AI 0118",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5205063,
     "longitude": 6.5640938
@@ -170,7 +170,7 @@
   {
     "name": "AI 0119",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204984,
     "longitude": 6.5640475
@@ -178,7 +178,7 @@
   {
     "name": "AI 0128",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204953,
     "longitude": 6.5636248
@@ -186,7 +186,7 @@
   {
     "name": "AI 0129",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.520495,
     "longitude": 6.5635779
@@ -194,7 +194,7 @@
   {
     "name": "AI 0130",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204946,
     "longitude": 6.5635322
@@ -202,7 +202,7 @@
   {
     "name": "AI 0131",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204943,
     "longitude": 6.5634846
@@ -210,7 +210,7 @@
   {
     "name": "AI 0132",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204939,
     "longitude": 6.5634371
@@ -218,7 +218,7 @@
   {
     "name": "AI 0133",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204935,
     "longitude": 6.5633902
@@ -226,7 +226,7 @@
   {
     "name": "AI 0134",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204932,
     "longitude": 6.5633433
@@ -234,7 +234,7 @@
   {
     "name": "AI 0136",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204926,
     "longitude": 6.5632731
@@ -242,7 +242,7 @@
   {
     "name": "AI 0137",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204901,
     "longitude": 6.5631984
@@ -250,7 +250,7 @@
   {
     "name": "AI 0208",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204332,
     "longitude": 6.5645596
@@ -258,7 +258,7 @@
   {
     "name": "AI 0209",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204391,
     "longitude": 6.5645177
@@ -266,7 +266,7 @@
   {
     "name": "AI 0210",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204375,
     "longitude": 6.5644715
@@ -274,7 +274,7 @@
   {
     "name": "AI 0211",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204326,
     "longitude": 6.5644254
@@ -282,7 +282,7 @@
   {
     "name": "AI 0212",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.520433,
     "longitude": 6.5643734
@@ -290,7 +290,7 @@
   {
     "name": "AI 0213",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204327,
     "longitude": 6.5643328
@@ -298,7 +298,7 @@
   {
     "name": "AI 0216",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204313,
     "longitude": 6.5642275
@@ -306,7 +306,7 @@
   {
     "name": "AI 0218",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204328,
     "longitude": 6.5641182
@@ -314,7 +314,7 @@
   {
     "name": "AI 0219",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204299,
     "longitude": 6.5640518
@@ -322,7 +322,7 @@
   {
     "name": "AI 0225",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5203943,
     "longitude": 6.5637377
@@ -330,7 +330,7 @@
   {
     "name": "AI 0227",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204144,
     "longitude": 6.5636495
@@ -338,7 +338,7 @@
   {
     "name": "AI 0229",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.520394,
     "longitude": 6.5635564
@@ -346,7 +346,7 @@
   {
     "name": "AI 0231",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5203903,
     "longitude": 6.5634641
@@ -354,7 +354,7 @@
   {
     "name": "AI 0244",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204418,
     "longitude": 6.5628253
@@ -362,7 +362,7 @@
   {
     "name": "AI 0245",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5203919,
     "longitude": 6.5628194
@@ -370,7 +370,7 @@
   {
     "name": "AI 0246",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204589,
     "longitude": 6.5627811
@@ -378,7 +378,7 @@
   {
     "name": "AI 0246.1",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204219,
     "longitude": 6.5627818
@@ -386,7 +386,7 @@
   {
     "name": "AI 0247",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204072,
     "longitude": 6.5627159
@@ -394,7 +394,7 @@
   {
     "name": "AI 0248",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204406,
     "longitude": 6.5626912
@@ -402,7 +402,7 @@
   {
     "name": "AI 0249",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204368,
     "longitude": 6.5626341
@@ -410,7 +410,7 @@
   {
     "name": "AI 0342",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5203726,
     "longitude": 6.5629105
@@ -418,7 +418,7 @@
   {
     "name": "AI 0345",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5203403,
     "longitude": 6.5628118
@@ -426,7 +426,7 @@
   {
     "name": "AI 0346",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5203853,
     "longitude": 6.5627878
@@ -434,7 +434,7 @@
   {
     "name": "AI 0346.1",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5203314,
     "longitude": 6.5627761
@@ -442,7 +442,7 @@
   {
     "name": "AI 0347",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.520327,
     "longitude": 6.5627223
@@ -450,7 +450,7 @@
   {
     "name": "AI 0348",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5203407,
     "longitude": 6.5626586
@@ -458,7 +458,7 @@
   {
     "name": "AI 0350",
     "zone": "AI",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5203415,
     "longitude": 6.5625877
@@ -466,7 +466,7 @@
   {
     "name": "AI 1142",
     "zone": "AI",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": 1,
     "latitude": 46.5205052,
     "longitude": 6.5629372
@@ -474,7 +474,7 @@
   {
     "name": "AI 1153",
     "zone": "AI",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": 1,
     "latitude": 46.5203232,
     "longitude": 6.5624113
@@ -482,7 +482,7 @@
   {
     "name": "AN 0 109",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5207526,
     "longitude": 6.56476
@@ -490,7 +490,7 @@
   {
     "name": "AN 0 110",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5207824,
     "longitude": 6.5647646
@@ -498,7 +498,7 @@
   {
     "name": "AN 0 113",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208646,
     "longitude": 6.5647748
@@ -506,7 +506,7 @@
   {
     "name": "AN 0 114",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208994,
     "longitude": 6.5647742
@@ -514,7 +514,7 @@
   {
     "name": "AN 0 115",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209271,
     "longitude": 6.5647738
@@ -522,7 +522,7 @@
   {
     "name": "AN 0 116",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209548,
     "longitude": 6.5647733
@@ -530,7 +530,7 @@
   {
     "name": "AN 0 117",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209825,
     "longitude": 6.5647729
@@ -538,7 +538,7 @@
   {
     "name": "AN 0 118",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5210102,
     "longitude": 6.5647724
@@ -546,7 +546,7 @@
   {
     "name": "AN 0 204",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5205737,
     "longitude": 6.5648813
@@ -554,7 +554,7 @@
   {
     "name": "AN 0 210",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5207084,
     "longitude": 6.5647968
@@ -562,7 +562,7 @@
   {
     "name": "AN 0 212",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208064,
     "longitude": 6.564805
@@ -570,7 +570,7 @@
   {
     "name": "AN 0 214",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208787,
     "longitude": 6.5648068
@@ -578,7 +578,7 @@
   {
     "name": "AN 0 215",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209274,
     "longitude": 6.5648126
@@ -586,7 +586,7 @@
   {
     "name": "AN 0 216",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209551,
     "longitude": 6.5648122
@@ -594,7 +594,7 @@
   {
     "name": "AN 0 217",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209828,
     "longitude": 6.5648117
@@ -602,7 +602,7 @@
   {
     "name": "AN 0 218",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5210105,
     "longitude": 6.5648113
@@ -610,7 +610,7 @@
   {
     "name": "AN 0 313",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.52084,
     "longitude": 6.5648815
@@ -618,7 +618,7 @@
   {
     "name": "AN 0 315",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209159,
     "longitude": 6.5648703
@@ -626,7 +626,7 @@
   {
     "name": "AN 0 316",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.520947,
     "longitude": 6.5648797
@@ -634,7 +634,7 @@
   {
     "name": "AN 0 317",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.520973,
     "longitude": 6.5648943
@@ -642,7 +642,7 @@
   {
     "name": "AN 0 318",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5210084,
     "longitude": 6.5648736
@@ -650,7 +650,7 @@
   {
     "name": "AN 0 411",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5207855,
     "longitude": 6.5649006
@@ -658,7 +658,7 @@
   {
     "name": "AN 0 412",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208211,
     "longitude": 6.5648967
@@ -666,7 +666,7 @@
   {
     "name": "AN 0 413",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.520855,
     "longitude": 6.5649211
@@ -674,7 +674,7 @@
   {
     "name": "AN 0 414",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208737,
     "longitude": 6.5649035
@@ -682,7 +682,7 @@
   {
     "name": "AN 0 415",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209216,
     "longitude": 6.5649209
@@ -690,7 +690,7 @@
   {
     "name": "AN 0 416",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209474,
     "longitude": 6.5649196
@@ -698,7 +698,7 @@
   {
     "name": "AN 0 418",
     "zone": "AN",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5210049,
     "longitude": 6.5649077
@@ -706,7 +706,7 @@
   {
     "name": "ART C0 120",
     "zone": "ART",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.518063,
     "longitude": 6.565862
@@ -714,7 +714,7 @@
   {
     "name": "BAC 003",
     "zone": "BAC",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.524443,
     "longitude": 6.5629924
@@ -722,7 +722,7 @@
   {
     "name": "BAP 007",
     "zone": "BAP",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5247228,
     "longitude": 6.563777
@@ -730,7 +730,7 @@
   {
     "name": "BC 01",
     "zone": "BC",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5187809,
     "longitude": 6.5621264
@@ -738,7 +738,7 @@
   {
     "name": "BC 010",
     "zone": "BC",
-    "type": "CONF MULTIMEDIA",
+    "type": "MULTIMEDIA_CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.518798,
     "longitude": 6.5617101
@@ -746,7 +746,7 @@
   {
     "name": "BC 02",
     "zone": "BC",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5186336,
     "longitude": 6.5620776
@@ -754,7 +754,7 @@
   {
     "name": "BC 03",
     "zone": "BC",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5185339,
     "longitude": 6.5620948
@@ -762,7 +762,7 @@
   {
     "name": "BC 04",
     "zone": "BC",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.518412,
     "longitude": 6.5620811
@@ -770,7 +770,7 @@
   {
     "name": "BC 05",
     "zone": "BC",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5186623,
     "longitude": 6.5617475
@@ -778,7 +778,7 @@
   {
     "name": "BC 051.1",
     "zone": "BC",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5183468,
     "longitude": 6.5618812
@@ -786,7 +786,7 @@
   {
     "name": "BC 051.2",
     "zone": "BC",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5183432,
     "longitude": 6.5619237
@@ -794,7 +794,7 @@
   {
     "name": "BC 051.3",
     "zone": "BC",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5183469,
     "longitude": 6.5619645
@@ -802,7 +802,7 @@
   {
     "name": "BC 06",
     "zone": "BC",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5185732,
     "longitude": 6.5617489
@@ -810,7 +810,7 @@
   {
     "name": "BC 07",
     "zone": "BC",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 0,
     "latitude": 46.5184923,
     "longitude": 6.5617502
@@ -818,7 +818,7 @@
   {
     "name": "BC 08",
     "zone": "BC",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 0,
     "latitude": 46.5184033,
     "longitude": 6.5617517
@@ -826,7 +826,7 @@
   {
     "name": "BC 09",
     "zone": "BC",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5187987,
     "longitude": 6.5617925
@@ -834,7 +834,7 @@
   {
     "name": "Auditoire BCH2",
     "zone": "BCH",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 2,
     "latitude": 46.5198344,
     "longitude": 6.5725818
@@ -842,7 +842,7 @@
   {
     "name": "BCH 1103",
     "zone": "BCH",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 1,
     "latitude": 46.5201763,
     "longitude": 6.5724182
@@ -850,7 +850,7 @@
   {
     "name": "BCH 1113",
     "zone": "BCH",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 1,
     "latitude": 46.5202354,
     "longitude": 6.5722228
@@ -858,7 +858,7 @@
   {
     "name": "BCH 2201",
     "zone": "BCH",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 2,
     "latitude": 46.5198315,
     "longitude": 6.5726184
@@ -866,7 +866,7 @@
   {
     "name": "BCH 3303",
     "zone": "BCH",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 3,
     "latitude": 46.5194876,
     "longitude": 6.5723964
@@ -874,7 +874,7 @@
   {
     "name": "BCH 4310",
     "zone": "BCH",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 4,
     "latitude": 46.5194915,
     "longitude": 6.5722107
@@ -882,7 +882,7 @@
   {
     "name": "BI A0 397",
     "zone": "BI",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": null,
     "latitude": 46.5201644,
     "longitude": 6.5689365
@@ -890,7 +890,7 @@
   {
     "name": "BI A0 398",
     "zone": "BI",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": null,
     "latitude": 46.5201618,
     "longitude": 6.5690643
@@ -898,7 +898,7 @@
   {
     "name": "BI A0 433",
     "zone": "BI",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5199565,
     "longitude": 6.5687833
@@ -906,7 +906,7 @@
   {
     "name": "BI A0 518",
     "zone": "BI",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5197741,
     "longitude": 6.5690397
@@ -914,7 +914,7 @@
   {
     "name": "BM 0128",
     "zone": "BM",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5213658,
     "longitude": 6.5652696
@@ -922,7 +922,7 @@
   {
     "name": "BM 0128.1",
     "zone": "BM",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.521438,
     "longitude": 6.5653198
@@ -930,7 +930,7 @@
   {
     "name": "BM 0128.2",
     "zone": "BM",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.521418,
     "longitude": 6.565221
@@ -938,7 +938,7 @@
   {
     "name": "BM 0135",
     "zone": "BM",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5215305,
     "longitude": 6.5652814
@@ -946,7 +946,7 @@
   {
     "name": "BM 0137",
     "zone": "BM",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5216124,
     "longitude": 6.5652801
@@ -954,7 +954,7 @@
   {
     "name": "BM 0139",
     "zone": "BM",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5216725,
     "longitude": 6.565248
@@ -962,7 +962,7 @@
   {
     "name": "BM 0141",
     "zone": "BM",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5217423,
     "longitude": 6.565278
@@ -970,7 +970,7 @@
   {
     "name": "BM 0143",
     "zone": "BM",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.52182,
     "longitude": 6.5652676
@@ -978,7 +978,7 @@
   {
     "name": "BM 0229",
     "zone": "BM",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.521427,
     "longitude": 6.5651673
@@ -986,7 +986,7 @@
   {
     "name": "BM 0229.1",
     "zone": "BM",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5214321,
     "longitude": 6.5651174
@@ -994,7 +994,7 @@
   {
     "name": "BM 0242",
     "zone": "BM",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5217746,
     "longitude": 6.5651379
@@ -1002,7 +1002,7 @@
   {
     "name": "BM 0246",
     "zone": "BM",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5218793,
     "longitude": 6.5651465
@@ -1010,7 +1010,7 @@
   {
     "name": "BM 094.19",
     "zone": "BM",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5214828,
     "longitude": 6.5652193
@@ -1018,7 +1018,7 @@
   {
     "name": "BP 0223",
     "zone": "BP",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5212002,
     "longitude": 6.5647452
@@ -1026,7 +1026,7 @@
   {
     "name": "BP 0232",
     "zone": "BP",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5213513,
     "longitude": 6.5648452
@@ -1034,7 +1034,7 @@
   {
     "name": "BP 0327",
     "zone": "BP",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5213162,
     "longitude": 6.5649311
@@ -1042,7 +1042,7 @@
   {
     "name": "BP 0328",
     "zone": "BP",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5213167,
     "longitude": 6.5649991
@@ -1050,7 +1050,7 @@
   {
     "name": "BP 0329",
     "zone": "BP",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5213999,
     "longitude": 6.5649813
@@ -1058,7 +1058,7 @@
   {
     "name": "BP 0427",
     "zone": "BP",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5213169,
     "longitude": 6.5650244
@@ -1066,7 +1066,7 @@
   {
     "name": "BP 0428",
     "zone": "BP",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5213174,
     "longitude": 6.5650922
@@ -1074,7 +1074,7 @@
   {
     "name": "BP 0430",
     "zone": "BP",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5213874,
     "longitude": 6.5650869
@@ -1082,7 +1082,7 @@
   {
     "name": "BS 150",
     "zone": "BS",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5205255,
     "longitude": 6.5712934
@@ -1090,7 +1090,7 @@
   {
     "name": "BS 160",
     "zone": "BS",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5203972,
     "longitude": 6.5714613
@@ -1098,7 +1098,7 @@
   {
     "name": "BS 170",
     "zone": "BS",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.520246,
     "longitude": 6.571456
@@ -1106,7 +1106,7 @@
   {
     "name": "BS 260",
     "zone": "BS",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 2,
     "latitude": 46.5203942,
     "longitude": 6.5715058
@@ -1114,7 +1114,7 @@
   {
     "name": "BS 270",
     "zone": "BS",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 2,
     "latitude": 46.5202594,
     "longitude": 6.5714637
@@ -1122,7 +1122,7 @@
   {
     "name": "Auditoire BSP",
     "zone": "BSP",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 2,
     "latitude": 46.5212145,
     "longitude": 6.572422
@@ -1130,7 +1130,7 @@
   {
     "name": "BSP 626",
     "zone": "BSP",
-    "type": "TUTORAT",
+    "type": "TUTORING_ROOM",
     "floor": 6,
     "latitude": 46.5211944,
     "longitude": 6.572439
@@ -1138,7 +1138,7 @@
   {
     "name": "Auditoire CE1",
     "zone": "CE",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5206735,
     "longitude": 6.5693697
@@ -1146,7 +1146,7 @@
   {
     "name": "Auditoire CE2",
     "zone": "CE",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5204438,
     "longitude": 6.5693747
@@ -1154,7 +1154,7 @@
   {
     "name": "Auditoire CE3",
     "zone": "CE",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5206763,
     "longitude": 6.569745
@@ -1162,7 +1162,7 @@
   {
     "name": "Auditoire CE4",
     "zone": "CE",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5204098,
     "longitude": 6.5697493
@@ -1170,7 +1170,7 @@
   {
     "name": "Auditoire CE5",
     "zone": "CE",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.520373,
     "longitude": 6.570501
@@ -1178,7 +1178,7 @@
   {
     "name": "Auditoire CE6",
     "zone": "CE",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5204935,
     "longitude": 6.5707254
@@ -1186,7 +1186,7 @@
   {
     "name": "CE 0 253",
     "zone": "CE",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.520634,
     "longitude": 6.5706366
@@ -1194,7 +1194,7 @@
   {
     "name": "CE 0 330",
     "zone": "CE",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5206255,
     "longitude": 6.5695479
@@ -1202,7 +1202,7 @@
   {
     "name": "CE 0 430",
     "zone": "CE",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5203824,
     "longitude": 6.569541
@@ -1210,7 +1210,7 @@
   {
     "name": "CE 0 448",
     "zone": "CE",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5204858,
     "longitude": 6.5703809
@@ -1218,7 +1218,7 @@
   {
     "name": "CE 0 525",
     "zone": "CE",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204451,
     "longitude": 6.5693263
@@ -1226,7 +1226,7 @@
   {
     "name": "CE 0 559",
     "zone": "CE",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5204253,
     "longitude": 6.5709207
@@ -1234,7 +1234,7 @@
   {
     "name": "CE 1 1",
     "zone": "CE",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.520632,
     "longitude": 6.5693686
@@ -1242,7 +1242,7 @@
   {
     "name": "CE 1 100",
     "zone": "CE",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5206092,
     "longitude": 6.5695579
@@ -1250,7 +1250,7 @@
   {
     "name": "CE 1 101",
     "zone": "CE",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5206121,
     "longitude": 6.5699342
@@ -1258,7 +1258,7 @@
   {
     "name": "CE 1 103",
     "zone": "CE",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5204854,
     "longitude": 6.5703111
@@ -1266,7 +1266,7 @@
   {
     "name": "CE 1 104",
     "zone": "CE",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5206807,
     "longitude": 6.5704951
@@ -1274,7 +1274,7 @@
   {
     "name": "CE 1 105",
     "zone": "CE",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5206836,
     "longitude": 6.5708704
@@ -1282,7 +1282,7 @@
   {
     "name": "CE 1 106",
     "zone": "CE",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5204419,
     "longitude": 6.570968
@@ -1290,7 +1290,7 @@
   {
     "name": "CE 1 2",
     "zone": "CE",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5204813,
     "longitude": 6.5693806
@@ -1298,7 +1298,7 @@
   {
     "name": "CE 1 3",
     "zone": "CE",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5206349,
     "longitude": 6.5697464
@@ -1306,7 +1306,7 @@
   {
     "name": "CE 1 4",
     "zone": "CE",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5204534,
     "longitude": 6.5697481
@@ -1314,7 +1314,7 @@
   {
     "name": "CE 1 5",
     "zone": "CE",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5203666,
     "longitude": 6.5704933
@@ -1322,7 +1322,7 @@
   {
     "name": "CE 1 515",
     "zone": "CE",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5204118,
     "longitude": 6.568811
@@ -1330,7 +1330,7 @@
   {
     "name": "CE 1 6",
     "zone": "CE",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.520548,
     "longitude": 6.5706448
@@ -1338,7 +1338,7 @@
   {
     "name": "Salle Polyvalente CE",
     "zone": "CE",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.52047,
     "longitude": 6.5688544
@@ -1346,7 +1346,7 @@
   {
     "name": "CH A0 365",
     "zone": "CH",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5202387,
     "longitude": 6.5698102
@@ -1354,7 +1354,7 @@
   {
     "name": "CH A0 376",
     "zone": "CH",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5202064,
     "longitude": 6.5698218
@@ -1362,7 +1362,7 @@
   {
     "name": "CH A0 391",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5201641,
     "longitude": 6.5695885
@@ -1370,7 +1370,7 @@
   {
     "name": "CH A0 392",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5201645,
     "longitude": 6.5696354
@@ -1378,7 +1378,7 @@
   {
     "name": "CH A0 398",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5201666,
     "longitude": 6.5699167
@@ -1386,7 +1386,7 @@
   {
     "name": "CH A0 401",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200886,
     "longitude": 6.5695897
@@ -1394,7 +1394,7 @@
   {
     "name": "CH A0 402",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200889,
     "longitude": 6.5696366
@@ -1402,7 +1402,7 @@
   {
     "name": "CH A0 404",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200923,
     "longitude": 6.5697304
@@ -1410,7 +1410,7 @@
   {
     "name": "CH A0 424",
     "zone": "CH",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": null,
     "latitude": 46.5200193,
     "longitude": 6.5697081
@@ -1418,7 +1418,7 @@
   {
     "name": "CH A0 427",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200314,
     "longitude": 6.5698956
@@ -1426,7 +1426,7 @@
   {
     "name": "CH B0 374",
     "zone": "CH",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5202564,
     "longitude": 6.5700797
@@ -1434,7 +1434,7 @@
   {
     "name": "CH B0 375",
     "zone": "CH",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5202571,
     "longitude": 6.5701735
@@ -1442,7 +1442,7 @@
   {
     "name": "CH B0 397",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5201693,
     "longitude": 6.5702689
@@ -1450,7 +1450,7 @@
   {
     "name": "CH B0 422",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200321,
     "longitude": 6.5699896
@@ -1458,7 +1458,7 @@
   {
     "name": "CH B0 423",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.520022,
     "longitude": 6.57006
@@ -1466,7 +1466,7 @@
   {
     "name": "CH B0 427",
     "zone": "CH",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5200346,
     "longitude": 6.5703178
@@ -1474,7 +1474,7 @@
   {
     "name": "CH C0 392",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.52017,
     "longitude": 6.5703627
@@ -1482,7 +1482,7 @@
   {
     "name": "CH C0 396",
     "zone": "CH",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5201795,
     "longitude": 6.5705024
@@ -1490,7 +1490,7 @@
   {
     "name": "CH C0 397",
     "zone": "CH",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5201722,
     "longitude": 6.5706443
@@ -1498,7 +1498,7 @@
   {
     "name": "CH C0 407",
     "zone": "CH",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5201074,
     "longitude": 6.5706454
@@ -1506,7 +1506,7 @@
   {
     "name": "CH F0 492",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5198151,
     "longitude": 6.5696173
@@ -1514,7 +1514,7 @@
   {
     "name": "CH F0 493",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5198474,
     "longitude": 6.5696765
@@ -1522,7 +1522,7 @@
   {
     "name": "CH F0 507",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.519785,
     "longitude": 6.5698761
@@ -1530,7 +1530,7 @@
   {
     "name": "CH F0 508",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5197915,
     "longitude": 6.5699293
@@ -1538,7 +1538,7 @@
   {
     "name": "CH F0 515",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5197381,
     "longitude": 6.5698492
@@ -1546,7 +1546,7 @@
   {
     "name": "CH F0 518",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5197585,
     "longitude": 6.5699191
@@ -1554,7 +1554,7 @@
   {
     "name": "CH F0 527",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5197263,
     "longitude": 6.5699222
@@ -1562,7 +1562,7 @@
   {
     "name": "CH F0 533.1",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196461,
     "longitude": 6.569675
@@ -1570,7 +1570,7 @@
   {
     "name": "CH F0 537",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196841,
     "longitude": 6.5699229
@@ -1578,7 +1578,7 @@
   {
     "name": "CH F0 543",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196552,
     "longitude": 6.5697345
@@ -1586,7 +1586,7 @@
   {
     "name": "CH F0 547",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196615,
     "longitude": 6.5699232
@@ -1594,7 +1594,7 @@
   {
     "name": "CH F0 556",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196271,
     "longitude": 6.5698413
@@ -1602,7 +1602,7 @@
   {
     "name": "CH F0 557",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.519619,
     "longitude": 6.569919
@@ -1610,7 +1610,7 @@
   {
     "name": "CH F0 577",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5195705,
     "longitude": 6.5699129
@@ -1618,7 +1618,7 @@
   {
     "name": "CH F0 587",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5195336,
     "longitude": 6.5699238
@@ -1626,7 +1626,7 @@
   {
     "name": "CH F0 593",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5195033,
     "longitude": 6.5696786
@@ -1634,7 +1634,7 @@
   {
     "name": "CH F0 595",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5195029,
     "longitude": 6.5697633
@@ -1642,7 +1642,7 @@
   {
     "name": "CH F0 596",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5195106,
     "longitude": 6.5698466
@@ -1650,7 +1650,7 @@
   {
     "name": "CH F0 597",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5194899,
     "longitude": 6.569926
@@ -1658,7 +1658,7 @@
   {
     "name": "CH F0 602",
     "zone": "CH",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5194483,
     "longitude": 6.5697083
@@ -1666,7 +1666,7 @@
   {
     "name": "CH F0 606",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5194504,
     "longitude": 6.5698414
@@ -1674,7 +1674,7 @@
   {
     "name": "CH F0 608",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5194281,
     "longitude": 6.5699251
@@ -1682,7 +1682,7 @@
   {
     "name": "CH G0 521",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.519673,
     "longitude": 6.570019
@@ -1690,7 +1690,7 @@
   {
     "name": "CH G0 525",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5197062,
     "longitude": 6.5701354
@@ -1698,7 +1698,7 @@
   {
     "name": "CH G0 528",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196749,
     "longitude": 6.5702528
@@ -1706,7 +1706,7 @@
   {
     "name": "CH G0 578",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5195783,
     "longitude": 6.5702656
@@ -1714,7 +1714,7 @@
   {
     "name": "CH G0 623",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5193694,
     "longitude": 6.5700384
@@ -1722,7 +1722,7 @@
   {
     "name": "CH G0 628",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.519381,
     "longitude": 6.5703052
@@ -1730,7 +1730,7 @@
   {
     "name": "CH H0 555",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196454,
     "longitude": 6.5705571
@@ -1738,7 +1738,7 @@
   {
     "name": "CH H0 595",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5194932,
     "longitude": 6.5705715
@@ -1746,7 +1746,7 @@
   {
     "name": "CH H0 604",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5194636,
     "longitude": 6.5704624
@@ -1754,7 +1754,7 @@
   {
     "name": "CH H0 605",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5194866,
     "longitude": 6.5705596
@@ -1762,7 +1762,7 @@
   {
     "name": "CH H0 622",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5193815,
     "longitude": 6.5703759
@@ -1770,7 +1770,7 @@
   {
     "name": "CH H0 624",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5193769,
     "longitude": 6.5704829
@@ -1778,7 +1778,7 @@
   {
     "name": "CH H0 625",
     "zone": "CH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5193864,
     "longitude": 6.5705778
@@ -1786,7 +1786,7 @@
   {
     "name": "CH B2 355",
     "zone": "CHB",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 2,
     "latitude": 46.5202586,
     "longitude": 6.5701828
@@ -1794,7 +1794,7 @@
   {
     "name": "CH B3 30",
     "zone": "CHB",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 3,
     "latitude": 46.5203784,
     "longitude": 6.5700991
@@ -1802,7 +1802,7 @@
   {
     "name": "CH B3 31",
     "zone": "CHB",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 3,
     "latitude": 46.5202734,
     "longitude": 6.5701007
@@ -1810,7 +1810,7 @@
   {
     "name": "Auditoire CM1",
     "zone": "CM",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5206635,
     "longitude": 6.5674932
@@ -1818,7 +1818,7 @@
   {
     "name": "Auditoire CM2",
     "zone": "CM",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5204097,
     "longitude": 6.5674973
@@ -1826,7 +1826,7 @@
   {
     "name": "Auditoire CM3",
     "zone": "CM",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5204068,
     "longitude": 6.567122
@@ -1834,7 +1834,7 @@
   {
     "name": "Auditoire CM4",
     "zone": "CM",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5204236,
     "longitude": 6.5665366
@@ -1842,7 +1842,7 @@
   {
     "name": "Auditoire CM5",
     "zone": "CM",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5204226,
     "longitude": 6.5663965
@@ -1850,7 +1850,7 @@
   {
     "name": "CM 0 10",
     "zone": "CM",
-    "type": "TUTORAT",
+    "type": "TUTORING_ROOM",
     "floor": 0,
     "latitude": 46.5206785,
     "longitude": 6.5659445
@@ -1858,7 +1858,7 @@
   {
     "name": "CM 0 11",
     "zone": "CM",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5205804,
     "longitude": 6.565805
@@ -1866,7 +1866,7 @@
   {
     "name": "CM 0 12",
     "zone": "CM",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5205869,
     "longitude": 6.566626
@@ -1874,7 +1874,7 @@
   {
     "name": "CM 0 13",
     "zone": "CM",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5203377,
     "longitude": 6.5673103
@@ -1882,7 +1882,7 @@
   {
     "name": "CM 0 9",
     "zone": "CM",
-    "type": "TUTORAT",
+    "type": "TUTORING_ROOM",
     "floor": 0,
     "latitude": 46.5206792,
     "longitude": 6.5660378
@@ -1890,7 +1890,7 @@
   {
     "name": "CM 1 1",
     "zone": "CM",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5206096,
     "longitude": 6.5674949
@@ -1898,7 +1898,7 @@
   {
     "name": "CM 1 100",
     "zone": "CM",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5205972,
     "longitude": 6.5679923
@@ -1906,7 +1906,7 @@
   {
     "name": "CM 1 103",
     "zone": "CM",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 1,
     "latitude": 46.5204106,
     "longitude": 6.5673017
@@ -1914,7 +1914,7 @@
   {
     "name": "CM 1 104",
     "zone": "CM",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5205918,
     "longitude": 6.5672827
@@ -1922,7 +1922,7 @@
   {
     "name": "CM 1 105",
     "zone": "CM",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5206229,
     "longitude": 6.567118
@@ -1930,7 +1930,7 @@
   {
     "name": "CM 1 106",
     "zone": "CM",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5205891,
     "longitude": 6.5669289
@@ -1938,7 +1938,7 @@
   {
     "name": "CM 1 110",
     "zone": "CM",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 1,
     "latitude": 46.5203451,
     "longitude": 6.5666965
@@ -1946,7 +1946,7 @@
   {
     "name": "CM 1 111",
     "zone": "CM",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 1,
     "latitude": 46.5205868,
     "longitude": 6.566626
@@ -1954,7 +1954,7 @@
   {
     "name": "CM 1 112",
     "zone": "CM",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 1,
     "latitude": 46.5205855,
     "longitude": 6.566462
@@ -1962,7 +1962,7 @@
   {
     "name": "CM 1 113",
     "zone": "CM",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5205844,
     "longitude": 6.5663209
@@ -1970,7 +1970,7 @@
   {
     "name": "CM 1 120",
     "zone": "CM",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5206789,
     "longitude": 6.5659911
@@ -1978,7 +1978,7 @@
   {
     "name": "CM 1 121",
     "zone": "CM",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.520676,
     "longitude": 6.5656156
@@ -1986,7 +1986,7 @@
   {
     "name": "CM 1 2",
     "zone": "CM",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5204477,
     "longitude": 6.5674975
@@ -1994,7 +1994,7 @@
   {
     "name": "CM 1 221",
     "zone": "CM",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5205949,
     "longitude": 6.5676836
@@ -2002,7 +2002,7 @@
   {
     "name": "CM 1 3",
     "zone": "CM",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5204448,
     "longitude": 6.5671195
@@ -2010,7 +2010,7 @@
   {
     "name": "CM 1 4",
     "zone": "CM",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5204241,
     "longitude": 6.5665361
@@ -2018,7 +2018,7 @@
   {
     "name": "CM 1 5",
     "zone": "CM",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5204231,
     "longitude": 6.566396
@@ -2026,7 +2026,7 @@
   {
     "name": "Auditoire CO1",
     "zone": "CO",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 2,
     "latitude": 46.5199357,
     "longitude": 6.5653102
@@ -2034,7 +2034,7 @@
   {
     "name": "Auditoire CO2",
     "zone": "CO",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5199159,
     "longitude": 6.5644469
@@ -2042,7 +2042,7 @@
   {
     "name": "Auditoire CO3",
     "zone": "CO",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 3,
     "latitude": 46.5199155,
     "longitude": 6.5644465
@@ -2050,7 +2050,7 @@
   {
     "name": "CO 010",
     "zone": "CO",
-    "type": "TUTORAT",
+    "type": "TUTORING_ROOM",
     "floor": 0,
     "latitude": 46.5199142,
     "longitude": 6.5653733
@@ -2058,7 +2058,7 @@
   {
     "name": "CO 011",
     "zone": "CO",
-    "type": "TUTORAT",
+    "type": "TUTORING_ROOM",
     "floor": 0,
     "latitude": 46.5199134,
     "longitude": 6.5652732
@@ -2066,7 +2066,7 @@
   {
     "name": "CO 015",
     "zone": "CO",
-    "type": "TUTORAT",
+    "type": "TUTORING_ROOM",
     "floor": 0,
     "latitude": 46.5199373,
     "longitude": 6.5648829
@@ -2074,7 +2074,7 @@
   {
     "name": "CO 016",
     "zone": "CO",
-    "type": "TUTORAT",
+    "type": "TUTORING_ROOM",
     "floor": 0,
     "latitude": 46.5198719,
     "longitude": 6.5647902
@@ -2082,7 +2082,7 @@
   {
     "name": "CO 017",
     "zone": "CO",
-    "type": "TUTORAT",
+    "type": "TUTORING_ROOM",
     "floor": 0,
     "latitude": 46.519823,
     "longitude": 6.5647112
@@ -2090,7 +2090,7 @@
   {
     "name": "CO 020",
     "zone": "CO",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 0,
     "latitude": 46.5201567,
     "longitude": 6.5648421
@@ -2098,7 +2098,7 @@
   {
     "name": "CO 021",
     "zone": "CO",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 0,
     "latitude": 46.5201429,
     "longitude": 6.5646014
@@ -2106,7 +2106,7 @@
   {
     "name": "CO 023",
     "zone": "CO",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 0,
     "latitude": 46.5201505,
     "longitude": 6.564358
@@ -2114,7 +2114,7 @@
   {
     "name": "CO 1",
     "zone": "CO",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 2,
     "latitude": 46.5199481,
     "longitude": 6.5653425
@@ -2122,7 +2122,7 @@
   {
     "name": "CO 120",
     "zone": "CO",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5201533,
     "longitude": 6.5648584
@@ -2130,7 +2130,7 @@
   {
     "name": "CO 121",
     "zone": "CO",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5201557,
     "longitude": 6.5647328
@@ -2138,7 +2138,7 @@
   {
     "name": "CO 122",
     "zone": "CO",
-    "type": "TUTORAT",
+    "type": "TUTORING_ROOM",
     "floor": 1,
     "latitude": 46.5201548,
     "longitude": 6.5646233
@@ -2146,7 +2146,7 @@
   {
     "name": "CO 123",
     "zone": "CO",
-    "type": "TUTORAT",
+    "type": "TUTORING_ROOM",
     "floor": 1,
     "latitude": 46.5201538,
     "longitude": 6.5644826
@@ -2154,7 +2154,7 @@
   {
     "name": "CO 124",
     "zone": "CO",
-    "type": "TUTORAT",
+    "type": "TUTORING_ROOM",
     "floor": 1,
     "latitude": 46.5201527,
     "longitude": 6.564342
@@ -2162,7 +2162,7 @@
   {
     "name": "CO 2",
     "zone": "CO",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5199404,
     "longitude": 6.5644807
@@ -2170,7 +2170,7 @@
   {
     "name": "CO 260",
     "zone": "CO",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 2,
     "latitude": 46.520167,
     "longitude": 6.564498
@@ -2178,7 +2178,7 @@
   {
     "name": "CO 3",
     "zone": "CO",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 3,
     "latitude": 46.51994,
     "longitude": 6.5644692
@@ -2186,7 +2186,7 @@
   {
     "name": "CO 4",
     "zone": "CO",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 2,
     "latitude": 46.520165,
     "longitude": 6.5648422
@@ -2194,7 +2194,7 @@
   {
     "name": "CO 5",
     "zone": "CO",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 2,
     "latitude": 46.5201633,
     "longitude": 6.5646248
@@ -2202,7 +2202,7 @@
   {
     "name": "CO 6",
     "zone": "CO",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 2,
     "latitude": 46.5201614,
     "longitude": 6.5643747
@@ -2210,7 +2210,7 @@
   {
     "name": "DIA 003",
     "zone": "DIA",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5191752,
     "longitude": 6.563855
@@ -2218,7 +2218,7 @@
   {
     "name": "DIA 004",
     "zone": "DIA",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5191093,
     "longitude": 6.5637616
@@ -2226,7 +2226,7 @@
   {
     "name": "DIA 005",
     "zone": "DIA",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5190434,
     "longitude": 6.5636683
@@ -2234,7 +2234,7 @@
   {
     "name": "Auditoire ELA1",
     "zone": "ELA",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5194389,
     "longitude": 6.5645592
@@ -2242,7 +2242,7 @@
   {
     "name": "Auditoire ELA2",
     "zone": "ELA",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 0,
     "latitude": 46.5194235,
     "longitude": 6.5645122
@@ -2250,7 +2250,7 @@
   {
     "name": "ELA 005",
     "zone": "ELA",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5195534,
     "longitude": 6.5645381
@@ -2258,7 +2258,7 @@
   {
     "name": "ELA 006",
     "zone": "ELA",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196134,
     "longitude": 6.564536
@@ -2266,7 +2266,7 @@
   {
     "name": "ELA 007",
     "zone": "ELA",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5195518,
     "longitude": 6.5644658
@@ -2274,7 +2274,7 @@
   {
     "name": "ELA 1",
     "zone": "ELA",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5194588,
     "longitude": 6.5646022
@@ -2282,7 +2282,7 @@
   {
     "name": "ELA 2",
     "zone": "ELA",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 0,
     "latitude": 46.5193987,
     "longitude": 6.5645211
@@ -2290,7 +2290,7 @@
   {
     "name": "ELB 011",
     "zone": "ELB",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5195967,
     "longitude": 6.5648591
@@ -2298,7 +2298,7 @@
   {
     "name": "ELB 012",
     "zone": "ELB",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5195877,
     "longitude": 6.5649296
@@ -2306,7 +2306,7 @@
   {
     "name": "ELB 015",
     "zone": "ELB",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5195884,
     "longitude": 6.5650234
@@ -2314,7 +2314,7 @@
   {
     "name": "ELB 019",
     "zone": "ELB",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196089,
     "longitude": 6.5652108
@@ -2322,7 +2322,7 @@
   {
     "name": "ELB 020",
     "zone": "ELB",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196014,
     "longitude": 6.5653047
@@ -2330,7 +2330,7 @@
   {
     "name": "ELB 026",
     "zone": "ELB",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.519526,
     "longitude": 6.56513
@@ -2338,7 +2338,7 @@
   {
     "name": "ELB 027",
     "zone": "ELB",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.519553,
     "longitude": 6.5651296
@@ -2346,7 +2346,7 @@
   {
     "name": "ELB 028",
     "zone": "ELB",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5195471,
     "longitude": 6.5652821
@@ -2354,7 +2354,7 @@
   {
     "name": "ELB 035",
     "zone": "ELB",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.519469,
     "longitude": 6.5650488
@@ -2362,7 +2362,7 @@
   {
     "name": "ELD 016",
     "zone": "ELD",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5191955,
     "longitude": 6.5644668
@@ -2370,7 +2370,7 @@
   {
     "name": "ELD 020",
     "zone": "ELD",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5191919,
     "longitude": 6.5646291
@@ -2378,7 +2378,7 @@
   {
     "name": "ELD 032",
     "zone": "ELD",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5191007,
     "longitude": 6.5641986
@@ -2386,7 +2386,7 @@
   {
     "name": "ELD 034",
     "zone": "ELD",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5191016,
     "longitude": 6.5643158
@@ -2394,7 +2394,7 @@
   {
     "name": "ELD 040",
     "zone": "ELD",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 0,
     "latitude": 46.5189159,
     "longitude": 6.5646348
@@ -2402,7 +2402,7 @@
   {
     "name": "ELD 120",
     "zone": "ELD",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5191829,
     "longitude": 6.5646543
@@ -2410,7 +2410,7 @@
   {
     "name": "ELE 012",
     "zone": "ELE",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5191994,
     "longitude": 6.5649672
@@ -2418,7 +2418,7 @@
   {
     "name": "ELE 032",
     "zone": "ELE",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5190795,
     "longitude": 6.5649378
@@ -2426,7 +2426,7 @@
   {
     "name": "ELE 046",
     "zone": "ELE",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5191377,
     "longitude": 6.5651363
@@ -2434,7 +2434,7 @@
   {
     "name": "ELE 111",
     "zone": "ELE",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5192053,
     "longitude": 6.5648383
@@ -2442,7 +2442,7 @@
   {
     "name": "ELG 019",
     "zone": "ELG",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.518807,
     "longitude": 6.5644731
@@ -2450,7 +2450,7 @@
   {
     "name": "ELG 022",
     "zone": "ELG",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5187715,
     "longitude": 6.5641917
@@ -2458,7 +2458,7 @@
   {
     "name": "ELG 023",
     "zone": "ELG",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5187893,
     "longitude": 6.5642857
@@ -2466,7 +2466,7 @@
   {
     "name": "ELG 024",
     "zone": "ELG",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5187901,
     "longitude": 6.5643795
@@ -2474,7 +2474,7 @@
   {
     "name": "ELG 116",
     "zone": "ELG",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5188178,
     "longitude": 6.5644729
@@ -2482,7 +2482,7 @@
   {
     "name": "ELG 120",
     "zone": "ELG",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5188158,
     "longitude": 6.5646278
@@ -2490,7 +2490,7 @@
   {
     "name": "ELH 010",
     "zone": "ELH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5187421,
     "longitude": 6.5649033
@@ -2498,7 +2498,7 @@
   {
     "name": "ELH 014",
     "zone": "ELH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5187424,
     "longitude": 6.5651309
@@ -2506,7 +2506,7 @@
   {
     "name": "ELH 015",
     "zone": "ELH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5187066,
     "longitude": 6.5651547
@@ -2514,7 +2514,7 @@
   {
     "name": "ELH 015.1",
     "zone": "ELH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5186744,
     "longitude": 6.5651409
@@ -2522,7 +2522,7 @@
   {
     "name": "ELH 015.2",
     "zone": "ELH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5186748,
     "longitude": 6.5651638
@@ -2530,7 +2530,7 @@
   {
     "name": "ELH 016",
     "zone": "ELH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5186506,
     "longitude": 6.5651556
@@ -2538,7 +2538,7 @@
   {
     "name": "ELL 020",
     "zone": "ELL",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5184073,
     "longitude": 6.5652891
@@ -2546,7 +2546,7 @@
   {
     "name": "ELL 038",
     "zone": "ELL",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5183251,
     "longitude": 6.5652232
@@ -2554,7 +2554,7 @@
   {
     "name": "ELL 040",
     "zone": "ELL",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.518314,
     "longitude": 6.5653248
@@ -2562,7 +2562,7 @@
   {
     "name": "GA 0 10",
     "zone": "GA",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5195292,
     "longitude": 6.5715148
@@ -2570,7 +2570,7 @@
   {
     "name": "GC A0 001",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5207182,
     "longitude": 6.5667556
@@ -2578,7 +2578,7 @@
   {
     "name": "GC A0 002",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5207651,
     "longitude": 6.5666942
@@ -2586,7 +2586,7 @@
   {
     "name": "GC A0 003",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5207166,
     "longitude": 6.5666829
@@ -2594,7 +2594,7 @@
   {
     "name": "GC A0 374",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208067,
     "longitude": 6.5667008
@@ -2602,7 +2602,7 @@
   {
     "name": "GC B0 381",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208326,
     "longitude": 6.5665758
@@ -2610,7 +2610,7 @@
   {
     "name": "GC B0 384",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208302,
     "longitude": 6.5663731
@@ -2618,7 +2618,7 @@
   {
     "name": "GC C0 382",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208368,
     "longitude": 6.5661521
@@ -2626,7 +2626,7 @@
   {
     "name": "GC C0 384",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208248,
     "longitude": 6.5660622
@@ -2634,7 +2634,7 @@
   {
     "name": "GC C0 413",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209694,
     "longitude": 6.5661976
@@ -2642,7 +2642,7 @@
   {
     "name": "GC C0 414",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209375,
     "longitude": 6.5660173
@@ -2650,7 +2650,7 @@
   {
     "name": "GC C0 425",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209838,
     "longitude": 6.5659627
@@ -2658,7 +2658,7 @@
   {
     "name": "GC C0 426",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209537,
     "longitude": 6.5659163
@@ -2666,7 +2666,7 @@
   {
     "name": "GC C0 427",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209887,
     "longitude": 6.5659157
@@ -2674,7 +2674,7 @@
   {
     "name": "GC D0 383",
     "zone": "GC",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5208211,
     "longitude": 6.5656524
@@ -2682,7 +2682,7 @@
   {
     "name": "GC D0 392",
     "zone": "GC",
-    "type": "BIBLIOTHEQUE",
+    "type": "LIBRARY",
     "floor": null,
     "latitude": 46.5208317,
     "longitude": 6.5658248
@@ -2690,7 +2690,7 @@
   {
     "name": "GC F0 551",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5213665,
     "longitude": 6.5669693
@@ -2698,7 +2698,7 @@
   {
     "name": "GC F0 552",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5213829,
     "longitude": 6.5669947
@@ -2706,7 +2706,7 @@
   {
     "name": "GC G0 484",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.521152,
     "longitude": 6.5664292
@@ -2714,7 +2714,7 @@
   {
     "name": "GC G0 494",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5211843,
     "longitude": 6.5664172
@@ -2722,7 +2722,7 @@
   {
     "name": "GC G0 495",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5211887,
     "longitude": 6.566324
@@ -2730,7 +2730,7 @@
   {
     "name": "GC G0 505",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5212468,
     "longitude": 6.56641
@@ -2738,7 +2738,7 @@
   {
     "name": "GC G0 507",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.521231,
     "longitude": 6.5662168
@@ -2746,7 +2746,7 @@
   {
     "name": "GC G0 536",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5212953,
     "longitude": 6.5662823
@@ -2754,7 +2754,7 @@
   {
     "name": "GC G0 537",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5212957,
     "longitude": 6.5662157
@@ -2762,7 +2762,7 @@
   {
     "name": "GC G0 547",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5213617,
     "longitude": 6.5663067
@@ -2770,7 +2770,7 @@
   {
     "name": "GC G0 554",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5213786,
     "longitude": 6.5664217
@@ -2778,7 +2778,7 @@
   {
     "name": "GC G0 555",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5214215,
     "longitude": 6.5662763
@@ -2786,7 +2786,7 @@
   {
     "name": "GC G0 557",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5213609,
     "longitude": 6.5662031
@@ -2794,7 +2794,7 @@
   {
     "name": "GC H0 622",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5216194,
     "longitude": 6.5661119
@@ -2802,7 +2802,7 @@
   {
     "name": "GC H0 652",
     "zone": "GC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5216853,
     "longitude": 6.5661157
@@ -2810,7 +2810,7 @@
   {
     "name": "GC A1 416",
     "zone": "GCA",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5209731,
     "longitude": 6.5666903
@@ -2818,7 +2818,7 @@
   {
     "name": "GC A3 30",
     "zone": "GCA",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 3,
     "latitude": 46.5206285,
     "longitude": 6.5667641
@@ -2826,7 +2826,7 @@
   {
     "name": "GC A3 31",
     "zone": "GCA",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 3,
     "latitude": 46.5207215,
     "longitude": 6.5667791
@@ -2834,7 +2834,7 @@
   {
     "name": "GC B3 30",
     "zone": "GCB",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 3,
     "latitude": 46.5208909,
     "longitude": 6.5661639
@@ -2842,7 +2842,7 @@
   {
     "name": "GC B3 31",
     "zone": "GCB",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 3,
     "latitude": 46.5207966,
     "longitude": 6.5663646
@@ -2850,7 +2850,7 @@
   {
     "name": "GC C3 30",
     "zone": "GCC",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 3,
     "latitude": 46.5208719,
     "longitude": 6.5658009
@@ -2858,7 +2858,7 @@
   {
     "name": "GC D0 386",
     "zone": "GCD",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5208205,
     "longitude": 6.5655745
@@ -2866,7 +2866,7 @@
   {
     "name": "GR A0 373",
     "zone": "GR",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208346,
     "longitude": 6.5679064
@@ -2874,7 +2874,7 @@
   {
     "name": "GR A0 374",
     "zone": "GR",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208368,
     "longitude": 6.5678275
@@ -2882,7 +2882,7 @@
   {
     "name": "GR B0 390",
     "zone": "GR",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208462,
     "longitude": 6.5677244
@@ -2890,7 +2890,7 @@
   {
     "name": "GR B0 400",
     "zone": "GR",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209218,
     "longitude": 6.5677349
@@ -2898,7 +2898,7 @@
   {
     "name": "GR B0 411",
     "zone": "GR",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209345,
     "longitude": 6.5676291
@@ -2906,7 +2906,7 @@
   {
     "name": "GR C0 504",
     "zone": "GR",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5212196,
     "longitude": 6.5679177
@@ -2914,7 +2914,7 @@
   {
     "name": "GR C0 524",
     "zone": "GR",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5212844,
     "longitude": 6.5679167
@@ -2922,7 +2922,7 @@
   {
     "name": "GR C0 525.B",
     "zone": "GR",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5212601,
     "longitude": 6.5678076
@@ -2930,7 +2930,7 @@
   {
     "name": "GR C0 544",
     "zone": "GR",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5213494,
     "longitude": 6.5679157
@@ -2938,7 +2938,7 @@
   {
     "name": "GR A3 30",
     "zone": "GRA",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 3,
     "latitude": 46.520645,
     "longitude": 6.5678904
@@ -2946,7 +2946,7 @@
   {
     "name": "GR A3 31",
     "zone": "GRA",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 3,
     "latitude": 46.521019,
     "longitude": 6.5678623
@@ -2954,7 +2954,7 @@
   {
     "name": "GR A3 32",
     "zone": "GRA",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 3,
     "latitude": 46.5207422,
     "longitude": 6.5678889
@@ -2962,7 +2962,7 @@
   {
     "name": "GR B0 01",
     "zone": "GRB",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 0,
     "latitude": 46.5209513,
     "longitude": 6.5674881
@@ -2970,7 +2970,7 @@
   {
     "name": "GR B3 30",
     "zone": "GRB",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 3,
     "latitude": 46.5209138,
     "longitude": 6.5676995
@@ -2978,7 +2978,7 @@
   {
     "name": "GR C0 01",
     "zone": "GRC",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5213419,
     "longitude": 6.5679978
@@ -2986,7 +2986,7 @@
   {
     "name": "GR C0 02",
     "zone": "GRC",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 0,
     "latitude": 46.5212128,
     "longitude": 6.5679999
@@ -2994,7 +2994,7 @@
   {
     "name": "GR C0 528",
     "zone": "GRC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": 0,
     "latitude": 46.5213399,
     "longitude": 6.5677165
@@ -3002,7 +3002,7 @@
   {
     "name": "INF 017",
     "zone": "INF",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.518761,
     "longitude": 6.5638639
@@ -3010,7 +3010,7 @@
   {
     "name": "INF 018",
     "zone": "INF",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5188173,
     "longitude": 6.563863
@@ -3018,7 +3018,7 @@
   {
     "name": "INF 019",
     "zone": "INF",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5187849,
     "longitude": 6.5639808
@@ -3026,7 +3026,7 @@
   {
     "name": "INF 027",
     "zone": "INF",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5187432,
     "longitude": 6.5637938
@@ -3034,7 +3034,7 @@
   {
     "name": "INF 1",
     "zone": "INF",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 0,
     "latitude": 46.5185382,
     "longitude": 6.5635825
@@ -3042,7 +3042,7 @@
   {
     "name": "INF 119",
     "zone": "INF",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5187849,
     "longitude": 6.5639808
@@ -3050,7 +3050,7 @@
   {
     "name": "INF 2",
     "zone": "INF",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 0,
     "latitude": 46.5185397,
     "longitude": 6.5637737
@@ -3058,7 +3058,7 @@
   {
     "name": "INF 213",
     "zone": "INF",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 2,
     "latitude": 46.518799,
     "longitude": 6.5636991
@@ -3066,7 +3066,7 @@
   {
     "name": "INF 3",
     "zone": "INF",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 0,
     "latitude": 46.5185412,
     "longitude": 6.5639611
@@ -3074,7 +3074,7 @@
   {
     "name": "INJ 032",
     "zone": "INJ",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5182917,
     "longitude": 6.5636056
@@ -3082,7 +3082,7 @@
   {
     "name": "INJ 218",
     "zone": "INJ",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 2,
     "latitude": 46.5183962,
     "longitude": 6.5639636
@@ -3090,7 +3090,7 @@
   {
     "name": "INM 011",
     "zone": "INM",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5188611,
     "longitude": 6.5630109
@@ -3098,7 +3098,7 @@
   {
     "name": "INM 012",
     "zone": "INM",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5189249,
     "longitude": 6.5629181
@@ -3106,7 +3106,7 @@
   {
     "name": "INM 015",
     "zone": "INM",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5188984,
     "longitude": 6.5629748
@@ -3114,7 +3114,7 @@
   {
     "name": "INM 022",
     "zone": "INM",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5188009,
     "longitude": 6.5632347
@@ -3122,7 +3122,7 @@
   {
     "name": "INM 065",
     "zone": "INM",
-    "type": "BIBLIOTHEQUE",
+    "type": "LIBRARY",
     "floor": null,
     "latitude": 46.5185739,
     "longitude": 6.563175
@@ -3130,7 +3130,7 @@
   {
     "name": "INM 10",
     "zone": "INM",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5184585,
     "longitude": 6.5631651
@@ -3138,7 +3138,7 @@
   {
     "name": "INM 11",
     "zone": "INM",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5185506,
     "longitude": 6.5629555
@@ -3146,7 +3146,7 @@
   {
     "name": "INM 200",
     "zone": "INM",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 2,
     "latitude": 46.5186831,
     "longitude": 6.5631614
@@ -3154,7 +3154,7 @@
   {
     "name": "INM 201",
     "zone": "INM",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 2,
     "latitude": 46.5185538,
     "longitude": 6.5633705
@@ -3162,7 +3162,7 @@
   {
     "name": "INM 202",
     "zone": "INM",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 2,
     "latitude": 46.5184213,
     "longitude": 6.5631657
@@ -3170,7 +3170,7 @@
   {
     "name": "INM 203",
     "zone": "INM",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 2,
     "latitude": 46.5185507,
     "longitude": 6.5629672
@@ -3178,7 +3178,7 @@
   {
     "name": "INN 011",
     "zone": "INN",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.518823,
     "longitude": 6.5627915
@@ -3186,7 +3186,7 @@
   {
     "name": "INN 033",
     "zone": "INN",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5186625,
     "longitude": 6.5626691
@@ -3194,7 +3194,7 @@
   {
     "name": "INN 041",
     "zone": "INN",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5186589,
     "longitude": 6.5622893
@@ -3202,7 +3202,7 @@
   {
     "name": "INR 019",
     "zone": "INR",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.518387,
     "longitude": 6.5623467
@@ -3210,7 +3210,7 @@
   {
     "name": "INR 021",
     "zone": "INR",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5183599,
     "longitude": 6.5623123
@@ -3218,7 +3218,7 @@
   {
     "name": "INR 219",
     "zone": "INR",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 2,
     "latitude": 46.5183836,
     "longitude": 6.5623453
@@ -3226,7 +3226,7 @@
   {
     "name": "LE 0 11",
     "zone": "LE",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.521702,
     "longitude": 6.5673221
@@ -3234,7 +3234,7 @@
   {
     "name": "LE 0 12",
     "zone": "LE",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5217439,
     "longitude": 6.5672369
@@ -3242,7 +3242,7 @@
   {
     "name": "LE 0 17",
     "zone": "LE",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5216916,
     "longitude": 6.5672418
@@ -3250,7 +3250,7 @@
   {
     "name": "Auditoire MA11",
     "zone": "MA",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5199885,
     "longitude": 6.5678794
@@ -3258,7 +3258,7 @@
   {
     "name": "MA A0 364",
     "zone": "MA",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5202412,
     "longitude": 6.5679299
@@ -3266,7 +3266,7 @@
   {
     "name": "MA A0 365",
     "zone": "MA",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5202409,
     "longitude": 6.5678195
@@ -3274,7 +3274,7 @@
   {
     "name": "MA B0 424",
     "zone": "MA",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": null,
     "latitude": 46.5200207,
     "longitude": 6.5679116
@@ -3282,7 +3282,7 @@
   {
     "name": "MA B0 426",
     "zone": "MA",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": null,
     "latitude": 46.5200132,
     "longitude": 6.5678316
@@ -3290,7 +3290,7 @@
   {
     "name": "MA B0 437",
     "zone": "MA",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5200012,
     "longitude": 6.5677379
@@ -3298,7 +3298,7 @@
   {
     "name": "MA B0 447",
     "zone": "MA",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5199587,
     "longitude": 6.5677386
@@ -3306,7 +3306,7 @@
   {
     "name": "MA B0 462",
     "zone": "MA",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5199028,
     "longitude": 6.5680466
@@ -3314,7 +3314,7 @@
   {
     "name": "MA B0 467",
     "zone": "MA",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5198831,
     "longitude": 6.5677756
@@ -3322,7 +3322,7 @@
   {
     "name": "MA C0 584",
     "zone": "MA",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5195114,
     "longitude": 6.5679416
@@ -3330,7 +3330,7 @@
   {
     "name": "MA C0 594",
     "zone": "MA",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5194791,
     "longitude": 6.5679421
@@ -3338,7 +3338,7 @@
   {
     "name": "MA C0 615",
     "zone": "MA",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5194055,
     "longitude": 6.5678142
@@ -3346,7 +3346,7 @@
   {
     "name": "MA A1 10",
     "zone": "MAA",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5201278,
     "longitude": 6.5680212
@@ -3354,7 +3354,7 @@
   {
     "name": "MA A1 12",
     "zone": "MAA",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5201255,
     "longitude": 6.5677322
@@ -3362,7 +3362,7 @@
   {
     "name": "MA A3 30",
     "zone": "MAA",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 3,
     "latitude": 46.5203617,
     "longitude": 6.5678964
@@ -3370,7 +3370,7 @@
   {
     "name": "MA A3 31",
     "zone": "MAA",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 3,
     "latitude": 46.5202564,
     "longitude": 6.567898
@@ -3378,7 +3378,7 @@
   {
     "name": "MA B1 11",
     "zone": "MAB",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.519989,
     "longitude": 6.5678789
@@ -3386,7 +3386,7 @@
   {
     "name": "MA B1 486",
     "zone": "MAB",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 1,
     "latitude": 46.5198513,
     "longitude": 6.5678576
@@ -3394,7 +3394,7 @@
   {
     "name": "Auditoire ME31",
     "zone": "ME",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 3,
     "latitude": 46.5202389,
     "longitude": 6.5667253
@@ -3402,7 +3402,7 @@
   {
     "name": "ME A0 392",
     "zone": "ME",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5201065,
     "longitude": 6.5673141
@@ -3410,7 +3410,7 @@
   {
     "name": "ME A0 396",
     "zone": "ME",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5201444,
     "longitude": 6.5670084
@@ -3418,7 +3418,7 @@
   {
     "name": "ME A0 402",
     "zone": "ME",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5200735,
     "longitude": 6.5672681
@@ -3426,7 +3426,7 @@
   {
     "name": "ME A0 407",
     "zone": "ME",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.520068,
     "longitude": 6.5669864
@@ -3434,7 +3434,7 @@
   {
     "name": "ME B0 344",
     "zone": "ME",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": null,
     "latitude": 46.5202966,
     "longitude": 6.5667949
@@ -3442,7 +3442,7 @@
   {
     "name": "ME B0 374",
     "zone": "ME",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5201995,
     "longitude": 6.5668039
@@ -3450,7 +3450,7 @@
   {
     "name": "ME C0 324",
     "zone": "ME",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5202766,
     "longitude": 6.5663588
@@ -3458,7 +3458,7 @@
   {
     "name": "ME C0 325",
     "zone": "ME",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5203415,
     "longitude": 6.5663249
@@ -3466,7 +3466,7 @@
   {
     "name": "ME C0 335",
     "zone": "ME",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5203092,
     "longitude": 6.5663255
@@ -3474,7 +3474,7 @@
   {
     "name": "ME C0 345",
     "zone": "ME",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5202226,
     "longitude": 6.5663189
@@ -3482,7 +3482,7 @@
   {
     "name": "ME C0 403",
     "zone": "ME",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5202108,
     "longitude": 6.5665194
@@ -3490,7 +3490,7 @@
   {
     "name": "ME C0 404.1",
     "zone": "ME",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200578,
     "longitude": 6.5663375
@@ -3498,7 +3498,7 @@
   {
     "name": "ME C0 404.2",
     "zone": "ME",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.519996,
     "longitude": 6.5663294
@@ -3506,7 +3506,7 @@
   {
     "name": "ME B3 31",
     "zone": "MEB",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 3,
     "latitude": 46.5202382,
     "longitude": 6.5667248
@@ -3514,7 +3514,7 @@
   {
     "name": "Auditoire MED",
     "zone": "MED",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 0,
     "latitude": 46.5195966,
     "longitude": 6.566673
@@ -3522,7 +3522,7 @@
   {
     "name": "MED 0 1118",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196009,
     "longitude": 6.5665765
@@ -3530,7 +3530,7 @@
   {
     "name": "MED 0 1217",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196659,
     "longitude": 6.5665937
@@ -3538,7 +3538,7 @@
   {
     "name": "MED 0 1418",
     "zone": "MED",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 0,
     "latitude": 46.5195902,
     "longitude": 6.5666917
@@ -3546,7 +3546,7 @@
   {
     "name": "MED 0 1510",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5198979,
     "longitude": 6.5667084
@@ -3554,7 +3554,7 @@
   {
     "name": "MED 0 1511",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5198425,
     "longitude": 6.5667065
@@ -3562,7 +3562,7 @@
   {
     "name": "MED 0 1612",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5198599,
     "longitude": 6.5668339
@@ -3570,7 +3570,7 @@
   {
     "name": "MED 0 1614",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5197731,
     "longitude": 6.5668327
@@ -3578,7 +3578,7 @@
   {
     "name": "MED 0 1618",
     "zone": "MED",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": null,
     "latitude": 46.5196312,
     "longitude": 6.5668302
@@ -3586,7 +3586,7 @@
   {
     "name": "MED 0 1620",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5195095,
     "longitude": 6.5668322
@@ -3594,7 +3594,7 @@
   {
     "name": "MED 0 2312",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5198341,
     "longitude": 6.5670607
@@ -3602,7 +3602,7 @@
   {
     "name": "MED 0 2313",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5197914,
     "longitude": 6.5670692
@@ -3610,7 +3610,7 @@
   {
     "name": "MED 0 2317",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196662,
     "longitude": 6.567126
@@ -3618,7 +3618,7 @@
   {
     "name": "MED 0 2318",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196341,
     "longitude": 6.5670686
@@ -3626,7 +3626,7 @@
   {
     "name": "MED 0 2322",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5194747,
     "longitude": 6.5670649
@@ -3634,7 +3634,7 @@
   {
     "name": "MED 0 2511",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5198988,
     "longitude": 6.5671454
@@ -3642,7 +3642,7 @@
   {
     "name": "MED 0 2512",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5198993,
     "longitude": 6.5672064
@@ -3650,7 +3650,7 @@
   {
     "name": "MED 0 2513",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5198316,
     "longitude": 6.5671771
@@ -3658,7 +3658,7 @@
   {
     "name": "MED 0 2518",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196492,
     "longitude": 6.5672247
@@ -3666,7 +3666,7 @@
   {
     "name": "MED 0 2714",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5197696,
     "longitude": 6.5673344
@@ -3674,7 +3674,7 @@
   {
     "name": "MED 0 2716",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196795,
     "longitude": 6.5672849
@@ -3682,7 +3682,7 @@
   {
     "name": "MED 0 2717",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196443,
     "longitude": 6.5672803
@@ -3690,7 +3690,7 @@
   {
     "name": "MED 0 2718",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196069,
     "longitude": 6.5673184
@@ -3698,7 +3698,7 @@
   {
     "name": "MED 0 2719",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196042,
     "longitude": 6.5672696
@@ -3706,7 +3706,7 @@
   {
     "name": "MED 0 2720",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5195561,
     "longitude": 6.5672551
@@ -3714,7 +3714,7 @@
   {
     "name": "MED 0 2723",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5194905,
     "longitude": 6.5672627
@@ -3722,7 +3722,7 @@
   {
     "name": "MED 0 2724",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5194442,
     "longitude": 6.567237
@@ -3730,7 +3730,7 @@
   {
     "name": "MED 0 94.26",
     "zone": "MED",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196546,
     "longitude": 6.5673246
@@ -3738,7 +3738,7 @@
   {
     "name": "MED 2 1117",
     "zone": "MED",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 2,
     "latitude": 46.5196483,
     "longitude": 6.5666478
@@ -3746,7 +3746,7 @@
   {
     "name": "MED 2 1120",
     "zone": "MED",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 2,
     "latitude": 46.5195505,
     "longitude": 6.5666339
@@ -3754,7 +3754,7 @@
   {
     "name": "MED 2 1124",
     "zone": "MED",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 2,
     "latitude": 46.5194507,
     "longitude": 6.5666671
@@ -3762,7 +3762,7 @@
   {
     "name": "MED 2 1517",
     "zone": "MED",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 2,
     "latitude": 46.5196492,
     "longitude": 6.566825
@@ -3770,7 +3770,7 @@
   {
     "name": "MED 2 1519",
     "zone": "MED",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 2,
     "latitude": 46.5195843,
     "longitude": 6.566826
@@ -3778,7 +3778,7 @@
   {
     "name": "MED 2 1522",
     "zone": "MED",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 2,
     "latitude": 46.5195168,
     "longitude": 6.5668225
@@ -3786,7 +3786,7 @@
   {
     "name": "MED 2 2419",
     "zone": "MED",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 2,
     "latitude": 46.5196199,
     "longitude": 6.5670585
@@ -3794,7 +3794,7 @@
   {
     "name": "MED 2 2519",
     "zone": "MED",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 2,
     "latitude": 46.5196167,
     "longitude": 6.5672517
@@ -3802,7 +3802,7 @@
   {
     "name": "MED 2 2524",
     "zone": "MED",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 2,
     "latitude": 46.5194935,
     "longitude": 6.5672537
@@ -3810,7 +3810,7 @@
   {
     "name": "MED 3 1119",
     "zone": "MED",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 3,
     "latitude": 46.5196183,
     "longitude": 6.5665885
@@ -3818,7 +3818,7 @@
   {
     "name": "MED 3 1420",
     "zone": "MED",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 3,
     "latitude": 46.5195506,
     "longitude": 6.5666588
@@ -3826,7 +3826,7 @@
   {
     "name": "MED 3 1424",
     "zone": "MED",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 3,
     "latitude": 46.5194403,
     "longitude": 6.5666605
@@ -3834,7 +3834,7 @@
   {
     "name": "MED 3 1519",
     "zone": "MED",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 3,
     "latitude": 46.5195665,
     "longitude": 6.5668313
@@ -3842,7 +3842,7 @@
   {
     "name": "MED 3 1523",
     "zone": "MED",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 3,
     "latitude": 46.519452,
     "longitude": 6.566828
@@ -3850,7 +3850,7 @@
   {
     "name": "MXC 010",
     "zone": "MXC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5197231,
     "longitude": 6.5640831
@@ -3858,7 +3858,7 @@
   {
     "name": "MXC 012",
     "zone": "MXC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5197187,
     "longitude": 6.5640205
@@ -3866,7 +3866,7 @@
   {
     "name": "MXC 013",
     "zone": "MXC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5197184,
     "longitude": 6.5639843
@@ -3874,7 +3874,7 @@
   {
     "name": "MXC 014",
     "zone": "MXC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5197197,
     "longitude": 6.5639189
@@ -3882,7 +3882,7 @@
   {
     "name": "MXC 015",
     "zone": "MXC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5197194,
     "longitude": 6.5638719
@@ -3890,7 +3890,7 @@
   {
     "name": "MXC 016",
     "zone": "MXC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.519719,
     "longitude": 6.563825
@@ -3898,7 +3898,7 @@
   {
     "name": "MXC 017",
     "zone": "MXC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5197187,
     "longitude": 6.5637781
@@ -3906,7 +3906,7 @@
   {
     "name": "MXC 018",
     "zone": "MXC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5197181,
     "longitude": 6.5637077
@@ -3914,7 +3914,7 @@
   {
     "name": "MXC 030",
     "zone": "MXC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196265,
     "longitude": 6.5640845
@@ -3922,7 +3922,7 @@
   {
     "name": "MXC 032",
     "zone": "MXC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.519626,
     "longitude": 6.5640141
@@ -3930,7 +3930,7 @@
   {
     "name": "MXC 033",
     "zone": "MXC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196256,
     "longitude": 6.5639672
@@ -3938,7 +3938,7 @@
   {
     "name": "MXC 034",
     "zone": "MXC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196253,
     "longitude": 6.5639203
@@ -3946,7 +3946,7 @@
   {
     "name": "MXC 035",
     "zone": "MXC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196249,
     "longitude": 6.5638734
@@ -3954,7 +3954,7 @@
   {
     "name": "MXC 036",
     "zone": "MXC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196246,
     "longitude": 6.5638265
@@ -3962,7 +3962,7 @@
   {
     "name": "MXC 037",
     "zone": "MXC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196242,
     "longitude": 6.5637796
@@ -3970,7 +3970,7 @@
   {
     "name": "MXC 038",
     "zone": "MXC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196238,
     "longitude": 6.5637327
@@ -3978,7 +3978,7 @@
   {
     "name": "MXC 039",
     "zone": "MXC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196235,
     "longitude": 6.5636858
@@ -3986,7 +3986,7 @@
   {
     "name": "MXC 040",
     "zone": "MXC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196231,
     "longitude": 6.5636389
@@ -3994,7 +3994,7 @@
   {
     "name": "MXC 041",
     "zone": "MXC",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196228,
     "longitude": 6.563592
@@ -4002,7 +4002,7 @@
   {
     "name": "MXD 014",
     "zone": "MXD",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5197141,
     "longitude": 6.5631917
@@ -4010,7 +4010,7 @@
   {
     "name": "MXD 018",
     "zone": "MXD",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5197129,
     "longitude": 6.5630275
@@ -4018,7 +4018,7 @@
   {
     "name": "MXD 030",
     "zone": "MXD",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.519621,
     "longitude": 6.5633574
@@ -4026,7 +4026,7 @@
   {
     "name": "MXD 033",
     "zone": "MXD",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.51962,
     "longitude": 6.5632401
@@ -4034,7 +4034,7 @@
   {
     "name": "MXE 010",
     "zone": "MXE",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5197381,
     "longitude": 6.5626751
@@ -4042,7 +4042,7 @@
   {
     "name": "MXE 030",
     "zone": "MXE",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5195925,
     "longitude": 6.5625903
@@ -4050,7 +4050,7 @@
   {
     "name": "MXE 038",
     "zone": "MXE",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5195915,
     "longitude": 6.5623148
@@ -4058,7 +4058,7 @@
   {
     "name": "MXE 039",
     "zone": "MXE",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5195914,
     "longitude": 6.5622967
@@ -4066,7 +4066,7 @@
   {
     "name": "MXE 041",
     "zone": "MXE",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5195979,
     "longitude": 6.5622001
@@ -4074,7 +4074,7 @@
   {
     "name": "MXE 041.2",
     "zone": "MXE",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5195806,
     "longitude": 6.5621499
@@ -4082,7 +4082,7 @@
   {
     "name": "MXE 041.3",
     "zone": "MXE",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5196126,
     "longitude": 6.5621599
@@ -4090,7 +4090,7 @@
   {
     "name": "Auditoire MXF1",
     "zone": "MXF",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 2,
     "latitude": 46.519213,
     "longitude": 6.5636079
@@ -4098,7 +4098,7 @@
   {
     "name": "MXF 014",
     "zone": "MXF",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 0,
     "latitude": 46.519212,
     "longitude": 6.563611
@@ -4106,7 +4106,7 @@
   {
     "name": "MXF 1",
     "zone": "MXF",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 2,
     "latitude": 46.5192173,
     "longitude": 6.5636002
@@ -4114,7 +4114,7 @@
   {
     "name": "MXG 012",
     "zone": "MXG",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5193265,
     "longitude": 6.5633153
@@ -4122,7 +4122,7 @@
   {
     "name": "MXG 013",
     "zone": "MXG",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5193261,
     "longitude": 6.5632683
@@ -4130,7 +4130,7 @@
   {
     "name": "MXG 014",
     "zone": "MXG",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5193256,
     "longitude": 6.563198
@@ -4138,7 +4138,7 @@
   {
     "name": "MXG 016",
     "zone": "MXG",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.519325,
     "longitude": 6.5631276
@@ -4146,7 +4146,7 @@
   {
     "name": "MXG 017",
     "zone": "MXG",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5193246,
     "longitude": 6.5630807
@@ -4154,7 +4154,7 @@
   {
     "name": "MXG 018",
     "zone": "MXG",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5193241,
     "longitude": 6.5630103
@@ -4162,7 +4162,7 @@
   {
     "name": "MXG 020",
     "zone": "MXG",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5193234,
     "longitude": 6.5629165
@@ -4170,7 +4170,7 @@
   {
     "name": "MXG 041",
     "zone": "MXG",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5192288,
     "longitude": 6.5628946
@@ -4178,7 +4178,7 @@
   {
     "name": "MXG 110",
     "zone": "MXG",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 1,
     "latitude": 46.5193272,
     "longitude": 6.5633621
@@ -4186,7 +4186,7 @@
   {
     "name": "MXG 237",
     "zone": "MXG",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": 2,
     "latitude": 46.5192278,
     "longitude": 6.5630588
@@ -4194,7 +4194,7 @@
   {
     "name": "MXH 012",
     "zone": "MXH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5193442,
     "longitude": 6.5626238
@@ -4202,7 +4202,7 @@
   {
     "name": "MXH 012.1",
     "zone": "MXH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5193403,
     "longitude": 6.5626952
@@ -4210,7 +4210,7 @@
   {
     "name": "MXH 013",
     "zone": "MXH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5194683,
     "longitude": 6.5625574
@@ -4218,7 +4218,7 @@
   {
     "name": "MXH 016",
     "zone": "MXH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5193357,
     "longitude": 6.5624002
@@ -4226,7 +4226,7 @@
   {
     "name": "MXH 030",
     "zone": "MXH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5191773,
     "longitude": 6.5627077
@@ -4234,7 +4234,7 @@
   {
     "name": "MXH 031.1",
     "zone": "MXH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5192245,
     "longitude": 6.5626551
@@ -4242,7 +4242,7 @@
   {
     "name": "MXH 035",
     "zone": "MXH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5192217,
     "longitude": 6.5624905
@@ -4250,7 +4250,7 @@
   {
     "name": "MXH 038",
     "zone": "MXH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5192205,
     "longitude": 6.5623371
@@ -4258,7 +4258,7 @@
   {
     "name": "MXH 039",
     "zone": "MXH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5192201,
     "longitude": 6.5622848
@@ -4266,7 +4266,7 @@
   {
     "name": "MXH 041",
     "zone": "MXH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5191706,
     "longitude": 6.562169
@@ -4274,7 +4274,7 @@
   {
     "name": "ODY -1 0020",
     "zone": "ODY",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": -1,
     "latitude": 46.5180756,
     "longitude": 6.5712346
@@ -4282,7 +4282,7 @@
   {
     "name": "ODY -1 0021",
     "zone": "ODY",
-    "type": "TUTORAT",
+    "type": "TUTORING_ROOM",
     "floor": -1,
     "latitude": 46.51802,
     "longitude": 6.5710564
@@ -4290,7 +4290,7 @@
   {
     "name": "ODY 0 03",
     "zone": "ODY",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5182984,
     "longitude": 6.5717569
@@ -4298,7 +4298,7 @@
   {
     "name": "ODY 0 04",
     "zone": "ODY",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5182162,
     "longitude": 6.5717392
@@ -4306,7 +4306,7 @@
   {
     "name": "ODY 0 16",
     "zone": "ODY",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5182908,
     "longitude": 6.571549
@@ -4314,7 +4314,7 @@
   {
     "name": "PH A0 392",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208549,
     "longitude": 6.5688493
@@ -4322,7 +4322,7 @@
   {
     "name": "PH A0 402",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209064,
     "longitude": 6.5688322
@@ -4330,7 +4330,7 @@
   {
     "name": "PH A0 412",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209487,
     "longitude": 6.5688315
@@ -4338,7 +4338,7 @@
   {
     "name": "PH C0 381",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208065,
     "longitude": 6.5697996
@@ -4346,7 +4346,7 @@
   {
     "name": "PH C0 383",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208602,
     "longitude": 6.5697457
@@ -4354,7 +4354,7 @@
   {
     "name": "PH C0 425",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209989,
     "longitude": 6.5697145
@@ -4362,7 +4362,7 @@
   {
     "name": "PH D0 385",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208093,
     "longitude": 6.5700714
@@ -4370,7 +4370,7 @@
   {
     "name": "PH D0 389",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208549,
     "longitude": 6.5698517
@@ -4378,7 +4378,7 @@
   {
     "name": "PH D0 393",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208603,
     "longitude": 6.5701488
@@ -4386,7 +4386,7 @@
   {
     "name": "PH D0 395.1",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208242,
     "longitude": 6.5701348
@@ -4394,7 +4394,7 @@
   {
     "name": "PH D0 395.2",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208247,
     "longitude": 6.5701952
@@ -4402,7 +4402,7 @@
   {
     "name": "PH D0 397",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5208578,
     "longitude": 6.5702425
@@ -4410,7 +4410,7 @@
   {
     "name": "PH D0 408",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209254,
     "longitude": 6.5702597
@@ -4418,7 +4418,7 @@
   {
     "name": "PH H0 423",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209747,
     "longitude": 6.5689576
@@ -4426,7 +4426,7 @@
   {
     "name": "PH H0 433",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.521007,
     "longitude": 6.5689571
@@ -4434,7 +4434,7 @@
   {
     "name": "PH H0 436",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5209937,
     "longitude": 6.5690263
@@ -4442,7 +4442,7 @@
   {
     "name": "PH H0 443",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5210418,
     "longitude": 6.5689499
@@ -4450,7 +4450,7 @@
   {
     "name": "PH H0 446",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5210585,
     "longitude": 6.569019
@@ -4458,7 +4458,7 @@
   {
     "name": "PH H0 453",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5210741,
     "longitude": 6.5689493
@@ -4466,7 +4466,7 @@
   {
     "name": "PH H0 457",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5210596,
     "longitude": 6.5691525
@@ -4474,7 +4474,7 @@
   {
     "name": "PH H0 462",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5211048,
     "longitude": 6.5688279
@@ -4482,7 +4482,7 @@
   {
     "name": "PH H0 467",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5211243,
     "longitude": 6.5691515
@@ -4490,7 +4490,7 @@
   {
     "name": "PH H0 472",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5211353,
     "longitude": 6.5688274
@@ -4498,7 +4498,7 @@
   {
     "name": "PH H0 473",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5211551,
     "longitude": 6.5689475
@@ -4506,7 +4506,7 @@
   {
     "name": "PH H0 482",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5211947,
     "longitude": 6.5688439
@@ -4514,7 +4514,7 @@
   {
     "name": "PH H0 487",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5211968,
     "longitude": 6.5691271
@@ -4522,7 +4522,7 @@
   {
     "name": "PH H0 504",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5212308,
     "longitude": 6.5689204
@@ -4530,7 +4530,7 @@
   {
     "name": "PH J0 490",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5211837,
     "longitude": 6.5695022
@@ -4538,7 +4538,7 @@
   {
     "name": "PH J0 500",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5212564,
     "longitude": 6.5694968
@@ -4546,7 +4546,7 @@
   {
     "name": "PH J0 511",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5212511,
     "longitude": 6.5696062
@@ -4554,7 +4554,7 @@
   {
     "name": "PH J0 520",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5213051,
     "longitude": 6.569496
@@ -4562,7 +4562,7 @@
   {
     "name": "PH J0 530",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5213373,
     "longitude": 6.5694955
@@ -4570,7 +4570,7 @@
   {
     "name": "PH J0 540",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5213859,
     "longitude": 6.5694947
@@ -4578,7 +4578,7 @@
   {
     "name": "PH J0 551",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5213868,
     "longitude": 6.569604
@@ -4586,7 +4586,7 @@
   {
     "name": "PH K0 490",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5211866,
     "longitude": 6.5698769
@@ -4594,7 +4594,7 @@
   {
     "name": "PH K0 491",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5211873,
     "longitude": 6.5699711
@@ -4602,7 +4602,7 @@
   {
     "name": "PH K0 501",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.52126,
     "longitude": 6.5699735
@@ -4610,7 +4610,7 @@
   {
     "name": "PH K0 510",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5212592,
     "longitude": 6.5698643
@@ -4618,7 +4618,7 @@
   {
     "name": "PH K0 521",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5213249,
     "longitude": 6.5699725
@@ -4626,7 +4626,7 @@
   {
     "name": "PH K0 530",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.521324,
     "longitude": 6.5698632
@@ -4634,7 +4634,7 @@
   {
     "name": "PH K0 541",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5213896,
     "longitude": 6.5699715
@@ -4642,7 +4642,7 @@
   {
     "name": "PH K0 550",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5213887,
     "longitude": 6.5698622
@@ -4650,7 +4650,7 @@
   {
     "name": "PH L0 493",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5211909,
     "longitude": 6.57044
@@ -4658,7 +4658,7 @@
   {
     "name": "PH L0 495",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5211916,
     "longitude": 6.5705338
@@ -4666,7 +4666,7 @@
   {
     "name": "PH L0 497",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5211922,
     "longitude": 6.5706042
@@ -4674,7 +4674,7 @@
   {
     "name": "PH L0 499",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5211929,
     "longitude": 6.5707212
@@ -4682,7 +4682,7 @@
   {
     "name": "PH L0 501",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5213488,
     "longitude": 6.5703002
@@ -4690,7 +4690,7 @@
   {
     "name": "PH L0 502",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5212845,
     "longitude": 6.5703192
@@ -4698,7 +4698,7 @@
   {
     "name": "PH L0 503",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5212478,
     "longitude": 6.5704271
@@ -4706,7 +4706,7 @@
   {
     "name": "PH L0 506",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5212646,
     "longitude": 6.5705444
@@ -4714,7 +4714,7 @@
   {
     "name": "PH L0 507",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5212651,
     "longitude": 6.5706148
@@ -4722,7 +4722,7 @@
   {
     "name": "PH L0 525",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5213547,
     "longitude": 6.5705156
@@ -4730,7 +4730,7 @@
   {
     "name": "PH L0 528",
     "zone": "PH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5213666,
     "longitude": 6.5706744
@@ -4738,7 +4738,7 @@
   {
     "name": "PH H3 31",
     "zone": "PHH",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 3,
     "latitude": 46.5210082,
     "longitude": 6.5689416
@@ -4746,7 +4746,7 @@
   {
     "name": "PH H3 33",
     "zone": "PHH",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 3,
     "latitude": 46.5212047,
     "longitude": 6.5689385
@@ -4754,7 +4754,7 @@
   {
     "name": "PO 01",
     "zone": "PO",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5214874,
     "longitude": 6.5689667
@@ -4762,7 +4762,7 @@
   {
     "name": "PPB 019",
     "zone": "PPB",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5170941,
     "longitude": 6.5647092
@@ -4770,7 +4770,7 @@
   {
     "name": "PPH 022",
     "zone": "PPH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5178345,
     "longitude": 6.5644692
@@ -4778,7 +4778,7 @@
   {
     "name": "PPH 033",
     "zone": "PPH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5177725,
     "longitude": 6.5643839
@@ -4786,7 +4786,7 @@
   {
     "name": "PPH 033.1",
     "zone": "PPH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5177973,
     "longitude": 6.5643726
@@ -4794,7 +4794,7 @@
   {
     "name": "PPH 063",
     "zone": "PPH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5175266,
     "longitude": 6.5644403
@@ -4802,7 +4802,7 @@
   {
     "name": "PPH 072",
     "zone": "PPH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5174117,
     "longitude": 6.564476
@@ -4810,7 +4810,7 @@
   {
     "name": "PPH 074",
     "zone": "PPH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5174599,
     "longitude": 6.5643131
@@ -4818,7 +4818,7 @@
   {
     "name": "QIE 0 108.1",
     "zone": "QIE",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5168854,
     "longitude": 6.5623055
@@ -4826,7 +4826,7 @@
   {
     "name": "QIE 0 108.2",
     "zone": "QIE",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5168498,
     "longitude": 6.5623826
@@ -4834,7 +4834,7 @@
   {
     "name": "QIE 0 108.3",
     "zone": "QIE",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5169148,
     "longitude": 6.5623911
@@ -4842,7 +4842,7 @@
   {
     "name": "QIG 0 103",
     "zone": "QIG",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5174631,
     "longitude": 6.5613863
@@ -4850,7 +4850,7 @@
   {
     "name": "QIG 0 109",
     "zone": "QIG",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5177417,
     "longitude": 6.5613952
@@ -4858,7 +4858,7 @@
   {
     "name": "QIH 0 109.0",
     "zone": "QIH",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5168676,
     "longitude": 6.5608861
@@ -4866,7 +4866,7 @@
   {
     "name": "RLC E1 240",
     "zone": "RLCE",
-    "type": "REUNION",
+    "type": "MEETING_ROOM",
     "floor": 1,
     "latitude": 46.5178046,
     "longitude": 6.5675822
@@ -4874,7 +4874,7 @@
   {
     "name": "Auditoire SG1",
     "zone": "SG",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5207533,
     "longitude": 6.5641947
@@ -4882,7 +4882,7 @@
   {
     "name": "SG 0211",
     "zone": "SG",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5211195,
     "longitude": 6.5644323
@@ -4890,7 +4890,7 @@
   {
     "name": "SG 0213",
     "zone": "SG",
-    "type": "SALLE DE COURS",
+    "type": "LECTURE_ROOM",
     "floor": 0,
     "latitude": 46.5211186,
     "longitude": 6.5643119
@@ -4898,7 +4898,7 @@
   {
     "name": "SG 0217",
     "zone": "SG",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": 0,
     "latitude": 46.5211169,
     "longitude": 6.564085
@@ -4906,7 +4906,7 @@
   {
     "name": "SG 0310",
     "zone": "SG",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5207975,
     "longitude": 6.5638899
@@ -4914,7 +4914,7 @@
   {
     "name": "SG 0320",
     "zone": "SG",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5210068,
     "longitude": 6.5638865
@@ -4922,7 +4922,7 @@
   {
     "name": "SG 1138",
     "zone": "SG",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": 1,
     "latitude": 46.5207348,
     "longitude": 6.5642743
@@ -4930,7 +4930,7 @@
   {
     "name": "SKIL 0 01",
     "zone": "SKIL",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5213019,
     "longitude": 6.5657585
@@ -4938,7 +4938,7 @@
   {
     "name": "SOS2 0 112",
     "zone": "SOS2",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5194613,
     "longitude": 6.5792109
@@ -4946,7 +4946,7 @@
   {
     "name": "STCC 0 7326",
     "zone": "STCC",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5230722,
     "longitude": 6.565238
@@ -4954,7 +4954,7 @@
   {
     "name": "STCC 0 7532",
     "zone": "STCC",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": null,
     "latitude": 46.5227437,
     "longitude": 6.565143
@@ -4962,7 +4962,7 @@
   {
     "name": "STCC 0 7632",
     "zone": "STCC",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": null,
     "latitude": 46.5227434,
     "longitude": 6.5649855
@@ -4970,7 +4970,7 @@
   {
     "name": "STCC 0 7932",
     "zone": "STCC",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": null,
     "latitude": 46.5227411,
     "longitude": 6.5646914
@@ -4978,7 +4978,7 @@
   {
     "name": "STCC 0 8132",
     "zone": "STCC",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": null,
     "latitude": 46.5227405,
     "longitude": 6.5646086
@@ -4986,7 +4986,7 @@
   {
     "name": "STCC 0 8332",
     "zone": "STCC",
-    "type": "AUDITOIRE",
+    "type": "AUDITORIUM",
     "floor": null,
     "latitude": 46.522739,
     "longitude": 6.5643601
@@ -4994,7 +4994,7 @@
   {
     "name": "STCC 0 8425",
     "zone": "STCC",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5231026,
     "longitude": 6.5642207
@@ -5002,7 +5002,7 @@
   {
     "name": "SV 0513",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5201642,
     "longitude": 6.563633
@@ -5010,7 +5010,7 @@
   {
     "name": "SV 0525.2",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5201574,
     "longitude": 6.5630795
@@ -5018,7 +5018,7 @@
   {
     "name": "SV 0525.3",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5201345,
     "longitude": 6.5630799
@@ -5026,7 +5026,7 @@
   {
     "name": "SV 0536",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5201449,
     "longitude": 6.5625521
@@ -5034,7 +5034,7 @@
   {
     "name": "SV 0540",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5201242,
     "longitude": 6.5623391
@@ -5042,7 +5042,7 @@
   {
     "name": "SV 0541",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5201019,
     "longitude": 6.5623199
@@ -5050,7 +5050,7 @@
   {
     "name": "SV 0612",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200987,
     "longitude": 6.5637284
@@ -5058,7 +5058,7 @@
   {
     "name": "SV 0614",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200718,
     "longitude": 6.563592
@@ -5066,7 +5066,7 @@
   {
     "name": "SV 0615",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200715,
     "longitude": 6.5635462
@@ -5074,7 +5074,7 @@
   {
     "name": "SV 0616",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.520071,
     "longitude": 6.5634823
@@ -5082,7 +5082,7 @@
   {
     "name": "SV 0617",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200707,
     "longitude": 6.5634366
@@ -5090,7 +5090,7 @@
   {
     "name": "SV 0620",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200696,
     "longitude": 6.5632971
@@ -5098,7 +5098,7 @@
   {
     "name": "SV 0628",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.52009,
     "longitude": 6.562921
@@ -5106,7 +5106,7 @@
   {
     "name": "SV 0629",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200897,
     "longitude": 6.5628872
@@ -5114,7 +5114,7 @@
   {
     "name": "SV 0633",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.520102,
     "longitude": 6.5627028
@@ -5122,7 +5122,7 @@
   {
     "name": "SV 0634.1",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5201502,
     "longitude": 6.5626154
@@ -5130,7 +5130,7 @@
   {
     "name": "SV 0634.2",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200546,
     "longitude": 6.5626345
@@ -5138,7 +5138,7 @@
   {
     "name": "SV 0636",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200971,
     "longitude": 6.5625442
@@ -5146,7 +5146,7 @@
   {
     "name": "SV 0639",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200683,
     "longitude": 6.5623945
@@ -5154,7 +5154,7 @@
   {
     "name": "SV 0713",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200397,
     "longitude": 6.5636408
@@ -5162,7 +5162,7 @@
   {
     "name": "SV 0715",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200146,
     "longitude": 6.5635374
@@ -5170,7 +5170,7 @@
   {
     "name": "SV 0716",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200143,
     "longitude": 6.563493
@@ -5178,7 +5178,7 @@
   {
     "name": "SV 0718",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200378,
     "longitude": 6.5633889
@@ -5186,7 +5186,7 @@
   {
     "name": "SV 0720",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200362,
     "longitude": 6.5633295
@@ -5194,7 +5194,7 @@
   {
     "name": "SV 0721",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200592,
     "longitude": 6.5632461
@@ -5202,7 +5202,7 @@
   {
     "name": "SV 0733.1",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200535,
     "longitude": 6.5627285
@@ -5210,7 +5210,7 @@
   {
     "name": "SV 0733.2",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200203,
     "longitude": 6.5627297
@@ -5218,7 +5218,7 @@
   {
     "name": "SV 0735",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200544,
     "longitude": 6.5625846
@@ -5226,7 +5226,7 @@
   {
     "name": "SV 0740.1",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200639,
     "longitude": 6.5623236
@@ -5234,7 +5234,7 @@
   {
     "name": "SV 0740.2",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5199768,
     "longitude": 6.5622762
@@ -5242,7 +5242,7 @@
   {
     "name": "SV 0742",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200127,
     "longitude": 6.5622583
@@ -5250,7 +5250,7 @@
   {
     "name": "SV 0812",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5199617,
     "longitude": 6.5637125
@@ -5258,7 +5258,7 @@
   {
     "name": "SV 0821",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5199993,
     "longitude": 6.5632196
@@ -5266,7 +5266,7 @@
   {
     "name": "SV 0826",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5199954,
     "longitude": 6.5630249
@@ -5274,7 +5274,7 @@
   {
     "name": "SV 0827",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5199951,
     "longitude": 6.5629773
@@ -5282,7 +5282,7 @@
   {
     "name": "SV 0828",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5199947,
     "longitude": 6.5629298
@@ -5290,7 +5290,7 @@
   {
     "name": "SV 0829",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5199943,
     "longitude": 6.5628829
@@ -5298,7 +5298,7 @@
   {
     "name": "SV 0830",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.519994,
     "longitude": 6.5628359
@@ -5306,7 +5306,7 @@
   {
     "name": "SV 0837",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5199727,
     "longitude": 6.5624619
@@ -5314,7 +5314,7 @@
   {
     "name": "SV 0838",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200036,
     "longitude": 6.5624505
@@ -5322,7 +5322,7 @@
   {
     "name": "SV 0839",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5199759,
     "longitude": 6.5624085
@@ -5330,7 +5330,7 @@
   {
     "name": "SV 0840",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5199532,
     "longitude": 6.5623316
@@ -5338,7 +5338,7 @@
   {
     "name": "SV 0842",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5199572,
     "longitude": 6.5622894
@@ -5346,7 +5346,7 @@
   {
     "name": "SV 094.56",
     "zone": "SV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5200498,
     "longitude": 6.5625481
@@ -5354,7 +5354,7 @@
   {
     "name": "TCV 027",
     "zone": "TCV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5177235,
     "longitude": 6.5648981
@@ -5362,7 +5362,7 @@
   {
     "name": "TCV 045",
     "zone": "TCV",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5177676,
     "longitude": 6.5650068
@@ -5370,7 +5370,7 @@
   {
     "name": "TRIC 7.01",
     "zone": "TRIC",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5250217,
     "longitude": 6.565319
@@ -5378,7 +5378,7 @@
   {
     "name": "TRIC 7.10",
     "zone": "TRIC",
-    "type": "SALLE TP",
+    "type": "PRACTICAL_ROOM",
     "floor": null,
     "latitude": 46.5247611,
     "longitude": 6.5653232
@@ -5386,7 +5386,7 @@
   {
     "name": "TRIC 7.11",
     "zone": "TRIC",
-    "type": "BIBLIOTHEQUE",
+    "type": "LIBRARY",
     "floor": null,
     "latitude": 46.5247757,
     "longitude": 6.5652377
@@ -5394,7 +5394,7 @@
   {
     "name": "TRIC 7.12",
     "zone": "TRIC",
-    "type": "BIBLIOTHEQUE",
+    "type": "LIBRARY",
     "floor": null,
     "latitude": 46.5247179,
     "longitude": 6.5652387
@@ -5402,7 +5402,7 @@
   {
     "name": "TRIH 0 06",
     "zone": "TRIH",
-    "type": "CONFERENCES",
+    "type": "CONFERENCE_ROOM",
     "floor": null,
     "latitude": 46.5251342,
     "longitude": 6.566573
@@ -5410,7 +5410,7 @@
   {
     "name": "ZP 0 DEM",
     "zone": "ZP",
-    "type": "LABO",
+    "type": "LAB",
     "floor": null,
     "latitude": 46.5167699,
     "longitude": 6.5630834
