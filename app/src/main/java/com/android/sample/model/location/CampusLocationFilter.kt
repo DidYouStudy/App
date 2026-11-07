@@ -13,10 +13,13 @@ package com.android.sample.model.location
  * @property zone Building code, for example "CM". A location matches when its zone equals it,
  *   ignoring case. `null` means any building.
  * @property types Room categories to keep. A location matches when its type is one of them. An
- *   empty set means any category, so to hide laboratories pass every type except [RoomType.LAB].
+ *   empty set means any category, so to hide laboratories pass every type except
+ *   [CampusLocationType.LABO]. [CampusLocationType.UNKNOWN] is only the fallback for unrecognized
+ *   labels, not a real category: leave it out of pickers. Display names are the UI's job (string
+ *   resources), not this class's.
  */
 data class CampusLocationFilter(
     val query: String? = null,
     val zone: String? = null,
-    val types: Set<RoomType> = emptySet(),
+    val types: Set<CampusLocationType> = emptySet(),
 )
