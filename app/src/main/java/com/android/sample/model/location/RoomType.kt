@@ -4,48 +4,53 @@ package com.android.sample.model.location
 /**
  * Category of a campus room.
  *
- * Each value keeps the [label] used by EPFL in the bundled campus locations data, so the data layer
- * can turn a raw label into a [RoomType] with [fromLabel]. The set is closed: the bundled data only
- * contains these categories.
+ * Each value has two labels:
+ * - [label] is the English name meant for display. English is the default language for now, a
+ *   translation layer (string resources) can map the enum later without changing this class.
+ * - [dataLabel] is the raw French category written by EPFL in the bundled campus locations data.
+ *   The data layer uses it with [fromDataLabel] to turn a raw label into a [RoomType].
  *
- * @property label The raw category label as written in the campus locations data.
+ * The set is closed: the bundled data only contains these categories.
+ *
+ * @property label English display name.
+ * @property dataLabel Raw category label as written in the campus locations data.
  */
-enum class RoomType(val label: String) {
-  /** Regular classroom ("SALLE DE COURS"). */
-  LECTURE_ROOM("SALLE DE COURS"),
+enum class RoomType(val label: String, val dataLabel: String) {
+  /** Regular classroom. */
+  LECTURE_ROOM("Lecture room", "SALLE DE COURS"),
 
-  /** Room for practical work ("SALLE TP"). */
-  PRACTICAL_ROOM("SALLE TP"),
+  /** Room for practical work. */
+  PRACTICAL_ROOM("Practical work room", "SALLE TP"),
 
-  /** Large lecture hall ("AUDITOIRE"). */
-  AUDITORIUM("AUDITOIRE"),
+  /** Large lecture hall. */
+  AUDITORIUM("Auditorium", "AUDITOIRE"),
 
-  /** Conference room ("CONFERENCES"). */
-  CONFERENCE("CONFERENCES"),
+  /** Conference room. */
+  CONFERENCE("Conference room", "CONFERENCES"),
 
-  /** Room used for tutoring ("TUTORAT"). */
-  TUTORING("TUTORAT"),
+  /** Room used for tutoring. */
+  TUTORING("Tutoring room", "TUTORAT"),
 
-  /** Conference room with multimedia equipment ("CONF MULTIMEDIA"). */
-  MULTIMEDIA_CONFERENCE("CONF MULTIMEDIA"),
+  /** Conference room with multimedia equipment. */
+  MULTIMEDIA_CONFERENCE("Multimedia conference room", "CONF MULTIMEDIA"),
 
-  /** Library space ("BIBLIOTHEQUE"). */
-  LIBRARY("BIBLIOTHEQUE"),
+  /** Library space. */
+  LIBRARY("Library", "BIBLIOTHEQUE"),
 
-  /** Meeting room ("REUNION"). */
-  MEETING("REUNION"),
+  /** Meeting room. */
+  MEETING("Meeting room", "REUNION"),
 
-  /** Laboratory ("LABO"). Mostly research and teaching labs, not necessarily open to students. */
-  LAB("LABO");
+  /** Laboratory. Mostly research and teaching labs, not necessarily open to students. */
+  LAB("Laboratory", "LABO");
 
   companion object {
     /**
-     * Returns the [RoomType] whose [label] equals [label], ignoring case and surrounding spaces, or
-     * `null` when no category has that label.
+     * Returns the [RoomType] whose [dataLabel] equals [dataLabel], ignoring case and surrounding
+     * spaces, or `null` when no category has that label.
      */
-    fun fromLabel(label: String): RoomType? {
-      val wanted = label.trim()
-      return entries.firstOrNull { it.label.equals(wanted, ignoreCase = true) }
+    fun fromDataLabel(dataLabel: String): RoomType? {
+      val wanted = dataLabel.trim()
+      return entries.firstOrNull { it.dataLabel.equals(wanted, ignoreCase = true) }
     }
   }
 }
