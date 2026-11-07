@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
+import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
@@ -18,7 +19,10 @@ import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.EventsRepositoryProvider
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.PersonalEvent
+import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
 import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalTime
@@ -115,6 +119,7 @@ data class EventPlanningUiState(
 class EventPlanningViewModel(
     private val authRepository: AuthRepository,
     private val eventsRepository: EventsRepository,
+    private val groupSessionsRepository: GroupSessionsRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(EventPlanningUiState())
@@ -131,7 +136,7 @@ class EventPlanningViewModel(
   /**
    * The event loaded by [loadEvent]; [editEvent] replaces it and keeps its ID and creation time.
    */
-  private var editingEvent: PersonalEvent? = null
+  private var editingEvent: Event? = null
 
   init {
     viewModelScope.launch {
@@ -220,11 +225,12 @@ class EventPlanningViewModel(
    * Fills the form from one of the signed-in user's existing events, for the edit screen. Call
    * [editEvent] afterwards to save the changes.
    */
-  fun loadEvent(eventId: String) {
+  fun loadEvent(eventId: String, kind: EventKind = EventKind.PERSONAL) {
+    if (eventId.isBlank()) return
     // Already loaded (e.g. after rotation) or loading right now: keep the user's edits.
     if (editingEvent?.id == eventId || _uiState.value.isLoading) return
 
-    _uiState.update { it.withoutResults().copy(isLoading = true) }
+    _uiState.update { it.withoutResults().copy(isLoading = true, eventKind = kind) }
     viewModelScope.launch {
       try {
         // Suspends until the auth flow has delivered its first value.
@@ -233,18 +239,30 @@ class EventPlanningViewModel(
           fail(NO_SIGNED_IN_USER_ERROR)
           return@launch
         }
-        eventsRepository
-            .getEvent(ownerId, eventId)
+        val result: Result<Event> =
+            when (kind) {
+              EventKind.PERSONAL -> eventsRepository.getEvent(ownerId, eventId)
+              EventKind.GROUP_SESSION -> groupSessionsRepository.getSession(eventId)
+            }
+        result
             .onSuccess { event -> populateForm(event) }
             .onFailure { exception ->
               _uiState.update {
-                it.copy(error = exception.toUserMessage(FAILED_TO_LOAD_EVENT_ERROR))
+                it.copy(
+                    error = exception.toUserMessage(FAILED_TO_LOAD_EVENT_ERROR),
+                    isEditing = false,
+                )
               }
             }
       } catch (exception: CancellationException) {
         throw exception
       } catch (exception: Exception) {
-        _uiState.update { it.copy(error = exception.toUserMessage(FAILED_TO_LOAD_EVENT_ERROR)) }
+        _uiState.update {
+          it.copy(
+              error = exception.toUserMessage(FAILED_TO_LOAD_EVENT_ERROR),
+              isEditing = false,
+          )
+        }
       } finally {
         _uiState.update { it.copy(isLoading = false) }
       }
@@ -261,7 +279,7 @@ class EventPlanningViewModel(
    * it ends the next day, while an end time equal to the start time is rejected. On success the
    * form is reset and [EventPlanningUiState.isEventAdded] is set.
    */
-  fun addEvent() = save(editing = null)
+  fun addEvent() = save(isEditing = false)
 
   /**
    * Replaces the event loaded by [loadEvent] with the current form. The event keeps its ID and
@@ -270,12 +288,11 @@ class EventPlanningViewModel(
    * is set.
    */
   fun editEvent() {
-    val event = editingEvent
-    if (event == null) {
+    if (editingEvent == null) {
       fail(NO_EVENT_TO_EDIT_ERROR)
       return
     }
-    save(editing = event)
+    save(isEditing = true)
   }
 
   /**
@@ -285,22 +302,28 @@ class EventPlanningViewModel(
   fun deleteEvent(eventId: String) {
     if (_uiState.value.isBusy) return
 
-    val ownerId = currentUserId
-    if (ownerId == null) {
+    val userId = currentUserId
+    if (userId == null) {
       fail(NO_SIGNED_IN_USER_ERROR)
       return
     }
 
+    val kind = _uiState.value.eventKind
     _uiState.update { it.withoutResults().copy(isDeleting = true) }
     viewModelScope.launch {
       try {
-        eventsRepository
-            .deleteEvent(ownerId, eventId)
+        val result =
+            when (kind) {
+              EventKind.PERSONAL -> eventsRepository.deleteEvent(userId, eventId)
+              EventKind.GROUP_SESSION -> groupSessionsRepository.deleteSession(userId, eventId)
+            }
+        result
             .onSuccess {
               pendingEventId = null
               editingEvent = null
               _uiState.update {
                 EventPlanningUiState(
+                    eventKind = it.eventKind,
                     recommendedSubjects = it.recommendedSubjects,
                     isEventDeleted = true,
                 )
@@ -343,76 +366,122 @@ class EventPlanningViewModel(
   fun resetForm() {
     pendingEventId = null
     editingEvent = null
-    _uiState.update { EventPlanningUiState(recommendedSubjects = it.recommendedSubjects) }
+    _uiState.update {
+      EventPlanningUiState(
+          eventKind = it.eventKind,
+          recommendedSubjects = it.recommendedSubjects,
+      )
+    }
   }
 
-  /** Adds the form as a new event, or replaces [editing] with it. */
-  private fun save(editing: PersonalEvent?) {
+  /** Validates form inputs and builds [EventDetails], or sets the error and returns null. */
+  private fun validateAndBuildDetails(): EventDetails? {
     val state = _uiState.value
-    if (state.isBusy) return
-
-    val ownerId = currentUserId
-    if (ownerId == null) {
-      fail(NO_SIGNED_IN_USER_ERROR)
-      return
-    }
-
     val date = state.date
     val startTime = state.startTime
     val endTime = state.endTime
     if (date == null || startTime == null || endTime == null) {
       fail(EVENT_DATE_AND_TIMES_REQUIRED_ERROR)
-      return
+      return null
     }
 
     // An end time before the start time can only mean the next day (e.g. 22:00 to 01:00).
     val endDate = if (endTime.isBefore(startTime)) date.plusDays(1) else date
 
-    val now = clock.instant()
-    val event =
-        try {
-          val details =
-              EventDetails(
-                  type = state.type,
-                  subject = state.subject.trim().takeIf(String::isNotEmpty),
-                  startsAt = date.atTime(startTime).atZone(clock.zone).toInstant(),
-                  endsAt = endDate.atTime(endTime).atZone(clock.zone).toInstant(),
-                  location = state.location.trim().takeIf(String::isNotEmpty),
-                  description = state.description.trim().takeIf(String::isNotEmpty),
-              )
-          if (editing == null) {
-            val id = pendingEventId ?: eventsRepository.newEventId().also { pendingEventId = it }
-            PersonalEvent(
-                id = id,
-                ownerId = ownerId,
-                details = details,
-                createdAt = now,
-                updatedAt = now,
-                tasks = state.tasks,
-            )
-          } else {
-            editing.copy(ownerId = ownerId, details = details, updatedAt = now, tasks = state.tasks)
-          }
-        } catch (exception: IllegalArgumentException) {
-          fail(exception.message)
-          return
-        }
+    return try {
+      EventDetails(
+          type = state.type,
+          subject = state.subject.trim().takeIf(String::isNotEmpty),
+          startsAt = date.atTime(startTime).atZone(clock.zone).toInstant(),
+          endsAt = endDate.atTime(endTime).atZone(clock.zone).toInstant(),
+          location = state.location.trim().takeIf(String::isNotEmpty),
+          description = state.description.trim().takeIf(String::isNotEmpty),
+      )
+    } catch (exception: IllegalArgumentException) {
+      fail(exception.message)
+      null
+    }
+  }
 
-    val defaultError =
-        if (editing == null) FAILED_TO_ADD_EVENT_ERROR else FAILED_TO_EDIT_EVENT_ERROR
+  /**
+   * Saves the current form as a new event (when [isEditing] is false) or an update to
+   * [editingEvent].
+   */
+  private fun save(isEditing: Boolean) {
+    val state = _uiState.value
+    if (state.isBusy) return
+
+    val userId = currentUserId
+    if (userId == null) {
+      fail(NO_SIGNED_IN_USER_ERROR)
+      return
+    }
+
+    val details = validateAndBuildDetails() ?: return
+    val now = clock.instant()
+    val defaultError = if (isEditing) FAILED_TO_EDIT_EVENT_ERROR else FAILED_TO_ADD_EVENT_ERROR
+
     _uiState.update { it.withoutResults().copy(isSaving = true) }
     viewModelScope.launch {
       try {
-        eventsRepository
-            .saveEvent(event)
+        val result =
+            when (state.eventKind) {
+              EventKind.PERSONAL -> {
+                val editing = if (isEditing) editingEvent as? PersonalEvent else null
+                val event =
+                    if (editing == null) {
+                      val id =
+                          pendingEventId
+                              ?: eventsRepository.newEventId().also { pendingEventId = it }
+                      PersonalEvent(
+                          id = id,
+                          ownerId = userId,
+                          details = details,
+                          createdAt = now,
+                          updatedAt = now,
+                          tasks = state.tasks,
+                      )
+                    } else {
+                      editing.copy(
+                          ownerId = userId,
+                          details = details,
+                          updatedAt = now,
+                          tasks = state.tasks,
+                      )
+                    }
+                eventsRepository.saveEvent(event)
+              }
+              EventKind.GROUP_SESSION -> {
+                val editing = if (isEditing) editingEvent as? GroupSession else null
+                val session =
+                    if (editing == null) {
+                      val id =
+                          pendingEventId
+                              ?: groupSessionsRepository.newSessionId().also { pendingEventId = it }
+                      GroupSession(
+                          id = id,
+                          createdBy = userId,
+                          memberIds = listOf(userId),
+                          details = details,
+                          createdAt = now,
+                          updatedAt = now,
+                      )
+                    } else {
+                      editing.copy(details = details, updatedAt = now)
+                    }
+                groupSessionsRepository.saveSession(userId, session)
+              }
+            }
+        result
             .onSuccess {
               pendingEventId = null
               editingEvent = null
               _uiState.update {
                 EventPlanningUiState(
+                    eventKind = it.eventKind,
                     recommendedSubjects = it.recommendedSubjects,
-                    isEventAdded = editing == null,
-                    isEventEdited = editing != null,
+                    isEventAdded = !isEditing,
+                    isEventEdited = isEditing,
                 )
               }
             }
@@ -430,12 +499,17 @@ class EventPlanningViewModel(
   }
 
   /** Fills the form from [event] and remembers it for [editEvent]. */
-  private fun populateForm(event: PersonalEvent) {
+  private fun populateForm(event: Event) {
     val start = event.details.startsAt.atZone(clock.zone)
     val end = event.details.endsAt.atZone(clock.zone)
     editingEvent = event
     _uiState.update {
       it.copy(
+          eventKind =
+              when (event) {
+                is PersonalEvent -> EventKind.PERSONAL
+                is GroupSession -> EventKind.GROUP_SESSION
+              },
           type = event.details.type,
           subject = event.details.subject.orEmpty(),
           date = start.toLocalDate(),
@@ -443,7 +517,7 @@ class EventPlanningViewModel(
           endTime = end.toLocalTime(),
           location = event.details.location.orEmpty(),
           description = event.details.description.orEmpty(),
-          tasks = event.tasks,
+          tasks = (event as? PersonalEvent)?.tasks.orEmpty(),
           isEditing = true,
       )
     }
@@ -495,6 +569,7 @@ class EventPlanningViewModel(
 class EventPlanningViewModelFactory(
     private val authRepository: AuthRepository,
     private val eventsRepository: EventsRepository,
+    private val groupSessionsRepository: GroupSessionsRepository,
 ) : ViewModelProvider.Factory {
   /**
    * Creates an EventsPlanningViewModel and rejects unrelated ViewModel types rather than casting
@@ -505,7 +580,7 @@ class EventPlanningViewModelFactory(
       "Unsupported ViewModel: ${modelClass.name}"
     }
     @Suppress("UNCHECKED_CAST")
-    return EventPlanningViewModel(authRepository, eventsRepository) as T
+    return EventPlanningViewModel(authRepository, eventsRepository, groupSessionsRepository) as T
   }
 }
 
@@ -521,5 +596,6 @@ fun eventsPlanningViewModel(): EventPlanningViewModel =
             EventPlanningViewModelFactory(
                 authRepository = AuthRepositoryProvider.getRepository(LocalContext.current),
                 eventsRepository = EventsRepositoryProvider.getRepository(),
+                groupSessionsRepository = GroupSessionsRepositoryProvider.getRepository(),
             )
     )
