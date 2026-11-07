@@ -69,6 +69,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
+import com.android.sample.ui.eventplanning.EventKind
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -109,8 +110,12 @@ object GroupSessionScreenTestTags {
 fun GroupSessionScreen(
     navigationActions: NavigationActions? = null,
     viewModel: GroupSessionsViewModel = groupSessionsViewModel(),
-    onAddSessionClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
-    onEditSessionClick: (String) -> Unit = {},
+    onAddSessionClick: () -> Unit = {
+      navigationActions?.navigateTo(Screen.AddEvent(EventKind.GROUP_SESSION))
+    },
+    onEditSessionClick: (String) -> Unit = { sessionId ->
+      navigationActions?.navigateTo(Screen.EditEvent(sessionId, EventKind.GROUP_SESSION))
+    },
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val snackbarHostState = remember { SnackbarHostState() }

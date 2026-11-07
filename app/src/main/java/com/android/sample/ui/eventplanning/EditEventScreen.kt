@@ -115,7 +115,7 @@ fun EditEventScreen(
 
 @Preview
 @Composable
-private fun EditEventScreenPreview() {
+internal fun EditEventScreenPreview() {
   MaterialTheme {
     EventPlanningScreenStateless(
         uiState =

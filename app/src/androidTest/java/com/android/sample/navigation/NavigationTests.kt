@@ -374,12 +374,65 @@ class NavigationTests {
   }
 
   @Test
-  fun canNavigateToAddEventFromGroupSessionFabAndBackToGroupSession() {
+  fun canNavigateToAddGroupSessionFromGroupSessionFabAndBackToGroupSession() {
     composeTestRule.onNodeWithTag(NavigationTestTags.GROUP_SESSION_TAB).performClick()
     checkGroupSessionScreenIsDisplayed()
 
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ADD_BUTTON).performClick()
     checkAddEventScreenIsDisplayed()
+    // Verify that the screen is configured for a group session (no tasks section)
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.ADD_TASK_BUTTON).assertDoesNotExist()
+
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.BACK_BUTTON).performClick()
+    checkGroupSessionScreenIsDisplayed()
+  }
+
+  @Test
+  fun canNavigateToEditGroupSessionFromSessionCardAndBack() {
+    val session =
+        com.android.sample.model.event.GroupSession(
+            id = "session-1",
+            createdBy = "navigation-test-user",
+            memberIds = listOf("navigation-test-user"),
+            details =
+                com.android.sample.model.event.EventDetails(
+                    type = com.android.sample.model.event.EventType.STUDY_SESSION,
+                    subject = "Networks",
+                    startsAt = java.time.Instant.now().plus(java.time.Duration.ofHours(1)),
+                    endsAt = java.time.Instant.now().plus(java.time.Duration.ofHours(2)),
+                ),
+        )
+    kotlinx.coroutines.runBlocking {
+      com.android.sample.model.groupsession.GroupSessionsRepositoryProvider.repository.saveSession(
+          "navigation-test-user",
+          session,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(NavigationTestTags.GROUP_SESSION_TAB).performClick()
+    checkGroupSessionScreenIsDisplayed()
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(
+            androidx.compose.ui.test.hasTestTag(GroupSessionScreenTestTags.sessionItem(0))
+        )
+    composeTestRule
+        .onNodeWithText(
+            composeTestRule.activity.getString(
+                com.android.sample.R.string.group_session_action_edit
+            )
+        )
+        .performClick()
+
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.SCREEN_CONTAINER).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventPlanningScreenTestTags.TOP_BAR_TITLE)
+        .assertTextContains(
+            composeTestRule.activity.getString(
+                com.android.sample.R.string.event_planning_edit_title
+            )
+        )
 
     composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.BACK_BUTTON).performClick()
     checkGroupSessionScreenIsDisplayed()
