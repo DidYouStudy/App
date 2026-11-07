@@ -515,10 +515,38 @@ class AddEventScreenTest {
     composeTestRule.waitForIdle()
 
     assertTrue(savedCalled)
+    val captor = org.mockito.kotlin.argumentCaptor<com.android.sample.model.event.GroupSession>()
     runBlocking {
       org.mockito.kotlin
           .verify(groupSessionsRepository)
-          .saveSession(org.mockito.kotlin.eq("user123"), any())
+          .saveSession(org.mockito.kotlin.eq("user123"), captor.capture())
     }
+    val savedSession = captor.firstValue
+    assertEquals("session-1", savedSession.id)
+    assertEquals("user123", savedSession.createdBy)
+    assertEquals(listOf("user123"), savedSession.memberIds)
+    assertEquals("Distributed Systems", savedSession.details.subject)
+  }
+
+  @Test
+  fun addEventScreenPreview_rendersWithoutCrashing() {
+    composeTestRule.setContent { AddEventScreenPreview() }
+    composeTestRule.onNodeWithTag(Tags.SCREEN_CONTAINER).assertIsDisplayed()
+  }
+
+  @Test
+  fun addEventScreen_backHandler_triggersOnBackClick() {
+    var backClicked = false
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      AddEventScreen(
+          viewModel = viewModel,
+          onBackClick = { backClicked = true },
+          onEventSaved = {},
+      )
+    }
+
+    composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
+    assertTrue(backClicked)
   }
 }

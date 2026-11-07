@@ -501,9 +501,21 @@ class EditEventScreenTest {
     finishPendingComposeAndViewModelWork()
 
     assertTrue(saved)
+    val captor = org.mockito.kotlin.argumentCaptor<GroupSession>()
     runBlocking {
-      verify(groupSessionsRepository).saveSession(org.mockito.kotlin.eq("user-1"), any())
+      verify(groupSessionsRepository).saveSession(org.mockito.kotlin.eq("user-1"), captor.capture())
     }
+    val savedSession = captor.firstValue
+    assertEquals("session-1", savedSession.id)
+    assertEquals("user-1", savedSession.createdBy)
+    assertEquals(listOf("user-1", "user-2"), savedSession.memberIds)
+    assertEquals("Original Subject", savedSession.details.subject)
+  }
+
+  @Test
+  fun editEventScreenPreview_rendersWithoutCrashing() {
+    composeTestRule.setContent { EditEventScreenPreview() }
+    composeTestRule.onNodeWithTag(Tags.SCREEN_CONTAINER).assertIsDisplayed()
   }
 
   @Test

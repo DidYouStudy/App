@@ -3,6 +3,7 @@
 package com.android.sample.ui.navigation
 
 import androidx.navigation.NavHostController
+import com.android.sample.ui.eventplanning.EventKind
 
 sealed class Screen(
     val route: String,
@@ -22,7 +23,19 @@ sealed class Screen(
   object GroupSession :
       Screen(route = "group_session", name = "GroupSession", isTopLevelDestination = true)
 
-  object AddEvent : Screen(route = "add_event", name = "AddEvent")
+  data class AddEvent(val kind: EventKind = EventKind.PERSONAL) :
+      Screen(route = "add_event?kind=${kind.name}", name = "AddEvent") {
+    companion object : Screen(route = "add_event?kind=PERSONAL", name = "AddEvent") {
+      const val ROUTE = "add_event?kind={kind}"
+    }
+  }
+
+  data class EditEvent(val eventId: String, val kind: EventKind = EventKind.PERSONAL) :
+      Screen(route = "edit_event/$eventId?kind=${kind.name}", name = "EditEvent") {
+    companion object {
+      const val ROUTE = "edit_event/{eventId}?kind={kind}"
+    }
+  }
 }
 
 open class NavigationActions(

@@ -176,6 +176,27 @@ class GroupSessionScreenTest {
   }
 
   @Test
+  fun default_add_session_click_navigates_to_add_group_session() {
+    val navActions = org.mockito.kotlin.mock<com.android.sample.ui.navigation.NavigationActions>()
+    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    composeTestRule.setContent {
+      GroupSessionScreen(
+          navigationActions = navActions,
+          viewModel = viewModel,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ADD_BUTTON).performClick()
+    org.mockito.kotlin
+        .verify(navActions)
+        .navigateTo(
+            com.android.sample.ui.navigation.Screen.AddEvent(
+                com.android.sample.ui.eventplanning.EventKind.GROUP_SESSION
+            )
+        )
+  }
+
+  @Test
   fun edit_group_session_button_click_triggers_callback() {
     var editedSessionId: String? = null
     val viewModel = GroupSessionsViewModel(authRepository, repo)
@@ -195,6 +216,35 @@ class GroupSessionScreenTest {
         .performClick()
 
     assertEquals("s1", editedSessionId)
+  }
+
+  @Test
+  fun default_edit_session_click_navigates_to_edit_group_session() {
+    val navActions = org.mockito.kotlin.mock<com.android.sample.ui.navigation.NavigationActions>()
+    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    composeTestRule.setContent {
+      GroupSessionScreen(
+          navigationActions = navActions,
+          viewModel = viewModel,
+      )
+    }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(hasTestTag(GroupSessionScreenTestTags.sessionItem(0)))
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.group_session_action_edit))
+        .performClick()
+
+    org.mockito.kotlin
+        .verify(navActions)
+        .navigateTo(
+            com.android.sample.ui.navigation.Screen.EditEvent(
+                "s1",
+                com.android.sample.ui.eventplanning.EventKind.GROUP_SESSION,
+            )
+        )
   }
 
   @Test

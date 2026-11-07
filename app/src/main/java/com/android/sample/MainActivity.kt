@@ -17,9 +17,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.ui.app.AppUiState
@@ -28,6 +30,8 @@ import com.android.sample.ui.auth.SignInRoute
 import com.android.sample.ui.calendar.CalendarRoute
 import com.android.sample.ui.dashboard.DashboardScreen
 import com.android.sample.ui.eventplanning.AddEventScreen
+import com.android.sample.ui.eventplanning.EditEventScreen
+import com.android.sample.ui.eventplanning.EventKind
 import com.android.sample.ui.groupsession.GroupSessionScreen
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.Screen
@@ -154,18 +158,55 @@ fun DidYouStudyApp() {
         startDestination = Screen.AddEvent.route,
         route = Screen.AddEvent.name,
     ) {
-      composable(Screen.AddEvent.route) {
+      composable(
+          route = Screen.AddEvent.ROUTE,
+          arguments =
+              listOf(
+                  navArgument("kind") {
+                    type = NavType.StringType
+                    defaultValue = EventKind.PERSONAL.name
+                  }
+              ),
+      ) { backStackEntry ->
+        val kindStr = backStackEntry.arguments?.getString("kind")
+        val kind =
+            kindStr?.let { runCatching { EventKind.valueOf(it) }.getOrNull() } ?: EventKind.PERSONAL
         AddEventScreen(
+            initialKind = kind,
             onBackClick = {
-              if (navigationActions.currentRoute() == Screen.AddEvent.route) {
+              if (navigationActions.currentRoute().startsWith("add_event")) {
                 navigationActions.goBack()
               }
             },
             onEventSaved = {
-              if (navigationActions.currentRoute() == Screen.AddEvent.route) {
+              if (navigationActions.currentRoute().startsWith("add_event")) {
                 navigationActions.goBack()
               }
             },
+        )
+      }
+
+      composable(
+          route = Screen.EditEvent.ROUTE,
+          arguments =
+              listOf(
+                  navArgument("eventId") { type = NavType.StringType },
+                  navArgument("kind") {
+                    type = NavType.StringType
+                    defaultValue = EventKind.PERSONAL.name
+                  },
+              ),
+      ) { backStackEntry ->
+        val eventId = backStackEntry.arguments?.getString("eventId").orEmpty()
+        val kindStr = backStackEntry.arguments?.getString("kind")
+        val kind =
+            kindStr?.let { runCatching { EventKind.valueOf(it) }.getOrNull() } ?: EventKind.PERSONAL
+        EditEventScreen(
+            eventId = eventId,
+            eventKind = kind,
+            onBackClick = navigationActions::goBack,
+            onEventSaved = navigationActions::goBack,
+            onEventDelete = navigationActions::goBack,
         )
       }
     }
@@ -179,7 +220,13 @@ fun DidYouStudyApp() {
             navigationActions = navigationActions,
             onAddSessionClick = {
               navigationActions.navigateIfAllowed(
-                  Screen.AddEvent,
+                  Screen.AddEvent(EventKind.GROUP_SESSION),
+                  applicationViewModel::canNavigateTo,
+              )
+            },
+            onEditSessionClick = { sessionId ->
+              navigationActions.navigateIfAllowed(
+                  Screen.EditEvent(sessionId, EventKind.GROUP_SESSION),
                   applicationViewModel::canNavigateTo,
               )
             },

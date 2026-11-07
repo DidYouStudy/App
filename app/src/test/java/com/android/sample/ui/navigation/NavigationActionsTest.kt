@@ -1,4 +1,5 @@
 // Co-authored-by: GitHub Copilot
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.navigation
 
 import androidx.navigation.NavDestination
@@ -90,6 +91,23 @@ class NavigationActionsTest {
 
     assertTrue(actions.navigatedTo.isEmpty())
     assertTrue(actions.clearedFlows.isEmpty())
+  }
+
+  @Test
+  fun screenRoutesAreConstructedCorrectly() {
+    assertEquals("add_event?kind=PERSONAL", Screen.AddEvent.route)
+    assertEquals("add_event?kind=PERSONAL", Screen.AddEvent().route)
+    assertEquals(
+        "add_event?kind=GROUP_SESSION",
+        Screen.AddEvent(com.android.sample.ui.eventplanning.EventKind.GROUP_SESSION).route,
+    )
+    assertEquals("add_event?kind={kind}", Screen.AddEvent.ROUTE)
+    assertEquals("edit_event/e1?kind=PERSONAL", Screen.EditEvent("e1").route)
+    assertEquals(
+        "edit_event/s1?kind=GROUP_SESSION",
+        Screen.EditEvent("s1", com.android.sample.ui.eventplanning.EventKind.GROUP_SESSION).route,
+    )
+    assertEquals("edit_event/{eventId}?kind={kind}", Screen.EditEvent.ROUTE)
   }
 
   private class RecordingNavigationActions(currentRoute: String) : NavigationActions(mock()) {
