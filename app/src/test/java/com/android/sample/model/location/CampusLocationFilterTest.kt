@@ -28,13 +28,13 @@ class CampusLocationFilterTest {
         CampusLocationFilter(
             query = "cm",
             zone = "CM",
-            types = setOf(CampusLocationType.BIBLIOTHEQUE),
+            types = setOf(CampusLocationType.LIBRARY),
         )
     val b =
         CampusLocationFilter(
             query = "cm",
             zone = "CM",
-            types = setOf(CampusLocationType.BIBLIOTHEQUE),
+            types = setOf(CampusLocationType.LIBRARY),
         )
 
     assertEquals(a, b)
@@ -43,29 +43,29 @@ class CampusLocationFilterTest {
 
   @Test
   fun copy_changesOnlyTheGivenCriterion() {
-    val filter = CampusLocationFilter(query = "cm", types = setOf(CampusLocationType.LABO))
+    val filter = CampusLocationFilter(query = "cm", types = setOf(CampusLocationType.LAB))
 
     val withZone = filter.copy(zone = "CM")
 
     assertEquals("cm", withZone.query)
     assertEquals("CM", withZone.zone)
-    assertEquals(setOf(CampusLocationType.LABO), withZone.types)
+    assertEquals(setOf(CampusLocationType.LAB), withZone.types)
     assertNotEquals(filter, withZone)
   }
 
   @Test
-  fun types_everyRealTypeExceptLabo_expressesHidingLaboratories() {
+  fun types_everyRealTypeExceptLab_expressesHidingLaboratories() {
     val withoutLabs =
         CampusLocationFilter(
             types =
                 CampusLocationType.entries.toSet() -
-                    CampusLocationType.LABO -
+                    CampusLocationType.LAB -
                     CampusLocationType.UNKNOWN
         )
 
-    assertTrue(CampusLocationType.LABO !in withoutLabs.types)
-    assertTrue(CampusLocationType.SALLE_DE_COURS in withoutLabs.types)
-    // The 9 real categories minus LABO.
+    assertTrue(CampusLocationType.LAB !in withoutLabs.types)
+    assertTrue(CampusLocationType.LECTURE_ROOM in withoutLabs.types)
+    // The 9 real categories minus LAB.
     assertEquals(8, withoutLabs.types.size)
   }
 }

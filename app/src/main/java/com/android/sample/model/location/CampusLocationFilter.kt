@@ -14,7 +14,7 @@ package com.android.sample.model.location
  *   ignoring case. `null` means any building.
  * @property types Room categories to keep. A location matches when its type is one of them. An
  *   empty set means any category, so to hide laboratories pass every type except
- *   [CampusLocationType.LABO]. [CampusLocationType.UNKNOWN] is only the fallback for unrecognized
+ *   [CampusLocationType.LAB]. [CampusLocationType.UNKNOWN] is only the fallback for unrecognized
  *   labels, not a real category: leave it out of pickers. Display names are the UI's job (string
  *   resources), not this class's.
  */
