@@ -5,7 +5,7 @@ package com.android.sample.ui.eventplanning
 
 import androidx.lifecycle.ViewModel
 import com.android.sample.model.auth.AuthRepository
-import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
@@ -38,6 +38,7 @@ import org.mockito.Mockito.`when`
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.doSuspendableAnswer
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.verify
 
 /**
@@ -83,7 +84,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
   @Test
   fun init_userFlowFailsWithMessage_exposesMessage() = runTest {
     `when`(authRepository.currentUser)
-        .thenReturn(flow<UserAccount?> { throw RuntimeException("Auth flow error") })
+        .thenReturn(flow { throw RuntimeException("Auth flow error") })
 
     val viewModel = createViewModel()
 
@@ -95,7 +96,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
   @Test
   fun init_userFlowFailsWithoutMessage_usesDefaultMessage() = runTest {
     val exception = object : RuntimeException(null as String?) {}
-    `when`(authRepository.currentUser).thenReturn(flow<UserAccount?> { throw exception })
+    `when`(authRepository.currentUser).thenReturn(flow { throw exception })
 
     val viewModel = createViewModel()
 
@@ -111,7 +112,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
   @Test
   fun init_userFlowFails_noUserIsKnownAndAddingIsRejected() = runTest {
     `when`(authRepository.currentUser)
-        .thenReturn(flow<UserAccount?> { throw RuntimeException("Auth flow error") })
+        .thenReturn(flow { throw RuntimeException("Auth flow error") })
     val viewModel = createViewModel()
     viewModel.fillValidForm()
 
@@ -124,8 +125,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
   /** Cancellation of authentication observation is propagated without displaying an error. */
   @Test
   fun init_userFlowCancelled_doesNotExposeError() = runTest {
-    `when`(authRepository.currentUser)
-        .thenReturn(flow<UserAccount?> { throw CancellationException("cancelled") })
+    `when`(authRepository.currentUser).thenReturn(flow { throw CancellationException("cancelled") })
 
     val viewModel = createViewModel()
 
@@ -705,7 +705,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
             EventsError.STORAGE_FAILURE to EventPlanningViewModel.STORAGE_FAILURE_ERROR,
             EventsError.UNKNOWN to EventPlanningViewModel.FAILED_TO_ADD_EVENT_ERROR,
         )
-    assertEquals(EventsError.values().toSet(), expectations.keys) // no category forgotten
+    assertEquals(EventsError.entries.toSet(), expectations.keys) // no category forgotten
     val viewModel = createViewModel()
     viewModel.fillValidForm()
 
@@ -837,7 +837,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertNull(state.error)
 
     val captor = argumentCaptor<GroupSession>()
-    verify(groupSessionsRepository).saveSession(org.mockito.kotlin.eq("user123"), captor.capture())
+    verify(groupSessionsRepository).saveSession(eq("user123"), captor.capture())
     val saved = captor.firstValue
     assertEquals("user123", saved.createdBy)
     assertEquals(listOf("user123"), saved.memberIds)
@@ -857,7 +857,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
             createdBy = "user123",
             memberIds = listOf("user123", "user456"),
             details =
-                com.android.sample.model.event.EventDetails(
+                EventDetails(
                     type = EventType.STUDY_SESSION,
                     subject = "Initial Subject",
                     startsAt = startsAt,
@@ -882,7 +882,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertTrue(state.isEventEdited)
 
     val captor = argumentCaptor<GroupSession>()
-    verify(groupSessionsRepository).saveSession(org.mockito.kotlin.eq("user123"), captor.capture())
+    verify(groupSessionsRepository).saveSession(eq("user123"), captor.capture())
     val updated = captor.firstValue
     assertEquals("session-99", updated.id)
     assertEquals("user123", updated.createdBy)
