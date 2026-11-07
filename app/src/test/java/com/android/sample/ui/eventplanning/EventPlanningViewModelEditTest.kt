@@ -21,12 +21,14 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doSuspendableAnswer
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.times
@@ -233,6 +235,56 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     assertTrue(viewModel.uiState.value.isEditing)
   }
 
+  @Test
+  fun loadEvent_whenAlreadyLoaded_doesNotReloadOrOverwriteEdits() = runTest {
+    val viewModel = loadedViewModel()
+    viewModel.setSubject("User Edits")
+
+    // Call loadEvent again with the same event ID
+    viewModel.loadEvent("stored-1")
+
+    // Edits are preserved and repository is not re-queried
+    assertEquals("User Edits", viewModel.uiState.value.subject)
+    verify(eventsRepository, times(1)).getEvent(any(), any())
+  }
+
+  @Test
+  fun loadEvent_withDifferentIdWhenAlreadyLoaded_loadsTheNewEvent() = runTest {
+    val secondEvent = storedEvent(id = "stored-2", subject = "Different Subject")
+    whenever(eventsRepository.getEvent(any(), eq("stored-2")))
+        .thenReturn(Result.success(secondEvent))
+
+    val viewModel = loadedViewModel()
+    assertEquals("CompSec", viewModel.uiState.value.subject)
+
+    viewModel.loadEvent("stored-2")
+    assertEquals("Different Subject", viewModel.uiState.value.subject)
+    verify(eventsRepository, times(1)).getEvent(any(), eq("stored-2"))
+  }
+
+  @Test
+  fun loadEvent_whileLoadingIsActive_ignoresConcurrentLoadRequest() = runTest {
+    val gate = CompletableDeferred<Unit>()
+    whenever(eventsRepository.getEvent(any(), eq("stored-1"))).doSuspendableAnswer {
+      gate.await()
+      Result.success(storedEvent(id = "stored-1"))
+    }
+    val viewModel = createViewModel()
+
+    viewModel.loadEvent("stored-1")
+    assertTrue(viewModel.uiState.value.isLoading)
+
+    // Second call while loading is in progress
+    viewModel.loadEvent("stored-2")
+
+    gate.complete(Unit)
+    advanceUntilIdle()
+
+    // Second call was ignored, only stored-1 was fetched
+    verify(eventsRepository, times(1)).getEvent(any(), any())
+    verify(eventsRepository, never()).getEvent(any(), eq("stored-2"))
+  }
+
   // ---------------------------------------------------------------- editEvent
 
   @Test
@@ -288,10 +340,15 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
   fun editEvent_afterSuccess_noEventIsLoadedAnymore() = runTest {
     val viewModel = loadedViewModel()
     viewModel.editEvent()
+    assertTrue(viewModel.uiState.value.isEventEdited)
 
     viewModel.editEvent()
 
-    assertEquals(EventPlanningViewModel.NO_EVENT_TO_EDIT_ERROR, viewModel.uiState.value.error)
+    val state = viewModel.uiState.value
+    assertEquals(EventPlanningViewModel.NO_EVENT_TO_EDIT_ERROR, state.error)
+    assertFalse(state.isEventEdited)
+    assertFalse(state.isEventAdded)
+    assertFalse(state.isEventDeleted)
     verify(eventsRepository, times(1)).saveEvent(any())
   }
 
@@ -423,10 +480,31 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
   fun deleteEvent_afterwards_noEventIsLoadedAnymore() = runTest {
     val viewModel = loadedViewModel()
     viewModel.deleteEvent("stored-1")
+    assertTrue(viewModel.uiState.value.isEventDeleted)
 
     viewModel.editEvent()
 
-    assertEquals(EventPlanningViewModel.NO_EVENT_TO_EDIT_ERROR, viewModel.uiState.value.error)
+    val state = viewModel.uiState.value
+    assertEquals(EventPlanningViewModel.NO_EVENT_TO_EDIT_ERROR, state.error)
+    assertFalse(state.isEventEdited)
+    assertFalse(state.isEventAdded)
+    assertFalse(state.isEventDeleted)
+  }
+
+  @Test
+  fun fail_clearsPreviousSuccessResults() = runTest {
+    val viewModel = loadedViewModel()
+    viewModel.editEvent()
+    assertTrue(viewModel.uiState.value.isEventEdited)
+
+    viewModel.setSubject("   ")
+    viewModel.addEvent()
+
+    val state = viewModel.uiState.value
+    assertNotNull(state.error)
+    assertFalse(state.isEventEdited)
+    assertFalse(state.isEventAdded)
+    assertFalse(state.isEventDeleted)
   }
 
   @Test

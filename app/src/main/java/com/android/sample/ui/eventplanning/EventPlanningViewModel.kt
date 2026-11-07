@@ -524,7 +524,7 @@ class EventPlanningViewModel(
   }
 
   private fun fail(message: String?) {
-    _uiState.update { it.copy(error = message, isEventAdded = false) }
+    _uiState.update { it.withoutResults().copy(error = message) }
   }
 
   /** Applies a form edit and clears the previous save result. */
