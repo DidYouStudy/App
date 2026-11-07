@@ -1,4 +1,5 @@
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
 
 import androidx.activity.compose.BackHandler
@@ -21,6 +22,7 @@ import com.android.sample.model.event.EventType
  * persisted only when the user presses Save.
  *
  * @param modifier Modifier applied to the root screen layout.
+ * @param initialKind Category of event to create (defaults to [EventKind.PERSONAL]).
  * @param viewModel ViewModel backing the event creation workflow; defaults to the screen's
  *   repository-backed ViewModel.
  * @param onBackClick Invoked by the top-bar back button or system back action.
@@ -39,6 +41,7 @@ import com.android.sample.model.event.EventType
 @Composable
 fun AddEventScreen(
     modifier: Modifier = Modifier,
+    initialKind: EventKind = EventKind.PERSONAL,
     viewModel: EventPlanningViewModel = eventsPlanningViewModel(),
     onBackClick: () -> Unit,
     onEventSaved: () -> Unit,
@@ -60,6 +63,8 @@ fun AddEventScreen(
 
   // clear form if it was previously being edited
   LaunchedEffect(Unit) { if (uiState.isEditing) viewModel.resetForm() }
+
+  LaunchedEffect(initialKind) { viewModel.setEventKind(initialKind) }
 
   BackHandler {
     focusManager.clearFocus()

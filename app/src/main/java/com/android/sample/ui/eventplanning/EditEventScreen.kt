@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
 
 import androidx.activity.compose.BackHandler
@@ -23,6 +24,7 @@ import java.time.LocalTime
  * built-in pickers. Leaving the screen discards the current form state.
  *
  * @param eventId ID of the event to load for editing.
+ * @param eventKind Category of event to edit (defaults to [EventKind.PERSONAL]).
  * @param modifier Modifier applied to the screen.
  * @param viewModel ViewModel backing the event editing workflow; defaults to the screen's
  *   repository-backed ViewModel.
@@ -45,6 +47,7 @@ import java.time.LocalTime
 @Composable
 fun EditEventScreen(
     eventId: String,
+    eventKind: EventKind = EventKind.PERSONAL,
     modifier: Modifier = Modifier,
     viewModel: EventPlanningViewModel = eventsPlanningViewModel(),
     onBackClick: () -> Unit,
@@ -59,7 +62,7 @@ fun EditEventScreen(
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val focusManager = LocalFocusManager.current
 
-  LaunchedEffect(viewModel, eventId) { viewModel.loadEvent(eventId) }
+  LaunchedEffect(viewModel, eventId, eventKind) { viewModel.loadEvent(eventId, eventKind) }
 
   LaunchedEffect(uiState.isEventEdited) {
     if (uiState.isEventEdited) {

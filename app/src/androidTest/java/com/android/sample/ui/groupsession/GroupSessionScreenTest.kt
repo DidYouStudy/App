@@ -1,6 +1,7 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
 import android.content.Context
@@ -35,6 +36,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -154,6 +156,43 @@ class GroupSessionScreenTest {
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ADD_BUTTON).assertIsDisplayed()
+  }
+
+  @Test
+  fun add_group_session_button_click_triggers_callback() {
+    var addClicked = false
+    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    composeTestRule.setContent {
+      GroupSessionScreen(
+          viewModel = viewModel,
+          onAddSessionClick = { addClicked = true },
+      )
+    }
+
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ADD_BUTTON).performClick()
+    assertTrue(addClicked)
+  }
+
+  @Test
+  fun edit_group_session_button_click_triggers_callback() {
+    var editedSessionId: String? = null
+    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    composeTestRule.setContent {
+      GroupSessionScreen(
+          viewModel = viewModel,
+          onEditSessionClick = { id -> editedSessionId = id },
+      )
+    }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(hasTestTag(GroupSessionScreenTestTags.sessionItem(0)))
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.group_session_action_edit))
+        .performClick()
+
+    assertEquals("s1", editedSessionId)
   }
 
   @Test
