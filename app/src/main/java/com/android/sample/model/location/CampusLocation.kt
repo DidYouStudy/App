@@ -6,7 +6,7 @@ package com.android.sample.model.location
  *
  * @property name Specific room designation or location name.
  * @property zone Campus zone or building section identifier.
- * @property type Type of the location (e.g., [CampusLocationType.SALLE_DE_COURS]).
+ * @property type Type of the location (e.g., [CampusLocationType.LECTURE_ROOM]).
  * @property floor Floor level number if applicable, or null if unspecified.
  * @property location Geographic coordinates of the campus location.
  */

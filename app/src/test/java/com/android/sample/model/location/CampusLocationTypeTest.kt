@@ -8,44 +8,58 @@ import org.junit.Test
 class CampusLocationTypeTest {
 
   @Test
-  fun fromString_knownLabels_returnsExpectedType() {
+  fun fromString_knownNames_returnsExpectedType() {
     Assert.assertEquals(
-        CampusLocationType.SALLE_DE_COURS,
-        CampusLocationType.fromString("SALLE DE COURS"),
-    )
-    Assert.assertEquals(CampusLocationType.SALLE_TP, CampusLocationType.fromString("SALLE TP"))
-    Assert.assertEquals(CampusLocationType.AUDITOIRE, CampusLocationType.fromString("AUDITOIRE"))
-    Assert.assertEquals(
-        CampusLocationType.CONFERENCES,
-        CampusLocationType.fromString("CONFERENCES"),
-    )
-    Assert.assertEquals(CampusLocationType.TUTORAT, CampusLocationType.fromString("TUTORAT"))
-    Assert.assertEquals(
-        CampusLocationType.CONF_MULTIMEDIA,
-        CampusLocationType.fromString("CONF MULTIMEDIA"),
+        CampusLocationType.LECTURE_ROOM,
+        CampusLocationType.fromString("LECTURE_ROOM"),
     )
     Assert.assertEquals(
-        CampusLocationType.BIBLIOTHEQUE,
-        CampusLocationType.fromString("BIBLIOTHEQUE"),
+        CampusLocationType.PRACTICAL_ROOM,
+        CampusLocationType.fromString("PRACTICAL_ROOM"),
     )
-    Assert.assertEquals(CampusLocationType.REUNION, CampusLocationType.fromString("REUNION"))
-    Assert.assertEquals(CampusLocationType.LABO, CampusLocationType.fromString("LABO"))
+    Assert.assertEquals(
+        CampusLocationType.AUDITORIUM,
+        CampusLocationType.fromString("AUDITORIUM"),
+    )
+    Assert.assertEquals(
+        CampusLocationType.CONFERENCE_ROOM,
+        CampusLocationType.fromString("CONFERENCE_ROOM"),
+    )
+    Assert.assertEquals(
+        CampusLocationType.TUTORING_ROOM,
+        CampusLocationType.fromString("TUTORING_ROOM"),
+    )
+    Assert.assertEquals(
+        CampusLocationType.MULTIMEDIA_CONFERENCE_ROOM,
+        CampusLocationType.fromString("MULTIMEDIA_CONFERENCE_ROOM"),
+    )
+    Assert.assertEquals(
+        CampusLocationType.LIBRARY,
+        CampusLocationType.fromString("LIBRARY"),
+    )
+    Assert.assertEquals(
+        CampusLocationType.MEETING_ROOM,
+        CampusLocationType.fromString("MEETING_ROOM"),
+    )
+    Assert.assertEquals(
+        CampusLocationType.LAB,
+        CampusLocationType.fromString("LAB"),
+    )
   }
 
   @Test
   fun fromString_caseInsensitiveAndWhitespace_returnsExpectedType() {
     Assert.assertEquals(
-        CampusLocationType.SALLE_DE_COURS,
-        CampusLocationType.fromString("  salle de cours "),
-    )
-    Assert.assertEquals(CampusLocationType.LABO, CampusLocationType.fromString("labo"))
-    Assert.assertEquals(
-        CampusLocationType.BIBLIOTHEQUE,
-        CampusLocationType.fromString("Bibliotheque"),
+        CampusLocationType.LECTURE_ROOM,
+        CampusLocationType.fromString("  lecture_room "),
     )
     Assert.assertEquals(
-        CampusLocationType.SALLE_DE_COURS,
-        CampusLocationType.fromString("SALLE_DE_COURS"),
+        CampusLocationType.LAB,
+        CampusLocationType.fromString("lab"),
+    )
+    Assert.assertEquals(
+        CampusLocationType.LIBRARY,
+        CampusLocationType.fromString("Library"),
     )
   }
 

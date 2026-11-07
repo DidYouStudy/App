@@ -14,14 +14,14 @@ class CampusLocationTest {
         CampusLocation(
             name = "CM 1 1",
             zone = "CM",
-            type = CampusLocationType.AUDITOIRE,
+            type = CampusLocationType.AUDITORIUM,
             floor = 1,
             location = loc,
         )
 
     Assert.assertEquals("CM 1 1", campusLoc.name)
     Assert.assertEquals("CM", campusLoc.zone)
-    Assert.assertEquals(CampusLocationType.AUDITOIRE, campusLoc.type)
+    Assert.assertEquals(CampusLocationType.AUDITORIUM, campusLoc.type)
     Assert.assertEquals(1, campusLoc.floor)
     Assert.assertEquals(loc, campusLoc.location)
   }
@@ -33,14 +33,14 @@ class CampusLocationTest {
         CampusLocation(
             name = "AAC 0 31",
             zone = "AAC",
-            type = CampusLocationType.SALLE_TP,
+            type = CampusLocationType.PRACTICAL_ROOM,
             floor = null,
             location = loc,
         )
 
     Assert.assertEquals("AAC 0 31", campusLoc.name)
     Assert.assertEquals("AAC", campusLoc.zone)
-    Assert.assertEquals(CampusLocationType.SALLE_TP, campusLoc.type)
+    Assert.assertEquals(CampusLocationType.PRACTICAL_ROOM, campusLoc.type)
     Assert.assertNull(campusLoc.floor)
     Assert.assertEquals(loc, campusLoc.location)
   }
@@ -52,7 +52,7 @@ class CampusLocationTest {
         CampusLocation(
             name = "BC 01",
             zone = "BC Building",
-            type = CampusLocationType.SALLE_DE_COURS,
+            type = CampusLocationType.LECTURE_ROOM,
             floor = 1,
             location = loc,
         )
@@ -61,7 +61,7 @@ class CampusLocationTest {
         CampusLocation(
             name = "BC 01",
             zone = "BC Building",
-            type = CampusLocationType.SALLE_DE_COURS,
+            type = CampusLocationType.LECTURE_ROOM,
             floor = 1,
             location = loc,
         )
