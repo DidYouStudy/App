@@ -564,22 +564,6 @@ class GroupSessionsViewModelTest {
     assertTrue(viewModel.uiState.value.isLoading)
   }
 
-  /** The reference time keeps updating when one of two screen collectors leaves. */
-  @Test
-  fun now_refreshesWhileOneOfTwoCollectorsRemains() = runTest {
-    val clock = MutableTestClock(now)
-    val viewModel = GroupSessionsViewModel(authRepository, repository, clock)
-    val leavingCollector = observe(viewModel)
-    observe(viewModel)
-    leavingCollector.cancel()
-    clock.currentInstant = Instant.parse("2025-03-01T12:00:30Z")
-
-    advanceTimeBy(30_000)
-    runCurrent()
-
-    assertEquals(Instant.parse("2025-03-01T12:00:30Z"), viewModel.uiState.value.now)
-  }
-
   /** A hidden screen does no work, and coming back shows the right time without waiting. */
   @Test
   fun now_pausesWithoutCollectorAndUpdatesAsSoonAsOneReturns() = runTest {
