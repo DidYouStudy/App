@@ -14,11 +14,16 @@ import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
 import java.time.Clock
+import java.time.Instant
+import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -45,6 +50,13 @@ enum class GroupSessionsError {
   LEAVE_FAILED,
 }
 
+/**
+ * How often the reference time is refreshed while the screen is visible.
+ *
+ * Status badges change at most once a minute, so a badge is never more than 30 seconds late.
+ */
+private val NOW_REFRESH_INTERVAL = 30.seconds
+
 /** Returns this error unless it is LOAD_FAILED, which a new list or refresh resolves. */
 private fun GroupSessionsError?.withoutLoadFailure() = takeUnless {
   it == GroupSessionsError.LOAD_FAILED
@@ -61,8 +73,11 @@ data class GroupSessionItem(
  * State of the Group sessions screen; [sessions] is already searched and filtered.
  *
  * The query retains the user's typed text while matching ignores case and surrounding whitespace.
+ * [now] is the reference time every card uses for its relative labels, so they all agree. It has no
+ * default value, so that every new state has to supply the current time.
  */
 data class GroupSessionsUiState(
+    val now: Instant,
     val isLoading: Boolean = true,
     val sessions: List<GroupSessionItem> = emptyList(),
     val query: String = "",
@@ -78,14 +93,15 @@ data class GroupSessionsUiState(
  * uses the current clock instant, because an existing repository flow retains its original cutoff.
  * Successful list emissions and refreshes clear only [GroupSessionsError.LOAD_FAILED]; action
  * errors remain until cleared or the observed user ID changes. Action results from an earlier
- * observed user ID are ignored.
+ * observed user ID are ignored. [GroupSessionsUiState.now] is refreshed from [clock] while
+ * [uiState] has a collector, and immediately when a collector returns.
  */
 class GroupSessionsViewModel(
     private val authRepository: AuthRepository,
     private val repository: GroupSessionsRepository,
     private val clock: Clock = Clock.systemUTC(),
 ) : ViewModel() {
-  private val _uiState = MutableStateFlow(GroupSessionsUiState())
+  private val _uiState = MutableStateFlow(GroupSessionsUiState(now = clock.instant()))
   /** The current loading, list, search, filter, and categorized-error state. */
   val uiState: StateFlow<GroupSessionsUiState> = _uiState.asStateFlow()
 
@@ -96,6 +112,7 @@ class GroupSessionsViewModel(
   private var observedSessions: List<GroupSession> = emptyList()
 
   init {
+    refreshNowWhileObserved()
     viewModelScope.launch {
       combine(authRepository.currentUser, refreshVersion) { user, _ -> user }
           .collectLatest { user ->
@@ -107,7 +124,7 @@ class GroupSessionsViewModel(
             }
             if (user == null) {
               observedSessions = emptyList()
-              _uiState.value = GroupSessionsUiState(isLoading = false)
+              _uiState.value = GroupSessionsUiState(now = clock.instant(), isLoading = false)
             } else {
               updateVisibleSessions()
               _uiState.update {
@@ -209,6 +226,26 @@ class GroupSessionsViewModel(
   /** Clears the categorized error without changing the rest of the screen state. */
   fun clearError() {
     viewModelScope.launch { _uiState.update { it.copy(error = null) } }
+  }
+
+  /**
+   * Keeps the reference time current only while the screen collects [uiState].
+   *
+   * The loop stops with the last collector, so a hidden screen does no work, and restarts with an
+   * immediate update, so returning to the screen never shows an outdated time.
+   */
+  private fun refreshNowWhileObserved() {
+    viewModelScope.launch {
+      _uiState.subscriptionCount
+          .map { it > 0 }
+          .distinctUntilChanged()
+          .collectLatest { isObserved ->
+            while (isObserved) {
+              _uiState.update { it.copy(now = clock.instant()) }
+              delay(NOW_REFRESH_INTERVAL)
+            }
+          }
+    }
   }
 
   private fun updateVisibleSessions() {

@@ -302,6 +302,7 @@ private fun GroupSessionContent(
             ) { index, item ->
               GroupSessionCard(
                   item = item,
+                  now = state.now,
                   onJoin = onJoin,
                   onLeave = onLeave,
                   modifier = Modifier.testTag(GroupSessionScreenTestTags.sessionItem(index)),
@@ -315,15 +316,12 @@ private fun GroupSessionContent(
 @Composable
 private fun GroupSessionCard(
     item: GroupSessionItem,
+    now: Instant,
     onJoin: (String) -> Unit,
     onLeave: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
   val session = item.session
-  // TODO: The ViewModel should supply the reference time in GroupSessionsUiState so all cards
-  //  evaluate relative status labels consistently, unit tests remain deterministic, and composables
-  // stay pure.
-  val now = Instant.now()
   val statusLabel = sessionStatusLabel(session.details.startsAt, now)
   val startLabel = sessionTimeLabel(session.details.startsAt)
   val endLabel = sessionTimeLabel(session.details.endsAt)
