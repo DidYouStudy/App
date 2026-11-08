@@ -7,6 +7,7 @@ package com.android.sample.ui.groupsession
 import android.content.Context
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -214,12 +215,13 @@ class GroupSessionScreenTest {
     }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
+    val editButtonMatcher =
+        hasText(context.getString(R.string.group_session_action_edit)) and
+            hasAnyAncestor(hasTestTag(GroupSessionScreenTestTags.sessionItem(0)))
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
-        .performScrollToNode(hasTestTag(GroupSessionScreenTestTags.sessionItem(0)))
-    composeTestRule
-        .onNodeWithText(context.getString(R.string.group_session_action_edit))
-        .performClick()
+        .performScrollToNode(editButtonMatcher)
+    composeTestRule.onNode(editButtonMatcher).performClick()
 
     assertEquals("s1", editedSessionId)
   }
@@ -236,12 +238,13 @@ class GroupSessionScreenTest {
     }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
+    val editButtonMatcher =
+        hasText(context.getString(R.string.group_session_action_edit)) and
+            hasAnyAncestor(hasTestTag(GroupSessionScreenTestTags.sessionItem(0)))
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
-        .performScrollToNode(hasTestTag(GroupSessionScreenTestTags.sessionItem(0)))
-    composeTestRule
-        .onNodeWithText(context.getString(R.string.group_session_action_edit))
-        .performClick()
+        .performScrollToNode(editButtonMatcher)
+    composeTestRule.onNode(editButtonMatcher).performClick()
 
     assertEquals(
         Screen.EditEvent(

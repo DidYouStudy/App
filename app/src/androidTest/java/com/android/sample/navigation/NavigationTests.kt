@@ -420,18 +420,16 @@ class NavigationTests {
     checkGroupSessionScreenIsDisplayed()
 
     val cardMatcher = hasAnyDescendant(hasText(session.details.subject ?: ""))
+    val editButtonMatcher =
+        hasText(
+            composeTestRule.activity.getString(
+                com.android.sample.R.string.group_session_action_edit
+            )
+        ) and hasAnyAncestor(cardMatcher)
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
-        .performScrollToNode(cardMatcher)
-    composeTestRule
-        .onNode(
-            hasText(
-                composeTestRule.activity.getString(
-                    com.android.sample.R.string.group_session_action_edit
-                )
-            ) and hasAnyAncestor(cardMatcher)
-        )
-        .performClick()
+        .performScrollToNode(editButtonMatcher)
+    composeTestRule.onNode(editButtonMatcher).performClick()
 
     composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.SCREEN_CONTAINER).assertIsDisplayed()
     composeTestRule
@@ -475,18 +473,16 @@ class NavigationTests {
     checkGroupSessionScreenIsDisplayed()
 
     val cardMatcher = hasAnyDescendant(hasText(session.details.subject ?: ""))
+    val editButtonMatcher =
+        hasText(
+            composeTestRule.activity.getString(
+                com.android.sample.R.string.group_session_action_edit
+            )
+        ) and hasAnyAncestor(cardMatcher)
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
-        .performScrollToNode(cardMatcher)
-    composeTestRule
-        .onNode(
-            hasText(
-                composeTestRule.activity.getString(
-                    com.android.sample.R.string.group_session_action_edit
-                )
-            ) and hasAnyAncestor(cardMatcher)
-        )
-        .performClick()
+        .performScrollToNode(editButtonMatcher)
+    composeTestRule.onNode(editButtonMatcher).performClick()
 
     composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.SCREEN_CONTAINER).assertIsDisplayed()
     composeTestRule
