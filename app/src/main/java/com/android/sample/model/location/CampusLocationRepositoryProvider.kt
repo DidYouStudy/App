@@ -14,20 +14,22 @@ object CampusLocationRepositoryProvider {
    * tests. Only the application context is kept, so no activity is leaked.
    */
   @Synchronized
-  fun getRepository(context: Context): CampusLocationRepository =
-      instance
-          ?: run {
-            val appContext = context.applicationContext
-            LocalCampusLocationRepository(
-                readJson = {
-                  appContext.resources
-                      .openRawResource(R.raw.campus_locations)
-                      .bufferedReader()
-                      .use { it.readText() }
-                }
-            )
-          }
-              .also { instance = it }
+  fun getRepository(context: Context): CampusLocationRepository {
+    instance?.let {
+      return it
+    }
+    val appContext = context.applicationContext
+    val repository =
+        LocalCampusLocationRepository(
+            readJson = {
+              appContext.resources.openRawResource(R.raw.campus_locations).bufferedReader().use {
+                it.readText()
+              }
+            }
+        )
+    instance = repository
+    return repository
+  }
 
   /**
    * Replaces the shared repository so tests can supply a fake. `null` removes the replacement: the

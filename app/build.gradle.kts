@@ -175,9 +175,6 @@ dependencies {
   testImplementation(libs.mockito.kotlin)
   testImplementation(libs.coroutines.test)
 
-  // JSON parsing of the bundled campus locations
-  implementation(libs.kotlinx.serialization.json)
-
   // ---------------- Firebase -------------------
   implementation(platform(libs.firebase.bom))
   implementation(libs.firebase.auth)
@@ -191,6 +188,10 @@ dependencies {
   implementation(libs.androidx.credentials)
   implementation(libs.androidx.credentials.play.services.auth)
   implementation(libs.googleid)
+
+  // ------------- JSON parsing ----------------
+  // Bundled campus locations (the library ships its own R8 rules)
+  implementation(libs.kotlinx.serialization.json)
 
   // Coil3 library which handles image loading through URL's ---- currently are untrusted artifacts
   // but they will be needed for future implementations

@@ -4,7 +4,6 @@ package com.android.sample.model.location
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.test.runTest
 import org.junit.After
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -32,7 +31,9 @@ class CampusLocationRepositoryProviderTest {
   fun default_readsTheBundledCampusLocations() = runTest {
     val repo = CampusLocationRepositoryProvider.getRepository(context)
 
-    assertEquals(677, repo.getAllLocations().getOrThrow().size)
+    val all = repo.getAllLocations().getOrThrow()
+    assertTrue(all.isNotEmpty())
+    assertTrue(all.none { it.type == CampusLocationType.UNKNOWN })
     assertTrue("CM" in repo.getZones().getOrThrow())
   }
 

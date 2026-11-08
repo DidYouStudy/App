@@ -14,8 +14,9 @@ import kotlinx.serialization.json.Json
  * [CampusLocationRepository] backed by the `campus_locations.json` file bundled with the app.
  *
  * The file is read and parsed once, on [ioDispatcher], the first time a function is called. The
- * parsed list is then kept in memory, so later calls are cheap. A failed load is not cached: the
- * next call tries again.
+ * parsed locations, their normalized names and the sorted building codes are then kept in memory,
+ * so later calls only filter. A failed load is not cached: the next call tries again, which
+ * recovers from a transient read error at the cost of repeating a deterministic failure.
  *
  * @param readJson Returns the full text of the JSON file. It is injected so unit tests do not need
  *   an Android `Context`; the app passes a reader of the raw resource.
@@ -26,26 +27,32 @@ class LocalCampusLocationRepository(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : CampusLocationRepository {
 
+  /** A location with its name already normalized for matching, computed once at load. */
+  private class Entry(val location: CampusLocation, val normalizedName: String)
+
+  /** Everything derived from the file, built once. */
+  private class Index(val entries: List<Entry>, val zones: List<String>)
+
   /** Guards [cache] so concurrent first calls load the file only once. */
   private val loadMutex = Mutex()
 
-  /** The parsed locations, or `null` until the first successful load. */
-  @Volatile private var cache: List<CampusLocation>? = null
+  /** The loaded data, or `null` until the first successful load. */
+  @Volatile private var cache: Index? = null
 
-  override suspend fun getAllLocations(): Result<List<CampusLocation>> = load()
+  override suspend fun getAllLocations(): Result<List<CampusLocation>> =
+      load().map { index -> index.entries.map { it.location } }
 
   override suspend fun search(filter: CampusLocationFilter): Result<List<CampusLocation>> =
-      load().map { all -> applyFilter(all, filter) }
+      load().map { index -> applyFilter(index.entries, filter) }
 
-  override suspend fun getZones(): Result<List<String>> =
-      load().map { all -> all.map { it.zone }.distinct().sorted() }
+  override suspend fun getZones(): Result<List<String>> = load().map { it.zones }
 
   /**
-   * Returns the cached locations, loading and parsing the file first if needed. Any failure
-   * (unreadable file, malformed JSON, invalid coordinates) is returned as [Result.failure];
-   * cancellation is rethrown so the caller's coroutine still stops.
+   * Returns the cached index, loading and parsing the file first if needed. Any failure (unreadable
+   * file, malformed JSON, invalid coordinates) is returned as [Result.failure]; cancellation is
+   * rethrown so the caller's coroutine still stops.
    */
-  private suspend fun load(): Result<List<CampusLocation>> {
+  private suspend fun load(): Result<Index> {
     cache?.let {
       return Result.success(it)
     }
@@ -55,9 +62,9 @@ class LocalCampusLocationRepository(
         return@withLock Result.success(it)
       }
       try {
-        val parsed = withContext(ioDispatcher) { parse(readJson()) }
-        cache = parsed
-        Result.success(parsed)
+        val index = withContext(ioDispatcher) { buildIndex(parse(readJson())) }
+        cache = index
+        Result.success(index)
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
@@ -75,23 +82,38 @@ class LocalCampusLocationRepository(
         json.decodeFromString<List<CampusLocationJson>>(text).map { it.toDomain() }
 
     /**
-     * Keeps the locations that match every criterion set in [filter], then puts exact name matches
-     * first. The sort is stable, so every other location keeps the order of the data file.
+     * Normalizes every name once, and lists the building codes sorted, without duplicates that
+     * differ only by case (the zone filter ignores case, so such codes would be the same choice).
      */
-    fun applyFilter(
-        locations: List<CampusLocation>,
-        filter: CampusLocationFilter,
-    ): List<CampusLocation> {
+    fun buildIndex(locations: List<CampusLocation>): Index =
+        Index(
+            entries = locations.map { Entry(it, normalizeName(it.name)) },
+            zones = locations.map { it.zone }.distinctBy { it.lowercase() }.sorted(),
+        )
+
+    /**
+     * Keeps the locations that match every criterion set in [filter]. With a text query the result
+     * is ranked: exact name matches first, then names that start with the text, then the others.
+     * The sort is stable, so locations of the same rank keep the order of the data file.
+     */
+    fun applyFilter(entries: List<Entry>, filter: CampusLocationFilter): List<CampusLocation> {
       val query = filter.query?.let(::normalizeName).orEmpty()
-      val matches = locations.filter { location ->
-        (filter.zone == null || location.zone.equals(filter.zone, ignoreCase = true)) &&
-            (filter.types.isEmpty() || location.type in filter.types) &&
-            (query.isEmpty() || normalizeName(location.name).contains(query))
+      val matches = entries.filter { entry ->
+        (filter.zone == null || entry.location.zone.equals(filter.zone, ignoreCase = true)) &&
+            (filter.types.isEmpty() || entry.location.type in filter.types) &&
+            (query.isEmpty() || entry.normalizedName.contains(query))
       }
-      if (query.isEmpty()) return matches
-      // false sorts before true, so exact matches (e.g. "BC 01" for "BC 01") come first.
-      return matches.sortedBy { normalizeName(it.name) != query }
+      val ranked = if (query.isEmpty()) matches else matches.sortedBy { rank(it, query) }
+      return ranked.map { it.location }
     }
+
+    /** 0 for an exact name match, 1 when the name starts with [query], 2 otherwise. */
+    fun rank(entry: Entry, query: String): Int =
+        when {
+          entry.normalizedName == query -> 0
+          entry.normalizedName.startsWith(query) -> 1
+          else -> 2
+        }
 
     /** Lowercases [text] and removes all whitespace, so "CM 1 121" and "cm1121" compare equal. */
     fun normalizeName(text: String): String = text.filterNot { it.isWhitespace() }.lowercase()

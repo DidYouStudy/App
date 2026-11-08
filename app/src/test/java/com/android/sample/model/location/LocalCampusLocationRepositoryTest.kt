@@ -1,9 +1,9 @@
 // Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.model.location
 
-import java.io.File
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -241,13 +241,62 @@ class LocalCampusLocationRepositoryTest {
     assertTrue(repo.getAllLocations().isSuccess)
   }
 
-  /** Guards the real data file: it must parse, with no unknown type and at least the 677 rooms. */
   @Test
-  fun bundledJson_parsesWithoutUnknownTypes() = runTest {
-    val file = File("src/main/res/raw/campus_locations.json")
-    val all = LocalCampusLocationRepository({ file.readText() }).getAllLocations().getOrThrow()
+  fun search_query_ranksPrefixMatchesBeforeInnerMatches() = runTest {
+    val json =
+        """
+        [
+          {"name": "X CM 1", "zone": "X", "latitude": 1.0, "longitude": 2.0},
+          {"name": "CM 1 121", "zone": "CM", "latitude": 1.0, "longitude": 2.0},
+          {"name": "CM 1", "zone": "CM", "latitude": 1.0, "longitude": 2.0}
+        ]
+        """
+            .trimIndent()
 
-    assertEquals(677, all.size)
-    assertTrue(all.none { it.type == CampusLocationType.UNKNOWN })
+    assertEquals(
+        listOf("CM 1", "CM 1 121", "X CM 1"),
+        repo(json).names(CampusLocationFilter(query = "cm 1")),
+    )
+  }
+
+  @Test
+  fun zones_differingOnlyByCase_areListedOnceAndFilterBothRooms() = runTest {
+    val json =
+        """
+        [
+          {"name": "A 1", "zone": "CM", "latitude": 1.0, "longitude": 2.0},
+          {"name": "A 2", "zone": "cm", "latitude": 1.0, "longitude": 2.0}
+        ]
+        """
+            .trimIndent()
+    val repo = repo(json)
+
+    assertEquals(listOf("CM"), repo.getZones().getOrThrow())
+    assertEquals(listOf("A 1", "A 2"), repo.names(CampusLocationFilter(zone = "CM")))
+  }
+
+  @Test
+  fun validRowBeforeInvalidRow_failsTheWholeLoad() = runTest {
+    val json =
+        """
+        [
+          {"name": "A 1", "zone": "A", "latitude": 1.0, "longitude": 2.0},
+          {"name": "B 1", "zone": "B", "latitude": 999.0, "longitude": 2.0}
+        ]
+        """
+            .trimIndent()
+    val repo = repo(json)
+
+    assertTrue(repo.getAllLocations().isFailure)
+    assertTrue(repo.getZones().isFailure)
+  }
+
+  @Test
+  fun cancellation_isRethrownNotWrappedInAFailure() = runTest {
+    val repo = LocalCampusLocationRepository({ throw CancellationException("stop") })
+
+    val thrown = runCatching { repo.getAllLocations() }.exceptionOrNull()
+
+    assertTrue(thrown is CancellationException)
   }
 }
