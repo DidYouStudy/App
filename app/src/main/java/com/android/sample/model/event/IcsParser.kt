@@ -1,4 +1,5 @@
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.event
 
 import java.io.InputStream
@@ -15,7 +16,7 @@ import java.util.UUID
  * probably cut off and may be missing events.
  */
 data class ParseResult(
-    val events: List<Event>,
+    val events: List<PersonalEvent>,
     val skipped: Int,
     val missingCalendarEnd: Boolean = false,
 ) {
@@ -25,7 +26,7 @@ data class ParseResult(
 }
 
 /**
- * Utility for parsing iCalendar (.ics) format files into domain [Event] models.
+ * Utility for parsing iCalendar (.ics) format files into domain [PersonalEvent] models.
  *
  * Supports line unfolding (RFC 5545), timezone extraction (`TZID`), custom duration parsing, and
  * category mapping for academic course schedules (e.g., IS-Academia).
@@ -37,7 +38,8 @@ object IcsParser {
   private val WEEK_DURATION_REGEX = Regex("^([+-]?)P([0-9]+)W$", RegexOption.IGNORE_CASE)
 
   /**
-   * Parses an iCalendar (.ics) input stream and maps its `VEVENT` entries to [Event] instances.
+   * Parses an iCalendar (.ics) input stream and maps its `VEVENT` entries to [PersonalEvent]
+   * instances.
    *
    * Unfolds folded lines according to RFC 5545, parses VEVENT property blocks, and maps academic
    * categories to [EventType].
@@ -45,13 +47,13 @@ object IcsParser {
    * @param inputStream The raw input stream containing .ics data.
    * @param ownerId The user ID to assign to each parsed event.
    * @param idGenerator Lambda producing stable or random unique IDs for each event.
-   * @return List of parsed and validated [Event] instances.
+   * @return List of parsed and validated [PersonalEvent] instances.
    */
   fun parseCalendar(
       inputStream: InputStream,
       ownerId: String,
       idGenerator: (veventUid: String?) -> String = { it ?: UUID.randomUUID().toString() },
-  ): List<Event> = parseCalendarWithReport(inputStream, ownerId, idGenerator).events
+  ): List<PersonalEvent> = parseCalendarWithReport(inputStream, ownerId, idGenerator).events
 
   /**
    * Like [parseCalendar], but also counts the `VEVENT` blocks that were dropped because they were
@@ -67,7 +69,7 @@ object IcsParser {
     val unfoldedContent = rawContent.replace(Regex("\r?\n[ \t]"), "")
     val lines = unfoldedContent.lines()
 
-    val events = mutableListOf<Event>()
+    val events = mutableListOf<PersonalEvent>()
     var skipped = 0
     // Store property name -> list of (rawKeyWithParams, value) pairs
     var currentBlock: MutableMap<String, MutableList<Pair<String, String>>>? = null
@@ -121,18 +123,18 @@ object IcsParser {
   }
 
   /**
-   * Parses a single `VEVENT` property map into an [Event] domain model.
+   * Parses a single `VEVENT` property map into a [PersonalEvent] domain model.
    *
    * @param properties Map of property keys to lists of values extracted from a `VEVENT` block.
    * @param ownerId User ID owning the event.
    * @param idGenerator Lambda generating the event ID.
-   * @return The parsed [Event], or `null` if required fields are missing or invalid.
+   * @return The parsed [PersonalEvent], or `null` if required fields are missing or invalid.
    */
   private fun parseVEvent(
       properties: Map<String, List<Pair<String, String>>>,
       ownerId: String,
       idGenerator: (String?) -> String,
-  ): Event? {
+  ): PersonalEvent? {
     val uid = properties.firstValue("UID")
 
     // 1. Validate Subject / Summary (reject blank strings)
@@ -170,7 +172,9 @@ object IcsParser {
         }
 
     // Validate Duration constraints: must end after start, and duration <= MAX_DURATION (24h)
-    if (!endsAt.isAfter(startsAt) || Duration.between(startsAt, endsAt) > Event.MAX_DURATION) {
+    if (
+        !endsAt.isAfter(startsAt) || Duration.between(startsAt, endsAt) > EventDetails.MAX_DURATION
+    ) {
       return null
     }
 
@@ -181,17 +185,20 @@ object IcsParser {
     val dtstampRaw = properties.firstValue("DTSTAMP")
     val createdAt = dtstampRaw?.let { parseIcsDateTime(it, ZoneId.of("UTC")) } ?: Instant.now()
 
-    return Event(
+    return PersonalEvent(
         id = idGenerator(uid),
         ownerId = ownerId,
-        type = type,
-        subject = summary,
-        startsAt = startsAt,
-        endsAt = endsAt,
+        details =
+            EventDetails(
+                type = type,
+                subject = summary,
+                startsAt = startsAt,
+                endsAt = endsAt,
+                location = location,
+                description = description,
+            ),
         createdAt = createdAt,
         updatedAt = createdAt,
-        location = location,
-        description = description,
         tasks = emptyList(),
         importKey = uid?.takeIf { it.isNotBlank() },
     )

@@ -1,5 +1,7 @@
+// Co-authored-by: Codex AI Agent
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -18,6 +20,7 @@ val Pink40 = Color(0xFF7D5260)
 // Google brand colours are fixed by Google's guidelines, not theme roles.
 val GoogleButtonBorder = Color(0xFFDADCE0)
 val GoogleButtonText = Color(0xFF3C4043)
+val GoogleButtonBackground = Color(0xFFFFFFFF)
 
 // Event Type Colors for Light Theme
 val EventTypeStudySession = Color(0xFFC09AF7)
@@ -69,10 +72,10 @@ val EventType.color: Color
 
 /** Returns a theme-adaptive text/icon color for content displayed on top of an [eventColor]. */
 @Composable
-fun onEventColor(type: EventType, darkTheme: Boolean = isSystemInDarkTheme()): Color {
+fun onEventColor(darkTheme: Boolean = isSystemInDarkTheme()): Color {
   return if (darkTheme) Color.White else Color(0xFF1D1B20)
 }
 
 /** Extension property to conveniently obtain a theme-adapted on-color for an [EventType]. */
 val EventType.onColor: Color
-  @Composable get() = onEventColor(this)
+  @Composable get() = onEventColor()

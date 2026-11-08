@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.eventplanning
 
 import androidx.lifecycle.ViewModel
@@ -465,12 +466,12 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     val saved = savedEvents().single()
     assertEquals("event-1", saved.id)
     assertEquals("user123", saved.ownerId)
-    assertEquals(EventType.EXAM, saved.type)
-    assertEquals("Algebra", saved.subject)
-    assertEquals(startsAt, saved.startsAt) // 09:00 in Berlin
-    assertEquals(endsAt, saved.endsAt) // 11:00 in Berlin
-    assertEquals("Room 1", saved.location)
-    assertEquals("Bring ID", saved.description)
+    assertEquals(EventType.EXAM, saved.details.type)
+    assertEquals("Algebra", saved.details.subject)
+    assertEquals(startsAt, saved.details.startsAt) // 09:00 in Berlin
+    assertEquals(endsAt, saved.details.endsAt) // 11:00 in Berlin
+    assertEquals("Room 1", saved.details.location)
+    assertEquals("Bring ID", saved.details.description)
     assertEquals(tasks, saved.tasks)
     assertEquals(now, saved.createdAt)
     assertEquals(now, saved.updatedAt)
@@ -535,8 +536,8 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     val saved = savedEvents().single()
-    assertNull(saved.location)
-    assertNull(saved.description)
+    assertNull(saved.details.location)
+    assertNull(saved.details.description)
     assertTrue(viewModel.uiState.value.isEventAdded)
   }
 
@@ -551,7 +552,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
 
     viewModel.addEvent()
 
-    assertNull(savedEvents().single().subject)
+    assertNull(savedEvents().single().details.subject)
     assertTrue(viewModel.uiState.value.isEventAdded)
   }
 

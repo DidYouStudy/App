@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.event
 
 import java.io.ByteArrayInputStream
@@ -72,13 +73,16 @@ class ScheduleImporterTest {
   fun import_keepsManuallyAddedEvents() = runTest {
     val repo = InMemoryEventsRepository()
     val manual =
-        Event(
+        PersonalEvent(
             id = "manual",
             ownerId = owner,
-            type = EventType.OTHER,
-            subject = null,
-            startsAt = Instant.parse("2026-10-20T08:00:00Z"),
-            endsAt = Instant.parse("2026-10-20T09:00:00Z"),
+            details =
+                EventDetails(
+                    type = EventType.OTHER,
+                    subject = null,
+                    startsAt = Instant.parse("2026-10-20T08:00:00Z"),
+                    endsAt = Instant.parse("2026-10-20T09:00:00Z"),
+                ),
             createdAt = from,
         )
     repo.saveEvent(manual).getOrThrow()
@@ -149,7 +153,8 @@ class ScheduleImporterTest {
     val week1 = vevent("rec@x", "20261015T080000")
     val week2 = vevent("rec@x", "20261022T080000")
     importer.import(owner, stream(ics(week1, week2)))
-    val sibling = stored(repo).first { it.startsAt == Instant.parse("2026-10-22T06:00:00Z") }
+    val sibling =
+        stored(repo).first { it.details.startsAt == Instant.parse("2026-10-22T06:00:00Z") }
     val task = EventTask("Prepare quiz")
     repo.saveEvent(sibling.copy(tasks = listOf(task))).getOrThrow()
 
@@ -213,7 +218,7 @@ class ScheduleImporterTest {
   fun import_repositoryFailure_isReturned() = runTest {
     val failing =
         object : EventsRepository by InMemoryEventsRepository() {
-          override suspend fun saveEvents(events: List<Event>): Result<Unit> =
+          override suspend fun saveEvents(events: List<PersonalEvent>): Result<Unit> =
               Result.failure(EventsException(EventsError.STORAGE_FAILURE))
         }
 
@@ -247,7 +252,7 @@ class ScheduleImporterTest {
     importer.import(owner, stream(ics(vevent("a@x", "20261015T080000", "New"))))
 
     val updated = stored(repo).single()
-    assertEquals("New", updated.subject)
+    assertEquals("New", updated.details.subject)
     assertEquals(first.id, updated.id)
     assertEquals(first.createdAt, updated.createdAt)
     assertEquals(listOf(task), updated.tasks)
@@ -272,13 +277,16 @@ class ScheduleImporterTest {
     val repo = InMemoryEventsRepository()
     val importer = ScheduleImporter(repo)
     val manual =
-        Event(
+        PersonalEvent(
             id = "manual",
             ownerId = owner,
-            type = EventType.OTHER,
-            subject = null,
-            startsAt = Instant.parse("2026-10-20T08:00:00Z"),
-            endsAt = Instant.parse("2026-10-20T09:00:00Z"),
+            details =
+                EventDetails(
+                    type = EventType.OTHER,
+                    subject = null,
+                    startsAt = Instant.parse("2026-10-20T08:00:00Z"),
+                    endsAt = Instant.parse("2026-10-20T09:00:00Z"),
+                ),
             createdAt = from,
         )
     repo.saveEvent(manual).getOrThrow()
@@ -337,7 +345,7 @@ class ScheduleImporterTest {
     ScheduleImporter(inner).import(owner, stream(ics(vevent("a@x", "20261015T080000"))))
     val failing =
         object : EventsRepository by inner {
-          override suspend fun saveEvents(events: List<Event>): Result<Unit> =
+          override suspend fun saveEvents(events: List<PersonalEvent>): Result<Unit> =
               Result.failure(EventsException(EventsError.STORAGE_FAILURE))
         }
 
@@ -352,7 +360,7 @@ class ScheduleImporterTest {
   fun import_lookupFailure_isReturned() = runTest {
     val failing =
         object : EventsRepository by InMemoryEventsRepository() {
-          override suspend fun getImportedEvents(ownerId: String): Result<List<Event>> =
+          override suspend fun getImportedEvents(ownerId: String): Result<List<PersonalEvent>> =
               Result.failure(EventsException(EventsError.PERMISSION_DENIED))
         }
 

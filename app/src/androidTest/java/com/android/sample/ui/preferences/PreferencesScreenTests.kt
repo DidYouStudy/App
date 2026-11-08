@@ -1,6 +1,8 @@
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.preferences
 
+import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -8,6 +10,8 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.test.core.app.ApplicationProvider
+import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.preferences.PreferencesRepository
@@ -152,7 +156,9 @@ class PreferencesScreenTests {
     composeTestRule.waitUntil(5_000) {
       composeTestRule.onAllNodesWithText("Retry").fetchSemanticsNodes().isNotEmpty()
     }
-    composeTestRule.onNodeWithText("boom").assertIsDisplayed()
+    // The translated message is shown; the raw exception text never reaches the user.
+    composeTestRule.onNodeWithText(loadFailedMessage()).assertIsDisplayed()
+    composeTestRule.onNodeWithText("boom").assertDoesNotExist()
     composeTestRule.onNodeWithText("Retry").assertIsDisplayed()
     composeTestRule.onNodeWithTag(Tags.PREFERENCE_SCREEN).assertDoesNotExist()
   }
@@ -164,8 +170,13 @@ class PreferencesScreenTests {
     composeTestRule.waitUntil(5_000) {
       composeTestRule.onAllNodesWithText("Retry").fetchSemanticsNodes().isNotEmpty()
     }
-    composeTestRule.onNodeWithText("Failed to load preferences").assertIsDisplayed()
+    composeTestRule.onNodeWithText(loadFailedMessage()).assertIsDisplayed()
   }
+
+  /** Returns the load-failure message in the device language. */
+  private fun loadFailedMessage(): String =
+      ApplicationProvider.getApplicationContext<Context>()
+          .getString(R.string.preferences_error_load_failed)
 
   @Test
   fun retryReloadsPreferencesAndShowsSuccessState() {
@@ -278,9 +289,14 @@ class PreferencesScreenTests {
 
     composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).performClick()
 
+    val saveFailedMessage =
+        ApplicationProvider.getApplicationContext<Context>()
+            .getString(R.string.preferences_error_save_failed)
     composeTestRule.waitUntil(5_000) {
-      composeTestRule.onAllNodesWithText("disk full").fetchSemanticsNodes().isNotEmpty()
+      composeTestRule.onAllNodesWithText(saveFailedMessage).fetchSemanticsNodes().isNotEmpty()
     }
+    // The translated message is shown; the raw exception text never reaches the user.
+    composeTestRule.onNodeWithText("disk full").assertDoesNotExist()
     composeTestRule.onNodeWithText("Retry").assertIsDisplayed()
   }
 }

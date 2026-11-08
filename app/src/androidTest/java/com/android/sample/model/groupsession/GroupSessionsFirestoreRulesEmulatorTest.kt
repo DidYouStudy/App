@@ -4,7 +4,9 @@ package com.android.sample.model.groupsession
 
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
+import com.android.sample.model.event.GroupSession
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.Timestamp
@@ -345,10 +347,13 @@ class GroupSessionsFirestoreRulesEmulatorTest {
             id = uniqueId(),
             createdBy = creator.uid,
             memberIds = listOf(creator.uid),
-            type = EventType.COURSE,
-            subject = "Analysis",
-            startsAt = start,
-            endsAt = end,
+            details =
+                EventDetails(
+                    type = EventType.COURSE,
+                    subject = "Analysis",
+                    startsAt = start,
+                    endsAt = end,
+                ),
             createdAt = created,
         )
     val data = GroupSessionFirestoreMapper.encode(session)

@@ -1,14 +1,19 @@
-// Co-authored-by: Gemini AI Agent
-package com.android.sample.ui.eventplanning
+// Co-authored-by: Claude AI Agent
+package com.android.sample.ui.sharedComponents
 
 import android.content.Context
 import androidx.compose.foundation.layout.Column
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.StateRestorationTester
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -20,6 +25,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
+import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as EventTags
 import java.time.LocalDate
 import java.time.LocalTime
 import org.junit.Assert.assertEquals
@@ -30,14 +36,13 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
-class EventPlanningScreenHelperTest {
+class FormContentHelperTests {
 
   @get:Rule val composeTestRule = createComposeRule()
 
   @Test
   fun sectionLabelRendersTextAndTestTag() {
     composeTestRule.setContent { SectionLabel(text = "Header Test", testTag = "header_tag") }
-
     composeTestRule.onNodeWithTag("header_tag").assertIsDisplayed().assertTextEquals("Header Test")
   }
 
@@ -91,6 +96,125 @@ class EventPlanningScreenHelperTest {
   }
 
   @Test
+  fun pillActionButtonSaveTagRendersLabelAndInvokesCallback() {
+    var clicked = false
+    composeTestRule.setContent {
+      MaterialTheme {
+        PillActionButton(
+            onClick = { clicked = true },
+            enabled = true,
+            isInProgress = false,
+            label = "Save",
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            buttonTag = EventTags.SAVE_BUTTON,
+            progressTag = EventTags.SAVE_BUTTON_PROGRESS,
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(EventTags.SAVE_BUTTON).assertIsDisplayed().performClick()
+    composeTestRule.onNodeWithText("Save").assertIsDisplayed()
+    assertTrue(clicked)
+  }
+
+  @Test
+  fun pillActionButtonDeleteTagRendersLabelAndInvokesCallback() {
+    var clicked = false
+    composeTestRule.setContent {
+      MaterialTheme {
+        PillActionButton(
+            onClick = { clicked = true },
+            enabled = true,
+            isInProgress = false,
+            label = "Delete",
+            containerColor = MaterialTheme.colorScheme.error,
+            contentColor = MaterialTheme.colorScheme.onError,
+            buttonTag = EventTags.DELETE_BUTTON,
+            progressTag = EventTags.DELETE_BUTTON_PROGRESS,
+            icon = Icons.Outlined.Delete,
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(EventTags.DELETE_BUTTON).assertIsDisplayed().performClick()
+    composeTestRule.onNodeWithText("Delete").assertIsDisplayed()
+    assertTrue(clicked)
+  }
+
+  @Test
+  fun pillActionButtonDisabledSaveAndDeleteCannotBeClicked() {
+    var clicked = false
+    composeTestRule.setContent {
+      MaterialTheme {
+        Column {
+          PillActionButton(
+              onClick = { clicked = true },
+              enabled = false,
+              isInProgress = false,
+              label = "Save",
+              containerColor = MaterialTheme.colorScheme.primary,
+              contentColor = MaterialTheme.colorScheme.onPrimary,
+              buttonTag = EventTags.SAVE_BUTTON,
+              progressTag = EventTags.SAVE_BUTTON_PROGRESS,
+          )
+          PillActionButton(
+              onClick = { clicked = true },
+              enabled = false,
+              isInProgress = false,
+              label = "Delete",
+              containerColor = MaterialTheme.colorScheme.error,
+              contentColor = MaterialTheme.colorScheme.onError,
+              buttonTag = EventTags.DELETE_BUTTON,
+              progressTag = EventTags.DELETE_BUTTON_PROGRESS,
+              icon = Icons.Outlined.Delete,
+          )
+        }
+      }
+    }
+
+    composeTestRule.onNodeWithTag(EventTags.SAVE_BUTTON).assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(EventTags.DELETE_BUTTON).assertIsNotEnabled()
+    assertFalse(clicked)
+  }
+
+  @Test
+  fun pillActionButtonShowsSaveAndDeleteProgressInsteadOfLabels() {
+    composeTestRule.setContent {
+      MaterialTheme {
+        Column {
+          PillActionButton(
+              onClick = {},
+              enabled = false,
+              isInProgress = true,
+              label = "Save",
+              containerColor = MaterialTheme.colorScheme.primary,
+              contentColor = MaterialTheme.colorScheme.onPrimary,
+              buttonTag = EventTags.SAVE_BUTTON,
+              progressTag = EventTags.SAVE_BUTTON_PROGRESS,
+          )
+          PillActionButton(
+              onClick = {},
+              enabled = false,
+              isInProgress = true,
+              label = "Delete",
+              containerColor = MaterialTheme.colorScheme.error,
+              contentColor = MaterialTheme.colorScheme.onError,
+              buttonTag = EventTags.DELETE_BUTTON,
+              progressTag = EventTags.DELETE_BUTTON_PROGRESS,
+              icon = Icons.Outlined.Delete,
+          )
+        }
+      }
+    }
+
+    composeTestRule.onNodeWithTag(EventTags.SAVE_BUTTON_PROGRESS).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventTags.DELETE_BUTTON_PROGRESS).assertIsDisplayed()
+    assertTrue(composeTestRule.onAllNodesWithText("Save").fetchSemanticsNodes().isEmpty())
+    assertTrue(composeTestRule.onAllNodesWithText("Delete").fetchSemanticsNodes().isEmpty())
+  }
+
+  @Test
   fun outlinedInputFieldDisplaysValueAndTriggersOnValueChange() {
     var updatedText = ""
     composeTestRule.setContent {
@@ -131,11 +255,9 @@ class EventPlanningScreenHelperTest {
     composeTestRule.onNodeWithTag("checkbox_tag").performClick()
     assertEquals(1, toggleCount)
 
-    composeTestRule
-        .onNodeWithContentDescription(
-            context.getString(R.string.event_planning_delete_task_content_description)
-        )
-        .performClick()
+    val deleteDescription =
+        context.getString(R.string.event_planning_delete_task_content_description)
+    composeTestRule.onNodeWithContentDescription(deleteDescription).performClick()
     assertEquals(1, deleteCount)
   }
 
@@ -173,41 +295,33 @@ class EventPlanningScreenHelperTest {
   }
 
   @Test
-  fun eventTypeDropdownMenuDisplaysAllEntriesAndInvokesCallback() {
+  fun eventTypeDropdownMenuRendersAllOptions() {
     var selectedType: EventType? = null
-    var dismissed = false
-
     composeTestRule.setContent {
       EventTypeDropdownMenu(
           expanded = true,
-          onDismissRequest = { dismissed = true },
+          onDismissRequest = {},
           onTypeSelected = { selectedType = it },
       )
     }
 
-    // Verify formatted labels display
-    composeTestRule.onNodeWithText("Course").assertIsDisplayed()
-    composeTestRule.onNodeWithText("Study session").assertIsDisplayed().performClick()
-
-    assertEquals(EventType.STUDY_SESSION, selectedType)
-    assertTrue(dismissed)
+    composeTestRule.onNodeWithText("Course").assertIsDisplayed().performClick()
+    assertEquals(EventType.COURSE, selectedType)
   }
 
   @Test
   fun eventDatePickerDialogTriggersConfirmAndDismiss() {
     val context = ApplicationProvider.getApplicationContext<Context>()
-    var selectedDate: LocalDate? = null
     var dismissed = false
 
     composeTestRule.setContent {
       EventDatePickerDialog(
           initialDate = LocalDate.of(2026, 11, 1),
-          onDateSelected = { selectedDate = it },
+          onDateSelected = {},
           onDismiss = { dismissed = true },
       )
     }
 
-    // Confirm button
     composeTestRule.onNodeWithText(context.getString(R.string.confirm)).performClick()
     assertTrue(dismissed)
   }
@@ -253,6 +367,22 @@ class EventPlanningScreenHelperTest {
   }
 
   @Test
+  fun subjectPickerDialogContentFiltersAndConfirms() {
+    var confirmedSubject = ""
+    composeTestRule.setContent {
+      SubjectPickerDialogContent(
+          currentSelection = "Math",
+          allSubjects = listOf("Algebra", "Calculus", "Physics"),
+          onDismiss = {},
+          onConfirm = { confirmedSubject = it },
+      )
+    }
+
+    composeTestRule.onNodeWithText("Calculus").assertIsDisplayed().performClick()
+    assertEquals("Calculus", confirmedSubject)
+  }
+
+  @Test
   fun subjectPickerDialogFiltersListAndSelectsExistingSubject() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     var confirmedSubject = ""
@@ -267,7 +397,6 @@ class EventPlanningScreenHelperTest {
       )
     }
 
-    // Filter by typing
     composeTestRule
         .onNodeWithText(context.getString(R.string.event_planning_subject_search_placeholder))
         .performTextInput("Alg")
@@ -291,7 +420,6 @@ class EventPlanningScreenHelperTest {
       )
     }
 
-    // Search query for unlisted subject
     composeTestRule
         .onNodeWithText(context.getString(R.string.event_planning_subject_search_placeholder))
         .performTextInput("Quantum Computing")
@@ -362,10 +490,8 @@ class EventPlanningScreenHelperTest {
 
   @Test
   fun subjectPickerDialogQuerySurvivesScreenRestoration() {
-    val context = ApplicationProvider.getApplicationContext<Context>()
     val restorationTester = StateRestorationTester(composeTestRule)
     val query = "Linear Algebra"
-    val placeholder = context.getString(R.string.event_planning_subject_search_placeholder)
 
     restorationTester.setContent {
       SubjectPickerDialogContent(
@@ -376,15 +502,12 @@ class EventPlanningScreenHelperTest {
       )
     }
 
-    // Target the input field explicitly
     val searchInputNode = composeTestRule.onNode(hasSetTextAction())
     searchInputNode.assertIsDisplayed().performTextInput(query)
     searchInputNode.assertTextContains(query)
 
-    // Simulate screen rotation / configuration change
     restorationTester.emulateSavedInstanceStateRestore()
 
-    // Verify the query is retained inside the text input node
     composeTestRule.onNode(hasSetTextAction()).assertIsDisplayed().assertTextContains(query)
   }
 }

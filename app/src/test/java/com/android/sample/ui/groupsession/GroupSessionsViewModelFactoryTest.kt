@@ -1,4 +1,5 @@
 // Co-authored-by: GitHub Copilot
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.groupsession
 
 import androidx.compose.runtime.mutableStateOf
@@ -8,8 +9,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
-import com.android.sample.model.groupsession.GroupSession
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
 import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
@@ -140,10 +142,13 @@ class GroupSessionsViewModelFactoryTest {
           id = id,
           createdBy = creator,
           memberIds = listOf(creator),
-          type = EventType.COURSE,
-          subject = "Biology",
-          startsAt = startsAt,
-          endsAt = endsAt,
+          details =
+              EventDetails(
+                  type = EventType.COURSE,
+                  subject = "Biology",
+                  startsAt = startsAt,
+                  endsAt = endsAt,
+              ),
           createdAt = Instant.now(),
       )
 

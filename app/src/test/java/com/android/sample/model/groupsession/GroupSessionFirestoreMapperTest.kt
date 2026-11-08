@@ -1,9 +1,12 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.groupsession
 
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
+import com.android.sample.model.event.GroupSession
 import com.google.firebase.Timestamp
 import java.time.Instant
 import org.junit.Assert.assertEquals
@@ -24,24 +27,30 @@ class GroupSessionFirestoreMapperTest {
             id = "complete",
             createdBy = "creator",
             memberIds = listOf("creator", "member"),
-            type = EventType.COURSE,
-            subject = "Analysis",
-            startsAt = time,
-            endsAt = time.plusSeconds(3600),
+            details =
+                EventDetails(
+                    type = EventType.COURSE,
+                    subject = "Analysis",
+                    startsAt = time,
+                    endsAt = time.plusSeconds(3600),
+                    location = "BC 410",
+                    description = "Review exercises",
+                ),
             createdAt = time.minusSeconds(60),
             updatedAt = time,
-            location = "BC 410",
-            description = "Review exercises",
         )
     val minimal =
         GroupSession(
             id = "minimal",
             createdBy = "creator",
             memberIds = listOf("creator"),
-            type = EventType.OTHER,
-            subject = null,
-            startsAt = time,
-            endsAt = time.plusSeconds(3600),
+            details =
+                EventDetails(
+                    type = EventType.OTHER,
+                    subject = null,
+                    startsAt = time,
+                    endsAt = time.plusSeconds(3600),
+                ),
             createdAt = time,
         )
 
@@ -83,18 +92,10 @@ class GroupSessionFirestoreMapperTest {
   @Test
   fun normalizesSubMicrosecondPrecision() {
     val precise = time.plusNanos(789)
-    val input =
-        minimalSession()
-            .copy(
-                startsAt = precise,
-                endsAt = precise.plusSeconds(3600),
-                createdAt = precise,
-                updatedAt = precise,
-            )
+    val input = minimalSession(at = precise)
     val expected =
         input.copy(
-            startsAt = time,
-            endsAt = time.plusSeconds(3600),
+            details = input.details.copy(startsAt = time, endsAt = time.plusSeconds(3600)),
             createdAt = time,
             updatedAt = time,
         )
@@ -114,10 +115,10 @@ class GroupSessionFirestoreMapperTest {
     val base = (validData() + ("type" to EventType.OTHER.name)).toMutableMap()
     listOf("subject", "location", "description").forEach(base::remove)
     assertNull(
-        GroupSessionFirestoreMapper.decode("session", base).location,
+        GroupSessionFirestoreMapper.decode("session", base).details.location,
     )
-    assertNull(GroupSessionFirestoreMapper.decode("session", base).description)
-    assertNull(GroupSessionFirestoreMapper.decode("session", base).subject)
+    assertNull(GroupSessionFirestoreMapper.decode("session", base).details.description)
+    assertNull(GroupSessionFirestoreMapper.decode("session", base).details.subject)
 
     val nulls =
         validData().toMutableMap().apply {
@@ -127,9 +128,9 @@ class GroupSessionFirestoreMapperTest {
           put("description", null)
         }
     val decoded = GroupSessionFirestoreMapper.decode("session", nulls)
-    assertNull(decoded.subject)
-    assertNull(decoded.location)
-    assertNull(decoded.description)
+    assertNull(decoded.details.subject)
+    assertNull(decoded.details.location)
+    assertNull(decoded.details.description)
   }
 
   /** Every malformed document fails with the stable invalid-data category. */
@@ -169,16 +170,19 @@ class GroupSessionFirestoreMapperTest {
   }
 
   /** Supplies a minimal valid session for encoding assertions. */
-  private fun minimalSession() =
+  private fun minimalSession(at: Instant = time) =
       GroupSession(
           id = "session",
           createdBy = "creator",
           memberIds = listOf("creator"),
-          type = EventType.OTHER,
-          subject = null,
-          startsAt = time,
-          endsAt = time.plusSeconds(3600),
-          createdAt = time,
+          details =
+              EventDetails(
+                  type = EventType.OTHER,
+                  subject = null,
+                  startsAt = at,
+                  endsAt = at.plusSeconds(3600),
+              ),
+          createdAt = at,
       )
 
   /** Supplies valid raw Firestore fields independently of the mapper under test. */

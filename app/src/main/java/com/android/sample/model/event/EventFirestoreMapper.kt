@@ -1,5 +1,6 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.event
 
 import com.google.firebase.Timestamp
@@ -9,40 +10,30 @@ import java.time.temporal.ChronoUnit
 /** Explicit wire format; missing optional values default, malformed values fail the whole read. */
 internal object EventFirestoreMapper {
   /** Serializes caller-supplied UTC timestamps at Firestore microsecond precision. */
-  fun encode(event: Event): Map<String, Any?> =
+  fun encode(event: PersonalEvent): Map<String, Any?> =
       with(event) {
-        mapOf(
-            "ownerId" to ownerId,
-            "type" to type.name,
-            "subject" to subject,
-            "startsAt" to timestamp(startsAt),
-            "endsAt" to timestamp(endsAt),
-            "createdAt" to timestamp(createdAt),
-            "updatedAt" to timestamp(updatedAt),
-            "location" to location,
-            "description" to description,
-            "importKey" to importKey,
-            "tasks" to
-                tasks.map {
-                  mapOf("text" to it.text, "completedAt" to it.completedAt?.let(::timestamp))
-                },
-        )
+        encodeDetails(details) +
+            mapOf(
+                "ownerId" to ownerId,
+                "createdAt" to timestamp(createdAt),
+                "updatedAt" to timestamp(updatedAt),
+                "importKey" to importKey,
+                "tasks" to
+                    tasks.map {
+                      mapOf("text" to it.text, "completedAt" to it.completedAt?.let(::timestamp))
+                    },
+            )
       }
 
   /** Uses the document path as the event ID and verifies the stored owner. */
-  fun decode(id: String, owner: String, data: Map<String, Any?>): Event = decodeData {
+  fun decode(id: String, owner: String, data: Map<String, Any?>): PersonalEvent = decodeData {
     require(data["ownerId"] == owner)
-    Event(
+    PersonalEvent(
         id,
         owner,
-        EventType.valueOf(data["type"] as String),
-        data.optionalString("subject"),
-        instant(data["startsAt"]),
-        instant(data["endsAt"]),
+        decodeDetails(data),
         instant(data["createdAt"]),
         instant(data["updatedAt"]),
-        data.optionalString("location"),
-        data.optionalString("description"),
         if (!data.containsKey("tasks")) emptyList()
         else
             (data["tasks"] as List<*>).map {
@@ -52,6 +43,33 @@ internal object EventFirestoreMapper {
         data.optionalString("importKey"),
     )
   }
+
+  /**
+   * Encodes the fields shared by every [Event] kind, flat at the top level of the document, so
+   * personal events and group sessions keep the same field names.
+   */
+  fun encodeDetails(details: EventDetails): Map<String, Any?> =
+      with(details) {
+        mapOf(
+            "type" to type.name,
+            "subject" to subject,
+            "startsAt" to timestamp(startsAt),
+            "endsAt" to timestamp(endsAt),
+            "location" to location,
+            "description" to description,
+        )
+      }
+
+  /** Decodes the fields written by [encodeDetails]; call inside [decodeData]. */
+  fun decodeDetails(data: Map<String, Any?>): EventDetails =
+      EventDetails(
+          type = EventType.valueOf(data["type"] as String),
+          subject = data.optionalString("subject"),
+          startsAt = instant(data["startsAt"]),
+          endsAt = instant(data["endsAt"]),
+          location = data.optionalString("location"),
+          description = data.optionalString("description"),
+      )
 
   /** Normalizes to server microseconds so local and synchronized values use the same precision. */
   fun timestamp(value: Instant) = Timestamp(value.epochSecond, value.nano / 1000 * 1000)

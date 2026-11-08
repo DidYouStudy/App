@@ -1,5 +1,6 @@
-// Co-authored-by: Gemini AI Agent
-package com.android.sample.ui.eventplanning
+// Co-authored-by: Codex AI Agent
+// Co-authored-by: Claude AI Agent
+package com.android.sample.ui.sharedComponents
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -26,8 +28,11 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DisplayMode
@@ -62,6 +67,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -73,12 +79,15 @@ import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.ui.theme.AlphaTokens
 import com.android.sample.ui.theme.Dimens
+import com.android.sample.ui.theme.Spacing
+import com.android.sample.ui.theme.label
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import kotlinx.coroutines.launch
 
+/** Renders a bold section title label for form fields. */
 @Composable
 fun SectionLabel(text: String, testTag: String) {
   Text(
@@ -323,7 +332,55 @@ fun AddTaskInputField(
   )
 }
 
-/** Dialog & Picker components: */
+/**
+ * Full-width pill button that shows a progress indicator instead of its label while in progress.
+ */
+@Composable
+fun PillActionButton(
+    onClick: () -> Unit,
+    enabled: Boolean,
+    isInProgress: Boolean,
+    label: String,
+    containerColor: Color,
+    contentColor: Color,
+    buttonTag: String,
+    progressTag: String,
+    icon: ImageVector? = null,
+) {
+  Button(
+      onClick = onClick,
+      enabled = enabled,
+      colors =
+          ButtonDefaults.buttonColors(
+              containerColor = containerColor,
+              contentColor = contentColor,
+              disabledContainerColor = containerColor.copy(alpha = AlphaTokens.DISABLED),
+              disabledContentColor = contentColor.copy(alpha = AlphaTokens.DISABLED),
+          ),
+      shape = RoundedCornerShape(Dimens.cornerPill),
+      modifier = Modifier.fillMaxWidth().height(Dimens.saveButtonHeight).testTag(buttonTag),
+  ) {
+    if (isInProgress) {
+      CircularProgressIndicator(
+          modifier = Modifier.size(Dimens.saveButtonProgressSize).testTag(progressTag),
+          color = contentColor,
+          strokeWidth = Dimens.progressIndicatorStrokeWidth,
+      )
+    } else {
+      Row(verticalAlignment = Alignment.CenterVertically) {
+        if (icon != null) {
+          Icon(imageVector = icon, contentDescription = null, tint = contentColor)
+          Spacer(modifier = Modifier.width(Spacing.extraSmall))
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            color = contentColor,
+        )
+      }
+    }
+  }
+}
 
 /** Material 3 Type dropdown menu matching the types from EventType. */
 @Composable
@@ -343,10 +400,13 @@ fun EventTypeDropdownMenu(
         modifier = modifier.background(MaterialTheme.colorScheme.surfaceContainer),
     ) {
       EventType.entries.forEach { type ->
-        val formattedLabel =
-            type.name.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() }
         DropdownMenuItem(
-            text = { Text(text = formattedLabel, style = MaterialTheme.typography.bodyLarge) },
+            text = {
+              Text(
+                  text = type.label(),
+                  style = MaterialTheme.typography.bodyLarge,
+              )
+            },
             onClick = {
               onTypeSelected(type)
               onDismissRequest()
@@ -362,8 +422,7 @@ fun EventTypeDropdownMenu(
   }
 }
 
-/** Material 3 DatePickerDialog configured for text input mode (matches Screenshot). */
-@OptIn(ExperimentalMaterial3Api::class)
+/** Material 3 DatePickerDialog configured for text input mode. */
 @Composable
 fun EventDatePickerDialog(
     initialDate: LocalDate?,
@@ -402,7 +461,7 @@ fun EventDatePickerDialog(
   }
 }
 
-/** Material 3 TimePickerDialog using the dial clock picker (matches Screenshot). */
+/** Material 3 TimePickerDialog using the dial clock picker. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventTimePickerDialog(
@@ -546,6 +605,7 @@ fun SubjectPickerDialogContent(
   }
 }
 
+/** Subject Picker Dialog wrapper. */
 @Composable
 fun SubjectPickerDialog(
     currentSelection: String,
@@ -566,7 +626,6 @@ fun SubjectPickerDialog(
   }
 }
 
-/** Extracted color palette to eliminate SonarCloud duplication smells across form fields. */
 @Composable
 private fun formTextFieldColors(): TextFieldColors =
     TextFieldDefaults.colors(
@@ -579,3 +638,36 @@ private fun formTextFieldColors(): TextFieldColors =
         focusedIndicatorColor = Color.Transparent,
         unfocusedIndicatorColor = Color.Transparent,
     )
+
+/** Test tags for reusable form components. */
+object FormContentTestTags {
+  const val SCROLL_CONTAINER = "form_content_scroll_container"
+
+  // Section Labels
+  const val TYPE_LABEL = "form_content_type_label"
+  const val DATE_LABEL = "form_content_date_label"
+  const val START_TIME_LABEL = "form_content_start_time_label"
+  const val END_TIME_LABEL = "form_content_end_time_label"
+  const val SUBJECT_LABEL = "form_content_subject_label"
+  const val LOCATION_LABEL = "form_content_location_label"
+  const val DESCRIPTION_LABEL = "form_content_description_label"
+  const val TASKS_LABEL = "form_content_tasks_label"
+
+  // Interactive Elements / Selectors
+  const val TYPE_SELECTOR = "form_content_type_selector"
+  const val DATE_SELECTOR = "form_content_date_selector"
+  const val START_TIME_SELECTOR = "form_content_start_time_selector"
+  const val END_TIME_SELECTOR = "form_content_end_time_selector"
+  const val SUBJECT_SELECTOR = "form_content_subject_selector"
+  const val LOCATION_INPUT = "form_content_location_input"
+  const val DESCRIPTION_INPUT = "form_content_description_input"
+
+  // Tasks
+  const val ADD_TASK_BUTTON = "form_content_add_task_button"
+  const val TASK_ITEM_PREFIX = "form_content_task_item_"
+  const val TASK_CHECKBOX_PREFIX = "form_content_task_checkbox_"
+  const val TASK_DELETE_PREFIX = "form_content_task_delete_"
+
+  // Actions & Feedback
+  const val ENDS_NEXT_DAY_WARNING = "form_content_ends_next_day_warning"
+}

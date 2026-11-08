@@ -1,4 +1,5 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.calendar
 
 import androidx.compose.foundation.layout.Box
@@ -32,6 +33,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.sample.R
+import com.android.sample.model.event.EventDetails
+import com.android.sample.model.event.EventType
+import com.android.sample.model.event.PersonalEvent
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -42,7 +46,10 @@ import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.Typography
+import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 /** Renders the calendar scaffold from the supplied state and action callbacks. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,6 +61,7 @@ fun CalendarScreen(
     onNextWeek: () -> Unit,
     onRetry: () -> Unit,
     navigationActions: NavigationActions? = null,
+    onAddClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
 ) {
   Scaffold(
       topBar = {
@@ -104,7 +112,7 @@ fun CalendarScreen(
       },
       floatingActionButton = {
         FloatingActionButton(
-            onClick = {},
+            onClick = onAddClick,
             modifier = Modifier.testTag(CalendarTestTags.ADD_BUTTON),
         ) {
           Icon(imageVector = Icons.Default.Add, contentDescription = "Add calendar event")
@@ -227,11 +235,67 @@ private fun previewUiState(
 ): CalendarUiState {
   val today = LocalDate.of(2026, 10, 28)
   val dates = CalendarDateHelper().weekDates(today)
+  val previewEvents =
+      listOf(
+          previewEvent(
+              "preview-study",
+              EventType.STUDY_SESSION,
+              "Veryverylongsubjectnameetc.etc.",
+              "2026-10-26T00:00",
+              "2026-10-26T01:00",
+          ),
+          previewEvent(
+              "preview-course",
+              EventType.COURSE,
+              "Physics",
+              "2026-10-27T19:00",
+              "2026-10-28T01:00",
+          ),
+          previewEvent(
+              "preview-lab",
+              EventType.LAB,
+              "Chemistry",
+              "2026-10-28T02:30",
+              "2026-10-28T03:00",
+          ),
+          previewEvent(
+              "preview-exam",
+              EventType.EXAM,
+              "History",
+              "2026-10-30T21:00",
+              "2026-10-31T10:00",
+          ),
+      )
   return CalendarUiState(
       today = today,
       weekStart = dates.first(),
       weekDates = dates,
+      events = previewEvents,
       isLoading = isLoading,
       error = error,
+  )
+}
+
+/** Creates a valid event used by the calendar screen previews. */
+private fun previewEvent(
+    id: String,
+    type: EventType,
+    subject: String,
+    startsAt: String,
+    endsAt: String,
+): PersonalEvent {
+  val createdAt = Instant.parse("2026-10-20T12:00:00Z")
+  val previewZone = ZoneId.systemDefault()
+  return PersonalEvent(
+      id = id,
+      ownerId = "preview-owner",
+      details =
+          EventDetails(
+              type = type,
+              subject = subject,
+              startsAt = LocalDateTime.parse(startsAt).atZone(previewZone).toInstant(),
+              endsAt = LocalDateTime.parse(endsAt).atZone(previewZone).toInstant(),
+          ),
+      createdAt = createdAt,
   )
 }

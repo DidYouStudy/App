@@ -1,4 +1,5 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.calendar
 
 import androidx.compose.runtime.Composable
@@ -12,6 +13,7 @@ import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.EventsRepositoryProvider
+import com.android.sample.model.event.PersonalEvent
 import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -170,14 +172,17 @@ class CalendarViewModel(
   }
 
   /** Builds the local Monday-to-Monday time range and requests that week's event stream. */
-  private fun getWeekEvents(ownerId: String, weekStart: LocalDate): Flow<Result<List<Event>>> {
+  private fun getWeekEvents(
+      ownerId: String,
+      weekStart: LocalDate,
+  ): Flow<Result<List<PersonalEvent>>> {
     val from = weekStart.atStartOfDay(clock.zone).toInstant()
     val to = weekStart.plusDays(DAYS_PER_WEEK).atStartOfDay(clock.zone).toInstant()
     return eventsRepository.observeEvents(ownerId, from, to)
   }
 
   /** Updates the screen from one repository result, clearing events when the query fails. */
-  private fun updateEvents(result: Result<List<Event>>) {
+  private fun updateEvents(result: Result<List<PersonalEvent>>) {
     result.fold(
         onSuccess = { events ->
           _uiState.update { it.copy(events = events, isLoading = false, error = null) }
