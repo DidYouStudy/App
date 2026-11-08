@@ -68,6 +68,8 @@ private val HOUR_FORMAT = DateTimeFormatter.ofPattern("h a", Locale.US)
 /** Test tags for the weekly calendar controls and date headings. */
 object CalendarTestTags {
   const val WEEK_RANGE = "calendar_weekRange"
+  const val WEEK_HEADER = "calendar_weekHeader"
+  const val DAY_HEADER = "calendar_dayHeader"
   const val PREVIOUS_WEEK = "calendar_previousWeek"
   const val NEXT_WEEK = "calendar_nextWeek"
   const val TIME_GRID = "calendar_timeGrid"
@@ -119,18 +121,27 @@ internal fun CalendarWeeklyView(
     onNextWeek: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-  Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-    CalendarWeekRangeHeader(
-        weekDates = uiState.weekDates,
-        onPreviousWeek = onPreviousWeek,
-        onNextWeek = onNextWeek,
-    )
-    CalendarDayHeader(weekDates = uiState.weekDates, today = uiState.today)
-    CalendarTimeGrid(
-        events = uiState.events,
-        weekDates = uiState.weekDates,
-        modifier = Modifier.weight(1f),
-    )
+  BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+      //Checks the dimensions of the screen and decide whether to make the headers compact
+    val compactHeaders = maxWidth > maxHeight
+    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+      CalendarWeekRangeHeader(
+          weekDates = uiState.weekDates,
+          onPreviousWeek = onPreviousWeek,
+          onNextWeek = onNextWeek,
+          compact = compactHeaders,
+      )
+      CalendarDayHeader(
+          weekDates = uiState.weekDates,
+          today = uiState.today,
+          compact = compactHeaders,
+      )
+      CalendarTimeGrid(
+          events = uiState.events,
+          weekDates = uiState.weekDates,
+          modifier = Modifier.weight(1f),
+      )
+    }
   }
 }
 
@@ -141,6 +152,7 @@ internal fun CalendarWeeklyView(
  * @param weekDates The seven consecutive Monday-through-Sunday dates currently displayed.
  * @param onPreviousWeek Callback invoked when the previous-week control is clicked.
  * @param onNextWeek Callback invoked when the next-week control is clicked.
+ * @param compact Whether to use the shorter landscape header height.
  * @param modifier The modifier applied to the header row.
  */
 @Composable
@@ -148,6 +160,7 @@ fun CalendarWeekRangeHeader(
     weekDates: List<LocalDate>,
     onPreviousWeek: () -> Unit,
     onNextWeek: () -> Unit,
+    compact: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
   // Place the previous control, week label, and next control in one row.
@@ -155,8 +168,12 @@ fun CalendarWeekRangeHeader(
       modifier =
           modifier
               .fillMaxWidth()
-              .height(Dimens.calendarWeekSwitchHeaderHeight)
+              .height(
+                  if (compact) Dimens.calendarWeekSwitchHeaderHeightLandscape
+                  else Dimens.calendarWeekSwitchHeaderHeight
+              )
               .background(MaterialTheme.colorScheme.surface)
+              .testTag(CalendarTestTags.WEEK_HEADER)
               .padding(horizontal = Spacing.large),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.SpaceBetween,
@@ -220,12 +237,14 @@ fun CalendarWeekRangeHeader(
  *
  * @param weekDates The dates to display, normally the seven dates of the visible calendar week.
  * @param today The date to highlight when it is included in [weekDates].
+ * @param compact Whether to use the shorter landscape header height.
  * @param modifier The modifier applied to the row of day headings.
  */
 @Composable
 fun CalendarDayHeader(
     weekDates: List<LocalDate>,
     today: LocalDate,
+    compact: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
   // Lay out the date headings in one row above the weekly grid.
@@ -233,8 +252,12 @@ fun CalendarDayHeader(
       modifier =
           modifier
               .fillMaxWidth()
-              .height(Dimens.calendarDayHeaderHeight)
+              .height(
+                  if (compact) Dimens.calendarDayHeaderHeightLandscape
+                  else Dimens.calendarDayHeaderHeight
+              )
               .background(MaterialTheme.colorScheme.surface)
+              .testTag(CalendarTestTags.DAY_HEADER)
               .border(
                   width = Dimens.calendarDayHeaderBorderWidth,
                   color = MaterialTheme.colorScheme.outlineVariant,
@@ -324,19 +347,21 @@ fun CalendarTimeGrid(
   val density = LocalDensity.current
   var initialScrollApplied by remember { androidx.compose.runtime.mutableStateOf(false) }
 
-  // Use the available height to size rows so ten hours fit in the viewport.
+  // Keep rows readable in short landscape viewports, even when fewer than ten hours fit.
   BoxWithConstraints(modifier = modifier.fillMaxSize().testTag(CalendarTestTags.TIME_GRID)) {
-    val hourHeight = maxHeight / DEFAULT_VISIBLE_HOURS
+    val hourHeight = maxOf(maxHeight / DEFAULT_VISIBLE_HOURS, Dimens.calendarMinHourRowHeight)
 
     // Decide the initial position after the first layout, even if this viewport cannot scroll.
-    LaunchedEffect(hourHeight) {
+    LaunchedEffect(maxHeight) {
       if (!initialScrollApplied) {
         withFrameNanos {}
-        val initialOffset =
-            with(density) {
-              (hourHeight * FIRST_VISIBLE_HOUR - Dimens.calendarInitialLabelClearance).roundToPx()
-            }
-        scrollState.scrollTo(initialOffset.coerceIn(0, scrollState.maxValue))
+        if (maxHeight > Dimens.noPadding) {
+          val initialOffset =
+              with(density) {
+                (hourHeight * FIRST_VISIBLE_HOUR - Dimens.calendarInitialLabelClearance).roundToPx()
+              }
+          scrollState.scrollTo(initialOffset.coerceIn(0, scrollState.maxValue))
+        }
         initialScrollApplied = true
       }
     }
