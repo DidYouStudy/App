@@ -42,8 +42,6 @@ import org.junit.Test
 import org.junit.rules.RuleChain
 
 // some tests inspired from NavigationB1Test.kt from the bootcamp repo
-// TODO add firebase conditions for testing + new screens navigation tests
-// TODO state management tests for the new screens
 class NavigationTests {
   private val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
@@ -165,7 +163,6 @@ class NavigationTests {
   }
 
   @Test
-  // TODO change to SignIn when VM can be created as default parameter
   fun navigationStartsOnDashboardTab() {
     checkDashboardScreenIsDisplayed()
   }
@@ -375,13 +372,12 @@ class NavigationTests {
 
 /** Verifies that the real activity hosts the Compose navigation graph. */
 class MainActivityNavigationTests {
+  private val environment = NavigationTestEnvironment("main-activity-test-user")
   private val composeTestRule = createAndroidComposeRule<MainActivity>()
 
   // Installed per test, before MainActivity launches, so one test's logout cannot leak into the
   // next test's signed-in session.
-  @get:Rule
-  val rules: RuleChain =
-      RuleChain.outerRule(signedInRepositories("main-activity-test-user")).around(composeTestRule)
+  @get:Rule val rules: RuleChain = RuleChain.outerRule(environment.rule).around(composeTestRule)
 
   @Test
   fun activityStartsOnDashboardForAnAuthenticatedUser() {
@@ -408,6 +404,30 @@ class MainActivityNavigationTests {
         .assertIsDisplayed()
         .assertTextContains("Calendar", substring = true, ignoreCase = true)
     composeTestRule.onNodeWithTag(SignInScreenTestTags.SCREEN).assertDoesNotExist()
+  }
+
+  /**
+   * Verifies that revoking the authentication session while the user is active on the Dashboard
+   * triggers the logout LaunchedEffect in MainActivity and redirects to the sign-in screen.
+   */
+  @Test
+  fun sessionRevocationWhileOnDashboardNavigatesToSignIn() {
+    composeTestRule
+        .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
+        .assertIsDisplayed()
+        .assertTextContains("Dashboard")
+
+    // Revoke the session while the user is still on Dashboard
+    environment.auth.signOutSync()
+
+    composeTestRule.waitUntil(timeoutMillis = 20_000) {
+      composeTestRule
+          .onAllNodesWithTag(SignInScreenTestTags.SCREEN)
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    composeTestRule.onNodeWithTag(SignInScreenTestTags.SCREEN).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE).assertDoesNotExist()
   }
 
   @Test
@@ -446,6 +466,24 @@ class UnauthenticatedNavigationTests {
   }
 }
 
+/** Holds test repositories and the overriding rule for MainActivity tests. */
+private class NavigationTestEnvironment(uid: String) {
+  val user = UserAccount(uid, null, null, null)
+  val auth = FakeAuthRepository(user)
+  val preferences = FakePreferencesRepository(UserPreferences(userId = user.uid))
+  val profile = FakeProfileRepository()
+  val events = InMemoryEventsRepository()
+  val groupSessions = InMemoryGroupSessionsRepository()
+  val rule =
+      RepositoryOverridesRule(
+          auth = auth,
+          preferences = preferences,
+          profile = profile,
+          events = events,
+          groupSessions = groupSessions,
+      )
+}
+
 /**
  * Fakes for a signed-in user [uid] who already saved preferences, so the app opens on the
  * dashboard. No repository falls back to the real Firebase project.
@@ -482,6 +520,10 @@ private class FakeAuthRepository(private val user: UserAccount?) : AuthRepositor
       user ?: throw IllegalStateException("Not signed in")
 
   override suspend fun signOut() {
+    currentUserState.value = null
+  }
+
+  fun signOutSync() {
     currentUserState.value = null
   }
 }
