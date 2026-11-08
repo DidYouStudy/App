@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.groupsession
 
+import androidx.lifecycle.viewModelScope
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
@@ -18,6 +19,7 @@ import java.time.ZoneOffset
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -489,12 +491,20 @@ class GroupSessionsViewModelTest {
     assertTrue(viewModel.uiState.value.sessions.isEmpty())
   }
 
-  /** The first state already carries the injected clock's time, before anything collects it. */
+  /** The first signed-in state carries the injected time before the repository emits. */
   @Test
   fun now_startsFromTheInjectedClock() = runTest {
-    val viewModel = createViewModel()
+    authRepository.currentUser.value = account(ALICE)
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel =
+        GroupSessionsViewModel(
+            authRepository,
+            FlowGroupSessionsRepository(emissions),
+            MutableTestClock(now),
+        )
 
     assertEquals(now, viewModel.uiState.value.now)
+    assertTrue(viewModel.uiState.value.isLoading)
   }
 
   /** The time changes after exactly 30 seconds of being observed, and not one moment earlier. */
@@ -526,10 +536,15 @@ class GroupSessionsViewModelTest {
 
     advanceTimeBy(60_000)
     runCurrent()
-    assertEquals(now, viewModel.uiState.value.now)
+    val timeWithoutCollector = viewModel.uiState.value.now
 
-    observe(viewModel)
-    assertEquals(hiddenAt, viewModel.uiState.value.now)
+    val collector = observe(viewModel)
+    val timeAfterReturn = viewModel.uiState.value.now
+    collector.cancel()
+    viewModel.viewModelScope.cancel()
+
+    assertEquals(now, timeWithoutCollector)
+    assertEquals(hiddenAt, timeAfterReturn)
   }
 
   /** The sign-out reset rebuilds the whole state, which must not bring back an old time. */
