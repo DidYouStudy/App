@@ -98,8 +98,10 @@ class LocalCampusLocationRepository(
      */
     fun applyFilter(entries: List<Entry>, filter: CampusLocationFilter): List<CampusLocation> {
       val query = filter.query?.let(::normalizeName).orEmpty()
+      // A blank zone (e.g. an empty "no building" field) means any building, like null.
+      val zone = filter.zone?.trim().orEmpty()
       val matches = entries.filter { entry ->
-        (filter.zone == null || entry.location.zone.equals(filter.zone, ignoreCase = true)) &&
+        (zone.isEmpty() || entry.location.zone.equals(zone, ignoreCase = true)) &&
             (filter.types.isEmpty() || entry.location.type in filter.types) &&
             (query.isEmpty() || entry.normalizedName.contains(query))
       }

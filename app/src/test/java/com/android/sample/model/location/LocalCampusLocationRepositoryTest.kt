@@ -120,6 +120,22 @@ class LocalCampusLocationRepositoryTest {
   }
 
   @Test
+  fun search_blankZone_isAnyBuilding() = runTest {
+    val repo = repo()
+
+    assertEquals(5, repo.names(CampusLocationFilter(zone = "")).size)
+    assertEquals(5, repo.names(CampusLocationFilter(zone = "   ")).size)
+  }
+
+  @Test
+  fun search_zoneWithSurroundingSpaces_isTrimmed() = runTest {
+    assertEquals(
+        listOf("CM 1 121", "CM 2 10"),
+        repo().names(CampusLocationFilter(zone = " cm ")),
+    )
+  }
+
+  @Test
   fun search_types_keepsOnlyListedTypes() = runTest {
     val repo = repo()
 

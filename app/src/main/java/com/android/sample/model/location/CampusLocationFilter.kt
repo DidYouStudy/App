@@ -11,7 +11,7 @@ package com.android.sample.model.location
  * @property query Text typed by the user. A location matches when its name contains the text,
  *   ignoring case and spaces, so "cm1121" finds "CM 1 121". `null` or blank means no text filter.
  * @property zone Building code, for example "CM". A location matches when its zone equals it,
- *   ignoring case. `null` means any building.
+ *   ignoring case and surrounding spaces. `null` or blank means any building.
  * @property types Room categories to keep. A location matches when its type is one of them. An
  *   empty set means any category, so to hide laboratories pass every type except
  *   [CampusLocationType.LAB]. [CampusLocationType.UNKNOWN] is only the fallback for unrecognized
