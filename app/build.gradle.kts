@@ -6,6 +6,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
   alias(libs.plugins.androidApplication)
   alias(libs.plugins.kotlinCompose)
+  alias(libs.plugins.kotlinSerialization)
   alias(libs.plugins.ktfmt)
   alias(libs.plugins.googleServices)
   id("jacoco")
@@ -173,6 +174,9 @@ dependencies {
   testImplementation(libs.mockito.core)
   testImplementation(libs.mockito.kotlin)
   testImplementation(libs.coroutines.test)
+
+  // JSON parsing of the bundled campus locations
+  implementation(libs.kotlinx.serialization.json)
 
   // ---------------- Firebase -------------------
   implementation(platform(libs.firebase.bom))
