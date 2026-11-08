@@ -64,6 +64,7 @@ class GroupSessionsViewModelTest {
   fun signedOut_startsWithEmptyNonLoadingState() = runTest {
     val viewModel = createViewModel()
 
+    assertEquals(now, viewModel.uiState.value.now)
     assertFalse(viewModel.uiState.value.isLoading)
     assertEquals(emptyList<GroupSessionItem>(), viewModel.uiState.value.sessions)
     assertNull(viewModel.uiState.value.error)
