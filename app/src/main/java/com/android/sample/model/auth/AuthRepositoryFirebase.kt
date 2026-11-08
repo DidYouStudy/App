@@ -1,5 +1,6 @@
 // Co-authored-by: Codex AI Agent
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.model.auth
 
 import com.google.firebase.FirebaseNetworkException
@@ -31,6 +32,9 @@ class AuthRepositoryFirebase(
     private val firebaseAuth: FirebaseAuth,
     private val clearCredentialState: suspend () -> Unit,
 ) : AuthRepository {
+  override val isAuthenticated: Boolean
+    get() = firebaseAuth.currentUser != null
+
   // Runs sign-in and sign-out one at a time; see the AuthRepository documentation.
   private val operationMutex = Mutex()
 

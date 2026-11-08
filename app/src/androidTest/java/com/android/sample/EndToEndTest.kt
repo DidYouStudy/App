@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Gemini AI Agent
 package com.android.sample
 
 import androidx.compose.ui.test.assertIsDisplayed
@@ -240,6 +241,8 @@ private class FakeEnvironment {
 private class FakeSessionAuthRepository : AuthRepository {
   private val session = MutableStateFlow<UserAccount?>(null)
   override val currentUser: StateFlow<UserAccount?> = session
+  override val isAuthenticated: Boolean
+    get() = session.value != null
 
   /** Current session value, for assertions. */
   val currentUserValue: UserAccount?

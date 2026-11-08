@@ -1,4 +1,5 @@
 // Co-authored-by: GitHub Copilot
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.auth
 
 import com.android.sample.model.auth.AuthRepository
@@ -9,6 +10,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
  * Records Google sign-in tokens; the default [signInAction] publishes its user to [currentUser].
  */
 class TestAuthRepository : AuthRepository {
+  override val isAuthenticated: Boolean
+    get() = currentUser.value != null
+
   override val currentUser = MutableStateFlow<UserAccount?>(null)
   val tokens = mutableListOf<String>()
   var signInAction: suspend (String) -> UserAccount = {
