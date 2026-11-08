@@ -14,6 +14,7 @@ import com.android.sample.model.event.PersonalEvent
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -169,11 +170,53 @@ class EventDetailsViewModelTest {
   }
 
   @Test
+  fun loadEvent_cancellationException_cancelsCoroutineWithoutSettingError() = runTest {
+    whenever(eventsRepository.getEvent(any(), any())).thenThrow(CancellationException("cancelled"))
+
+    val viewModel = createViewModel()
+    viewModel.loadEvent("event-123")
+
+    val state = viewModel.uiState.value
+    assertNull(state.event)
+    assertNull(state.error)
+  }
+
+  @Test
+  fun loadEvent_unexpectedException_setsError() = runTest {
+    whenever(eventsRepository.getEvent(any(), any()))
+        .thenThrow(RuntimeException("Unexpected load error"))
+
+    val viewModel = createViewModel()
+    viewModel.loadEvent("event-123")
+
+    val state = viewModel.uiState.value
+    assertNull(state.event)
+    assertFalse(state.isLoading)
+    assertEquals("Unexpected load error", state.error)
+  }
+
+  @Test
   fun deleteEvent_noEventLoaded_setsError() = runTest {
     val viewModel = createViewModel()
     viewModel.deleteEvent()
 
     assertEquals(EventDetailsViewModel.NO_EVENT_TO_DELETE_ERROR, viewModel.uiState.value.error)
+  }
+
+  @Test
+  fun deleteEvent_noSignedInUser_setsError() = runTest {
+    whenever(eventsRepository.getEvent("user123", "event-123"))
+        .thenReturn(Result.success(sampleEvent))
+
+    val viewModel = createViewModel()
+    viewModel.loadEvent("event-123")
+
+    currentUserFlow.value = null
+    viewModel.deleteEvent()
+
+    val state = viewModel.uiState.value
+    assertFalse(state.isDeleting)
+    assertEquals(EventDetailsViewModel.NO_SIGNED_IN_USER_ERROR, state.error)
   }
 
   @Test
@@ -212,6 +255,39 @@ class EventDetailsViewModelTest {
     assertFalse(state.isDeleting)
     assertFalse(state.isEventDeleted)
     assertEquals(EventDetailsViewModel.PERMISSION_DENIED_ERROR, state.error)
+  }
+
+  @Test
+  fun deleteEvent_cancellationException_cancelsCoroutineWithoutSettingError() = runTest {
+    whenever(eventsRepository.getEvent("user123", "event-123"))
+        .thenReturn(Result.success(sampleEvent))
+    whenever(eventsRepository.deleteEvent(any(), any()))
+        .thenThrow(CancellationException("cancelled"))
+
+    val viewModel = createViewModel()
+    viewModel.loadEvent("event-123")
+    viewModel.deleteEvent()
+
+    val state = viewModel.uiState.value
+    assertEquals(sampleEvent, state.event)
+    assertNull(state.error)
+  }
+
+  @Test
+  fun deleteEvent_unexpectedException_setsError() = runTest {
+    whenever(eventsRepository.getEvent("user123", "event-123"))
+        .thenReturn(Result.success(sampleEvent))
+    whenever(eventsRepository.deleteEvent(any(), any()))
+        .thenThrow(RuntimeException("Unexpected delete error"))
+
+    val viewModel = createViewModel()
+    viewModel.loadEvent("event-123")
+    viewModel.deleteEvent()
+
+    val state = viewModel.uiState.value
+    assertEquals(sampleEvent, state.event)
+    assertFalse(state.isDeleting)
+    assertEquals("Unexpected delete error", state.error)
   }
 
   @Test
@@ -271,6 +347,36 @@ class EventDetailsViewModelTest {
     val state = viewModel.uiState.value
     assertEquals(sampleEvent, state.event)
     assertEquals(EventDetailsViewModel.STORAGE_FAILURE_ERROR, state.error)
+  }
+
+  @Test
+  fun toggleTask_cancellationException_cancelsCoroutineWithoutSettingError() = runTest {
+    whenever(eventsRepository.getEvent("user123", "event-123"))
+        .thenReturn(Result.success(sampleEvent))
+    whenever(eventsRepository.saveEvent(any())).thenThrow(CancellationException("cancelled"))
+
+    val viewModel = createViewModel()
+    viewModel.loadEvent("event-123")
+    viewModel.toggleTask(0)
+
+    val state = viewModel.uiState.value
+    assertNull(state.error)
+  }
+
+  @Test
+  fun toggleTask_unexpectedException_revertsEventAndSetsError() = runTest {
+    whenever(eventsRepository.getEvent("user123", "event-123"))
+        .thenReturn(Result.success(sampleEvent))
+    whenever(eventsRepository.saveEvent(any())).thenThrow(RuntimeException("Unexpected save error"))
+
+    val viewModel = createViewModel()
+    viewModel.loadEvent("event-123")
+
+    viewModel.toggleTask(0)
+
+    val state = viewModel.uiState.value
+    assertEquals(sampleEvent, state.event)
+    assertEquals("Unexpected save error", state.error)
   }
 
   @Test
