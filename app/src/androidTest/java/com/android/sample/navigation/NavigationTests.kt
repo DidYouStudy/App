@@ -389,6 +389,25 @@ class MainActivityNavigationTests {
         .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
         .assertIsDisplayed()
         .assertTextContains("Dashboard")
+    composeTestRule.onNodeWithTag(SignInScreenTestTags.SCREEN).assertDoesNotExist()
+  }
+
+  @Test
+  fun returningFromMinimizedAppRestoresSameScreen() {
+    composeTestRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
+    composeTestRule
+        .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
+        .assertIsDisplayed()
+        .assertTextContains("Calendar", substring = true, ignoreCase = true)
+
+    // Minimize and resume: Activity recreation restores the exact screen without sign-in flash
+    composeTestRule.activityRule.scenario.recreate()
+
+    composeTestRule
+        .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
+        .assertIsDisplayed()
+        .assertTextContains("Calendar", substring = true, ignoreCase = true)
+    composeTestRule.onNodeWithTag(SignInScreenTestTags.SCREEN).assertDoesNotExist()
   }
 
   @Test
@@ -413,6 +432,20 @@ class MainActivityNavigationTests {
   }
 }
 
+/** Verifies that an unauthenticated launch opens directly on the sign-in screen. */
+class UnauthenticatedNavigationTests {
+  private val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+  @get:Rule
+  val rules: RuleChain = RuleChain.outerRule(signedOutRepositories()).around(composeTestRule)
+
+  @Test
+  fun activityStartsOnSignInForUnauthenticatedUser() {
+    composeTestRule.onNodeWithTag(SignInScreenTestTags.SCREEN).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(SignInScreenTestTags.GOOGLE_BUTTON).assertIsDisplayed()
+  }
+}
+
 /**
  * Fakes for a signed-in user [uid] who already saved preferences, so the app opens on the
  * dashboard. No repository falls back to the real Firebase project.
@@ -428,11 +461,25 @@ private fun signedInRepositories(uid: String): RepositoryOverridesRule {
   )
 }
 
-private class FakeAuthRepository(private val user: UserAccount) : AuthRepository {
+/** Fakes for an unauthenticated user, so the app opens on the sign-in screen. */
+private fun signedOutRepositories(): RepositoryOverridesRule {
+  return RepositoryOverridesRule(
+      auth = FakeAuthRepository(null),
+      preferences = FakePreferencesRepository(null),
+      profile = FakeProfileRepository(),
+      events = InMemoryEventsRepository(),
+      groupSessions = InMemoryGroupSessionsRepository(),
+  )
+}
+
+private class FakeAuthRepository(private val user: UserAccount?) : AuthRepository {
   private val currentUserState = MutableStateFlow<UserAccount?>(user)
   override val currentUser: StateFlow<UserAccount?> = currentUserState
+  override val isAuthenticated: Boolean
+    get() = currentUserState.value != null
 
-  override suspend fun signInWithGoogle(idToken: String): UserAccount = user
+  override suspend fun signInWithGoogle(idToken: String): UserAccount =
+      user ?: throw IllegalStateException("Not signed in")
 
   override suspend fun signOut() {
     currentUserState.value = null
@@ -440,10 +487,10 @@ private class FakeAuthRepository(private val user: UserAccount) : AuthRepository
 }
 
 private class FakePreferencesRepository(
-    private val preferences: UserPreferences,
+    private val preferences: UserPreferences?,
 ) : PreferencesRepository {
   override suspend fun getPreferences(userId: String): Result<UserPreferences?> =
-      Result.success(preferences.takeIf { it.userId == userId })
+      Result.success(preferences?.takeIf { it.userId == userId })
 
   override suspend fun savePreferences(preferences: UserPreferences): Result<Unit> =
       Result.success(Unit)

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -23,6 +24,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.ui.app.AppUiState
+import com.android.sample.ui.app.AppViewModel
 import com.android.sample.ui.app.appViewModel
 import com.android.sample.ui.auth.SignInRoute
 import com.android.sample.ui.calendar.CalendarRoute
@@ -55,14 +57,22 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun DidYouStudyApp() {
+fun DidYouStudyApp(
+    applicationViewModel: AppViewModel = appViewModel(),
+) {
   val navController = rememberNavController()
   val navigationActions = NavigationActions(navController)
-  val applicationViewModel = appViewModel()
   val appState by applicationViewModel.uiState.collectAsStateWithLifecycle()
+
+  LaunchedEffect(appState) {
+    if (appState == AppUiState.LogOut && navigationActions.currentRoute() != Screen.Auth.route) {
+      navigationActions.navigateToAndClear(Screen.Auth, Screen.Auth, clearAll = true)
+    }
+  }
+
   NavHost(
       navController = navController,
-      startDestination = Screen.Auth.name,
+      startDestination = applicationViewModel.startDestination.name,
   ) {
     navigation(
         startDestination = Screen.Auth.route,
