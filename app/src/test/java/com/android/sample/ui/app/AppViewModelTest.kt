@@ -1,5 +1,6 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.app
 
 import com.android.sample.model.auth.UserAccount
@@ -38,6 +39,21 @@ class AppViewModelTest {
   @After
   fun tearDown() {
     Dispatchers.resetMain()
+  }
+
+  @Test
+  fun startDestinationIsAuthWhenUnauthenticated() {
+    val viewModel = AppViewModel(authRepository, preferencesRepository)
+
+    assertEquals(Screen.Auth, viewModel.startDestination)
+  }
+
+  @Test
+  fun startDestinationIsDashboardWhenAuthenticated() {
+    authRepository.currentUser.value = UserAccount("user-1", null, null, null)
+    val viewModel = AppViewModel(authRepository, preferencesRepository)
+
+    assertEquals(Screen.Dashboard, viewModel.startDestination)
   }
 
   @Test

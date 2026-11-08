@@ -1,6 +1,7 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.app
 
 import androidx.compose.runtime.Composable
@@ -48,6 +49,15 @@ class AppViewModel(
   private val mutableUiState = MutableStateFlow<AppUiState>(AppUiState.Loading)
   val uiState: StateFlow<AppUiState> = mutableUiState.asStateFlow()
   private var hadSignedInUser = false
+
+  /**
+   * Initial start destination for NavHost.
+   *
+   * Authenticated users default to [Screen.Dashboard] without waiting for async flows or showing a
+   * sign-in flash. Unauthenticated users start on [Screen.Auth].
+   */
+  val startDestination: Screen =
+      if (authRepository.isAuthenticated) Screen.Dashboard else Screen.Auth
 
   init {
     viewModelScope.launch {
