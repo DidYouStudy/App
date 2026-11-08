@@ -526,6 +526,60 @@ class GroupSessionsViewModelTest {
     assertEquals(later, viewModel.uiState.value.now)
   }
 
+  /** A time tick updates the clock without clearing an existing join failure. */
+  @Test
+  fun now_refreshPreservesJoinFailure() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val own = session("own", ALICE)
+    repository.saveSession(ALICE, own)
+    val clock = MutableTestClock(now)
+    val viewModel = GroupSessionsViewModel(authRepository, repository, clock)
+    viewModel.join("missing")
+    assertEquals(GroupSessionsError.JOIN_FAILED, viewModel.uiState.value.error)
+    observe(viewModel)
+    clock.currentInstant = Instant.parse("2025-03-01T12:00:30Z")
+
+    advanceTimeBy(30_000)
+    runCurrent()
+
+    assertEquals(Instant.parse("2025-03-01T12:00:30Z"), viewModel.uiState.value.now)
+    assertEquals(GroupSessionsError.JOIN_FAILED, viewModel.uiState.value.error)
+  }
+
+  /** A time tick preserves loading while the signed-in repository has not emitted. */
+  @Test
+  fun now_refreshPreservesLoadingBeforeFirstEmission() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val clock = MutableTestClock(now)
+    val viewModel =
+        GroupSessionsViewModel(authRepository, FlowGroupSessionsRepository(emissions), clock)
+    observe(viewModel)
+    clock.currentInstant = Instant.parse("2025-03-01T12:00:30Z")
+
+    advanceTimeBy(30_000)
+    runCurrent()
+
+    assertEquals(Instant.parse("2025-03-01T12:00:30Z"), viewModel.uiState.value.now)
+    assertTrue(viewModel.uiState.value.isLoading)
+  }
+
+  /** The reference time keeps updating when one of two screen collectors leaves. */
+  @Test
+  fun now_refreshesWhileOneOfTwoCollectorsRemains() = runTest {
+    val clock = MutableTestClock(now)
+    val viewModel = GroupSessionsViewModel(authRepository, repository, clock)
+    val leavingCollector = observe(viewModel)
+    observe(viewModel)
+    leavingCollector.cancel()
+    clock.currentInstant = Instant.parse("2025-03-01T12:00:30Z")
+
+    advanceTimeBy(30_000)
+    runCurrent()
+
+    assertEquals(Instant.parse("2025-03-01T12:00:30Z"), viewModel.uiState.value.now)
+  }
+
   /** A hidden screen does no work, and coming back shows the right time without waiting. */
   @Test
   fun now_pausesWithoutCollectorAndUpdatesAsSoonAsOneReturns() = runTest {
@@ -542,6 +596,7 @@ class GroupSessionsViewModelTest {
     val collector = observe(viewModel)
     val timeAfterReturn = viewModel.uiState.value.now
     collector.cancel()
+    // Cancel ViewModel work before assertions so its collectors cannot mutate state afterward.
     viewModel.viewModelScope.cancel()
 
     assertEquals(now, timeWithoutCollector)
