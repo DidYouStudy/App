@@ -238,6 +238,24 @@ class LocalCampusLocationRepositoryTest {
     assertTrue(repo(json).getAllLocations().exceptionOrNull() is IllegalArgumentException)
   }
 
+  /** A room without a name cannot be searched or shown, so the whole load must fail. */
+  @Test
+  fun nullName_returnsFailure() = runTest {
+    val json = """[{"name": null, "zone": "A", "latitude": 46.5, "longitude": 6.5}]"""
+
+    assertTrue(repo(json).getAllLocations().isFailure)
+  }
+
+  /** A room without coordinates cannot be placed on the map, so the whole load must fail. */
+  @Test
+  fun nullLatitudeOrLongitude_returnsFailure() = runTest {
+    val nullLatitude = """[{"name": "A 1", "zone": "A", "latitude": null, "longitude": 6.5}]"""
+    val nullLongitude = """[{"name": "A 1", "zone": "A", "latitude": 46.5, "longitude": null}]"""
+
+    assertTrue(repo(nullLatitude).getAllLocations().isFailure)
+    assertTrue(repo(nullLongitude).getAllLocations().isFailure)
+  }
+
   @Test
   fun unreadableFile_returnsFailureWithTheCause() = runTest {
     val repo = LocalCampusLocationRepository({ throw IOException("disk") })
