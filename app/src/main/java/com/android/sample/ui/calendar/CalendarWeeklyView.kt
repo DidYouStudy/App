@@ -122,7 +122,7 @@ internal fun CalendarWeeklyView(
     modifier: Modifier = Modifier,
 ) {
   BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-      //Checks the dimensions of the screen and decide whether to make the headers compact
+    // Checks the dimensions of the screen and decide whether to make the headers compact
     val compactHeaders = maxWidth > maxHeight
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
       CalendarWeekRangeHeader(
