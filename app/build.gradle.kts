@@ -6,6 +6,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
   alias(libs.plugins.androidApplication)
   alias(libs.plugins.kotlinCompose)
+  alias(libs.plugins.kotlinSerialization)
   alias(libs.plugins.ktfmt)
   alias(libs.plugins.googleServices)
   id("jacoco")
@@ -187,6 +188,10 @@ dependencies {
   implementation(libs.androidx.credentials)
   implementation(libs.androidx.credentials.play.services.auth)
   implementation(libs.googleid)
+
+  // ------------- JSON parsing ----------------
+  // Bundled campus locations (the library ships its own R8 rules)
+  implementation(libs.kotlinx.serialization.json)
 
   // Coil3 library which handles image loading through URL's ---- currently are untrusted artifacts
   // but they will be needed for future implementations
