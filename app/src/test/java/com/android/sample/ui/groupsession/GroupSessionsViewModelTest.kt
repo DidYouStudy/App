@@ -811,6 +811,37 @@ class GroupSessionsViewModelTest {
     )
   }
 
+  /** A lookup held for one account does not block the next account's lookup for that host. */
+  @Test
+  fun pendingHostLookupDoesNotBlockLookupAfterUserChange() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val pending = CompletableDeferred<Result<UserProfile?>>()
+    profileRepository.hold(BOB, pending)
+    profileRepository.enqueue(BOB, Result.success(UserProfile(uid = BOB, username = "Bob")))
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val hosted = session("hosted", BOB)
+
+    emissions.emit(Result.success(listOf(hosted)))
+    runCurrent()
+    assertEquals(1, profileRepository.getProfileUserIds.count { it == BOB })
+    assertFalse(pending.isCompleted)
+
+    authRepository.currentUser.value = account("carol")
+    runCurrent()
+    emissions.emit(Result.success(listOf(hosted)))
+    runCurrent()
+
+    assertEquals(2, profileRepository.getProfileUserIds.count { it == BOB })
+    assertEquals(
+        "Bob",
+        viewModel.uiState.value.sessions.first { it.session.id == hosted.id }.hostName,
+    )
+
+    pending.complete(Result.success(UserProfile(uid = BOB, username = "Bob")))
+    runCurrent()
+  }
+
   /** Refresh repeats profile reads so a changed username replaces the cached value. */
   @Test
   fun refreshReadsHostProfileAgainAndShowsChangedUsername() = runTest {
