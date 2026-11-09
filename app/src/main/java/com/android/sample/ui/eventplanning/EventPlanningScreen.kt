@@ -60,7 +60,9 @@ import java.time.LocalTime
  * @param onStartTimeSelected Called with the selected start time.
  * @param onEndTimeSelected Called with the selected end time.
  * @param onSubjectSelected Called with the selected subject.
- * @param onLocationChange Called when the location field changes.
+ * @param onLocationChange Called with the location picked from the location picker dialog.
+ * @param onLocationSearchQueryChange Called with the location picker's search text as the user
+ *   types.
  * @param onDescriptionChange Called when the description field changes.
  * @param onAddTask Called when a non-blank task is submitted.
  * @param onToggleTask Called with the index of the task to toggle.
@@ -91,6 +93,7 @@ internal fun EventPlanningScreen(
     onEndTimeSelected: (LocalTime) -> Unit,
     onSubjectSelected: (String) -> Unit,
     onLocationChange: (String) -> Unit,
+    onLocationSearchQueryChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onAddTask: (String) -> Unit,
     onToggleTask: (Int) -> Unit,
@@ -120,6 +123,7 @@ internal fun EventPlanningScreen(
       onEndTimeClick = { onPickEndTimeClick?.invoke() ?: run { showEndTimePicker = true } },
       onSubjectClick = { onPickSubjectClick?.invoke() ?: run { showSubjectPicker = true } },
       onLocationChange = onLocationChange,
+      onLocationSearchQueryChange = onLocationSearchQueryChange,
       onDescriptionChange = onDescriptionChange,
       onAddTask = onAddTask,
       onToggleTask = onToggleTask,
@@ -193,7 +197,9 @@ internal fun EventPlanningScreen(
  * @param onStartTimeClick Invoked when the start-time selector is pressed.
  * @param onEndTimeClick Invoked when the end-time selector is pressed.
  * @param onSubjectClick Invoked when the subject selector is pressed.
- * @param onLocationChange Called when the location field changes.
+ * @param onLocationChange Called with the location picked from the location picker dialog.
+ * @param onLocationSearchQueryChange Called with the location picker's search text as the user
+ *   types.
  * @param onDescriptionChange Called when the description field changes.
  * @param onAddTask Called when a non-blank task is submitted.
  * @param onToggleTask Called with the index of the task to toggle.
@@ -216,6 +222,7 @@ fun EventPlanningScreenStateless(
     onEndTimeClick: () -> Unit,
     onSubjectClick: () -> Unit,
     onLocationChange: (String) -> Unit,
+    onLocationSearchQueryChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onAddTask: (String) -> Unit,
     onToggleTask: (Int) -> Unit,
@@ -340,6 +347,7 @@ fun EventPlanningScreenStateless(
             onEndTimeClick = onEndTimeClick,
             onSubjectClick = onSubjectClick,
             onLocationChange = onLocationChange,
+            onLocationSearchQueryChange = onLocationSearchQueryChange,
             onDescriptionChange = onDescriptionChange,
             onAddTask = onAddTask,
             onToggleTask = onToggleTask,

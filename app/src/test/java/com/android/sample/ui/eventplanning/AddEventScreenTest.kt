@@ -104,6 +104,7 @@ class AddEventScreenTest {
           onEndTimeClick = {},
           onSubjectClick = {},
           onLocationChange = {},
+          onLocationSearchQueryChange = {},
           onDescriptionChange = {},
           onAddTask = {},
           onToggleTask = {},
@@ -141,6 +142,7 @@ class AddEventScreenTest {
           onEndTimeClick = {},
           onSubjectClick = {},
           onLocationChange = {},
+          onLocationSearchQueryChange = {},
           onDescriptionChange = {},
           onAddTask = {},
           onToggleTask = {},
@@ -238,6 +240,7 @@ class AddEventScreenTest {
 
   @Test
   fun statefulScreenPickerCallbacksAndInputHandlersWork() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
     var pickType = false
     var pickDate = false
     var pickStartTime = false
@@ -273,8 +276,11 @@ class AddEventScreenTest {
     composeTestRule.onNodeWithTag(Tags.SUBJECT_SELECTOR).performClick()
     assertTrue(pickSubject)
 
-    composeTestRule.onNodeWithTag(Tags.LOCATION_INPUT).performTextInput("Library")
-    assertEquals("Library", viewModel.uiState.value.location)
+    composeTestRule.onNodeWithTag(Tags.LOCATION_SELECTOR).performClick()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_dialog_title))
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithText(context.getString(R.string.cancel)).performClick()
 
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION_INPUT).performTextInput("Quiet zone")
     assertEquals("Quiet zone", viewModel.uiState.value.description)
@@ -296,6 +302,7 @@ class AddEventScreenTest {
           onEndTimeClick = {},
           onSubjectClick = {},
           onLocationChange = {},
+          onLocationSearchQueryChange = {},
           onDescriptionChange = {},
           onAddTask = {},
           onToggleTask = {},
@@ -338,6 +345,7 @@ class AddEventScreenTest {
           onEndTimeClick = {},
           onSubjectClick = {},
           onLocationChange = {},
+          onLocationSearchQueryChange = {},
           onDescriptionChange = {},
           onAddTask = { task -> submittedTask = task },
           onToggleTask = {},
@@ -382,6 +390,7 @@ class AddEventScreenTest {
           onEndTimeClick = {},
           onSubjectClick = {},
           onLocationChange = {},
+          onLocationSearchQueryChange = {},
           onDescriptionChange = {},
           onAddTask = {},
           onToggleTask = {},
@@ -418,6 +427,7 @@ class AddEventScreenTest {
           onEndTimeClick = {},
           onSubjectClick = {},
           onLocationChange = {},
+          onLocationSearchQueryChange = {},
           onDescriptionChange = {},
           onAddTask = {},
           onToggleTask = {},

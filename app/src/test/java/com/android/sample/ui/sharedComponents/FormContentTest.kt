@@ -38,7 +38,7 @@ class FormContentTest {
     var startTimeClicked = false
     var endTimeClicked = false
     var subjectClicked = false
-    var locationInput = ""
+    var locationClicked = false
     var descriptionInput = ""
     var addedTask = ""
     var toggledTaskIndex = -1
@@ -60,7 +60,7 @@ class FormContentTest {
           onStartTimeClick = { startTimeClicked = true },
           onEndTimeClick = { endTimeClicked = true },
           onSubjectClick = { subjectClicked = true },
-          onLocationChange = { locationInput = it },
+          onLocationClick = { locationClicked = true },
           onDescriptionChange = { descriptionInput = it },
           onAddTask = { addedTask = it },
           onToggleTask = { toggledTaskIndex = it },
@@ -110,8 +110,8 @@ class FormContentTest {
     composeTestRule
         .onNodeWithTag(Tags.LOCATION_LABEL, useUnmergedTree = true)
         .assertTextEquals(context.getString(R.string.event_planning_location_optional_label))
-    composeTestRule.onNodeWithTag(Tags.LOCATION_INPUT).performTextInput(" New")
-    assertTrue(locationInput.contains("New"))
+    composeTestRule.onNodeWithTag(Tags.LOCATION_SELECTOR).assertTextEquals("CM3").performClick()
+    assertTrue(locationClicked)
 
     composeTestRule
         .onNodeWithTag(Tags.DESCRIPTION_LABEL, useUnmergedTree = true)
@@ -161,7 +161,7 @@ class FormContentTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
           showTasksSection = false,
       )
@@ -192,7 +192,7 @@ class FormContentTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
       )
     }
@@ -225,7 +225,7 @@ class FormContentTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
       )
     }
@@ -252,7 +252,7 @@ class FormContentTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
           isDateMissing = true,
           isStartTimeMissing = true,
@@ -284,7 +284,7 @@ class FormContentTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
       )
     }

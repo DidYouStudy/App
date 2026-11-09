@@ -3,9 +3,14 @@
 package com.android.sample.ui.eventplanning
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.android.sample.model.event.EventType
 import com.android.sample.ui.sharedComponents.FormContent
+import com.android.sample.ui.sharedComponents.LocationPickerDialog
 
 /**
  * Renders the complete scrollable event-planning form for personal events.
@@ -15,6 +20,9 @@ import com.android.sample.ui.sharedComponents.FormContent
  * invalid; by default, this is derived from the ViewModel's required-field and invalid-event
  * errors.
  *
+ * Also owns the [LocationPickerDialog]'s open/closed state: tapping the location field opens it,
+ * and its confirmed selection is reported through [onLocationChange].
+ *
  * @param modifier Modifier applied to the scrollable form container.
  * @param uiState Current field values, event tasks and ViewModel error state.
  * @param isValidationError Whether required inputs should display validation error states.
@@ -23,7 +31,9 @@ import com.android.sample.ui.sharedComponents.FormContent
  * @param onStartTimeClick Invoked when the start-time selector is pressed.
  * @param onEndTimeClick Invoked when the end-time selector is pressed.
  * @param onSubjectClick Invoked when the subject selector is pressed.
- * @param onLocationChange Called when the location field changes.
+ * @param onLocationChange Called with the location picked from [LocationPickerDialog].
+ * @param onLocationSearchQueryChange Called with the location picker's search text as the user
+ *   types, so the ViewModel can resolve matches via the campus location repository.
  * @param onDescriptionChange Called when the description field changes.
  * @param onAddTask Called with a non-blank task title submitted via the keyboard action.
  * @param onToggleTask Called with the index of the task to toggle completion.
@@ -44,6 +54,7 @@ fun EventFormContent(
     onEndTimeClick: () -> Unit,
     onSubjectClick: () -> Unit,
     onLocationChange: (String) -> Unit,
+    onLocationSearchQueryChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onAddTask: (String) -> Unit,
     onToggleTask: (Int) -> Unit,
@@ -55,6 +66,7 @@ fun EventFormContent(
   val isStartTimeMissing = isValidationError && uiState.startTime == null
   val isEndTimeMissing = isValidationError && uiState.endTime == null
   val isSubjectMissing = isValidationError && uiState.isSubjectRequired && uiState.subject.isBlank()
+  var showLocationPicker by rememberSaveable { mutableStateOf(false) }
 
   FormContent(
       type = uiState.type,
@@ -70,7 +82,7 @@ fun EventFormContent(
       onStartTimeClick = onStartTimeClick,
       onEndTimeClick = onEndTimeClick,
       onSubjectClick = onSubjectClick,
-      onLocationChange = onLocationChange,
+      onLocationClick = { showLocationPicker = true },
       onDescriptionChange = onDescriptionChange,
       modifier = modifier,
       tasks = uiState.tasks,
@@ -84,4 +96,16 @@ fun EventFormContent(
       onDeleteTask = onDeleteTask,
       onTypeClick = onTypeClick,
   )
+
+  if (showLocationPicker) {
+    LocationPickerDialog(
+        searchResults = uiState.locationSearchResults,
+        onDismiss = { showLocationPicker = false },
+        onSearchQueryChange = onLocationSearchQueryChange,
+        onConfirm = { location ->
+          onLocationChange(location)
+          showLocationPicker = false
+        },
+    )
+  }
 }

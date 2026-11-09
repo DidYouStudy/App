@@ -19,6 +19,7 @@ import com.android.sample.model.event.EventsException
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.EventsRepositoryProvider
 import com.android.sample.model.event.PersonalEvent
+import com.android.sample.model.location.CampusLocation
 import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalTime
@@ -56,6 +57,8 @@ enum class EventKind {
  * @property eventKind whether the event is personal or a group session.
  * @property recommendedSubjects subjects the user has used before, most recent first, for the
  *   suggestions.
+ * @property locationSearchResults campus locations currently matching the location picker's search
+ *   text.
  * @property isEditing whether the form was filled from an existing event by
  *   [EventPlanningViewModel.loadEvent].
  * @property isLoading whether an existing event is being loaded into the form.
@@ -78,6 +81,7 @@ data class EventPlanningUiState(
     val description: String = "",
     val tasks: List<EventTask> = emptyList(),
     val recommendedSubjects: List<String> = emptyList(),
+    val locationSearchResults: List<CampusLocation> = emptyList(),
     val isEditing: Boolean = false,
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
@@ -302,6 +306,7 @@ class EventPlanningViewModel(
               _uiState.update {
                 EventPlanningUiState(
                     recommendedSubjects = it.recommendedSubjects,
+                    locationSearchResults = it.locationSearchResults,
                     isEventDeleted = true,
                 )
               }
@@ -343,7 +348,12 @@ class EventPlanningViewModel(
   fun resetForm() {
     pendingEventId = null
     editingEvent = null
-    _uiState.update { EventPlanningUiState(recommendedSubjects = it.recommendedSubjects) }
+    _uiState.update {
+      EventPlanningUiState(
+          recommendedSubjects = it.recommendedSubjects,
+          locationSearchResults = it.locationSearchResults,
+      )
+    }
   }
 
   /** Adds the form as a new event, or replaces [editing] with it. */
@@ -411,6 +421,7 @@ class EventPlanningViewModel(
               _uiState.update {
                 EventPlanningUiState(
                     recommendedSubjects = it.recommendedSubjects,
+                    locationSearchResults = it.locationSearchResults,
                     isEventAdded = editing == null,
                     isEventEdited = editing != null,
                 )

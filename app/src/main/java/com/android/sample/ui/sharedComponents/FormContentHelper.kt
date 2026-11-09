@@ -782,7 +782,7 @@ object FormContentTestTags {
   const val START_TIME_SELECTOR = "form_content_start_time_selector"
   const val END_TIME_SELECTOR = "form_content_end_time_selector"
   const val SUBJECT_SELECTOR = "form_content_subject_selector"
-  const val LOCATION_INPUT = "form_content_location_input"
+  const val LOCATION_SELECTOR = "form_content_location_selector"
   const val DESCRIPTION_INPUT = "form_content_description_input"
 
   // Tasks

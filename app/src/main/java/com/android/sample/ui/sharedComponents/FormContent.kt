@@ -59,7 +59,7 @@ fun FormContent(
     onStartTimeClick: () -> Unit,
     onEndTimeClick: () -> Unit,
     onSubjectClick: () -> Unit,
-    onLocationChange: (String) -> Unit,
+    onLocationClick: () -> Unit,
     onDescriptionChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     tasks: List<EventTask> = emptyList(),
@@ -229,11 +229,14 @@ fun FormContent(
         text = stringResource(R.string.event_planning_location_optional_label),
         testTag = FormContentTestTags.LOCATION_LABEL,
     )
-    OutlinedInputField(
-        value = location,
-        onValueChange = onLocationChange,
-        placeholder = stringResource(R.string.event_planning_select_or_enter_placeholder),
-        testTag = FormContentTestTags.LOCATION_INPUT,
+    SelectorFieldPill(
+        valueText = location,
+        placeholderText = stringResource(R.string.event_planning_select_or_enter_placeholder),
+        onClick = {
+          focusManager.clearFocus()
+          onLocationClick()
+        },
+        testTag = FormContentTestTags.LOCATION_SELECTOR,
     )
 
     // Description (optional)

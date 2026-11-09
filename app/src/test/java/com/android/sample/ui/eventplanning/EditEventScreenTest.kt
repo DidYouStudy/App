@@ -128,6 +128,7 @@ class EditEventScreenTest {
           onEndTimeClick = {},
           onSubjectClick = {},
           onLocationChange = {},
+          onLocationSearchQueryChange = {},
           onDescriptionChange = {},
           onAddTask = {},
           onToggleTask = {},
@@ -172,7 +173,7 @@ class EditEventScreenTest {
     composeTestRule.onNodeWithTag(Tags.START_TIME_SELECTOR).assertTextContains("09:00")
     composeTestRule.onNodeWithTag(Tags.END_TIME_SELECTOR).assertTextContains("11:00")
     composeTestRule.onNodeWithTag(Tags.SUBJECT_SELECTOR).assertTextContains("Operating Systems")
-    composeTestRule.onNodeWithTag(Tags.LOCATION_INPUT).assertTextContains("INF 1")
+    composeTestRule.onNodeWithTag(Tags.LOCATION_SELECTOR).assertTextContains("INF 1")
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION_INPUT).assertTextContains("Bring lecture notes")
     assertTrue(
         composeTestRule.onAllNodesWithText("Review chapter").fetchSemanticsNodes().isNotEmpty()
@@ -261,6 +262,7 @@ class EditEventScreenTest {
           onEndTimeSelected = { selectedEndTime = it },
           onSubjectSelected = { selectedSubject = it },
           onLocationChange = {},
+          onLocationSearchQueryChange = {},
           onDescriptionChange = {},
           onAddTask = {},
           onToggleTask = {},
@@ -352,7 +354,7 @@ class EditEventScreenTest {
     composeTestRule.onNodeWithTag(Tags.START_TIME_SELECTOR).assertTextContains("09:00")
     composeTestRule.onNodeWithTag(Tags.END_TIME_SELECTOR).assertTextContains("11:00")
     composeTestRule.onNodeWithTag(Tags.SUBJECT_SELECTOR).assertTextContains("Operating Systems")
-    composeTestRule.onNodeWithTag(Tags.LOCATION_INPUT).assertTextContains("INF 1")
+    composeTestRule.onNodeWithTag(Tags.LOCATION_SELECTOR).assertTextContains("INF 1")
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION_INPUT).assertTextContains("Bring lecture notes")
     composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).assertIsEnabled()
     composeTestRule.onNodeWithTag(Tags.DELETE_BUTTON).assertIsDisplayed()
