@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
 
 import androidx.lifecycle.ViewModel
@@ -194,6 +195,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     val viewModel = createViewModel()
     val tasks = listOf(EventTask("Solve exercises 12, 13"), EventTask("Read chapter 3"))
 
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
     viewModel.setType(EventType.LAB)
     viewModel.setSubject("CompSec")
     viewModel.setDate(date)
@@ -204,6 +206,8 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.setTasks(tasks)
 
     val state = viewModel.uiState.value
+    assertEquals(EventKind.GROUP_SESSION, state.eventKind)
+    assertFalse(state.showTasksSection)
     assertEquals(EventType.LAB, state.type)
     assertEquals("CompSec", state.subject)
     assertEquals(date, state.date)
@@ -212,6 +216,20 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertEquals("INF 1", state.location)
     assertEquals("Bring laptop", state.description)
     assertEquals(tasks, state.tasks)
+  }
+
+  /** setEventKind updates eventKind and toggles showTasksSection. */
+  @Test
+  fun setEventKind_updatesEventKindAndShowTasksSection() = runTest {
+    val viewModel = createViewModel()
+    assertEquals(EventKind.PERSONAL, viewModel.uiState.value.eventKind)
+    assertTrue(viewModel.uiState.value.showTasksSection)
+
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+
+    val state = viewModel.uiState.value
+    assertEquals(EventKind.GROUP_SESSION, state.eventKind)
+    assertFalse(state.showTasksSection)
   }
 
   /** Date and time setters accept null to clear previously selected values. */
