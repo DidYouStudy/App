@@ -838,8 +838,12 @@ class GroupSessionsViewModelTest {
         viewModel.uiState.value.sessions.first { it.session.id == hosted.id }.hostName,
     )
 
-    pending.complete(Result.success(UserProfile(uid = BOB, username = "Bob")))
+    pending.complete(Result.success(UserProfile(uid = BOB, username = "Stale Bob")))
     runCurrent()
+    assertEquals(
+        "Bob",
+        viewModel.uiState.value.sessions.first { it.session.id == hosted.id }.hostName,
+    )
   }
 
   /** Refresh repeats profile reads so a changed username replaces the cached value. */
