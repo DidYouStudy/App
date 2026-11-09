@@ -13,6 +13,8 @@ import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
+import com.android.sample.model.profile.ProfileRepository
+import com.android.sample.model.profile.ProfileRepositoryProvider
 import java.time.Clock
 import java.time.Instant
 import kotlin.time.Duration.Companion.seconds
@@ -67,6 +69,7 @@ data class GroupSessionItem(
     val session: GroupSession,
     val isMember: Boolean,
     val isCreator: Boolean,
+    val hostName: String? = null,
 )
 
 /**
@@ -100,6 +103,7 @@ data class GroupSessionsUiState(
 class GroupSessionsViewModel(
     private val authRepository: AuthRepository,
     private val repository: GroupSessionsRepository,
+    profileRepository: ProfileRepository,
     private val clock: Clock = Clock.systemUTC(),
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(GroupSessionsUiState(now = clock.instant()))
@@ -284,6 +288,7 @@ class GroupSessionsViewModel(
 class GroupSessionsViewModelFactory(
     private val authRepository: AuthRepository,
     private val repository: GroupSessionsRepository,
+    private val profileRepository: ProfileRepository,
 ) : ViewModelProvider.Factory {
   /**
    * Creates the requested ViewModel and rejects unsupported classes with their class name.
@@ -295,7 +300,7 @@ class GroupSessionsViewModelFactory(
       "Unsupported ViewModel: ${modelClass.name}"
     }
     @Suppress("UNCHECKED_CAST")
-    return GroupSessionsViewModel(authRepository, repository) as T
+    return GroupSessionsViewModel(authRepository, repository, profileRepository) as T
   }
 }
 
@@ -311,5 +316,6 @@ fun groupSessionsViewModel(): GroupSessionsViewModel =
             GroupSessionsViewModelFactory(
                 authRepository = AuthRepositoryProvider.getRepository(LocalContext.current),
                 repository = GroupSessionsRepositoryProvider.getRepository(),
+                profileRepository = ProfileRepositoryProvider.getRepository(),
             )
     )
