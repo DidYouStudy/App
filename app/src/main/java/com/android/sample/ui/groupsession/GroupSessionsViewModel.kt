@@ -94,7 +94,8 @@ data class GroupSessionsUiState(
  * Successful list emissions and refreshes clear only [GroupSessionsError.LOAD_FAILED]; action
  * errors remain until cleared or the observed user ID changes. Action results from an earlier
  * observed user ID are ignored. [GroupSessionsUiState.now] is refreshed from [clock] while
- * [uiState] has a collector, and immediately when a collector returns.
+ * [uiState] has a collector, immediately when a collector returns, and when the list is observed
+ * again.
  */
 class GroupSessionsViewModel(
     private val authRepository: AuthRepository,
@@ -126,9 +127,11 @@ class GroupSessionsViewModel(
               observedSessions = emptyList()
               _uiState.value = GroupSessionsUiState(now = clock.instant(), isLoading = false)
             } else {
+              val observedFrom = clock.instant()
               updateVisibleSessions()
               _uiState.update {
                 it.copy(
+                    now = observedFrom,
                     isLoading = true,
                     error =
                         if (userChanged) {
@@ -138,7 +141,8 @@ class GroupSessionsViewModel(
                         },
                 )
               }
-              repository.observeSessions(clock.instant()).collect { result ->
+              // Keep the list cutoff and badge reference time aligned.
+              repository.observeSessions(observedFrom).collect { result ->
                 result.fold(
                     onSuccess = { sessions ->
                       observedSessions = sessions
