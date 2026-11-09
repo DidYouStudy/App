@@ -75,7 +75,7 @@ fun AddEventScreen(
       onEndTimeSelected = viewModel::setEndTime,
       onSubjectSelected = viewModel::setSubject,
       onLocationChange = viewModel::setLocation,
-      onLocationSearchQueryChange = {},
+      onLocationSearchQueryChange = viewModel::searchLocations,
       onDescriptionChange = viewModel::setDescription,
       onAddTask = viewModel::addTask,
       onToggleTask = viewModel::toggleTask,

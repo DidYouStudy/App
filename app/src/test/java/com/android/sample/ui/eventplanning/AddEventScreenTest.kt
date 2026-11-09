@@ -26,6 +26,7 @@ import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.PersonalEvent
+import com.android.sample.model.location.CampusLocationRepository
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
 import java.time.Clock
 import java.time.Instant
@@ -62,6 +63,7 @@ class AddEventScreenTest {
   private val currentUserFlow = MutableStateFlow<UserAccount?>(null)
   private lateinit var authRepository: AuthRepository
   private lateinit var eventsRepository: EventsRepository
+  private lateinit var campusLocationRepository: CampusLocationRepository
 
   private val zone = ZoneId.of("Europe/Berlin")
   private val now = Instant.parse("2026-10-27T12:00:00Z")
@@ -72,10 +74,14 @@ class AddEventScreenTest {
     Dispatchers.setMain(testDispatcher)
     authRepository = mock(AuthRepository::class.java)
     eventsRepository = mock(EventsRepository::class.java)
+    campusLocationRepository = mock(CampusLocationRepository::class.java)
     `when`(authRepository.currentUser).thenReturn(currentUserFlow)
     `when`(eventsRepository.newEventId()).thenReturn("event-1")
     `when`(eventsRepository.observeSubjects(any())).thenReturn(flowOf(Result.success(emptyList())))
-    runBlocking { `when`(eventsRepository.saveEvent(any())).thenReturn(Result.success(Unit)) }
+    runBlocking {
+      `when`(eventsRepository.saveEvent(any())).thenReturn(Result.success(Unit))
+      `when`(campusLocationRepository.search(any())).thenReturn(Result.success(emptyList()))
+    }
     currentUserFlow.value =
         UserAccount(uid = "user123", email = null, displayName = null, photoUrl = null)
   }
@@ -85,7 +91,8 @@ class AddEventScreenTest {
     Dispatchers.resetMain()
   }
 
-  private fun createViewModel() = EventPlanningViewModel(authRepository, eventsRepository, clock)
+  private fun createViewModel() =
+      EventPlanningViewModel(authRepository, eventsRepository, campusLocationRepository, clock)
 
   @Test
   fun statelessScreenRendersTopBarFormAndSaveButtonWhenNotSaving() {

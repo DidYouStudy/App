@@ -23,6 +23,7 @@ import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.PersonalEvent
+import com.android.sample.model.location.CampusLocationRepository
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
 import java.time.Clock
 import java.time.Instant
@@ -59,6 +60,7 @@ class EditEventScreenTest {
   private val currentUser = MutableStateFlow<UserAccount?>(null)
   private val authRepository: AuthRepository = mock()
   private val eventsRepository: EventsRepository = mock()
+  private val campusLocationRepository: CampusLocationRepository = mock()
   private val clock = Clock.fixed(Instant.parse("2026-10-27T12:00:00Z"), ZoneId.of("Europe/Berlin"))
   private val storedEvent =
       PersonalEvent(
@@ -90,6 +92,7 @@ class EditEventScreenTest {
       whenever(eventsRepository.saveEvent(any())).thenReturn(Result.success(Unit))
       whenever(eventsRepository.deleteEvent("user-1", storedEvent.id))
           .thenReturn(Result.success(Unit))
+      whenever(campusLocationRepository.search(any())).thenReturn(Result.success(emptyList()))
     }
   }
 
@@ -99,7 +102,8 @@ class EditEventScreenTest {
   }
 
   private fun createViewModel(): EventPlanningViewModel {
-    val viewModel = EventPlanningViewModel(authRepository, eventsRepository, clock)
+    val viewModel =
+        EventPlanningViewModel(authRepository, eventsRepository, campusLocationRepository, clock)
     testDispatcher.scheduler.advanceUntilIdle()
     return viewModel
   }

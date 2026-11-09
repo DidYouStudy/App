@@ -20,11 +20,15 @@ import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.EventsRepositoryProvider
 import com.android.sample.model.event.PersonalEvent
 import com.android.sample.model.location.CampusLocation
+import com.android.sample.model.location.CampusLocationFilter
+import com.android.sample.model.location.CampusLocationRepository
+import com.android.sample.model.location.CampusLocationRepositoryProvider
 import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -112,6 +116,7 @@ data class EventPlanningUiState(
  * Builds, adds, edits and deletes events for the currently authenticated user through repository
  * contracts.
  *
+ * @param campusLocationRepository source of the campus locations shown by the location picker.
  * @param clock source of the current time (task completion, creation and update times) and of the
  *   time zone used to turn the picked date and times into instants.
  */
@@ -119,6 +124,7 @@ data class EventPlanningUiState(
 class EventPlanningViewModel(
     private val authRepository: AuthRepository,
     private val eventsRepository: EventsRepository,
+    private val campusLocationRepository: CampusLocationRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(EventPlanningUiState())
@@ -136,6 +142,12 @@ class EventPlanningViewModel(
    * The event loaded by [loadEvent]; [editEvent] replaces it and keeps its ID and creation time.
    */
   private var editingEvent: PersonalEvent? = null
+
+  /**
+   * The latest [searchLocations] request; cancelled on every new call so a slow, stale response
+   * cannot overwrite a newer one's results.
+   */
+  private var locationSearchJob: Job? = null
 
   init {
     viewModelScope.launch {
@@ -160,6 +172,20 @@ class EventPlanningViewModel(
               .copy(error = exception.localizedMessage ?: FAILED_TO_OBSERVE_USER_ERROR)
         }
       }
+    }
+  }
+
+  /**
+   * Resolves campus locations matching [query] via [campusLocationRepository] and exposes them as
+   * [EventPlanningUiState.locationSearchResults] for the location picker. A blank query returns
+   * every location. Like [recommendedSubjects][EventPlanningUiState.recommendedSubjects], a lookup
+   * failure is not shown as an error: the results are simply left empty.
+   */
+  fun searchLocations(query: String) {
+    locationSearchJob?.cancel()
+    locationSearchJob = viewModelScope.launch {
+      val result = campusLocationRepository.search(CampusLocationFilter(query = query))
+      _uiState.update { it.copy(locationSearchResults = result.getOrDefault(emptyList())) }
     }
   }
 
@@ -506,6 +532,7 @@ class EventPlanningViewModel(
 class EventPlanningViewModelFactory(
     private val authRepository: AuthRepository,
     private val eventsRepository: EventsRepository,
+    private val campusLocationRepository: CampusLocationRepository,
 ) : ViewModelProvider.Factory {
   /**
    * Creates an EventsPlanningViewModel and rejects unrelated ViewModel types rather than casting
@@ -516,7 +543,7 @@ class EventPlanningViewModelFactory(
       "Unsupported ViewModel: ${modelClass.name}"
     }
     @Suppress("UNCHECKED_CAST")
-    return EventPlanningViewModel(authRepository, eventsRepository) as T
+    return EventPlanningViewModel(authRepository, eventsRepository, campusLocationRepository) as T
   }
 }
 
@@ -532,5 +559,7 @@ fun eventsPlanningViewModel(): EventPlanningViewModel =
             EventPlanningViewModelFactory(
                 authRepository = AuthRepositoryProvider.getRepository(LocalContext.current),
                 eventsRepository = EventsRepositoryProvider.getRepository(),
+                campusLocationRepository =
+                    CampusLocationRepositoryProvider.getRepository(LocalContext.current),
             )
     )

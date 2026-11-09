@@ -11,6 +11,10 @@ import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
 import com.android.sample.model.event.EventsRepository
+import com.android.sample.model.location.CampusLocation
+import com.android.sample.model.location.CampusLocationFilter
+import com.android.sample.model.location.CampusLocationType
+import com.android.sample.model.location.Location
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -155,6 +159,69 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
 
     assertEquals(emptyList<String>(), viewModel.uiState.value.recommendedSubjects)
     assertNull(viewModel.uiState.value.error)
+  }
+
+  // ---------------------------------------------------------------- location search
+
+  /** Builds a minimal campus location for tests; only the name is usually relevant. */
+  private fun sampleLocation(name: String): CampusLocation =
+      CampusLocation(
+          name = name,
+          zone = "AAB",
+          type = CampusLocationType.LECTURE_ROOM,
+          floor = null,
+          location = Location(latitude = 46.52, longitude = 6.56),
+      )
+
+  /** A successful search result is exposed as the location picker's search results. */
+  @Test
+  fun searchLocations_success_updatesLocationSearchResults() = runTest {
+    val results = listOf(sampleLocation("BC 01"), sampleLocation("BC 02"))
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+        .thenReturn(Result.success(results))
+    val viewModel = createViewModel()
+
+    viewModel.searchLocations("BC")
+    advanceUntilIdle()
+
+    assertEquals(results, viewModel.uiState.value.locationSearchResults)
+  }
+
+  /** A failed search leaves the results empty without surfacing an error. */
+  @Test
+  fun searchLocations_failure_leavesResultsEmptyWithoutError() = runTest {
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+        .thenReturn(Result.failure(RuntimeException("search failed")))
+    val viewModel = createViewModel()
+
+    viewModel.searchLocations("BC")
+    advanceUntilIdle()
+
+    assertEquals(emptyList<CampusLocation>(), viewModel.uiState.value.locationSearchResults)
+    assertNull(viewModel.uiState.value.error)
+  }
+
+  /** A new search cancels a slower, still-running one, so its stale result is dropped. */
+  @Test
+  fun searchLocations_newQueryCancelsPreviousSlowQuery() = runTest {
+    val staleGate = CompletableDeferred<Unit>()
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "stale")))
+        .doSuspendableAnswer {
+          staleGate.await()
+          Result.success(listOf(sampleLocation("STALE 01")))
+        }
+    val freshResults = listOf(sampleLocation("BC 01"))
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "fresh")))
+        .thenReturn(Result.success(freshResults))
+    val viewModel = createViewModel()
+
+    viewModel.searchLocations("stale")
+    viewModel.searchLocations("fresh")
+    advanceUntilIdle()
+    staleGate.complete(Unit)
+    advanceUntilIdle()
+
+    assertEquals(freshResults, viewModel.uiState.value.locationSearchResults)
   }
 
   // ---------------------------------------------------------------- form
@@ -786,7 +853,8 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
   /** The factory creates an event-planning ViewModel for its supported type. */
   @Test
   fun factory_createsEventPlanningViewModel() {
-    val factory = EventPlanningViewModelFactory(authRepository, eventsRepository)
+    val factory =
+        EventPlanningViewModelFactory(authRepository, eventsRepository, campusLocationRepository)
 
     val viewModel = factory.create(EventPlanningViewModel::class.java)
 
@@ -796,7 +864,8 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
   /** The factory rejects ViewModel classes it does not support. */
   @Test
   fun factory_rejectsUnsupportedViewModelClass() {
-    val factory = EventPlanningViewModelFactory(authRepository, eventsRepository)
+    val factory =
+        EventPlanningViewModelFactory(authRepository, eventsRepository, campusLocationRepository)
 
     val exception =
         assertThrows(IllegalArgumentException::class.java) {
