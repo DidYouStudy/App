@@ -492,6 +492,58 @@ class GroupSessionsViewModelTest {
     assertTrue(viewModel.uiState.value.sessions.isEmpty())
   }
 
+  /** Refresh updates the reference time even when no screen collects the state. */
+  @Test
+  fun now_refreshUpdatesTimeWithoutUiStateCollector() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val clock = MutableTestClock(now)
+    val viewModel =
+        GroupSessionsViewModel(
+            authRepository,
+            FlowGroupSessionsRepository(flowOf(Result.success(emptyList()))),
+            clock,
+        )
+    clock.currentInstant = Instant.parse("2025-03-01T12:00:25Z")
+
+    viewModel.refresh()
+    runCurrent()
+
+    assertEquals(Instant.parse("2025-03-01T12:00:25Z"), viewModel.uiState.value.now)
+  }
+
+  /** Signing in updates the reference time without waiting for a visible screen or tick. */
+  @Test
+  fun now_signInUpdatesTimeWithoutUiStateCollector() = runTest {
+    val clock = MutableTestClock(now)
+    val viewModel =
+        GroupSessionsViewModel(
+            authRepository,
+            FlowGroupSessionsRepository(flowOf(Result.success(emptyList()))),
+            clock,
+        )
+    clock.currentInstant = Instant.parse("2025-03-01T12:00:25Z")
+
+    authRepository.currentUser.value = account(ALICE)
+    runCurrent()
+
+    assertEquals(Instant.parse("2025-03-01T12:00:25Z"), viewModel.uiState.value.now)
+  }
+
+  /** The refreshed list cutoff and UI reference time come from the same clock read. */
+  @Test
+  fun now_refreshUsesSameInstantAsRepositoryCutoff() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val sessionsRepository =
+        FlowGroupSessionsRepository(flowOf(Result.success(emptyList<GroupSession>())))
+    val viewModel =
+        GroupSessionsViewModel(authRepository, sessionsRepository, AdvancingTestClock(now))
+
+    viewModel.refresh()
+    runCurrent()
+
+    assertEquals(sessionsRepository.endingAfters.last(), viewModel.uiState.value.now)
+  }
+
   /** The first signed-in state carries the injected time before the repository emits. */
   @Test
   fun now_startsFromTheInjectedClock() = runTest {
@@ -675,11 +727,26 @@ class GroupSessionsViewModelTest {
     override fun instant(): Instant = currentInstant
   }
 
+  private class AdvancingTestClock(private val firstInstant: Instant) : Clock() {
+    private var reads = 0L
+
+    override fun getZone(): ZoneId = ZoneOffset.UTC
+
+    override fun withZone(zone: ZoneId): Clock =
+        require(zone == ZoneOffset.UTC) { "Test clock only supports UTC" }.let { this }
+
+    override fun instant(): Instant = firstInstant.plusSeconds(reads++)
+  }
+
   private class FlowGroupSessionsRepository(
       private val sessionsFlow: Flow<Result<List<GroupSession>>>
   ) : GroupSessionsRepository {
-    override fun observeSessions(endingAfter: Instant): Flow<Result<List<GroupSession>>> =
-        sessionsFlow
+    val endingAfters = mutableListOf<Instant>()
+
+    override fun observeSessions(endingAfter: Instant): Flow<Result<List<GroupSession>>> {
+      endingAfters.add(endingAfter)
+      return sessionsFlow
+    }
 
     override fun newSessionId(): String = "unused"
 
