@@ -35,6 +35,8 @@ class CampusLocationRepositoryProviderTest {
     assertTrue(all.isNotEmpty())
     assertTrue(all.none { it.type == CampusLocationType.UNKNOWN })
     assertTrue("CM" in repo.getZones().getOrThrow())
+    // A blank or padded building code would find no rooms, or every room, when picked.
+    assertTrue(repo.getZones().getOrThrow().all { it.isNotBlank() && it == it.trim() })
   }
 
   @Test
