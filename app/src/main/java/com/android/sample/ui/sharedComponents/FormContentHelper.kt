@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -77,6 +78,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.android.sample.R
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
+import com.android.sample.model.location.CampusLocation
 import com.android.sample.ui.theme.AlphaTokens
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
@@ -566,19 +568,11 @@ fun SubjectPickerDialogContent(
               }
             }
 
-            itemsIndexed(filteredSubjects) { index, subject ->
-              ListItem(
-                  headlineContent = { Text(subject) },
-                  colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                  modifier = Modifier.fillMaxWidth().clickable { onConfirm(subject) },
-              )
-              if (index < filteredSubjects.lastIndex) {
-                HorizontalDivider(
-                    color =
-                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = AlphaTokens.OUTLINE)
-                )
-              }
-            }
+            pickerListItems(
+                items = filteredSubjects,
+                headline = { it },
+                onItemClick = onConfirm,
+            )
           }
         }
       }
@@ -621,6 +615,135 @@ fun SubjectPickerDialog(
         currentSelection = currentSelection,
         allSubjects = allSubjects,
         onDismiss = onDismiss,
+        onConfirm = onConfirm,
+    )
+  }
+}
+
+/**
+ * Emits [items] inside a [LazyColumn] as clickable, divider-separated [ListItem] rows. Shared by
+ * picker dialogs ([SubjectPickerDialogContent], [LocationPickerDialogContent]) so the row and
+ * divider styling stays in one place.
+ */
+private fun <T> LazyListScope.pickerListItems(
+    items: List<T>,
+    headline: (T) -> String,
+    onItemClick: (T) -> Unit,
+) {
+  itemsIndexed(items) { index, item ->
+    ListItem(
+        headlineContent = { Text(headline(item)) },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier.fillMaxWidth().clickable { onItemClick(item) },
+    )
+    if (index < items.lastIndex) {
+      HorizontalDivider(
+          color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = AlphaTokens.OUTLINE)
+      )
+    }
+  }
+}
+
+/**
+ * Location Picker Dialog content: a search field whose text is reported through
+ * [onSearchQueryChange] so the caller's ViewModel can resolve [searchResults] via
+ * [com.android.sample.model.location.CampusLocationRepository], which ranks matches (exact name
+ * first). Tapping a row immediately reports the chosen name through [onConfirm]; there is no
+ * custom-entry option, so the search text itself is never saved as a location.
+ */
+@Composable
+fun LocationPickerDialogContent(
+    searchResults: List<CampusLocation>,
+    onDismiss: () -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+  var searchQuery by rememberSaveable { mutableStateOf("") }
+
+  Surface(
+      shape = RoundedCornerShape(Dimens.dialogCornerRadius),
+      color = MaterialTheme.colorScheme.surfaceContainerHigh,
+      modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.formHorizontalPadding),
+  ) {
+    Column(modifier = Modifier.padding(Dimens.formHorizontalPadding)) {
+      Text(
+          text = stringResource(R.string.location_picker_dialog_title),
+          style = MaterialTheme.typography.headlineSmall,
+          color = MaterialTheme.colorScheme.onSurface,
+      )
+
+      Spacer(modifier = Modifier.height(Dimens.cornerLarge))
+
+      Column(modifier = Modifier.fillMaxWidth().heightIn(max = Dimens.locationPickerMaxHeight)) {
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = {
+              searchQuery = it
+              onSearchQueryChange(it)
+            },
+            placeholder = { Text(stringResource(R.string.location_picker_search_placeholder)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Spacer(modifier = Modifier.height(Dimens.cornerMedium))
+
+        if (searchResults.isEmpty()) {
+          Text(
+              text = stringResource(R.string.location_picker_empty_results),
+              style = MaterialTheme.typography.bodyMedium,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              modifier = Modifier.padding(vertical = Spacing.medium),
+          )
+        } else {
+          Surface(
+              shape = RoundedCornerShape(Dimens.cornerLarge),
+              color = MaterialTheme.colorScheme.surfaceContainerLow,
+              modifier = Modifier.fillMaxWidth().weight(1f),
+          ) {
+            LazyColumn(modifier = Modifier.fillMaxWidth()) {
+              pickerListItems(
+                  items = searchResults,
+                  headline = { it.name },
+                  onItemClick = { onConfirm(it.name) },
+              )
+            }
+          }
+        }
+      }
+
+      Spacer(modifier = Modifier.height(Dimens.formHorizontalPadding))
+
+      Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.End,
+      ) {
+        TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+      }
+    }
+  }
+}
+
+/**
+ * Location Picker Dialog wrapper. Selection happens by tapping a row in
+ * [LocationPickerDialogContent]; the single Cancel button only closes the dialog without changing
+ * the location.
+ */
+@Composable
+fun LocationPickerDialog(
+    searchResults: List<CampusLocation>,
+    onDismiss: () -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+  Dialog(
+      onDismissRequest = onDismiss,
+      properties = DialogProperties(usePlatformDefaultWidth = false),
+  ) {
+    LocationPickerDialogContent(
+        searchResults = searchResults,
+        onDismiss = onDismiss,
+        onSearchQueryChange = onSearchQueryChange,
         onConfirm = onConfirm,
     )
   }
