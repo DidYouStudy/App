@@ -51,7 +51,11 @@ class EventsRepositoryFirestore(
                           EventFirestoreMapper.decode(it.id, ownerId, requireNotNull(it.data))
                         }
                         .sortedWith(
-                            compareBy<PersonalEvent>({ it.startsAt }, { it.endsAt }, { it.id })
+                            compareBy<PersonalEvent>(
+                                { it.details.startsAt },
+                                { it.details.endsAt },
+                                { it.id },
+                            )
                         )
                   },
                   error != null,
@@ -96,7 +100,9 @@ class EventsRepositoryFirestore(
     checkOwner(ownerId)
     snapshot.documents
         .map { EventFirestoreMapper.decode(it.id, ownerId, requireNotNull(it.data)) }
-        .sortedWith(compareBy<PersonalEvent>({ it.startsAt }, { it.endsAt }, { it.id }))
+        .sortedWith(
+            compareBy<PersonalEvent>({ it.details.startsAt }, { it.details.endsAt }, { it.id })
+        )
   }
 
   /** Atomically queues the event replacement and the subject's latest spelling/recency. */

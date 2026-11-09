@@ -48,18 +48,18 @@ class IcsParserTest {
     assertEquals("horaire_5224679874@is-academia", event.id)
     assertEquals("horaire_5224679874@is-academia", event.importKey)
     assertEquals(defaultOwnerId, event.ownerId)
-    assertEquals(EventType.COURSE, event.type)
-    assertEquals("Modèles stochastiques pour les communications", event.subject)
-    assertEquals("CM3", event.location)
-    assertEquals("Thiran Patrick", event.description)
+    assertEquals(EventType.COURSE, event.details.type)
+    assertEquals("Modèles stochastiques pour les communications", event.details.subject)
+    assertEquals("CM3", event.details.location)
+    assertEquals("Thiran Patrick", event.details.description)
 
     // Europe/Berlin on Oct 13, 2026 is CEST (UTC+2) -> 10:15 local is 08:15 UTC
     val expectedStart = Instant.parse("2026-10-13T08:15:00Z")
     val expectedEnd = expectedStart.plus(Duration.ofMinutes(105)) // + 1h45m -> 10:00 UTC
 
-    assertEquals(expectedStart, event.startsAt)
-    assertEquals(expectedEnd, event.endsAt)
-    assertTrue(event.endsAt.isAfter(event.startsAt))
+    assertEquals(expectedStart, event.details.startsAt)
+    assertEquals(expectedEnd, event.details.endsAt)
+    assertTrue(event.details.endsAt.isAfter(event.details.startsAt))
 
     // DTSTAMP is parsed as UTC
     assertEquals(Instant.parse("2026-10-10T11:33:34Z"), event.createdAt)
@@ -95,7 +95,11 @@ class IcsParserTest {
               .trimIndent()
 
       val parsed = IcsParser.parseCalendar(stringToStream(ics), defaultOwnerId)
-      assertEquals("Category '$cat' should map to $expectedType", expectedType, parsed.first().type)
+      assertEquals(
+          "Category '$cat' should map to $expectedType",
+          expectedType,
+          parsed.first().details.type,
+      )
     }
   }
 
@@ -121,8 +125,8 @@ class IcsParserTest {
 
     val events = IcsParser.parseCalendar(stringToStream(ics), defaultOwnerId)
     assertEquals(1, events.size)
-    assertEquals("The software enterprise - from ideas to products", events.first().subject)
-    assertEquals("Prof. Candea George, Assistant John Doe", events.first().description)
+    assertEquals("The software enterprise - from ideas to products", events.first().details.subject)
+    assertEquals("Prof. Candea George, Assistant John Doe", events.first().details.description)
   }
 
   @Test
@@ -144,7 +148,10 @@ class IcsParserTest {
     assertEquals(1, events.size)
 
     val event = events.first()
-    assertEquals(Duration.ofHours(1), Duration.between(event.startsAt, event.endsAt))
+    assertEquals(
+        Duration.ofHours(1),
+        Duration.between(event.details.startsAt, event.details.endsAt),
+    )
   }
 
   @Test
@@ -167,7 +174,7 @@ class IcsParserTest {
     assertEquals(1, events.size)
     assertEquals(
         Duration.ofMinutes(150),
-        Duration.between(events.first().startsAt, events.first().endsAt),
+        Duration.between(events.first().details.startsAt, events.first().details.endsAt),
     )
   }
 
@@ -268,8 +275,8 @@ class IcsParserTest {
 
     assertEquals(1, events.size)
     val event = events.first()
-    assertEquals(Instant.parse("2026-10-13T08:00:00Z"), event.startsAt)
-    assertEquals(Instant.parse("2026-10-13T09:30:00Z"), event.endsAt)
+    assertEquals(Instant.parse("2026-10-13T08:00:00Z"), event.details.startsAt)
+    assertEquals(Instant.parse("2026-10-13T09:30:00Z"), event.details.endsAt)
   }
 
   @Test
@@ -293,7 +300,7 @@ class IcsParserTest {
 
     assertEquals(1, events.size)
     // When using DEFAULT_ZONE (Europe/Zurich), 10:15 CEST corresponds to 08:15 UTC
-    assertEquals(Instant.parse("2026-10-13T08:15:00Z"), events.first().startsAt)
+    assertEquals(Instant.parse("2026-10-13T08:15:00Z"), events.first().details.startsAt)
   }
 
   @Test
@@ -362,7 +369,7 @@ class IcsParserTest {
 
     val events = IcsParser.parseCalendar(stringToStream(ics), defaultOwnerId)
     assertEquals(1, events.size)
-    assertEquals("Algebra", events.first().subject)
+    assertEquals("Algebra", events.first().details.subject)
   }
 
   @Test
@@ -411,7 +418,10 @@ class IcsParserTest {
     // Falls back safely to 1 hour instead of crashing
     assertEquals(1, events.size)
     val event = events.first()
-    assertEquals(Duration.ofHours(1), Duration.between(event.startsAt, event.endsAt))
+    assertEquals(
+        Duration.ofHours(1),
+        Duration.between(event.details.startsAt, event.details.endsAt),
+    )
   }
 
   @Test
@@ -435,8 +445,8 @@ class IcsParserTest {
     val events = IcsParser.parseCalendar(stringToStream(ics), defaultOwnerId)
 
     assertEquals(1, events.size)
-    assertEquals(EventType.OTHER, events.first().type)
-    assertEquals(null, events.first().subject)
+    assertEquals(EventType.OTHER, events.first().details.type)
+    assertEquals(null, events.first().details.subject)
   }
 
   @Test

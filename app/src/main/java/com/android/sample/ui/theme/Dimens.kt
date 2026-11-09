@@ -1,3 +1,4 @@
+// Co-authored-by: Codex AI Agent
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Opus 5.5
@@ -98,6 +99,8 @@ object Dimens {
   val calendarLoadingSignSize = 24.dp
   val calendarRetryButtonWidth = 90.dp
   val calendarRetryButtonHeight = 48.dp
+  val calendarEventCardCorner = 6.dp
+  val calendarEventCardMinHeight = 34.dp
   val dialogCornerRadius = 28.dp
   val subjectPickerMaxHeight = 350.dp
   val noPadding = 0.dp

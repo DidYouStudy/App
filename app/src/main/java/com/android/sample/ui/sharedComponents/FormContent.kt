@@ -1,3 +1,4 @@
+// Co-authored-by: Codex AI Agent
 // Co-authored-by: Claude AI Agent
 package com.android.sample.ui.sharedComponents
 
@@ -37,6 +38,7 @@ import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
+import com.android.sample.ui.theme.label
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -107,7 +109,7 @@ fun FormContent(
             }
     ) {
       SelectorFieldPill(
-          valueText = type.name.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() },
+          valueText = type.label(),
           placeholderText = stringResource(R.string.event_planning_type_placeholder),
           onClick = {
             focusManager.clearFocus()

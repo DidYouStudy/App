@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.sample
 
 import androidx.compose.ui.test.assertIsDisplayed
@@ -10,15 +11,15 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import com.android.sample.model.auth.AuthRepository
-import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.event.InMemoryEventsRepository
+import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
 import com.android.sample.model.preferences.PreferencesRepository
-import com.android.sample.model.preferences.PreferencesRepositoryProvider
 import com.android.sample.model.preferences.TimeOfDay
 import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.model.profile.ProfileRepository
-import com.android.sample.model.profile.ProfileRepositoryProvider
 import com.android.sample.model.profile.UserProfile
+import com.android.sample.testing.RepositoryOverridesRule
 import com.android.sample.ui.auth.SignInScreenTestTags
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.preferences.PreferencesScreenTestTags as PrefTags
@@ -31,7 +32,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.ExternalResource
 import org.junit.rules.RuleChain
 
 /**
@@ -48,7 +48,7 @@ class EndToEndTest {
   private val composeRule = createAndroidComposeRule<MainActivity>()
 
   // The fakes must be installed before MainActivity is launched by the compose rule.
-  @get:Rule val rules: RuleChain = RuleChain.outerRule(environment).around(composeRule)
+  @get:Rule val rules: RuleChain = RuleChain.outerRule(environment.repositories).around(composeRule)
 
   /** Waits until a node with [tag] exists, so tests tolerate asynchronous navigation. */
   private fun waitForTag(tag: String) {
@@ -220,34 +220,20 @@ class EndToEndTest {
   }
 }
 
-/**
- * Test rule that swaps the app's process-wide repository providers for in-memory fakes before the
- * activity starts, and restores the real ones afterwards.
- */
-private class FakeEnvironment : ExternalResource() {
+/** In-memory fakes for every repository the journey reads, kept here so tests can drive them. */
+private class FakeEnvironment {
   val auth = FakeSessionAuthRepository()
   val preferences = InMemoryPreferencesRepository()
-  private val profiles = EmptyProfileRepository()
 
-  override fun before() {
-    setProviderInstance(AuthRepositoryProvider, auth)
-    setProviderInstance(PreferencesRepositoryProvider, preferences)
-    setProviderInstance(ProfileRepositoryProvider, profiles)
-  }
-
-  override fun after() {
-    setProviderInstance(AuthRepositoryProvider, null)
-    setProviderInstance(PreferencesRepositoryProvider, null)
-    setProviderInstance(ProfileRepositoryProvider, null)
-  }
-
-  /** The providers expose no injection point, so their private `instance` field is set directly. */
-  private fun setProviderInstance(provider: Any, repository: Any?) {
-    provider.javaClass.getDeclaredField("instance").apply {
-      isAccessible = true
-      set(provider, repository)
-    }
-  }
+  /** Installs the fakes before the activity starts and restores the real providers afterwards. */
+  val repositories =
+      RepositoryOverridesRule(
+          auth = auth,
+          preferences = preferences,
+          profile = EmptyProfileRepository(),
+          events = InMemoryEventsRepository(),
+          groupSessions = InMemoryGroupSessionsRepository(),
+      )
 }
 
 /** Auth fake whose session starts signed out and changes only through [signInAs]/[signOut]. */

@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
+import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.EventsRepositoryProvider
 import com.android.sample.model.event.PersonalEvent
@@ -44,7 +45,7 @@ data class CalendarUiState(
     val today: LocalDate,
     val weekStart: LocalDate,
     val weekDates: List<LocalDate>,
-    val events: List<PersonalEvent> = emptyList(),
+    val events: List<Event> = emptyList(),
     val isLoading: Boolean = true,
     val error: CalendarViewModelError? = null,
     val midnightDelay: Duration = 0.toDuration(DurationUnit.SECONDS),

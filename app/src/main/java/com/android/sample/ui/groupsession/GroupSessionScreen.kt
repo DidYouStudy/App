@@ -1,7 +1,8 @@
+// Co-authored-by: Codex AI Agent
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Copilot
 // Co-authored-by: Gemini
-// Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.groupsession
 
 import androidx.compose.foundation.BorderStroke
@@ -69,7 +70,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
-import com.android.sample.model.event.EventType
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -82,6 +82,7 @@ import com.android.sample.ui.theme.ParticipantInitialTextStyle
 import com.android.sample.ui.theme.ParticipantOverflowTextStyle
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.color
+import com.android.sample.ui.theme.label
 import com.android.sample.ui.theme.onColor
 import java.time.Duration
 import java.time.Instant
@@ -324,10 +325,10 @@ private fun GroupSessionCard(
   //  evaluate relative status labels consistently, unit tests remain deterministic, and composables
   // stay pure.
   val now = Instant.now()
-  val statusLabel = sessionStatusLabel(session.startsAt, now)
-  val startLabel = sessionTimeLabel(session.startsAt)
-  val endLabel = sessionTimeLabel(session.endsAt)
-  val dateLabel = sessionDateLabel(session.startsAt, now)
+  val statusLabel = sessionStatusLabel(session.details.startsAt, now)
+  val startLabel = sessionTimeLabel(session.details.startsAt)
+  val endLabel = sessionTimeLabel(session.details.endsAt)
+  val dateLabel = sessionDateLabel(session.details.startsAt, now)
   val shouldShowHost = item.isCreator
 
   val subjectFallback = stringResource(R.string.group_session_subject_fallback)
@@ -356,14 +357,14 @@ private fun GroupSessionCard(
             modifier =
                 Modifier.size(Dimens.avatarSizeLarge)
                     .clip(CircleShape)
-                    .background(session.type.color),
+                    .background(session.details.type.color),
             contentAlignment = Alignment.Center,
         ) {
           Text(
-              text = (session.subject ?: subjectFallback).take(1).uppercase(),
+              text = (session.details.subject ?: subjectFallback).take(1).uppercase(),
               fontWeight = FontWeight.Bold,
               style = MaterialTheme.typography.titleLarge,
-              color = session.type.onColor,
+              color = session.details.type.onColor,
           )
         }
 
@@ -371,7 +372,7 @@ private fun GroupSessionCard(
 
         Column(modifier = Modifier.weight(1f)) {
           Text(
-              text = session.subject ?: session.type.displayName(),
+              text = session.details.subject ?: session.details.type.label(),
               fontWeight = FontWeight.Bold,
               maxLines = 2, // Allows title to expand vertically before truncating
               overflow = TextOverflow.Ellipsis,
@@ -414,12 +415,12 @@ private fun GroupSessionCard(
       // Type Badge
       Surface(
           shape = RoundedCornerShape(Dimens.cornerMedium),
-          color = session.type.color,
+          color = session.details.type.color,
       ) {
         Text(
-            text = session.type.displayName(),
+            text = session.details.type.label(),
             modifier = Modifier.padding(horizontal = Spacing.medium, vertical = Spacing.extraSmall),
-            color = session.type.onColor,
+            color = session.details.type.onColor,
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.labelLarge,
         )
@@ -429,7 +430,9 @@ private fun GroupSessionCard(
 
       // Description
       Text(
-          text = session.description ?: stringResource(R.string.group_session_description_fallback),
+          text =
+              session.details.description
+                  ?: stringResource(R.string.group_session_description_fallback),
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurface,
       )
@@ -450,7 +453,9 @@ private fun GroupSessionCard(
                   modifier = Modifier.size(Dimens.iconSizeSmall),
               )
             },
-            text = session.location ?: stringResource(R.string.group_session_location_fallback),
+            text =
+                session.details.location
+                    ?: stringResource(R.string.group_session_location_fallback),
         )
         MetaInfoPill(
             modifier = Modifier.fillMaxWidth(),
@@ -689,9 +694,6 @@ private fun sessionDateLabel(start: Instant, now: Instant): String {
 
 private fun sessionTimeLabel(instant: Instant): String =
     DateTimeFormatter.ofPattern("h:mm a").withZone(ZoneId.systemDefault()).format(instant)
-
-private fun EventType.displayName(): String =
-    name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
 
 @Preview(showBackground = true)
 @Composable

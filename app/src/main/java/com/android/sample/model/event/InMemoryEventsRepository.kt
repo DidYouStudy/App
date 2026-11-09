@@ -46,8 +46,14 @@ class InMemoryEventsRepository : EventsRepository {
               ?.events
               .orEmpty()
               .values
-              .filter { it.startsAt.isBefore(to) && it.endsAt.isAfter(from) }
-              .sortedWith(compareBy<PersonalEvent>({ it.startsAt }, { it.endsAt }, { it.id }))
+              .filter { it.details.startsAt.isBefore(to) && it.details.endsAt.isAfter(from) }
+              .sortedWith(
+                  compareBy<PersonalEvent>(
+                      { it.details.startsAt },
+                      { it.details.endsAt },
+                      { it.id },
+                  )
+              )
         }
         .distinctUntilChanged()
         .map { Result.success(it) }
@@ -86,14 +92,16 @@ class InMemoryEventsRepository : EventsRepository {
             .orEmpty()
             .values
             .filter { it.importKey != null }
-            .sortedWith(compareBy<PersonalEvent>({ it.startsAt }, { it.endsAt }, { it.id }))
+            .sortedWith(
+                compareBy<PersonalEvent>({ it.details.startsAt }, { it.details.endsAt }, { it.id })
+            )
     return Result.success(imported)
   }
 
   override suspend fun saveEvent(event: PersonalEvent): Result<Unit> {
     data.update { byOwner ->
       val owned = byOwner[event.ownerId] ?: OwnerData()
-      val subject = event.subject?.trim()
+      val subject = event.details.subject?.trim()
       val subjects =
           if (subject == null) owned.subjects
           else owned.subjects + (subject.lowercase() to SubjectUse(subject, event.updatedAt))
@@ -110,7 +118,7 @@ class InMemoryEventsRepository : EventsRepository {
       var currentMap = byOwner
       for (event in events) {
         val owned = currentMap[event.ownerId] ?: OwnerData()
-        val subject = event.subject?.trim()
+        val subject = event.details.subject?.trim()
         val subjects =
             if (subject == null) owned.subjects
             else owned.subjects + (subject.lowercase() to SubjectUse(subject, event.updatedAt))
