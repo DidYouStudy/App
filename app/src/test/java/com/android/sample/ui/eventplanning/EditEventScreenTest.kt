@@ -13,6 +13,8 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
@@ -23,7 +25,11 @@ import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.PersonalEvent
+import com.android.sample.model.location.CampusLocation
+import com.android.sample.model.location.CampusLocationFilter
 import com.android.sample.model.location.CampusLocationRepository
+import com.android.sample.model.location.CampusLocationType
+import com.android.sample.model.location.Location
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
 import java.time.Clock
 import java.time.Instant
@@ -114,6 +120,16 @@ class EditEventScreenTest {
     composeTestRule.waitForIdle()
   }
 
+  /** Builds a minimal campus location for tests; only the name is usually relevant. */
+  private fun sampleLocation(name: String): CampusLocation =
+      CampusLocation(
+          name = name,
+          zone = "BC",
+          type = CampusLocationType.LECTURE_ROOM,
+          floor = null,
+          location = Location(latitude = 46.52, longitude = 6.56),
+      )
+
   /** Renders the shared stateless form explicitly in Edit mode for focused UI behavior tests. */
   private fun setEditStatelessScreen(
       uiState: EventPlanningUiState,
@@ -131,8 +147,7 @@ class EditEventScreenTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
-          onLocationSearchQueryChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
           onAddTask = {},
           onToggleTask = {},
@@ -331,6 +346,39 @@ class EditEventScreenTest {
     assertTrue(startTimePickerOpened)
     assertTrue(endTimePickerOpened)
     assertTrue(subjectPickerOpened)
+  }
+
+  /** Tapping a location picker result end to end sets the ViewModel's location. */
+  @Test
+  fun editScreenSelectingLocationFromPickerUpdatesViewModel() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val results = listOf(sampleLocation("BC 01"))
+    runBlocking {
+      whenever(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+          .thenReturn(Result.success(results))
+    }
+    val viewModel = createViewModel()
+
+    composeTestRule.setContent {
+      EditEventScreen(
+          eventId = storedEvent.id,
+          viewModel = viewModel,
+          onBackClick = {},
+          onEventSaved = {},
+          onEventDelete = {},
+      )
+    }
+    finishPendingComposeAndViewModelWork()
+
+    composeTestRule.onNodeWithTag(Tags.LOCATION_SELECTOR).performScrollTo().performClick()
+    finishPendingComposeAndViewModelWork()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_search_placeholder))
+        .performTextInput("BC")
+    finishPendingComposeAndViewModelWork()
+    composeTestRule.onNodeWithText("BC 01").performClick()
+
+    assertEquals("BC 01", viewModel.uiState.value.location)
   }
 
   @Test
