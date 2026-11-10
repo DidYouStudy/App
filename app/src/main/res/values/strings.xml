@@ -104,6 +104,20 @@
     <string name="event_planning_error_required_fields">Please fill in all required fields.</string>
     <string name="event_planning_error_save_failed">Failed to save event. Please try again.</string>
     <string name="event_planning_error_task_actions_required">taskActions must be provided when form is used for a personal event</string>
+    <string name="event_planning_error_tasks_not_supported_for_group_sessions">Tasks are only supported for personal events</string>
+    <string name="event_planning_error_failed_to_observe_user">Failed to observe signed-in user</string>
+    <string name="event_planning_error_no_signed_in_user">No signed-in user</string>
+    <string name="event_planning_error_date_and_times_required">Event date, start time and end time are required</string>
+    <string name="event_planning_error_no_event_to_edit">No event loaded to edit</string>
+    <string name="event_planning_error_failed_to_add_event">Failed to add event</string>
+    <string name="event_planning_error_failed_to_edit_event">Failed to edit event</string>
+    <string name="event_planning_error_failed_to_delete_event">Failed to delete event</string>
+    <string name="event_planning_error_failed_to_load_event">Failed to load event</string>
+    <string name="event_planning_error_invalid_event">The event is invalid</string>
+    <string name="event_planning_error_event_not_found">This event no longer exists</string>
+    <string name="event_planning_error_permission_denied">You are not allowed to change this event</string>
+    <string name="event_planning_error_invalid_event_data">The stored event is corrupted</string>
+    <string name="event_planning_error_storage_failure">Your events could not be stored on this device</string>
     <string name="confirm">OK</string>
     <string name="cancel">Cancel</string>
 

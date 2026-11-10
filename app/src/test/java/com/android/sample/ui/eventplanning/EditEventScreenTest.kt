@@ -229,9 +229,7 @@ class EditEventScreenTest {
   @Test
   fun editStatelessScreenShowsRequiredFieldErrorForInvalidEvent() {
     val context = ApplicationProvider.getApplicationContext<Context>()
-    setEditStatelessScreen(
-        uiState = EventPlanningUiState(error = EventPlanningViewModel.INVALID_EVENT_ERROR)
-    )
+    setEditStatelessScreen(uiState = EventPlanningUiState(error = EventPlanningError.INVALID_EVENT))
 
     composeTestRule
         .onNodeWithTag(Tags.ERROR_TEXT)

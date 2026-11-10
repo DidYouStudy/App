@@ -80,30 +80,16 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
 
   // ---------------------------------------------------------------- user observation
 
-  /** A message from a failed authentication flow is surfaced in UI state. */
+  /** A failed authentication flow sets the observation error category. */
   @Test
-  fun init_userFlowFailsWithMessage_exposesMessage() = runTest {
+  fun init_userFlowFails_setsObservationError() = runTest {
     `when`(authRepository.currentUser)
         .thenReturn(flow { throw RuntimeException("Auth flow error") })
 
     val viewModel = createViewModel()
 
-    assertEquals("Auth flow error", viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.FAILED_TO_OBSERVE_USER, viewModel.uiState.value.error)
     assertFalse(viewModel.uiState.value.isEventAdded)
-  }
-
-  /** A failed authentication flow without a message uses the default observation error. */
-  @Test
-  fun init_userFlowFailsWithoutMessage_usesDefaultMessage() = runTest {
-    val exception = object : RuntimeException(null as String?) {}
-    `when`(authRepository.currentUser).thenReturn(flow { throw exception })
-
-    val viewModel = createViewModel()
-
-    assertEquals(
-        EventPlanningViewModel.FAILED_TO_OBSERVE_USER_ERROR,
-        viewModel.uiState.value.error,
-    )
   }
 
   /**
@@ -118,7 +104,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
 
     viewModel.addEvent()
 
-    assertEquals(EventPlanningViewModel.NO_SIGNED_IN_USER_ERROR, viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.NO_SIGNED_IN_USER, viewModel.uiState.value.error)
     verify(eventsRepository, never()).saveEvent(any())
   }
 
@@ -370,14 +356,9 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     val viewModel = createViewModel()
     viewModel.setEventKind(EventKind.GROUP_SESSION)
 
-    val exception =
-        assertThrows(IllegalArgumentException::class.java) {
-          viewModel.setTasks(listOf(EventTask("Task 1")))
-        }
-    assertEquals(
-        EventPlanningViewModel.TASKS_NOT_SUPPORTED_FOR_GROUP_SESSIONS_ERROR,
-        exception.message,
-    )
+    assertThrows(IllegalArgumentException::class.java) {
+      viewModel.setTasks(listOf(EventTask("Task 1")))
+    }
   }
 
   @Test
@@ -385,12 +366,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     val viewModel = createViewModel()
     viewModel.setEventKind(EventKind.GROUP_SESSION)
 
-    val exception =
-        assertThrows(IllegalArgumentException::class.java) { viewModel.addTask("Task 1") }
-    assertEquals(
-        EventPlanningViewModel.TASKS_NOT_SUPPORTED_FOR_GROUP_SESSIONS_ERROR,
-        exception.message,
-    )
+    assertThrows(IllegalArgumentException::class.java) { viewModel.addTask("Task 1") }
   }
 
   @Test
@@ -398,11 +374,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     val viewModel = createViewModel()
     viewModel.setEventKind(EventKind.GROUP_SESSION)
 
-    val exception = assertThrows(IllegalArgumentException::class.java) { viewModel.removeTask(0) }
-    assertEquals(
-        EventPlanningViewModel.TASKS_NOT_SUPPORTED_FOR_GROUP_SESSIONS_ERROR,
-        exception.message,
-    )
+    assertThrows(IllegalArgumentException::class.java) { viewModel.removeTask(0) }
   }
 
   @Test
@@ -410,11 +382,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     val viewModel = createViewModel()
     viewModel.setEventKind(EventKind.GROUP_SESSION)
 
-    val exception = assertThrows(IllegalArgumentException::class.java) { viewModel.toggleTask(0) }
-    assertEquals(
-        EventPlanningViewModel.TASKS_NOT_SUPPORTED_FOR_GROUP_SESSIONS_ERROR,
-        exception.message,
-    )
+    assertThrows(IllegalArgumentException::class.java) { viewModel.toggleTask(0) }
   }
 
   // ---------------------------------------------------------------- addEvent: rejected before
@@ -430,7 +398,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     val state = viewModel.uiState.value
-    assertEquals(EventPlanningViewModel.NO_SIGNED_IN_USER_ERROR, state.error)
+    assertEquals(EventPlanningError.NO_SIGNED_IN_USER, state.error)
     assertFalse(state.isEventAdded)
     assertFalse(state.isSaving)
     verify(eventsRepository, never()).saveEvent(any())
@@ -445,7 +413,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
 
     viewModel.addEvent()
 
-    assertEquals(EventPlanningViewModel.NO_SIGNED_IN_USER_ERROR, viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.NO_SIGNED_IN_USER, viewModel.uiState.value.error)
     verify(eventsRepository, never()).saveEvent(any())
   }
 
@@ -459,7 +427,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     assertEquals(
-        EventPlanningViewModel.EVENT_DATE_AND_TIMES_REQUIRED_ERROR,
+        EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED,
         viewModel.uiState.value.error,
     )
     verify(eventsRepository, never()).saveEvent(any())
@@ -475,7 +443,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     assertEquals(
-        EventPlanningViewModel.EVENT_DATE_AND_TIMES_REQUIRED_ERROR,
+        EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED,
         viewModel.uiState.value.error,
     )
     verify(eventsRepository, never()).saveEvent(any())
@@ -491,7 +459,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     assertEquals(
-        EventPlanningViewModel.EVENT_DATE_AND_TIMES_REQUIRED_ERROR,
+        EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED,
         viewModel.uiState.value.error,
     )
     verify(eventsRepository, never()).saveEvent(any())
@@ -499,7 +467,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
 
   /** A blank subject is invalid for event types that require one. */
   @Test
-  fun addEvent_blankSubjectForNonOtherType_exposesValidationMessage() = runTest {
+  fun addEvent_blankSubjectForNonOtherType_setsInvalidEventError() = runTest {
     val viewModel = createViewModel()
     viewModel.fillValidForm()
     viewModel.setSubject("   ")
@@ -507,7 +475,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     val state = viewModel.uiState.value
-    assertTrue(state.error!!.contains("Subject"))
+    assertEquals(EventPlanningError.INVALID_EVENT, state.error)
     assertFalse(state.isEventAdded)
     assertFalse(state.isSaving)
     verify(eventsRepository, never()).saveEvent(any())
@@ -515,14 +483,14 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
 
   /** An event whose end time is not after its start time is rejected. */
   @Test
-  fun addEvent_endNotAfterStart_exposesValidationMessage() = runTest {
+  fun addEvent_endNotAfterStart_setsInvalidEventError() = runTest {
     val viewModel = createViewModel()
     viewModel.fillValidForm()
     viewModel.setEndTime(startTime)
 
     viewModel.addEvent()
 
-    assertEquals("End must be after start", viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.INVALID_EVENT, viewModel.uiState.value.error)
     verify(eventsRepository, never()).saveEvent(any())
   }
 
@@ -745,37 +713,37 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
 
   // ---------------------------------------------------------------- addEvent: repository failures
 
-  /** Known repository errors map to stable, user-facing messages. */
+  /** Known repository errors map to stable, user-facing error categories. */
   @Test
   fun addEvent_repositoryFailure_exposesUserMessageForEachErrorCategory() = runTest {
     val expectations =
         mapOf(
-            EventsError.INVALID_ARGUMENT to EventPlanningViewModel.INVALID_EVENT_ERROR,
-            EventsError.NOT_FOUND to EventPlanningViewModel.EVENT_NOT_FOUND_ERROR,
-            EventsError.PERMISSION_DENIED to EventPlanningViewModel.PERMISSION_DENIED_ERROR,
-            EventsError.INVALID_EVENT_DATA to EventPlanningViewModel.INVALID_EVENT_DATA_ERROR,
-            EventsError.STORAGE_FAILURE to EventPlanningViewModel.STORAGE_FAILURE_ERROR,
-            EventsError.UNKNOWN to EventPlanningViewModel.FAILED_TO_ADD_EVENT_ERROR,
+            EventsError.INVALID_ARGUMENT to EventPlanningError.INVALID_EVENT,
+            EventsError.NOT_FOUND to EventPlanningError.EVENT_NOT_FOUND,
+            EventsError.PERMISSION_DENIED to EventPlanningError.PERMISSION_DENIED,
+            EventsError.INVALID_EVENT_DATA to EventPlanningError.INVALID_EVENT_DATA,
+            EventsError.STORAGE_FAILURE to EventPlanningError.STORAGE_FAILURE,
+            EventsError.UNKNOWN to EventPlanningError.FAILED_TO_ADD_EVENT,
         )
     assertEquals(EventsError.entries.toSet(), expectations.keys) // no category forgotten
     val viewModel = createViewModel()
     viewModel.fillValidForm()
 
-    for ((error, expectedMessage) in expectations) {
+    for ((error, expectedError) in expectations) {
       `when`(eventsRepository.saveEvent(any())).thenReturn(Result.failure(EventsException(error)))
 
       viewModel.addEvent()
 
       val state = viewModel.uiState.value
-      assertEquals(expectedMessage, state.error)
+      assertEquals(expectedError, state.error)
       assertFalse(state.isEventAdded)
       assertFalse(state.isSaving)
     }
   }
 
-  /** An unexpected repository failure preserves its available message. */
+  /** An unexpected repository failure translates to the default save error category. */
   @Test
-  fun addEvent_otherFailureWithMessage_exposesMessage() = runTest {
+  fun addEvent_otherFailure_setsFailedToAddEventError() = runTest {
     `when`(eventsRepository.saveEvent(any()))
         .thenReturn(Result.failure(IllegalStateException("disk full")))
     val viewModel = createViewModel()
@@ -783,26 +751,13 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
 
     viewModel.addEvent()
 
-    assertEquals("disk full", viewModel.uiState.value.error)
-  }
-
-  /** An unexpected repository failure without a message uses the default save error. */
-  @Test
-  fun addEvent_otherFailureWithoutMessage_usesDefaultMessage() = runTest {
-    `when`(eventsRepository.saveEvent(any()))
-        .thenReturn(Result.failure(RuntimeException(null as String?)))
-    val viewModel = createViewModel()
-    viewModel.fillValidForm()
-
-    viewModel.addEvent()
-
-    assertEquals(EventPlanningViewModel.FAILED_TO_ADD_EVENT_ERROR, viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.FAILED_TO_ADD_EVENT, viewModel.uiState.value.error)
     assertFalse(viewModel.uiState.value.isSaving)
   }
 
-  /** A repository exception is surfaced with its message and clears the saving state. */
+  /** A repository exception translates to the default save error category and clears saving. */
   @Test
-  fun addEvent_repositoryThrowsWithMessage_exposesMessage() = runTest {
+  fun addEvent_repositoryThrows_setsFailedToAddEventError() = runTest {
     `when`(eventsRepository.saveEvent(any())).thenThrow(IllegalStateException("boom"))
     val viewModel = createViewModel()
     viewModel.fillValidForm()
@@ -810,23 +765,9 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     val state = viewModel.uiState.value
-    assertEquals("boom", state.error)
+    assertEquals(EventPlanningError.FAILED_TO_ADD_EVENT, state.error)
     assertFalse(state.isEventAdded)
     assertFalse(state.isSaving)
-  }
-
-  /** A repository exception without a message uses the default save error. */
-  @Test
-  fun addEvent_repositoryThrowsWithoutMessage_usesDefaultMessage() = runTest {
-    val exception = object : RuntimeException(null as String?) {}
-    `when`(eventsRepository.saveEvent(any())).thenThrow(exception)
-    val viewModel = createViewModel()
-    viewModel.fillValidForm()
-
-    viewModel.addEvent()
-
-    assertEquals(EventPlanningViewModel.FAILED_TO_ADD_EVENT_ERROR, viewModel.uiState.value.error)
-    assertFalse(viewModel.uiState.value.isSaving)
   }
 
   /** Cancellation from a repository save is not presented as an error and ends loading. */
@@ -967,7 +908,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     val state = viewModel.uiState.value
     assertFalse(state.isLoading)
     assertFalse(state.isEditing)
-    assertEquals(EventPlanningViewModel.EVENT_NOT_FOUND_ERROR, state.error)
+    assertEquals(EventPlanningError.EVENT_NOT_FOUND, state.error)
   }
 
   /** Deleting a group session deletes from the group sessions repository. */
@@ -998,6 +939,6 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
 
     val state = viewModel.uiState.value
     assertFalse(state.isEventAdded)
-    assertEquals(EventPlanningViewModel.STORAGE_FAILURE_ERROR, state.error)
+    assertEquals(EventPlanningError.STORAGE_FAILURE, state.error)
   }
 }

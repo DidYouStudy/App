@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.event.Event
@@ -51,6 +52,47 @@ enum class EventKind {
   GROUP_SESSION,
 }
 
+/** Stable failure categories for event planning errors. */
+enum class EventPlanningError {
+  FAILED_TO_OBSERVE_USER,
+  NO_SIGNED_IN_USER,
+  EVENT_DATE_AND_TIMES_REQUIRED,
+  NO_EVENT_TO_EDIT,
+  FAILED_TO_ADD_EVENT,
+  FAILED_TO_EDIT_EVENT,
+  FAILED_TO_DELETE_EVENT,
+  FAILED_TO_LOAD_EVENT,
+  INVALID_EVENT,
+  EVENT_NOT_FOUND,
+  PERMISSION_DENIED,
+  INVALID_EVENT_DATA,
+  STORAGE_FAILURE,
+}
+
+/** Maps an [EventPlanningError] to its localized string resource. */
+val EventPlanningError.stringResource: Int
+  get() =
+      when (this) {
+        EventPlanningError.FAILED_TO_OBSERVE_USER ->
+            R.string.event_planning_error_failed_to_observe_user
+        EventPlanningError.NO_SIGNED_IN_USER -> R.string.event_planning_error_no_signed_in_user
+        EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED ->
+            R.string.event_planning_error_date_and_times_required
+        EventPlanningError.NO_EVENT_TO_EDIT -> R.string.event_planning_error_no_event_to_edit
+        EventPlanningError.FAILED_TO_ADD_EVENT -> R.string.event_planning_error_failed_to_add_event
+        EventPlanningError.FAILED_TO_EDIT_EVENT ->
+            R.string.event_planning_error_failed_to_edit_event
+        EventPlanningError.FAILED_TO_DELETE_EVENT ->
+            R.string.event_planning_error_failed_to_delete_event
+        EventPlanningError.FAILED_TO_LOAD_EVENT ->
+            R.string.event_planning_error_failed_to_load_event
+        EventPlanningError.INVALID_EVENT -> R.string.event_planning_error_invalid_event
+        EventPlanningError.EVENT_NOT_FOUND -> R.string.event_planning_error_event_not_found
+        EventPlanningError.PERMISSION_DENIED -> R.string.event_planning_error_permission_denied
+        EventPlanningError.INVALID_EVENT_DATA -> R.string.event_planning_error_invalid_event_data
+        EventPlanningError.STORAGE_FAILURE -> R.string.event_planning_error_storage_failure
+      }
+
 /**
  * Form values, subject suggestions and the result of the latest add request.
  *
@@ -90,7 +132,7 @@ data class EventPlanningUiState(
     val isEventAdded: Boolean = false,
     val isEventEdited: Boolean = false,
     val isEventDeleted: Boolean = false,
-    val error: String? = null,
+    val error: EventPlanningError? = null,
 ) {
   /** Whether the task checklist section should be shown in the form. */
   val showTasksSection: Boolean
@@ -158,8 +200,7 @@ class EventPlanningViewModel(
       } catch (exception: Exception) {
         currentUserId = null
         _uiState.update {
-          it.withoutResults()
-              .copy(error = exception.localizedMessage ?: FAILED_TO_OBSERVE_USER_ERROR)
+          it.withoutResults().copy(error = EventPlanningError.FAILED_TO_OBSERVE_USER)
         }
       }
     }
@@ -254,7 +295,7 @@ class EventPlanningViewModel(
         // Suspends until the auth flow has delivered its first value.
         val ownerId = authRepository.currentUser.first()?.uid
         if (ownerId == null) {
-          fail(NO_SIGNED_IN_USER_ERROR)
+          fail(EventPlanningError.NO_SIGNED_IN_USER)
           return@launch
         }
         val result: Result<Event> =
@@ -267,7 +308,7 @@ class EventPlanningViewModel(
             .onFailure { exception ->
               _uiState.update {
                 it.copy(
-                    error = exception.toUserMessage(FAILED_TO_LOAD_EVENT_ERROR),
+                    error = exception.toUserError(EventPlanningError.FAILED_TO_LOAD_EVENT),
                     isEditing = false,
                 )
               }
@@ -277,7 +318,7 @@ class EventPlanningViewModel(
       } catch (exception: Exception) {
         _uiState.update {
           it.copy(
-              error = exception.toUserMessage(FAILED_TO_LOAD_EVENT_ERROR),
+              error = exception.toUserError(EventPlanningError.FAILED_TO_LOAD_EVENT),
               isEditing = false,
           )
         }
@@ -307,7 +348,7 @@ class EventPlanningViewModel(
    */
   fun editEvent() {
     if (editingEvent == null) {
-      fail(NO_EVENT_TO_EDIT_ERROR)
+      fail(EventPlanningError.NO_EVENT_TO_EDIT)
       return
     }
     save(isEditing = true)
@@ -322,7 +363,7 @@ class EventPlanningViewModel(
 
     val userId = currentUserId
     if (userId == null) {
-      fail(NO_SIGNED_IN_USER_ERROR)
+      fail(EventPlanningError.NO_SIGNED_IN_USER)
       return
     }
 
@@ -349,13 +390,15 @@ class EventPlanningViewModel(
             }
             .onFailure { exception ->
               _uiState.update {
-                it.copy(error = exception.toUserMessage(FAILED_TO_DELETE_EVENT_ERROR))
+                it.copy(error = exception.toUserError(EventPlanningError.FAILED_TO_DELETE_EVENT))
               }
             }
       } catch (exception: CancellationException) {
         throw exception
       } catch (exception: Exception) {
-        _uiState.update { it.copy(error = exception.toUserMessage(FAILED_TO_DELETE_EVENT_ERROR)) }
+        _uiState.update {
+          it.copy(error = exception.toUserError(EventPlanningError.FAILED_TO_DELETE_EVENT))
+        }
       } finally {
         _uiState.update { it.copy(isDeleting = false) }
       }
@@ -399,7 +442,7 @@ class EventPlanningViewModel(
     val startTime = state.startTime
     val endTime = state.endTime
     if (date == null || startTime == null || endTime == null) {
-      fail(EVENT_DATE_AND_TIMES_REQUIRED_ERROR)
+      fail(EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED)
       return null
     }
 
@@ -415,8 +458,8 @@ class EventPlanningViewModel(
           location = state.location.trim().takeIf(String::isNotEmpty),
           description = state.description.trim().takeIf(String::isNotEmpty),
       )
-    } catch (exception: IllegalArgumentException) {
-      fail(exception.message)
+    } catch (_: IllegalArgumentException) {
+      fail(EventPlanningError.INVALID_EVENT)
       null
     }
   }
@@ -431,13 +474,15 @@ class EventPlanningViewModel(
 
     val userId = currentUserId
     if (userId == null) {
-      fail(NO_SIGNED_IN_USER_ERROR)
+      fail(EventPlanningError.NO_SIGNED_IN_USER)
       return
     }
 
     val details = validateAndBuildDetails() ?: return
     val now = clock.instant()
-    val defaultError = if (isEditing) FAILED_TO_EDIT_EVENT_ERROR else FAILED_TO_ADD_EVENT_ERROR
+    val defaultError =
+        if (isEditing) EventPlanningError.FAILED_TO_EDIT_EVENT
+        else EventPlanningError.FAILED_TO_ADD_EVENT
 
     _uiState.update { it.withoutResults().copy(isSaving = true) }
     viewModelScope.launch {
@@ -461,12 +506,12 @@ class EventPlanningViewModel(
               }
             }
             .onFailure { exception ->
-              _uiState.update { it.copy(error = exception.toUserMessage(defaultError)) }
+              _uiState.update { it.copy(error = exception.toUserError(defaultError)) }
             }
       } catch (exception: CancellationException) {
         throw exception
       } catch (exception: Exception) {
-        _uiState.update { it.copy(error = exception.toUserMessage(defaultError)) }
+        _uiState.update { it.copy(error = exception.toUserError(defaultError)) }
       } finally {
         _uiState.update { it.copy(isSaving = false) }
       }
@@ -555,13 +600,13 @@ class EventPlanningViewModel(
     }
   }
 
-  private fun fail(message: String?) {
-    _uiState.update { it.withoutResults().copy(error = message) }
+  private fun fail(error: EventPlanningError) {
+    _uiState.update { it.withoutResults().copy(error = error) }
   }
 
   /** Ensures tasks are only modified when planning a personal event. */
   private fun requirePersonalEvent() {
-    require(_uiState.value.showTasksSection) { TASKS_NOT_SUPPORTED_FOR_GROUP_SESSIONS_ERROR }
+    require(_uiState.value.showTasksSection)
   }
 
   /** Applies a form edit and clears the previous save result. */
@@ -569,39 +614,20 @@ class EventPlanningViewModel(
     _uiState.update { it.update().withoutResults() }
   }
 
-  /** Turns a repository failure into text for the user rather than a technical message. */
-  private fun Throwable.toUserMessage(default: String): String =
+  /** Turns a repository failure into a stable [EventPlanningError] category for the UI. */
+  private fun Throwable.toUserError(default: EventPlanningError): EventPlanningError =
       if (this is EventsException) {
         when (error) {
-          EventsError.INVALID_ARGUMENT -> INVALID_EVENT_ERROR
-          EventsError.NOT_FOUND -> EVENT_NOT_FOUND_ERROR
-          EventsError.PERMISSION_DENIED -> PERMISSION_DENIED_ERROR
-          EventsError.INVALID_EVENT_DATA -> INVALID_EVENT_DATA_ERROR
-          EventsError.STORAGE_FAILURE -> STORAGE_FAILURE_ERROR
+          EventsError.INVALID_ARGUMENT -> EventPlanningError.INVALID_EVENT
+          EventsError.NOT_FOUND -> EventPlanningError.EVENT_NOT_FOUND
+          EventsError.PERMISSION_DENIED -> EventPlanningError.PERMISSION_DENIED
+          EventsError.INVALID_EVENT_DATA -> EventPlanningError.INVALID_EVENT_DATA
+          EventsError.STORAGE_FAILURE -> EventPlanningError.STORAGE_FAILURE
           EventsError.UNKNOWN -> default
         }
       } else {
-        message ?: default
+        default
       }
-
-  companion object {
-    const val TASKS_NOT_SUPPORTED_FOR_GROUP_SESSIONS_ERROR =
-        "Tasks are only supported for personal events"
-    const val FAILED_TO_OBSERVE_USER_ERROR = "Failed to observe signed-in user"
-    const val NO_SIGNED_IN_USER_ERROR = "No signed-in user"
-    const val EVENT_DATE_AND_TIMES_REQUIRED_ERROR =
-        "Event date, start time and end time are required"
-    const val NO_EVENT_TO_EDIT_ERROR = "No event loaded to edit"
-    const val FAILED_TO_ADD_EVENT_ERROR = "Failed to add event"
-    const val FAILED_TO_EDIT_EVENT_ERROR = "Failed to edit event"
-    const val FAILED_TO_DELETE_EVENT_ERROR = "Failed to delete event"
-    const val FAILED_TO_LOAD_EVENT_ERROR = "Failed to load event"
-    const val INVALID_EVENT_ERROR = "The event is invalid"
-    const val EVENT_NOT_FOUND_ERROR = "This event no longer exists"
-    const val PERMISSION_DENIED_ERROR = "You are not allowed to change this event"
-    const val INVALID_EVENT_DATA_ERROR = "The stored event is corrupted"
-    const val STORAGE_FAILURE_ERROR = "Your events could not be stored on this device"
-  }
 }
 
 /** Supplies an injected repository when Android creates the settings ViewModel. */

@@ -373,7 +373,7 @@ class AddEventScreenTest {
             date = null,
             startTime = null,
             endTime = null,
-            error = EventPlanningViewModel.EVENT_DATE_AND_TIMES_REQUIRED_ERROR,
+            error = EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED,
         )
 
     composeTestRule.setContent {
@@ -409,7 +409,7 @@ class AddEventScreenTest {
             date = LocalDate.of(2026, 11, 1),
             startTime = LocalTime.of(10, 0),
             endTime = LocalTime.of(11, 0),
-            error = "Firestore timeout", // Complete fields with backend error
+            error = EventPlanningError.FAILED_TO_ADD_EVENT, // Complete fields with backend error
         )
 
     composeTestRule.setContent {
