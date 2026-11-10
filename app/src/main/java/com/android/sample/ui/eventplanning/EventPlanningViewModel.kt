@@ -1,5 +1,6 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
 
 import androidx.compose.runtime.Composable
@@ -34,12 +35,25 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
+ * Categorizes whether an event being planned is private to the user or a collaborative group
+ * session.
+ */
+enum class EventKind {
+  /** A private event belonging to the authenticated user. */
+  PERSONAL,
+
+  /** A public or shared study session with multiple members. */
+  GROUP_SESSION,
+}
+
+/**
  * Form values, subject suggestions and the result of the latest add request.
  *
  * The date and times are the local values shown by the pickers; the ViewModel converts them to
  * instants with the clock's time zone when adding. The date is the day the event starts: an end
  * time earlier than the start time means the event ends the next day.
  *
+ * @property eventKind whether the event is personal or a group session.
  * @property recommendedSubjects subjects the user has used before, most recent first, for the
  *   suggestions.
  * @property isEditing whether the form was filled from an existing event by
@@ -54,6 +68,7 @@ import kotlinx.coroutines.launch
  *   [EventPlanningViewModel.onEventDeletedHandled].
  */
 data class EventPlanningUiState(
+    val eventKind: EventKind = EventKind.PERSONAL,
     val type: EventType = EventType.STUDY_SESSION,
     val subject: String = "",
     val date: LocalDate? = null,
@@ -72,6 +87,10 @@ data class EventPlanningUiState(
     val isEventDeleted: Boolean = false,
     val error: String? = null,
 ) {
+  /** Whether the task checklist section should be shown in the form. */
+  val showTasksSection: Boolean
+    get() = eventKind == EventKind.PERSONAL
+
   /** The subject is mandatory for every type except [EventType.OTHER] ("Subject (optional)"). */
   val isSubjectRequired: Boolean
     get() = type != EventType.OTHER
@@ -139,6 +158,9 @@ class EventPlanningViewModel(
       }
     }
   }
+
+  /** Updates the category of the event being planned (personal vs group session). */
+  fun setEventKind(kind: EventKind) = updateForm { copy(eventKind = kind) }
 
   /** Updates the event activity kind. */
   fun setType(type: EventType) = updateForm { copy(type = type) }
