@@ -186,11 +186,15 @@ internal fun EventPlanningScreen(
   if (showLocationPicker) {
     LocationPickerDialog(
         searchResults = uiState.locationSearchResults,
-        onDismiss = { showLocationPicker = false },
+        onDismiss = {
+          showLocationPicker = false
+          onLocationSearchQueryChange("")
+        },
         onSearchQueryChange = onLocationSearchQueryChange,
         onConfirm = { location ->
           onLocationChange(location)
           showLocationPicker = false
+          onLocationSearchQueryChange("")
         },
     )
   }

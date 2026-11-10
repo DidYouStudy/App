@@ -177,12 +177,17 @@ class EventPlanningViewModel(
 
   /**
    * Resolves campus locations matching [query] via [campusLocationRepository] and exposes them as
-   * [EventPlanningUiState.locationSearchResults] for the location picker. A blank query returns
+   * [EventPlanningUiState.locationSearchResults] for the location picker. A blank query clears the
+   * results directly, without calling the repository: the picker starts empty, not pre-loaded with
    * every location. Like [recommendedSubjects][EventPlanningUiState.recommendedSubjects], a lookup
    * failure is not shown as an error: the results are simply left empty.
    */
   fun searchLocations(query: String) {
     locationSearchJob?.cancel()
+    if (query.isBlank()) {
+      _uiState.update { it.copy(locationSearchResults = emptyList()) }
+      return
+    }
     locationSearchJob = viewModelScope.launch {
       val result = campusLocationRepository.search(CampusLocationFilter(query = query))
       _uiState.update { it.copy(locationSearchResults = result.getOrDefault(emptyList())) }

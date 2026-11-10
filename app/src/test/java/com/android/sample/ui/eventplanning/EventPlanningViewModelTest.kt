@@ -222,6 +222,26 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertNull(viewModel.uiState.value.error)
   }
 
+  /**
+   * A blank query clears the results directly, without calling the repository: reopening the picker
+   * after a previous search must not show stale results for a search box that is empty again.
+   */
+  @Test
+  fun searchLocations_blankQuery_clearsResultsWithoutQueryingRepository() = runTest {
+    val results = listOf(sampleLocation("BC 01"))
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+        .thenReturn(Result.success(results))
+    val viewModel = createViewModel()
+    viewModel.searchLocations("BC")
+    advanceUntilIdle()
+    assertEquals(results, viewModel.uiState.value.locationSearchResults)
+
+    viewModel.searchLocations("")
+
+    assertEquals(emptyList<CampusLocation>(), viewModel.uiState.value.locationSearchResults)
+    verify(campusLocationRepository, never()).search(CampusLocationFilter(query = ""))
+  }
+
   /** A new search cancels a slower, still-running one, so its stale result is dropped. */
   @Test
   fun searchLocations_newQueryCancelsPreviousSlowQuery() = runTest {
