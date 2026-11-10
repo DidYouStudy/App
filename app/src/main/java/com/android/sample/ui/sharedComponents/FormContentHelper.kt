@@ -690,7 +690,11 @@ fun LocationPickerDialogContent(
 
         if (searchResults.isEmpty()) {
           Text(
-              text = stringResource(R.string.location_picker_empty_results),
+              text =
+                  stringResource(
+                      if (searchQuery.isBlank()) R.string.location_picker_search_prompt
+                      else R.string.location_picker_empty_results
+                  ),
               style = MaterialTheme.typography.bodyMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
               modifier = Modifier.padding(vertical = Spacing.medium),
