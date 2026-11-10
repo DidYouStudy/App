@@ -15,6 +15,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.DidYouStudy"
         tools:targetApi="31">
+        <!-- Google Maps key, injected at build time from local.properties or CI (never committed). -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

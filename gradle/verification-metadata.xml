@@ -10,11 +10,11 @@
       </key-servers>
       <trusted-artifacts>
          <trust group="gradle" name="gradle"/>
-         <trust group="org.mockito" name="mockito-core" version="5.12.0"/>
-         <trust group="org.mockito.kotlin" name="mockito-kotlin" version="5.4.0"/>
          <trust group="net.bytebuddy" name="byte-buddy" version="1.14.15"/>
          <trust group="net.bytebuddy" name="byte-buddy-agent" version="1.14.15"/>
          <trust group="net.bytebuddy" name="byte-buddy-parent" version="1.14.15"/>
+         <trust group="org.mockito" name="mockito-core" version="5.12.0"/>
+         <trust group="org.mockito.kotlin" name="mockito-kotlin" version="5.4.0"/>
          <trust group="org.objenesis" name="objenesis" version="3.3"/>
          <trust group="org.objenesis" name="objenesis-parent" version="3.3"/>
          <trust file=".*-javadoc[.]jar" regex="true"/>
@@ -32,6 +32,7 @@
          <trusted-key id="0E225917414670F4442C250DFD533C07C264648F">
             <trusting group="androidx.activity"/>
             <trusting group="androidx.appcompat"/>
+            <trusting group="androidx.core"/>
             <trusting group="androidx.databinding"/>
             <trusting group="androidx.lifecycle"/>
             <trusting group="androidx.navigation"/>
@@ -59,6 +60,7 @@
          </trusted-key>
          <trusted-key id="0F07D1201BDDAB67CFB84EB479752DB6C966F0B8" group="com.google.android" name="annotations" version="4.1.1.4"/>
          <trusted-key id="10F3C7A02ECA55E502BADCF3991EFB94DB91127D" group="org.ow2" name="ow2" version="1.5.1"/>
+         <trusted-key id="147B691A19097624902F4EA9689CBE64F4BC997F" group="^org[.]mockito($|([.].*))" regex="true"/>
          <trusted-key id="1597AB231B7ADD7E14B1D9C43F00DB67AE236E2E" group="org.conscrypt" name="conscrypt-openjdk-uber" version="2.5.2"/>
          <trusted-key id="180569DFA3D7E2FEBDB266225835D661DCD56D8F" group="com.kaspersky.android-components"/>
          <trusted-key id="19BEAB2D799C020F17C69126B16698A4ADF4D638" group="org.checkerframework" name="checker-qual"/>
@@ -107,6 +109,7 @@
          <trusted-key id="7E22D50A7EBD9D2CD269B2D4056ACA74D46000BF" group="io.netty"/>
          <trusted-key id="7F36E793AE3252E5D9E9B98FEE9E7DC9D92FC896" group="com.google.errorprone"/>
          <trusted-key id="8461EFA0E74ABAE010DE66994EB27DB2A3B88B8B">
+            <trusting group="androidx.annotation"/>
             <trusting group="androidx.credentials"/>
             <trusting group="androidx.emoji2"/>
             <trusting group="androidx.test.uiautomator"/>
@@ -124,14 +127,17 @@
          <trusted-key id="A5F483CD733A4EBAEA378B2AE88979FB9B30ACF2">
             <trusting group="androidx.annotation"/>
             <trusting group="androidx.collection"/>
+            <trusting group="androidx.compose.runtime"/>
             <trusting group="androidx.concurrent"/>
             <trusting group="androidx.graphics"/>
             <trusting group="androidx.profileinstaller"/>
             <trusting group="androidx.recyclerview"/>
+            <trusting group="androidx.startup"/>
             <trusting group="androidx.transition"/>
             <trusting group="androidx.viewpager2"/>
             <trusting group="^androidx[.]test($|([.].*))" regex="true"/>
          </trusted-key>
+         <trusted-key id="A7892505CF1A58076453E52D7999BEFBA1039E8B" group="net.bytebuddy"/>
          <trusted-key id="AA70C7C433D501636392EC02153E7A3C2B4E5118" group="org.eclipse.ee4j" name="project"/>
          <trusted-key id="B02335AA54CCF21E52BBF9ABD9C565AA72BA2FDD" group="io.grpc"/>
          <trusted-key id="BCC135FC7ED8214F823D73E97FE9900F412D622E" group="com.google.flatbuffers" name="flatbuffers-java" version="1.12.0"/>
@@ -142,6 +148,7 @@
             <trusting group="com.google.code.gson"/>
             <trusting group="^com[.]google[.]auto($|([.].*))" regex="true"/>
          </trusted-key>
+         <trusted-key id="CE7AC69FE141AE8263085B07E6E38B11CA6D6097" group="com.google.maps.android"/>
          <trusted-key id="D1436C0DBACEA48702AF97C363F1DD7753B8B315" group="^org[.]sonarsource($|([.].*))" regex="true"/>
          <trusted-key id="D477D51812E692011DB11E66A6EA2E2BF22E0543" group="io.github.java-diff-utils"/>
          <trusted-key id="D75E25B78EBB19E47C0A99BCA7764F502A938C99" group="com.google.protobuf"/>
@@ -150,6 +157,7 @@
          <trusted-key id="E5138A8E9F2E7E42D38B14D99AEE152CDCCEBFCB" group="io.github.hakky54"/>
          <trusted-key id="E52F07877A5805F9AF4AB0ACD46C5610D06E7001" group="com.ibm.icu" name="icu4j" version="77.1"/>
          <trusted-key id="E7DC75FC24FB3C8DFE8086AD3D5839A2262CBBFB" group="org.jetbrains.kotlinx"/>
+         <trusted-key id="E85AED155021AF8A6C6B7A4A7C7D8456294423BA" group="org.objenesis"/>
          <trusted-key id="EAA526B91DD83BA3E1B9636FA730529CA355A63E" group="org.ccil.cowan.tagsoup" name="tagsoup" version="1.2.1"/>
          <trusted-key id="EB1B3DE71713C9EC2E87CC26EE92349AD86DE446" group="com.google.j2objc" name="j2objc-annotations" version="2.8"/>
          <trusted-key id="EE0CA873074092F806F59B65D364ABAA39A47320" group="^com[.]google($|([.].*))" regex="true"/>
@@ -236,6 +244,71 @@
             <sha256 value="08809b3b7ae43ba6bbd16bc22ef049561acda6968db4c0e8e6f2690907af0f17" origin="Generated by Gradle" reason="Artifact is not signed"/>
          </artifact>
       </component>
+      <component group="androidx.compose.material" name="material" version="1.12.0">
+         <artifact name="material-1.12.0.module">
+            <sha256 value="59ec897a638d01fa35f79dbdd3159dc3d7318c88aee56887b5c0384176d17137" origin="Generated by Gradle"/>
+         </artifact>
+      </component>
+      <component group="androidx.compose.material" name="material-android" version="1.12.0">
+         <artifact name="material-android-1.12.0.module">
+            <sha256 value="afa30779e4866c7402d305aaf2b6fc82eacad34f5e77515ebe642fa453ab2f6b" origin="Generated by Gradle"/>
+         </artifact>
+         <artifact name="material.aar">
+            <sha256 value="e423f3e142357be20ce717f7a222cdece0a1470c2f8043d3e1ddc2ac46edd01f" origin="Generated by Gradle"/>
+         </artifact>
+      </component>
+      <component group="androidx.compose.material" name="material-icons-core" version="1.7.8">
+         <artifact name="material-icons-core-1.7.8.module">
+            <sha256 value="f9d63655bac19ff7f27abf68a9c0f38f5e42c85e365655b990e6e1a317f92e2f" origin="Generated by Gradle"/>
+         </artifact>
+      </component>
+      <component group="androidx.compose.material" name="material-icons-core-android" version="1.7.8">
+         <artifact name="material-icons-core-android-1.7.8.module">
+            <sha256 value="99a1ca83e54261a65eb96d44ea02fae43588be45ade5e97963d73e8489ea4a54" origin="Generated by Gradle"/>
+         </artifact>
+         <artifact name="material-icons-core-release.aar">
+            <sha256 value="332c06b25e662cc417fb087e76b8faa5cb249f4992ffa3360084a3d4ab882284" origin="Generated by Gradle"/>
+         </artifact>
+      </component>
+      <component group="androidx.compose.material" name="material-icons-core-desktop" version="1.7.8">
+         <artifact name="material-icons-core-desktop-1.7.8.jar">
+            <sha256 value="b5729220e242132b22b0c0317a304ff167a05cc685c3e9e6483d5dfca3495f56" origin="Generated by Gradle"/>
+         </artifact>
+         <artifact name="material-icons-core-desktop-1.7.8.module">
+            <sha256 value="6593704fdf2912efa250d32c44e5fdabe484c3e052e0f5387e09991dcd32e1ee" origin="Generated by Gradle"/>
+         </artifact>
+      </component>
+      <component group="androidx.compose.material" name="material-icons-extended" version="1.7.8">
+         <artifact name="material-icons-extended-1.7.8.module">
+            <sha256 value="db90152cc18a7f2c3d0931f2032d2c3016f35f82471bf4c9f5620702a0cded95" origin="Generated by Gradle"/>
+         </artifact>
+      </component>
+      <component group="androidx.compose.material" name="material-icons-extended-android" version="1.7.8">
+         <artifact name="material-icons-extended-android-1.7.8.module">
+            <sha256 value="d4d502935e175255fd7730b1c2dce4261799c3a70ae427e1a6a845079fe297f1" origin="Generated by Gradle"/>
+         </artifact>
+         <artifact name="material-icons-extended-release.aar">
+            <sha256 value="64e86269f1106848981dd76f0046f81b46f3bd92efb22645de8fd044c0402b61" origin="Generated by Gradle"/>
+         </artifact>
+      </component>
+      <component group="androidx.compose.material" name="material-icons-extended-desktop" version="1.7.8">
+         <artifact name="material-icons-extended-desktop-1.7.8.jar">
+            <sha256 value="0ade0b7d55cb008136d7b58b71100ce017dedb84be20af6da2e76b58b090f699" origin="Generated by Gradle"/>
+         </artifact>
+         <artifact name="material-icons-extended-desktop-1.7.8.module">
+            <sha256 value="d9bad8628c4b705f232676aa67aee1c4d0782621482e75330d1fcde6e3893618" origin="Generated by Gradle"/>
+         </artifact>
+      </component>
+      <component group="androidx.compose.material" name="material-ripple" version="1.12.0">
+         <artifact name="material-ripple-1.12.0.module">
+            <sha256 value="ddba5ee66ef1e992ea4c7c9092d06a7fe6fce2a065029ddcea9af09718d8c000" origin="Generated by Gradle"/>
+         </artifact>
+      </component>
+      <component group="androidx.compose.ui" name="ui" version="1.0.1">
+         <artifact name="ui-1.0.1.module">
+            <sha256 value="57031a6ac9b60e5b56792ebf5cde6e16812ff566ed9190cbd188b00b46c13779" origin="Generated by Gradle" reason="Artifact is not signed"/>
+         </artifact>
+      </component>
       <component group="androidx.concurrent" name="concurrent-futures" version="1.0.0">
          <artifact name="concurrent-futures-1.0.0.pom">
             <sha256 value="4505b9a5e30a9418b59a9ad6702c3e4193aea6e691a3d03cf220c7640ad083e2" origin="Generated by Gradle" reason="Artifact is not signed"/>
@@ -265,6 +338,11 @@
       <component group="androidx.core" name="core" version="1.19.0">
          <artifact name="core-1.19.0.aar">
             <sha256 value="55445ad0ff025963929892569a0bfc6b4c68e60d8b7c965dcffba09048c36c8e" origin="Generated by Gradle"/>
+         </artifact>
+      </component>
+      <component group="androidx.core" name="core" version="1.19.1">
+         <artifact name="core-1.19.1.aar">
+            <sha256 value="08108ea780205bd54603088a62a6dd5378f63bd25542674be24cd4cdb8191a09" origin="Generated by Gradle"/>
          </artifact>
       </component>
       <component group="androidx.credentials" name="credentials" version="1.2.0-rc01">
@@ -417,66 +495,6 @@
             <sha256 value="0f10b63cfd5292d16678077bdb78363447b832801936c401fc26e68293f2106f" origin="Generated by Gradle" reason="Artifact is not signed"/>
          </artifact>
       </component>
-      <component group="androidx.compose.material" name="material" version="1.12.0">
-         <artifact name="material-1.12.0.module">
-            <sha256 value="59ec897a638d01fa35f79dbdd3159dc3d7318c88aee56887b5c0384176d17137" origin="Generated by Gradle"/>
-         </artifact>
-      </component>
-      <component group="androidx.compose.material" name="material-android" version="1.12.0">
-         <artifact name="material-android-1.12.0.module">
-            <sha256 value="afa30779e4866c7402d305aaf2b6fc82eacad34f5e77515ebe642fa453ab2f6b" origin="Generated by Gradle"/>
-         </artifact>
-         <artifact name="material.aar">
-            <sha256 value="e423f3e142357be20ce717f7a222cdece0a1470c2f8043d3e1ddc2ac46edd01f" origin="Generated by Gradle"/>
-         </artifact>
-      </component>
-      <component group="androidx.compose.material" name="material-ripple" version="1.12.0">
-         <artifact name="material-ripple-1.12.0.module">
-            <sha256 value="ddba5ee66ef1e992ea4c7c9092d06a7fe6fce2a065029ddcea9af09718d8c000" origin="Generated by Gradle"/>
-         </artifact>
-      </component>
-      <component group="androidx.compose.material" name="material-icons-core" version="1.7.8">
-         <artifact name="material-icons-core-1.7.8.module">
-            <sha256 value="f9d63655bac19ff7f27abf68a9c0f38f5e42c85e365655b990e6e1a317f92e2f" origin="Generated by Gradle"/>
-         </artifact>
-      </component>
-      <component group="androidx.compose.material" name="material-icons-core-android" version="1.7.8">
-         <artifact name="material-icons-core-android-1.7.8.module">
-            <sha256 value="99a1ca83e54261a65eb96d44ea02fae43588be45ade5e97963d73e8489ea4a54" origin="Generated by Gradle"/>
-         </artifact>
-         <artifact name="material-icons-core-release.aar">
-            <sha256 value="332c06b25e662cc417fb087e76b8faa5cb249f4992ffa3360084a3d4ab882284" origin="Generated by Gradle"/>
-         </artifact>
-      </component>
-      <component group="androidx.compose.material" name="material-icons-core-desktop" version="1.7.8">
-         <artifact name="material-icons-core-desktop-1.7.8.jar">
-            <sha256 value="b5729220e242132b22b0c0317a304ff167a05cc685c3e9e6483d5dfca3495f56" origin="Generated by Gradle"/>
-         </artifact>
-         <artifact name="material-icons-core-desktop-1.7.8.module">
-            <sha256 value="6593704fdf2912efa250d32c44e5fdabe484c3e052e0f5387e09991dcd32e1ee" origin="Generated by Gradle"/>
-         </artifact>
-      </component>
-      <component group="androidx.compose.material" name="material-icons-extended" version="1.7.8">
-         <artifact name="material-icons-extended-1.7.8.module">
-            <sha256 value="db90152cc18a7f2c3d0931f2032d2c3016f35f82471bf4c9f5620702a0cded95" origin="Generated by Gradle"/>
-         </artifact>
-      </component>
-      <component group="androidx.compose.material" name="material-icons-extended-android" version="1.7.8">
-         <artifact name="material-icons-extended-android-1.7.8.module">
-            <sha256 value="d4d502935e175255fd7730b1c2dce4261799c3a70ae427e1a6a845079fe297f1" origin="Generated by Gradle"/>
-         </artifact>
-         <artifact name="material-icons-extended-release.aar">
-            <sha256 value="64e86269f1106848981dd76f0046f81b46f3bd92efb22645de8fd044c0402b61" origin="Generated by Gradle"/>
-         </artifact>
-      </component>
-      <component group="androidx.compose.material" name="material-icons-extended-desktop" version="1.7.8">
-         <artifact name="material-icons-extended-desktop-1.7.8.jar">
-            <sha256 value="0ade0b7d55cb008136d7b58b71100ce017dedb84be20af6da2e76b58b090f699" origin="Generated by Gradle"/>
-         </artifact>
-         <artifact name="material-icons-extended-desktop-1.7.8.module">
-            <sha256 value="d9bad8628c4b705f232676aa67aee1c4d0782621482e75330d1fcde6e3893618" origin="Generated by Gradle"/>
-         </artifact>
-      </component>
       <component group="androidx.navigation" name="navigation-common" version="2.10.2">
          <artifact name="navigation-common-2.10.2.module">
             <sha256 value="ccc83c918ddbae89060ffe7cdf4389ac7d9ed1b2f745349ab1bc32076689066f" origin="Generated by Gradle"/>
@@ -582,6 +600,11 @@
          </artifact>
          <artifact name="swiperefreshlayout-1.1.0.pom">
             <sha256 value="0b8c55ce6910155a283ba98a6d094be6e0ef5e70a7371cd9fe9f71bf8ffd24ad" origin="Generated by Gradle" reason="Artifact is not signed"/>
+         </artifact>
+      </component>
+      <component group="androidx.tracing" name="tracing" version="1.0.0">
+         <artifact name="tracing-1.0.0.module">
+            <sha256 value="fc8b21ebe5fa3a7c96ee098bcdcd00f077ebce73f243fa858e2b0671615f75d8" origin="Generated by Gradle" reason="Artifact is not signed"/>
          </artifact>
       </component>
       <component group="androidx.tracing" name="tracing" version="1.1.0">
@@ -720,6 +743,14 @@
          </artifact>
          <artifact name="play-services-base-18.0.1.pom">
             <sha256 value="ec5c1be82d425fcaa6da54c6202bc25bc63fd61519d36c3ee813ffae7d203f25" origin="Generated by Gradle" reason="Artifact is not signed"/>
+         </artifact>
+      </component>
+      <component group="com.google.android.gms" name="play-services-base" version="18.5.0">
+         <artifact name="play-services-base-18.5.0.aar">
+            <sha256 value="59a5c0c2da12311d75d965ce1f419498536b1a167fb28ff7dfc2dfd9cefa4157" origin="Generated by Gradle" reason="Artifact is not signed"/>
+         </artifact>
+         <artifact name="play-services-base-18.5.0.pom">
+            <sha256 value="2570b515c2717af386c890e97f644782e3f86da7b677a4ff1036147e7ea622a4" origin="Generated by Gradle" reason="Artifact is not signed"/>
          </artifact>
       </component>
       <component group="com.google.android.gms" name="play-services-fido" version="20.1.0">

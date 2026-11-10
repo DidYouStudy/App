@@ -1,6 +1,7 @@
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Codex AI Agent
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -11,6 +12,17 @@ plugins {
   alias(libs.plugins.googleServices)
   id("jacoco")
 }
+
+// Google Maps API key: never committed. It comes from local.properties (MAPS_API_KEY=...) or, on
+// CI, from the MAPS_API_KEY environment variable. Without it the app builds but the map is blank.
+val mapsApiKey: String =
+    rootProject
+        .file("local.properties")
+        .takeIf { it.exists() }
+        ?.inputStream()
+        ?.use { Properties().apply { load(it) }.getProperty("MAPS_API_KEY") }
+        ?: System.getenv("MAPS_API_KEY")
+        ?: ""
 
 android {
   namespace = "com.android.sample"
@@ -25,6 +37,7 @@ android {
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     vectorDrawables { useSupportLibrary = true }
+    manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
   }
 
   signingConfigs {
@@ -192,6 +205,11 @@ dependencies {
   // ------------- JSON parsing ----------------
   // Bundled campus locations (the library ships its own R8 rules)
   implementation(libs.kotlinx.serialization.json)
+
+  // ------------- Map ----------------
+  // Google Maps; the API key is injected into the manifest (see mapsApiKey above)
+  implementation(libs.maps.compose)
+  implementation(libs.play.services.maps)
 
   // Coil3 library which handles image loading through URL's ---- currently are untrusted artifacts
   // but they will be needed for future implementations
