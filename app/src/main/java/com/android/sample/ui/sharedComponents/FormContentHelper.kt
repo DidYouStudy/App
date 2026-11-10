@@ -2,6 +2,10 @@
 // Co-authored-by: Claude AI Agent
 package com.android.sample.ui.sharedComponents
 
+import android.content.res.Configuration
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,9 +24,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -68,10 +74,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.android.sample.R
@@ -423,6 +433,7 @@ fun EventTypeDropdownMenu(
 }
 
 /** Material 3 DatePickerDialog configured for text input mode. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventDatePickerDialog(
     initialDate: LocalDate?,
@@ -436,7 +447,23 @@ fun EventDatePickerDialog(
   val datePickerState =
       rememberDatePickerState(
           initialSelectedDateMillis = initialMillis,
-          initialDisplayMode = DisplayMode.Input,
+          initialDisplayMode = DisplayMode.Picker,
+      )
+
+  val configuration = LocalConfiguration.current
+  val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+  // Smooth height transition for portrait mode
+  val portraitTargetHeight by
+      animateDpAsState(
+          targetValue =
+              if (datePickerState.displayMode == DisplayMode.Picker) {
+                Dimens.datePickerCalendarHeight
+              } else {
+                Dimens.datePickerInputHeight
+              },
+          animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+          label = "datePickerHeightAnimation",
       )
 
   DatePickerDialog(
@@ -456,8 +483,37 @@ fun EventDatePickerDialog(
         }
       },
       dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+      properties =
+          DialogProperties(
+              // In landscape, allowing full-width avoids side clipping
+              usePlatformDefaultWidth = !isLandscape
+          ),
+      modifier =
+          Modifier.padding(
+              horizontal = if (isLandscape) Dimens.formHorizontalPadding else 0.dp,
+              vertical = if (isLandscape) 8.dp else 0.dp,
+          ),
   ) {
-    DatePicker(state = datePickerState)
+    if (isLandscape) {
+      // Landscape: limit to viewport height and allow vertical scrolling
+      val scrollState = rememberScrollState()
+      val windowInfo = LocalWindowInfo.current
+      val density = LocalDensity.current
+      val maxLandscapeHeight =
+          with(density) { (windowInfo.containerSize.height.toDp() - 120.dp).coerceAtLeast(200.dp) }
+
+      Box(
+          modifier =
+              Modifier.fillMaxWidth().heightIn(max = maxLandscapeHeight).verticalScroll(scrollState)
+      ) {
+        DatePicker(state = datePickerState)
+      }
+    } else {
+      // Portrait: maintain smooth animated container height
+      Box(modifier = Modifier.fillMaxWidth().height(portraitTargetHeight)) {
+        DatePicker(state = datePickerState)
+      }
+    }
   }
 }
 

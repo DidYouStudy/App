@@ -104,4 +104,8 @@ object Dimens {
   val dialogCornerRadius = 28.dp
   val subjectPickerMaxHeight = 350.dp
   val noPadding = 0.dp
+
+  val datePickerInputHeight = 260.dp
+
+  val datePickerCalendarHeight = 512.dp
 }
