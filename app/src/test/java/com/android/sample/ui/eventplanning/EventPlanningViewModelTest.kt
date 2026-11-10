@@ -604,7 +604,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
   }
 
   /**
-   * Successful creation resets form fields, retains subject suggestions and location search
+   * Successful creation resets form fields, retains subject suggestions, clears location search
    * results, and raises the added signal.
    */
   @Test
@@ -631,7 +631,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertNull(state.endTime)
     assertTrue(state.tasks.isEmpty())
     assertEquals(listOf("Algebra"), state.recommendedSubjects)
-    assertEquals(locations, state.locationSearchResults)
+    assertEquals(emptyList<CampusLocation>(), state.locationSearchResults)
   }
 
   /** Acknowledging a handled creation clears the event-added signal. */
@@ -760,9 +760,13 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertEquals(listOf("id-1", "id-2"), savedEvents(count = 2).map { it.id })
   }
 
-  /** Resetting the form preserves subject suggestions and location search results. */
+  /**
+   * Resetting the form preserves subject suggestions, since they come from a long-lived
+   * subscription rather than the form being reset. Location search results are not preserved: they
+   * are scoped to the picker dialog, which already clears them on close.
+   */
   @Test
-  fun resetForm_keepsSubjectSuggestionsAndLocationSearchResults() = runTest {
+  fun resetForm_keepsSubjectSuggestionsButClearsLocationSearchResults() = runTest {
     `when`(eventsRepository.observeSubjects("user123")).thenReturn(subjects("Algebra"))
     val locations = listOf(sampleLocation("BC 01"))
     `when`(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
@@ -775,7 +779,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.resetForm()
 
     assertEquals(listOf("Algebra"), viewModel.uiState.value.recommendedSubjects)
-    assertEquals(locations, viewModel.uiState.value.locationSearchResults)
+    assertEquals(emptyList<CampusLocation>(), viewModel.uiState.value.locationSearchResults)
   }
 
   /** A second add request is ignored until the first repository save completes. */

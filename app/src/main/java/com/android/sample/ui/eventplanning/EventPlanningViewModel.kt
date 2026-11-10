@@ -337,7 +337,6 @@ class EventPlanningViewModel(
               _uiState.update {
                 EventPlanningUiState(
                     recommendedSubjects = it.recommendedSubjects,
-                    locationSearchResults = it.locationSearchResults,
                     isEventDeleted = true,
                 )
               }
@@ -382,7 +381,6 @@ class EventPlanningViewModel(
     _uiState.update {
       EventPlanningUiState(
           recommendedSubjects = it.recommendedSubjects,
-          locationSearchResults = it.locationSearchResults,
       )
     }
   }
@@ -452,7 +450,6 @@ class EventPlanningViewModel(
               _uiState.update {
                 EventPlanningUiState(
                     recommendedSubjects = it.recommendedSubjects,
-                    locationSearchResults = it.locationSearchResults,
                     isEventAdded = editing == null,
                     isEventEdited = editing != null,
                 )
