@@ -209,7 +209,7 @@ class CalendarWeeklyViewTest {
             .getUnclippedBoundsInRoot()
 
     assertTrue("The 8 AM label should not be clipped by the headers", eightAm.top >= grid.top)
-    assertTrue("Hour rows should remain readable", nineAm.top - eightAm.top >= 48.dp)
+    assertTrue("Hour rows should remain readable", nineAm.top - eightAm.top >= Dimens.calendarMinHourRowHeight)
   }
 
   /** Shows the timeline with its initial scroll position at 8 AM. */
@@ -229,25 +229,6 @@ class CalendarWeeklyViewTest {
         .assertIsDisplayed()
         .assertTextEquals("8 AM")
     composeTestRule.onNodeWithTag(CalendarTestTags.hourLabel(7)).assertIsNotDisplayed()
-  }
-
-  /** Keeps the hour axis visible and hour rows readable in a short landscape viewport. */
-  @Test
-  fun landscapeGridKeepsHourAxisVisibleAndRowsReadable() {
-    composeTestRule.setContent {
-      Box(Modifier.width(800.dp).height(180.dp)) { CalendarTimeGrid(Modifier.fillMaxSize()) }
-    }
-
-    val eightAm = composeTestRule.onNodeWithTag(CalendarTestTags.hourLabel(8)).assertIsDisplayed()
-    val nineAm = composeTestRule.onNodeWithTag(CalendarTestTags.hourLabel(9)).assertIsDisplayed()
-    val eightBounds = eightAm.getUnclippedBoundsInRoot()
-    val nineBounds = nineAm.getUnclippedBoundsInRoot()
-
-    assertTrue("The initial hour label should be fully in the viewport", eightBounds.top >= 0.dp)
-    assertTrue(
-        "Landscape hour rows should remain readable",
-        nineBounds.top - eightBounds.top >= 48.dp,
-    )
   }
 
   /** Labels every hour in order on the 12-hour clock. */

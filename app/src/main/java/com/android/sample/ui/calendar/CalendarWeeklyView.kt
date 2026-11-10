@@ -160,8 +160,8 @@ fun CalendarWeekRangeHeader(
     weekDates: List<LocalDate>,
     onPreviousWeek: () -> Unit,
     onNextWeek: () -> Unit,
-    compact: Boolean = false,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
   // Place the previous control, week label, and next control in one row.
   Row(
@@ -244,8 +244,8 @@ fun CalendarWeekRangeHeader(
 fun CalendarDayHeader(
     weekDates: List<LocalDate>,
     today: LocalDate,
-    compact: Boolean = false,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
   // Lay out the date headings in one row above the weekly grid.
   Row(
