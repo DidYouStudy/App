@@ -580,13 +580,13 @@ class FormContentHelperTests {
         .onNodeWithText(context.getString(R.string.location_picker_search_prompt))
         .assertIsDisplayed()
 
-      composeTestRule
-          .onNodeWithText(context.getString(R.string.location_picker_search_placeholder))
-          .performTextInput("ZZZ")
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_search_placeholder))
+        .performTextInput("ZZZ")
 
-      composeTestRule
-          .onNodeWithText(context.getString(R.string.location_picker_empty_results))
-          .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_empty_results))
+        .assertIsDisplayed()
   }
 
   @Test
