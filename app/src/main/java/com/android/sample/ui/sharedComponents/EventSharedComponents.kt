@@ -68,7 +68,7 @@ fun IconTextRow(
     Icon(
         imageVector = icon,
         contentDescription = null,
-        modifier = modifier.size(Dimens.iconSizeMedium),
+        modifier = Modifier.size(Dimens.iconSizeMedium),
     )
     Spacer(Modifier.width(Spacing.small))
     Text(text = text, style = textStyle)
@@ -99,7 +99,7 @@ fun TaskCheckRow(
                   vertical = Dimens.taskRowVerticalPadding,
               ),
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.Start,
+      horizontalArrangement = Arrangement.SpaceBetween,
   ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
       Checkbox(
@@ -119,7 +119,7 @@ fun TaskCheckRow(
           style = MaterialTheme.typography.bodyMedium,
           modifier = Modifier.padding(start = Dimens.taskTextStartPadding),
       )
-      trailingContent?.invoke()
     }
+      trailingContent?.invoke()
   }
 }
