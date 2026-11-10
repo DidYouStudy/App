@@ -189,32 +189,49 @@ class EventPlanningViewModel(
   /** Updates the optional event description. */
   fun setDescription(description: String) = updateForm { copy(description = description) }
 
-  /** Replaces the event checklist. */
-  fun setTasks(tasks: List<EventTask>) = updateForm { copy(tasks = tasks) }
+  /** Replaces the event checklist. Forbidden for group sessions. */
+  fun setTasks(tasks: List<EventTask>) {
+    requirePersonalEvent()
+    updateForm { copy(tasks = tasks) }
+  }
 
-  /** Appends an open task; blank text is ignored. */
+  /** Appends an open task; blank text is ignored. Forbidden for group sessions. */
   fun addTask(text: String) {
+    requirePersonalEvent()
     val trimmed = text.trim()
     if (trimmed.isEmpty()) return
     updateForm { copy(tasks = tasks + EventTask(trimmed)) }
   }
 
-  /** Removes the task at [index]; an index outside the list is ignored. */
-  fun removeTask(index: Int) = updateForm {
-    if (index !in tasks.indices) this else copy(tasks = tasks.filterIndexed { i, _ -> i != index })
+  /**
+   * Removes the task at [index]; an index outside the list is ignored. Forbidden for group
+   * sessions.
+   */
+  fun removeTask(index: Int) {
+    requirePersonalEvent()
+    updateForm {
+      if (index !in tasks.indices) this
+      else copy(tasks = tasks.filterIndexed { i, _ -> i != index })
+    }
   }
 
-  /** Checks off or reopens the task at [index]; an index outside the list is ignored. */
-  fun toggleTask(index: Int) = updateForm {
-    if (index !in tasks.indices) this
-    else
-        copy(
-            tasks =
-                tasks.mapIndexed { i, task ->
-                  if (i != index) task
-                  else task.copy(completedAt = if (task.isCompleted) null else clock.instant())
-                }
-        )
+  /**
+   * Checks off or reopens the task at [index]; an index outside the list is ignored. Forbidden for
+   * group sessions.
+   */
+  fun toggleTask(index: Int) {
+    requirePersonalEvent()
+    updateForm {
+      if (index !in tasks.indices) this
+      else
+          copy(
+              tasks =
+                  tasks.mapIndexed { i, task ->
+                    if (i != index) task
+                    else task.copy(completedAt = if (task.isCompleted) null else clock.instant())
+                  }
+          )
+    }
   }
 
   /** Clears a displayed save error. */
@@ -542,6 +559,11 @@ class EventPlanningViewModel(
     _uiState.update { it.withoutResults().copy(error = message) }
   }
 
+  /** Ensures tasks are only modified when planning a personal event. */
+  private fun requirePersonalEvent() {
+    require(_uiState.value.showTasksSection) { TASKS_NOT_SUPPORTED_FOR_GROUP_SESSIONS_ERROR }
+  }
+
   /** Applies a form edit and clears the previous save result. */
   private fun updateForm(update: EventPlanningUiState.() -> EventPlanningUiState) {
     _uiState.update { it.update().withoutResults() }
@@ -563,6 +585,8 @@ class EventPlanningViewModel(
       }
 
   companion object {
+    const val TASKS_NOT_SUPPORTED_FOR_GROUP_SESSIONS_ERROR =
+        "Tasks are only supported for personal events"
     const val FAILED_TO_OBSERVE_USER_ERROR = "Failed to observe signed-in user"
     const val NO_SIGNED_IN_USER_ERROR = "No signed-in user"
     const val EVENT_DATE_AND_TIMES_REQUIRED_ERROR =

@@ -206,7 +206,6 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     val viewModel = createViewModel()
     val tasks = listOf(EventTask("Solve exercises 12, 13"), EventTask("Read chapter 3"))
 
-    viewModel.setEventKind(EventKind.GROUP_SESSION)
     viewModel.setType(EventType.LAB)
     viewModel.setSubject("CompSec")
     viewModel.setDate(date)
@@ -217,8 +216,8 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.setTasks(tasks)
 
     val state = viewModel.uiState.value
-    assertEquals(EventKind.GROUP_SESSION, state.eventKind)
-    assertFalse(state.showTasksSection)
+    assertEquals(EventKind.PERSONAL, state.eventKind)
+    assertTrue(state.showTasksSection)
     assertEquals(EventType.LAB, state.type)
     assertEquals("CompSec", state.subject)
     assertEquals(date, state.date)
@@ -363,6 +362,59 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.toggleTask(2)
 
     assertEquals(tasks, viewModel.uiState.value.tasks)
+  }
+
+  /** Task operations throw when the form is currently in group session mode. */
+  @Test
+  fun setTasks_throwsForGroupSession() = runTest {
+    val viewModel = createViewModel()
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+
+    val exception =
+        assertThrows(IllegalArgumentException::class.java) {
+          viewModel.setTasks(listOf(EventTask("Task 1")))
+        }
+    assertEquals(
+        EventPlanningViewModel.TASKS_NOT_SUPPORTED_FOR_GROUP_SESSIONS_ERROR,
+        exception.message,
+    )
+  }
+
+  @Test
+  fun addTask_throwsForGroupSession() = runTest {
+    val viewModel = createViewModel()
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+
+    val exception =
+        assertThrows(IllegalArgumentException::class.java) { viewModel.addTask("Task 1") }
+    assertEquals(
+        EventPlanningViewModel.TASKS_NOT_SUPPORTED_FOR_GROUP_SESSIONS_ERROR,
+        exception.message,
+    )
+  }
+
+  @Test
+  fun removeTask_throwsForGroupSession() = runTest {
+    val viewModel = createViewModel()
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+
+    val exception = assertThrows(IllegalArgumentException::class.java) { viewModel.removeTask(0) }
+    assertEquals(
+        EventPlanningViewModel.TASKS_NOT_SUPPORTED_FOR_GROUP_SESSIONS_ERROR,
+        exception.message,
+    )
+  }
+
+  @Test
+  fun toggleTask_throwsForGroupSession() = runTest {
+    val viewModel = createViewModel()
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+
+    val exception = assertThrows(IllegalArgumentException::class.java) { viewModel.toggleTask(0) }
+    assertEquals(
+        EventPlanningViewModel.TASKS_NOT_SUPPORTED_FOR_GROUP_SESSIONS_ERROR,
+        exception.message,
+    )
   }
 
   // ---------------------------------------------------------------- addEvent: rejected before
