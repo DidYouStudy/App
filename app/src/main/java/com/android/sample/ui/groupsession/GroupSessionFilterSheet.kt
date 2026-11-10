@@ -333,7 +333,7 @@ private fun FilterSegmentRow(
 /** Provides a light-mode preview of the group-session filter sheet. */
 @Preview(showBackground = true)
 @Composable
-private fun GroupSessionFilterSheetLightPreview() {
+internal fun GroupSessionFilterSheetLightPreview() {
   DidYouStudyTheme {
     GroupSessionFilterSheetContent(
         filters = GroupSessionFilters(),
@@ -353,7 +353,7 @@ private fun GroupSessionFilterSheetLightPreview() {
 /** Provides a dark-mode preview of the group-session filter sheet. */
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-private fun GroupSessionFilterSheetDarkPreview() {
+internal fun GroupSessionFilterSheetDarkPreview() {
   DidYouStudyTheme {
     GroupSessionFilterSheetContent(
         filters = GroupSessionFilters(),
