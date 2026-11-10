@@ -30,8 +30,6 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -219,42 +217,13 @@ fun TaskRowItem(
     checkboxTag: String,
     deleteTag: String,
 ) {
-  val shape = RoundedCornerShape(Dimens.cornerLarge)
-  Row(
-      modifier =
-          Modifier.fillMaxWidth()
-              .clip(shape)
-              .background(MaterialTheme.colorScheme.surfaceVariant)
-              .padding(
-                  horizontal = Dimens.taskRowHorizontalPadding,
-                  vertical = Dimens.taskRowVerticalPadding,
-              )
-              .testTag(itemTag),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.SpaceBetween,
+  TaskCheckRow(
+      text = task.text,
+      isCompleted = task.isCompleted,
+      onToggle = onToggle,
+      modifier = Modifier.testTag(itemTag),
+      checkboxTag = checkboxTag,
   ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.weight(1f),
-    ) {
-      Checkbox(
-          checked = task.isCompleted,
-          onCheckedChange = { onToggle() },
-          colors =
-              CheckboxDefaults.colors(
-                  checkedColor = MaterialTheme.colorScheme.primary,
-                  uncheckedColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                  checkmarkColor = MaterialTheme.colorScheme.onPrimary,
-              ),
-          modifier = Modifier.testTag(checkboxTag),
-      )
-      Text(
-          text = task.text,
-          color = MaterialTheme.colorScheme.onSecondaryContainer,
-          style = MaterialTheme.typography.bodyMedium,
-          modifier = Modifier.padding(start = Dimens.taskTextStartPadding),
-      )
-    }
     IconButton(onClick = onDelete, modifier = Modifier.testTag(deleteTag)) {
       Icon(
           imageVector = Icons.Outlined.Delete,
@@ -374,7 +343,7 @@ fun PillActionButton(
         }
         Text(
             text = label,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.titleSmall,
             color = contentColor,
         )
       }
