@@ -7,12 +7,14 @@ import android.content.pm.PackageManager
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -67,7 +69,6 @@ class GroupSessionFilterSheetTest {
             "Filter sessions",
             "Reset all",
             "DISTANCE FROM ME",
-            "Any",
             "< 250m",
             "< 500m",
             "< 1km",
@@ -75,12 +76,13 @@ class GroupSessionFilterSheetTest {
             "CO",
             "CM",
             "BC",
-            "View more",
             "ROOM TYPE",
             "Show “Lab” room type",
             "Show 4 sessions",
         )
         .forEach { composeTestRule.onNodeWithText(it).assertIsDisplayed() }
+    composeTestRule.onAllNodesWithText("Any").assertCountEquals(2)
+    composeTestRule.onNodeWithText("View more", substring = true).assertIsDisplayed()
   }
 
   /** Selects a stored radius and reports each of the available distance values. */
@@ -192,7 +194,24 @@ class GroupSessionFilterSheetTest {
   @Test
   fun zoneChipsToggleAndAnyClearsSelection() {
     val selected = mutableListOf<Set<String>>()
-    setSheet(filters = GroupSessionFilters(zones = setOf("CO")), onZonesSelected = selected::add)
+    var filters by mutableStateOf(GroupSessionFilters(zones = setOf("CO")))
+    composeTestRule.setContent {
+      GroupSessionFilterSheetContent(
+          filters = filters,
+          availableZones = availableZones,
+          matchingSessionCount = 4,
+          hasLocationPermission = true,
+          onRadiusSelected = {},
+          onZonesSelected = {
+            selected.add(it)
+            filters = filters.copy(zones = it)
+          },
+          onShowLabsChanged = {},
+          onLocationPermissionNeeded = {},
+          onResetAll = {},
+          onShowSessions = {},
+      )
+    }
 
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.zoneChip("CO")).assertIsSelected()
     composeTestRule
@@ -223,7 +242,24 @@ class GroupSessionFilterSheetTest {
   @Test
   fun viewMoreListsZonesAndTogglesAnOption() {
     val selected = mutableListOf<Set<String>>()
-    setSheet(filters = GroupSessionFilters(zones = setOf("CM")), onZonesSelected = selected::add)
+    var filters by mutableStateOf(GroupSessionFilters(zones = setOf("CM")))
+    composeTestRule.setContent {
+      GroupSessionFilterSheetContent(
+          filters = filters,
+          availableZones = availableZones,
+          matchingSessionCount = 4,
+          hasLocationPermission = true,
+          onRadiusSelected = {},
+          onZonesSelected = {
+            selected.add(it)
+            filters = filters.copy(zones = it)
+          },
+          onShowLabsChanged = {},
+          onLocationPermissionNeeded = {},
+          onResetAll = {},
+          onShowSessions = {},
+      )
+    }
 
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.VIEW_MORE).performClick()
     availableZones.forEach {
@@ -273,7 +309,24 @@ class GroupSessionFilterSheetTest {
   @Test
   fun labSwitchStartsOffAndReportsChanges() {
     val values = mutableListOf<Boolean>()
-    setSheet(onShowLabsChanged = values::add)
+    var filters by mutableStateOf(GroupSessionFilters())
+    composeTestRule.setContent {
+      GroupSessionFilterSheetContent(
+          filters = filters,
+          availableZones = availableZones,
+          matchingSessionCount = 4,
+          hasLocationPermission = true,
+          onRadiusSelected = {},
+          onZonesSelected = {},
+          onShowLabsChanged = {
+            values.add(it)
+            filters = filters.copy(showLabs = it)
+          },
+          onLocationPermissionNeeded = {},
+          onResetAll = {},
+          onShowSessions = {},
+      )
+    }
 
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.LAB_SWITCH).assertIsOff()
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.LAB_SWITCH).performClick()

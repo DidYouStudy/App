@@ -17,6 +17,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
@@ -158,6 +159,8 @@ class GroupSessionScreenTest {
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.FILTER_BUTTON).performClick()
 
     composeTestRule.onNodeWithText("Filter sessions").assertIsDisplayed()
+    pressBack()
+    composeTestRule.onNodeWithText("Filter sessions").assertDoesNotExist()
   }
 
   @Test
