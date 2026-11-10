@@ -9,8 +9,11 @@ import kotlinx.coroutines.flow.Flow
  * ViewModels depend on this interface rather than on Google Play Services, so they stay
  * unit-testable without a device: production code uses a Fused Location implementation, tests use a
  * fake that emits whatever coordinates they set.
+ *
+ * It is a `fun interface`, so a test that only needs a fixed stream can also pass a lambda, for
+ * example `LocationProvider { flowOf(location) }`.
  */
-interface LocationProvider {
+fun interface LocationProvider {
 
   /**
    * Observes the device's position.
