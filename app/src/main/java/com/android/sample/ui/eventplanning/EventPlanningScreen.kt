@@ -125,6 +125,7 @@ internal fun EventPlanningScreen(
       onEndTimeClick = { onPickEndTimeClick?.invoke() ?: run { showEndTimePicker = true } },
       onSubjectClick = { onPickSubjectClick?.invoke() ?: run { showSubjectPicker = true } },
       onLocationClick = { showLocationPicker = true },
+      onLocationClear = { onLocationChange("") },
       onDescriptionChange = onDescriptionChange,
       onAddTask = onAddTask,
       onToggleTask = onToggleTask,
@@ -246,6 +247,7 @@ fun EventPlanningScreenStateless(
     isEditing: Boolean = false,
     isLoading: Boolean = false,
     onTypeClick: (() -> Unit)? = null,
+    onLocationClear: (() -> Unit)? = null,
 ) {
   val isValidationError: Boolean =
       uiState.error == EventPlanningViewModel.EVENT_DATE_AND_TIMES_REQUIRED_ERROR ||
@@ -361,6 +363,7 @@ fun EventPlanningScreenStateless(
             onEndTimeClick = onEndTimeClick,
             onSubjectClick = onSubjectClick,
             onLocationClick = onLocationClick,
+            onLocationClear = onLocationClear,
             onDescriptionChange = onDescriptionChange,
             onAddTask = onAddTask,
             onToggleTask = onToggleTask,

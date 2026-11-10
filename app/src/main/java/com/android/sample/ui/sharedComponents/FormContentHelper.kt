@@ -27,6 +27,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -111,6 +112,8 @@ fun SelectorFieldPill(
     modifier: Modifier = Modifier,
     hasDropdownArrow: Boolean = false,
     isError: Boolean = false,
+    onClear: (() -> Unit)? = null,
+    clearButtonTestTag: String? = null,
 ) {
   val shape = RoundedCornerShape(Dimens.cornerPill)
   Box(
@@ -150,7 +153,20 @@ fun SelectorFieldPill(
                   ),
           style = MaterialTheme.typography.bodyMedium,
       )
-      if (hasDropdownArrow) {
+      if (onClear != null && !valueText.isNullOrBlank()) {
+        Icon(
+            imageVector = Icons.Default.Close,
+            contentDescription = stringResource(R.string.clear_field_content_description),
+            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier =
+                Modifier.size(Dimens.iconSizeMedium)
+                    .clickable(onClick = onClear)
+                    .then(
+                        if (clearButtonTestTag != null) Modifier.testTag(clearButtonTestTag)
+                        else Modifier
+                    ),
+        )
+      } else if (hasDropdownArrow) {
         Icon(
             imageVector = Icons.Default.ArrowDropDown,
             contentDescription = null,
@@ -787,6 +803,7 @@ object FormContentTestTags {
   const val END_TIME_SELECTOR = "form_content_end_time_selector"
   const val SUBJECT_SELECTOR = "form_content_subject_selector"
   const val LOCATION_SELECTOR = "form_content_location_selector"
+  const val LOCATION_CLEAR_BUTTON = "form_content_location_clear_button"
   const val DESCRIPTION_INPUT = "form_content_description_input"
 
   // Tasks

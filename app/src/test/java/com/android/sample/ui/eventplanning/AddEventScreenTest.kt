@@ -329,6 +329,26 @@ class AddEventScreenTest {
     assertEquals("BC 01", viewModel.uiState.value.location)
   }
 
+  /** Tapping the clear ("x") button on the location pill resets the ViewModel's location. */
+  @Test
+  fun statefulScreenClearingLocationUpdatesViewModel() {
+    val viewModel = createViewModel()
+    viewModel.setLocation("BC 01")
+
+    composeTestRule.setContent {
+      AddEventScreen(viewModel = viewModel, onBackClick = {}, onEventSaved = {})
+    }
+
+    composeTestRule
+        .onNodeWithTag(
+            com.android.sample.ui.sharedComponents.FormContentTestTags.LOCATION_CLEAR_BUTTON,
+            useUnmergedTree = true,
+        )
+        .performClick()
+
+    assertEquals("", viewModel.uiState.value.location)
+  }
+
   @Test
   fun unsubmittedTaskTextSurvivesScreenRestoration() {
     val restorationTester = StateRestorationTester(composeTestRule)

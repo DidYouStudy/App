@@ -564,7 +564,7 @@ class FormContentHelperTests {
   }
 
   @Test
-  fun locationPickerDialogContentShowsEmptyStateWhenSearchResultsEmpty() {
+  fun locationPickerDialogContentShowsProperMessageWhenSearchResultsEmpty() {
     val context = ApplicationProvider.getApplicationContext<Context>()
 
     composeTestRule.setContent {
@@ -577,8 +577,16 @@ class FormContentHelperTests {
     }
 
     composeTestRule
-        .onNodeWithText(context.getString(R.string.location_picker_empty_results))
+        .onNodeWithText(context.getString(R.string.location_picker_search_prompt))
         .assertIsDisplayed()
+
+      composeTestRule
+          .onNodeWithText(context.getString(R.string.location_picker_search_placeholder))
+          .performTextInput("ZZZ")
+
+      composeTestRule
+          .onNodeWithText(context.getString(R.string.location_picker_empty_results))
+          .assertIsDisplayed()
   }
 
   @Test

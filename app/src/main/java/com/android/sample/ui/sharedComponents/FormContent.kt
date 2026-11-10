@@ -61,6 +61,7 @@ fun FormContent(
     onSubjectClick: () -> Unit,
     onLocationClick: () -> Unit,
     onDescriptionChange: (String) -> Unit,
+    onLocationClear: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     tasks: List<EventTask> = emptyList(),
     showTasksSection: Boolean = true,
@@ -237,6 +238,8 @@ fun FormContent(
           onLocationClick()
         },
         testTag = FormContentTestTags.LOCATION_SELECTOR,
+        onClear = onLocationClear,
+        clearButtonTestTag = FormContentTestTags.LOCATION_CLEAR_BUTTON,
     )
 
     // Description (optional)

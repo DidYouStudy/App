@@ -68,6 +68,44 @@ class EventFormContentTest {
     assertEquals(true, typeClicked)
   }
 
+  /**
+   * Clicking the clear icon fires only [EventFormContent]'s onLocationClear, not onLocationClick
+   * (the nested clickable must not also trigger the pill's own click handler).
+   */
+  @Test
+  fun eventFormContentClearButtonTriggersOnlyOnLocationClear() {
+    var locationCleared = false
+    var locationClicked = false
+    val uiState = EventPlanningUiState(type = EventType.COURSE, location = "CM3")
+
+    composeTestRule.setContent {
+      EventFormContent(
+          uiState = uiState,
+          onTypeChange = {},
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationClick = { locationClicked = true },
+          onLocationClear = { locationCleared = true },
+          onDescriptionChange = {},
+          onAddTask = {},
+          onToggleTask = {},
+          onDeleteTask = {},
+      )
+    }
+
+    composeTestRule
+        .onNodeWithTag(
+            com.android.sample.ui.sharedComponents.FormContentTestTags.LOCATION_CLEAR_BUTTON,
+            useUnmergedTree = true,
+        )
+        .performClick()
+
+    assertEquals(true, locationCleared)
+    assertEquals(false, locationClicked)
+  }
+
   @Test
   fun eventFormContentMapsOptionalSubjectLabelForTypeOther() {
     val context = ApplicationProvider.getApplicationContext<Context>()

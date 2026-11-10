@@ -21,6 +21,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -39,6 +40,7 @@ class FormContentTest {
     var endTimeClicked = false
     var subjectClicked = false
     var locationClicked = false
+    var locationCleared = false
     var descriptionInput = ""
     var addedTask = ""
     var toggledTaskIndex = -1
@@ -61,6 +63,7 @@ class FormContentTest {
           onEndTimeClick = { endTimeClicked = true },
           onSubjectClick = { subjectClicked = true },
           onLocationClick = { locationClicked = true },
+          onLocationClear = { locationCleared = true },
           onDescriptionChange = { descriptionInput = it },
           onAddTask = { addedTask = it },
           onToggleTask = { toggledTaskIndex = it },
@@ -112,6 +115,9 @@ class FormContentTest {
         .assertTextEquals(context.getString(R.string.event_planning_location_optional_label))
     composeTestRule.onNodeWithTag(Tags.LOCATION_SELECTOR).assertTextEquals("CM3").performClick()
     assertTrue(locationClicked)
+
+    composeTestRule.onNodeWithTag(Tags.LOCATION_CLEAR_BUTTON, useUnmergedTree = true).performClick()
+    assertTrue(locationCleared)
 
     composeTestRule
         .onNodeWithTag(Tags.DESCRIPTION_LABEL, useUnmergedTree = true)
@@ -165,6 +171,9 @@ class FormContentTest {
           onEndTimeClick = {},
           onSubjectClick = {},
           onLocationClick = {},
+          onLocationClear = {
+            fail("onLocationClear should not be invoked when location is blank")
+          },
           onDescriptionChange = {},
       )
     }
@@ -172,6 +181,9 @@ class FormContentTest {
     composeTestRule
         .onNodeWithTag(Tags.LOCATION_SELECTOR)
         .assertTextEquals(context.getString(R.string.event_planning_location_placeholder))
+    composeTestRule
+        .onNodeWithTag(Tags.LOCATION_CLEAR_BUTTON, useUnmergedTree = true)
+        .assertDoesNotExist()
   }
 
   @Test

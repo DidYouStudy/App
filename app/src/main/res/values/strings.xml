@@ -101,6 +101,7 @@
     <string name="location_picker_search_placeholder">Search locations…</string>
     <string name="location_picker_empty_results">No locations found</string>
     <string name="location_picker_search_prompt">Start typing for suggestions</string>
+    <string name="clear_field_content_description">Clear</string>
     <string name="event_planning_ends_next_day_warning">Event ends the following day</string>
     <string name="event_planning_error_required_fields">Please fill in all required fields.</string>
     <string name="event_planning_error_save_failed">Failed to save event. Please try again.</string>
