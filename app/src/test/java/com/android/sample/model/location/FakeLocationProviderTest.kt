@@ -73,8 +73,9 @@ class FakeLocationProviderTest {
     val provider = FakeLocationProvider()
     val emissions = collectEmissions(provider)
 
-    provider.location.value = Location(latitude = 46.5186, longitude = 6.5619)
-    provider.location.value = Location(latitude = 46.5186, longitude = 6.5619)
+    provider.location.value = bcBuilding
+    // A new instance with equal coordinates, as each real GPS fix would be.
+    provider.location.value = bcBuilding.copy()
 
     assertEquals(listOf(null, bcBuilding), emissions)
   }
