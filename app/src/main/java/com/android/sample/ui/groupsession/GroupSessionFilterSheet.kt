@@ -247,7 +247,7 @@ fun GroupSessionFilterSheetContent(
     Button(
         modifier =
             Modifier.fillMaxWidth()
-                .height(Dimens.preferencesWideButtonHeight)
+                .height(Dimens.filterActionButtonHeight)
                 .testTag(GroupSessionFilterSheetTestTags.SHOW_SESSIONS),
         onClick = onShowSessions,
     ) {
@@ -302,7 +302,7 @@ private fun FilterSegmentRow(
       OutlinedButton(
           modifier =
               Modifier.weight(1f)
-                  .height(Dimens.calendarRetryButtonHeight)
+                  .height(Dimens.filterChoiceButtonHeight)
                   .semantics { selected = isSelected }
                   .testTag(testTag(choice.value)),
           onClick = { onSelected(choice.value) },

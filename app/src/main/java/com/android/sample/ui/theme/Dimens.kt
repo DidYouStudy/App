@@ -66,6 +66,11 @@ object Dimens {
   val preferencesWideButtonHeight = 56.dp
   val preferencesChoiceHeight = 40.dp
 
+  // Height for group-session filter choices.
+  val filterChoiceButtonHeight = 48.dp
+  // Height for the group-session filter action.
+  val filterActionButtonHeight = 56.dp
+
   val calendarWeekSwitchHeaderHeight = 52.dp
   val calendarWeekNavigationButtonSize = 36.dp
   val calendarDayHeaderHeight = 54.dp
