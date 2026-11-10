@@ -148,6 +148,18 @@ class GroupSessionScreenTest {
     composeTestRule.onNodeWithText("Capstone planning").assertDoesNotExist()
   }
 
+  /** Opens the filter sheet from the search field's filter button. */
+  @Test
+  fun filterButtonOpensFilterSessionsSheet() {
+    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
+
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.FILTER_BUTTON).performClick()
+
+    composeTestRule.onNodeWithText("Filter sessions").assertIsDisplayed()
+  }
+
   @Test
   fun add_group_session_button_is_displayed() {
     val viewModel = GroupSessionsViewModel(authRepository, repo)

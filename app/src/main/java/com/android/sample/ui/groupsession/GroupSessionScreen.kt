@@ -91,6 +91,7 @@ import java.time.format.DateTimeFormatter
 object GroupSessionScreenTestTags {
   const val SCREEN = "groupSessionScreen"
   const val SEARCH = "groupSessionSearch"
+  const val FILTER_BUTTON = "groupSessionFilterButton"
   const val ALL_SESSIONS_FILTER = "groupSessionAllFilter"
   const val MY_SESSIONS_FILTER = "groupSessionMyFilter"
   const val ACTIVE_TITLE = "groupSessionActiveTitle"
@@ -212,7 +213,10 @@ private fun GroupSessionContent(
           )
         },
         trailingIcon = {
-          IconButton(onClick = { /* TODO ADVANCED FILTERS */ }) {
+          IconButton(
+              modifier = Modifier.testTag(GroupSessionScreenTestTags.FILTER_BUTTON),
+              onClick = { /* TODO ADVANCED FILTERS */ },
+          ) {
             Icon(
                 Icons.Outlined.Tune,
                 contentDescription = stringResource(R.string.group_session_filter_icon_description),
