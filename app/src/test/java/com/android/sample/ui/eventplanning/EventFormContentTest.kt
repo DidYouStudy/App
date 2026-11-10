@@ -23,6 +23,7 @@ import com.android.sample.ui.sharedComponents.FormContentTestTags
 import java.time.LocalDate
 import java.time.LocalTime
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -32,6 +33,8 @@ import org.junit.runner.RunWith
 class EventFormContentTest {
 
   @get:Rule val composeTestRule = createComposeRule()
+
+  private val defaultTaskActions = TaskActions(onAddTask = {}, onToggleTask = {}, onDeleteTask = {})
 
   @Test
   fun eventFormContentRendersPopulatedStateAndInteractions() {
@@ -70,9 +73,12 @@ class EventFormContentTest {
           onSubjectClick = { subjectClicked = true },
           onLocationChange = { locationInput = it },
           onDescriptionChange = { descriptionInput = it },
-          onAddTask = { addedTask = it },
-          onToggleTask = { toggledTaskIndex = it },
-          onDeleteTask = { deletedTaskIndex = it },
+          taskActions =
+              TaskActions(
+                  onAddTask = { addedTask = it },
+                  onToggleTask = { toggledTaskIndex = it },
+                  onDeleteTask = { deletedTaskIndex = it },
+              ),
       )
     }
 
@@ -174,9 +180,6 @@ class EventFormContentTest {
           onSubjectClick = {},
           onLocationChange = {},
           onDescriptionChange = {},
-          onAddTask = {},
-          onToggleTask = {},
-          onDeleteTask = {},
       )
     }
 
@@ -209,9 +212,7 @@ class EventFormContentTest {
           onSubjectClick = {},
           onLocationChange = {},
           onDescriptionChange = {},
-          onAddTask = {},
-          onToggleTask = {},
-          onDeleteTask = {},
+          taskActions = defaultTaskActions,
       )
     }
 
@@ -243,9 +244,7 @@ class EventFormContentTest {
           onSubjectClick = {},
           onLocationChange = {},
           onDescriptionChange = {},
-          onAddTask = {},
-          onToggleTask = {},
-          onDeleteTask = {},
+          taskActions = defaultTaskActions,
       )
     }
 
@@ -273,9 +272,7 @@ class EventFormContentTest {
           onSubjectClick = {},
           onLocationChange = {},
           onDescriptionChange = {},
-          onAddTask = {},
-          onToggleTask = {},
-          onDeleteTask = {},
+          taskActions = defaultTaskActions,
       )
     }
 
@@ -307,9 +304,7 @@ class EventFormContentTest {
           onSubjectClick = {},
           onLocationChange = {},
           onDescriptionChange = {},
-          onAddTask = {},
-          onToggleTask = {},
-          onDeleteTask = {},
+          taskActions = defaultTaskActions,
       )
     }
 
@@ -341,9 +336,7 @@ class EventFormContentTest {
           onSubjectClick = {},
           onLocationChange = {},
           onDescriptionChange = {},
-          onAddTask = {},
-          onToggleTask = {},
-          onDeleteTask = {},
+          taskActions = defaultTaskActions,
       )
     }
 
@@ -371,12 +364,136 @@ class EventFormContentTest {
           onSubjectClick = {},
           onLocationChange = {},
           onDescriptionChange = {},
-          onAddTask = {},
-          onToggleTask = {},
-          onDeleteTask = {},
+          taskActions = defaultTaskActions,
       )
     }
 
     composeTestRule.onNodeWithTag(Tags.SCROLL_CONTAINER).performClick()
+  }
+
+  @Test
+  fun eventFormContentRendersTasksWhenPersonalEventProvidesTaskActions() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var addedTask = ""
+    var toggledTaskIndex = -1
+    var deletedTaskIndex = -1
+    val uiState =
+        EventPlanningUiState(
+            eventKind = EventKind.PERSONAL,
+            type = EventType.STUDY_SESSION,
+            subject = "Physics",
+            tasks = listOf(EventTask(text = "Review chapter 1")),
+        )
+
+    composeTestRule.setContent {
+      EventFormContent(
+          uiState = uiState,
+          onTypeChange = {},
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationChange = {},
+          onDescriptionChange = {},
+          taskActions =
+              TaskActions(
+                  onAddTask = { addedTask = it },
+                  onToggleTask = { toggledTaskIndex = it },
+                  onDeleteTask = { deletedTaskIndex = it },
+              ),
+      )
+    }
+
+    composeTestRule
+        .onNodeWithTag(FormContentTestTags.TASKS_LABEL, useUnmergedTree = true)
+        .performScrollTo()
+        .assertTextEquals(context.getString(R.string.event_planning_tasks_optional_label))
+    composeTestRule.onNodeWithTag(Tags.ADD_TASK_BUTTON).performScrollTo().performTextInput("Task 2")
+    composeTestRule.onNodeWithTag(Tags.ADD_TASK_BUTTON).performImeAction()
+    assertEquals("Task 2", addedTask)
+
+    composeTestRule
+        .onNodeWithTag("${FormContentTestTags.TASK_ITEM_PREFIX}0", useUnmergedTree = true)
+        .performScrollTo()
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag("${FormContentTestTags.TASK_CHECKBOX_PREFIX}0", useUnmergedTree = true)
+        .performScrollTo()
+        .performClick()
+    assertEquals(0, toggledTaskIndex)
+
+    composeTestRule
+        .onNodeWithTag("${FormContentTestTags.TASK_DELETE_PREFIX}0", useUnmergedTree = true)
+        .performScrollTo()
+        .performClick()
+    assertEquals(0, deletedTaskIndex)
+  }
+
+  @Test
+  fun eventFormContentThrowsWhenPersonalEventOmitsTaskActions() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val uiState =
+        EventPlanningUiState(
+            eventKind = EventKind.PERSONAL,
+            type = EventType.STUDY_SESSION,
+            subject = "Physics",
+            tasks = listOf(EventTask(text = "Review chapter 1")),
+        )
+
+    val exception =
+        assertThrows(IllegalArgumentException::class.java) {
+          composeTestRule.setContent {
+            EventFormContent(
+                uiState = uiState,
+                onTypeChange = {},
+                onDateClick = {},
+                onStartTimeClick = {},
+                onEndTimeClick = {},
+                onSubjectClick = {},
+                onLocationChange = {},
+                onDescriptionChange = {},
+                taskActions = null,
+            )
+          }
+        }
+
+    assertEquals(
+        context.getString(R.string.event_planning_error_task_actions_required),
+        exception.message,
+    )
+  }
+
+  @Test
+  fun eventFormContentGuardsTasksForGroupSessionsEvenWhenTaskActionsProvided() {
+    val uiState =
+        EventPlanningUiState(
+            eventKind = EventKind.GROUP_SESSION,
+            type = EventType.STUDY_SESSION,
+            subject = "Physics",
+            tasks = listOf(EventTask(text = "Review chapter 1")),
+        )
+
+    composeTestRule.setContent {
+      EventFormContent(
+          uiState = uiState,
+          onTypeChange = {},
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationChange = {},
+          onDescriptionChange = {},
+          taskActions =
+              TaskActions(
+                  onAddTask = {},
+                  onToggleTask = {},
+                  onDeleteTask = {},
+              ),
+      )
+    }
+
+    composeTestRule.onNodeWithTag(FormContentTestTags.TASKS_LABEL).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(Tags.ADD_TASK_BUTTON).assertDoesNotExist()
+    composeTestRule.onNodeWithTag("${FormContentTestTags.TASK_ITEM_PREFIX}0").assertDoesNotExist()
   }
 }

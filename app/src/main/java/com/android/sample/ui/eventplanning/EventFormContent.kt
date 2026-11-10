@@ -49,6 +49,21 @@ import com.android.sample.ui.theme.label
 import java.time.format.DateTimeFormatter
 
 /**
+ * Callbacks for managing tasks within personal events.
+ *
+ * Enforces at compile-time that all task-related actions must be supplied together.
+ *
+ * @property onAddTask Called with a non-blank task title submitted via the keyboard action.
+ * @property onToggleTask Called with the index of the task to toggle completion.
+ * @property onDeleteTask Called with the index of the task to delete.
+ */
+data class TaskActions(
+    val onAddTask: (String) -> Unit,
+    val onToggleTask: (Int) -> Unit,
+    val onDeleteTask: (Int) -> Unit,
+)
+
+/**
  * Renders the complete scrollable form layout shared by personal events and group sessions.
  *
  * Takes [EventPlanningUiState] and user interaction callbacks. Conditionally displays the tasks
@@ -65,9 +80,7 @@ import java.time.format.DateTimeFormatter
  * @param onSubjectClick Invoked when the subject selector is pressed.
  * @param onLocationChange Called when the location field changes.
  * @param onDescriptionChange Called when the description field changes.
- * @param onAddTask Called with a non-blank task title submitted via the keyboard action.
- * @param onToggleTask Called with the index of the task to toggle completion.
- * @param onDeleteTask Called with the index of the task to delete.
+ * @param taskActions Callbacks for managing tasks in personal events; null for group sessions.
  * @param onTypeClick Optional external event-type picker action; when null, uses built-in dropdown.
  */
 @Composable
@@ -84,9 +97,7 @@ fun EventFormContent(
     onSubjectClick: () -> Unit,
     onLocationChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
-    onAddTask: (String) -> Unit,
-    onToggleTask: (Int) -> Unit,
-    onDeleteTask: (Int) -> Unit,
+    taskActions: TaskActions? = null,
     onTypeClick: (() -> Unit)? = null,
 ) {
   val focusManager = LocalFocusManager.current
@@ -274,12 +285,15 @@ fun EventFormContent(
 
     // Tasks (optional, personal events only)
     if (uiState.showTasksSection) {
+      val taskActionsRequiredError =
+          stringResource(R.string.event_planning_error_task_actions_required)
+      requireNotNull(taskActions) { taskActionsRequiredError }
       SectionLabel(
           text = stringResource(R.string.event_planning_tasks_optional_label),
           testTag = FormContentTestTags.TASKS_LABEL,
       )
       AddTaskInputField(
-          onAddTask = onAddTask,
+          onAddTask = taskActions.onAddTask,
           testTag = FormContentTestTags.ADD_TASK_BUTTON,
       )
 
@@ -288,11 +302,11 @@ fun EventFormContent(
             task = task,
             onToggle = {
               focusManager.clearFocus()
-              onToggleTask(index)
+              taskActions.onToggleTask(index)
             },
             onDelete = {
               focusManager.clearFocus()
-              onDeleteTask(index)
+              taskActions.onDeleteTask(index)
             },
             itemTag = "${FormContentTestTags.TASK_ITEM_PREFIX}$index",
             checkboxTag = "${FormContentTestTags.TASK_CHECKBOX_PREFIX}$index",
