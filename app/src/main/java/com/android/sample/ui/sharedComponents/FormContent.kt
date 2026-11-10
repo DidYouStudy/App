@@ -231,7 +231,7 @@ fun FormContent(
     )
     SelectorFieldPill(
         valueText = location,
-        placeholderText = stringResource(R.string.event_planning_select_or_enter_placeholder),
+        placeholderText = stringResource(R.string.event_planning_location_placeholder),
         onClick = {
           focusManager.clearFocus()
           onLocationClick()

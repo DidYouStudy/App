@@ -89,6 +89,7 @@
     <string name="event_planning_subject_optional_label">Subject (optional)</string>
     <string name="event_planning_select_or_enter_placeholder">Select or enter&#8230;</string>
     <string name="event_planning_location_optional_label">Location (optional)</string>
+    <string name="event_planning_location_placeholder">Select location&#8230;</string>
     <string name="event_planning_description_optional_label">Description (optional)</string>
     <string name="event_planning_description_placeholder">Enter description&#8230;</string>
     <string name="event_planning_tasks_optional_label">Tasks (optional)</string>

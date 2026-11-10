@@ -201,6 +201,27 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertNull(viewModel.uiState.value.error)
   }
 
+  /** A failed search after a successful one clears the stale results instead of keeping them. */
+  @Test
+  fun searchLocations_failureAfterSuccess_clearsStaleResults() = runTest {
+    val results = listOf(sampleLocation("BC 01"))
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+        .thenReturn(Result.success(results))
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "ZZ")))
+        .thenReturn(Result.failure(RuntimeException("search failed")))
+    val viewModel = createViewModel()
+
+    viewModel.searchLocations("BC")
+    advanceUntilIdle()
+    assertEquals(results, viewModel.uiState.value.locationSearchResults)
+
+    viewModel.searchLocations("ZZ")
+    advanceUntilIdle()
+
+    assertEquals(emptyList<CampusLocation>(), viewModel.uiState.value.locationSearchResults)
+    assertNull(viewModel.uiState.value.error)
+  }
+
   /** A new search cancels a slower, still-running one, so its stale result is dropped. */
   @Test
   fun searchLocations_newQueryCancelsPreviousSlowQuery() = runTest {
@@ -562,13 +583,21 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertEquals(now, saved.updatedAt)
   }
 
-  /** Successful creation resets form fields, retains suggestions, and raises the added signal. */
+  /**
+   * Successful creation resets form fields, retains subject suggestions and location search
+   * results, and raises the added signal.
+   */
   @Test
   fun addEvent_success_resetsFormKeepsSubjectsAndSignalsAdded() = runTest {
     `when`(eventsRepository.observeSubjects("user123")).thenReturn(subjects("Algebra"))
+    val locations = listOf(sampleLocation("BC 01"))
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+        .thenReturn(Result.success(locations))
     val viewModel = createViewModel()
     viewModel.fillValidForm()
     viewModel.addTask("Read chapter 3")
+    viewModel.searchLocations("BC")
+    advanceUntilIdle()
 
     viewModel.addEvent()
 
@@ -582,6 +611,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertNull(state.endTime)
     assertTrue(state.tasks.isEmpty())
     assertEquals(listOf("Algebra"), state.recommendedSubjects)
+    assertEquals(locations, state.locationSearchResults)
   }
 
   /** Acknowledging a handled creation clears the event-added signal. */
@@ -710,16 +740,22 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertEquals(listOf("id-1", "id-2"), savedEvents(count = 2).map { it.id })
   }
 
-  /** Resetting the form preserves repository-provided subject suggestions. */
+  /** Resetting the form preserves subject suggestions and location search results. */
   @Test
-  fun resetForm_keepsSubjectSuggestions() = runTest {
+  fun resetForm_keepsSubjectSuggestionsAndLocationSearchResults() = runTest {
     `when`(eventsRepository.observeSubjects("user123")).thenReturn(subjects("Algebra"))
+    val locations = listOf(sampleLocation("BC 01"))
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+        .thenReturn(Result.success(locations))
     val viewModel = createViewModel()
     viewModel.setSubject("typed but abandoned")
+    viewModel.searchLocations("BC")
+    advanceUntilIdle()
 
     viewModel.resetForm()
 
     assertEquals(listOf("Algebra"), viewModel.uiState.value.recommendedSubjects)
+    assertEquals(locations, viewModel.uiState.value.locationSearchResults)
   }
 
   /** A second add request is ignored until the first repository save completes. */

@@ -26,7 +26,11 @@ import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.PersonalEvent
+import com.android.sample.model.location.CampusLocation
+import com.android.sample.model.location.CampusLocationFilter
 import com.android.sample.model.location.CampusLocationRepository
+import com.android.sample.model.location.CampusLocationType
+import com.android.sample.model.location.Location
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
 import java.time.Clock
 import java.time.Instant
@@ -93,6 +97,16 @@ class AddEventScreenTest {
 
   private fun createViewModel() =
       EventPlanningViewModel(authRepository, eventsRepository, campusLocationRepository, clock)
+
+  /** Builds a minimal campus location for tests; only the name is usually relevant. */
+  private fun sampleLocation(name: String): CampusLocation =
+      CampusLocation(
+          name = name,
+          zone = "BC",
+          type = CampusLocationType.LECTURE_ROOM,
+          floor = null,
+          location = Location(latitude = 46.52, longitude = 6.56),
+      )
 
   @Test
   fun statelessScreenRendersTopBarFormAndSaveButtonWhenNotSaving() {
@@ -291,6 +305,30 @@ class AddEventScreenTest {
 
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION_INPUT).performTextInput("Quiet zone")
     assertEquals("Quiet zone", viewModel.uiState.value.description)
+  }
+
+  /** Tapping a location picker result end to end sets the ViewModel's location. */
+  @Test
+  fun statefulScreenSelectingLocationFromPickerUpdatesViewModel() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val results = listOf(sampleLocation("BC 01"))
+    runBlocking {
+      `when`(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+          .thenReturn(Result.success(results))
+    }
+    val viewModel = createViewModel()
+
+    composeTestRule.setContent {
+      AddEventScreen(viewModel = viewModel, onBackClick = {}, onEventSaved = {})
+    }
+
+    composeTestRule.onNodeWithTag(Tags.LOCATION_SELECTOR).performClick()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_search_placeholder))
+        .performTextInput("BC")
+    composeTestRule.onNodeWithText("BC 01").performClick()
+
+    assertEquals("BC 01", viewModel.uiState.value.location)
   }
 
   @Test

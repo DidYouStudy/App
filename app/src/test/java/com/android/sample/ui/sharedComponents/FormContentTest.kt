@@ -144,6 +144,36 @@ class FormContentTest {
     assertEquals(0, deletedTaskIndex)
   }
 
+  /** An empty location shows the picker's placeholder, not a blank pill. */
+  @Test
+  fun formContentShowsLocationPlaceholderWhenLocationBlank() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+
+    composeTestRule.setContent {
+      FormContent(
+          type = EventType.COURSE,
+          subject = "Algebra",
+          date = null,
+          startTime = null,
+          endTime = null,
+          location = "",
+          description = "",
+          isSubjectRequired = true,
+          onTypeChange = {},
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationClick = {},
+          onDescriptionChange = {},
+      )
+    }
+
+    composeTestRule
+        .onNodeWithTag(Tags.LOCATION_SELECTOR)
+        .assertTextEquals(context.getString(R.string.event_planning_location_placeholder))
+  }
+
   @Test
   fun formContentRendersWithoutTasksWhenShowTasksSectionFalse() {
     composeTestRule.setContent {
