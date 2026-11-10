@@ -16,13 +16,12 @@ package com.android.sample.model.location
  */
 class SessionPlaceResolver(rooms: List<CampusLocation>) {
 
-  private val roomsByKey: Map<String, CampusLocation> =
-      buildMap {
-        for (room in rooms) {
-          val key = normalize(room.name)
-          if (key.isNotEmpty()) putIfAbsent(key, room)
-        }
-      }
+  private val roomsByKey: Map<String, CampusLocation> = buildMap {
+    for (room in rooms) {
+      val key = normalize(room.name)
+      if (key.isNotEmpty()) putIfAbsent(key, room)
+    }
+  }
 
   /**
    * Returns the room named by [locationText], or `null` when the text is missing, blank or does not
