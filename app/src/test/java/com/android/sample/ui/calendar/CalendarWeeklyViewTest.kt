@@ -6,6 +6,7 @@ import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -25,6 +26,7 @@ import com.android.sample.R
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.PersonalEvent
+import com.android.sample.ui.theme.Dimens
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -86,6 +88,32 @@ class CalendarWeeklyViewTest {
     }
   }
 
+  /** Uses compact week and day headers when the weekly calendar is in landscape. */
+  @Test
+  fun landscapeCalendarUsesCompactHeaders() {
+    composeTestRule.setContent {
+      Box(Modifier.width(800.dp).height(300.dp)) {
+        CalendarWeeklyView(
+            uiState = calendarState(LocalDate.of(2026, 10, 14)),
+            onPreviousWeek = {},
+            onNextWeek = {},
+        )
+      }
+    }
+
+    val weekHeader =
+        composeTestRule.onNodeWithTag(CalendarTestTags.WEEK_HEADER).getUnclippedBoundsInRoot()
+    val dayHeader =
+        composeTestRule.onNodeWithTag(CalendarTestTags.DAY_HEADER).getUnclippedBoundsInRoot()
+
+    assertEquals(Dimens.calendarWeekSwitchHeaderHeightLandscape, weekHeader.bottom - weekHeader.top)
+    assertEquals(Dimens.calendarDayHeaderHeightLandscape, dayHeader.bottom - dayHeader.top)
+    composeTestRule.onNodeWithTag(CalendarTestTags.WEEK_RANGE).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(CalendarTestTags.dayNumber(LocalDate.of(2026, 10, 14)))
+        .assertIsDisplayed()
+  }
+
   /** Shows all seven day labels and gives today's date its visual treatment. */
   @Test
   fun dayHeaderShowsSevenDatesAndHighlightsToday() {
@@ -131,6 +159,60 @@ class CalendarWeeklyViewTest {
     composeTestRule.onNodeWithTag(CalendarTestTags.dayNumber(today)).assertDoesNotExist()
     composeTestRule.onNodeWithTag(CalendarTestTags.NEXT_WEEK).performClick()
     composeTestRule.onNodeWithTag(CalendarTestTags.dayNumber(today)).assertDoesNotExist()
+  }
+
+  /** Keeps the regular header heights when the weekly calendar is in portrait. */
+  @Test
+  fun portraitCalendarUsesRegularHeaders() {
+    composeTestRule.setContent {
+      Box(Modifier.width(360.dp).height(800.dp)) {
+        CalendarWeeklyView(
+            uiState = calendarState(LocalDate.of(2026, 10, 14)),
+            onPreviousWeek = {},
+            onNextWeek = {},
+        )
+      }
+    }
+
+    val weekHeader =
+        composeTestRule.onNodeWithTag(CalendarTestTags.WEEK_HEADER).getUnclippedBoundsInRoot()
+    val dayHeader =
+        composeTestRule.onNodeWithTag(CalendarTestTags.DAY_HEADER).getUnclippedBoundsInRoot()
+
+    assertEquals(Dimens.calendarWeekSwitchHeaderHeight, weekHeader.bottom - weekHeader.top)
+    assertEquals(Dimens.calendarDayHeaderHeight, dayHeader.bottom - dayHeader.top)
+  }
+
+  /** Keeps the hour axis visible and rows readable in the full rotated calendar screen. */
+  @Test
+  fun landscapeCalendarScreenShowsReadableHourAxis() {
+    composeTestRule.setContent {
+      Box(Modifier.width(800.dp).height(360.dp)) {
+        CalendarWeeklyView(
+            uiState = calendarState(LocalDate.of(2026, 10, 14)),
+            onPreviousWeek = {},
+            onNextWeek = {},
+        )
+      }
+    }
+
+    val grid = composeTestRule.onNodeWithTag(CalendarTestTags.TIME_GRID).getUnclippedBoundsInRoot()
+    val eightAm =
+        composeTestRule
+            .onNodeWithTag(CalendarTestTags.hourLabel(8))
+            .assertIsDisplayed()
+            .getUnclippedBoundsInRoot()
+    val nineAm =
+        composeTestRule
+            .onNodeWithTag(CalendarTestTags.hourLabel(9))
+            .assertIsDisplayed()
+            .getUnclippedBoundsInRoot()
+
+    assertTrue("The 8 AM label should not be clipped by the headers", eightAm.top >= grid.top)
+    assertTrue(
+        "Hour rows should remain readable",
+        nineAm.top - eightAm.top >= Dimens.calendarMinHourRowHeight,
+    )
   }
 
   /** Shows the timeline with its initial scroll position at 8 AM. */
