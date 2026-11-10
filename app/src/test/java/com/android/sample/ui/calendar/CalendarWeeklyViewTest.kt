@@ -209,7 +209,10 @@ class CalendarWeeklyViewTest {
             .getUnclippedBoundsInRoot()
 
     assertTrue("The 8 AM label should not be clipped by the headers", eightAm.top >= grid.top)
-    assertTrue("Hour rows should remain readable", nineAm.top - eightAm.top >= Dimens.calendarMinHourRowHeight)
+    assertTrue(
+        "Hour rows should remain readable",
+        nineAm.top - eightAm.top >= Dimens.calendarMinHourRowHeight,
+    )
   }
 
   /** Shows the timeline with its initial scroll position at 8 AM. */
