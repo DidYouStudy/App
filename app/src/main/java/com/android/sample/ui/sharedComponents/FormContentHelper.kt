@@ -81,7 +81,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.android.sample.R
@@ -490,8 +489,8 @@ fun EventDatePickerDialog(
           ),
       modifier =
           Modifier.padding(
-              horizontal = if (isLandscape) Dimens.formHorizontalPadding else 0.dp,
-              vertical = if (isLandscape) 8.dp else 0.dp,
+              horizontal = if (isLandscape) Dimens.formHorizontalPadding else Dimens.noPadding,
+              vertical = if (isLandscape) Dimens.formVerticalPadding else Dimens.noPadding,
           ),
   ) {
     if (isLandscape) {
@@ -500,7 +499,10 @@ fun EventDatePickerDialog(
       val windowInfo = LocalWindowInfo.current
       val density = LocalDensity.current
       val maxLandscapeHeight =
-          with(density) { (windowInfo.containerSize.height.toDp() - 120.dp).coerceAtLeast(200.dp) }
+          with(density) {
+            (windowInfo.containerSize.height.toDp() - Dimens.datePickerMaxLandscapeHeight)
+                .coerceAtLeast(Dimens.datePickerMinimumHeight)
+          }
 
       Box(
           modifier =
