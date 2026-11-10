@@ -24,6 +24,7 @@ import com.android.sample.model.event.PersonalEvent
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
 import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import kotlinx.coroutines.CancellationException
@@ -426,51 +427,8 @@ class EventPlanningViewModel(
       try {
         val result =
             when (state.eventKind) {
-              EventKind.PERSONAL -> {
-                val editing = if (isEditing) editingEvent as? PersonalEvent else null
-                val event =
-                    if (editing == null) {
-                      val id =
-                          pendingEventId
-                              ?: eventsRepository.newEventId().also { pendingEventId = it }
-                      PersonalEvent(
-                          id = id,
-                          ownerId = userId,
-                          details = details,
-                          createdAt = now,
-                          updatedAt = now,
-                          tasks = state.tasks,
-                      )
-                    } else {
-                      editing.copy(
-                          ownerId = userId,
-                          details = details,
-                          updatedAt = now,
-                          tasks = state.tasks,
-                      )
-                    }
-                eventsRepository.saveEvent(event)
-              }
-              EventKind.GROUP_SESSION -> {
-                val editing = if (isEditing) editingEvent as? GroupSession else null
-                val session =
-                    if (editing == null) {
-                      val id =
-                          pendingEventId
-                              ?: groupSessionsRepository.newSessionId().also { pendingEventId = it }
-                      GroupSession(
-                          id = id,
-                          createdBy = userId,
-                          memberIds = listOf(userId),
-                          details = details,
-                          createdAt = now,
-                          updatedAt = now,
-                      )
-                    } else {
-                      editing.copy(details = details, updatedAt = now)
-                    }
-                groupSessionsRepository.saveSession(userId, session)
-              }
+              EventKind.PERSONAL -> savePersonalEvent(userId, details, state.tasks, now, isEditing)
+              EventKind.GROUP_SESSION -> saveGroupSession(userId, details, now, isEditing)
             }
         result
             .onSuccess {
@@ -496,6 +454,63 @@ class EventPlanningViewModel(
         _uiState.update { it.copy(isSaving = false) }
       }
     }
+  }
+
+  /** Saves a [PersonalEvent], preserving its ID and creation timestamp when [isEditing]. */
+  private suspend fun savePersonalEvent(
+      userId: String,
+      details: EventDetails,
+      tasks: List<EventTask>,
+      now: Instant,
+      isEditing: Boolean,
+  ): Result<Unit> {
+    val editing = if (isEditing) editingEvent as? PersonalEvent else null
+    val event =
+        if (editing == null) {
+          val id = pendingEventId ?: eventsRepository.newEventId().also { pendingEventId = it }
+          PersonalEvent(
+              id = id,
+              ownerId = userId,
+              details = details,
+              createdAt = now,
+              updatedAt = now,
+              tasks = tasks,
+          )
+        } else {
+          editing.copy(
+              ownerId = userId,
+              details = details,
+              updatedAt = now,
+              tasks = tasks,
+          )
+        }
+    return eventsRepository.saveEvent(event)
+  }
+
+  /** Saves a [GroupSession], preserving its ID and creation timestamp when [isEditing]. */
+  private suspend fun saveGroupSession(
+      userId: String,
+      details: EventDetails,
+      now: Instant,
+      isEditing: Boolean,
+  ): Result<Unit> {
+    val editing = if (isEditing) editingEvent as? GroupSession else null
+    val session =
+        if (editing == null) {
+          val id =
+              pendingEventId ?: groupSessionsRepository.newSessionId().also { pendingEventId = it }
+          GroupSession(
+              id = id,
+              createdBy = userId,
+              memberIds = listOf(userId),
+              details = details,
+              createdAt = now,
+              updatedAt = now,
+          )
+        } else {
+          editing.copy(details = details, updatedAt = now)
+        }
+    return groupSessionsRepository.saveSession(userId, session)
   }
 
   /** Fills the form from [event] and remembers it for [editEvent]. */
