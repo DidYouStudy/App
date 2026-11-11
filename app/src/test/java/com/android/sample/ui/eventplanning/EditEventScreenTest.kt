@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
 
 import android.content.Context
@@ -25,6 +26,7 @@ import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.PersonalEvent
+import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.location.CampusLocation
 import com.android.sample.model.location.CampusLocationFilter
 import com.android.sample.model.location.CampusLocationRepository
@@ -67,6 +69,7 @@ class EditEventScreenTest {
   private val authRepository: AuthRepository = mock()
   private val eventsRepository: EventsRepository = mock()
   private val campusLocationRepository: CampusLocationRepository = mock()
+  private val groupSessionsRepository: GroupSessionsRepository = mock()
   private val clock = Clock.fixed(Instant.parse("2026-10-27T12:00:00Z"), ZoneId.of("Europe/Berlin"))
   private val storedEvent =
       PersonalEvent(
@@ -109,7 +112,13 @@ class EditEventScreenTest {
 
   private fun createViewModel(): EventPlanningViewModel {
     val viewModel =
-        EventPlanningViewModel(authRepository, eventsRepository, campusLocationRepository, clock)
+        EventPlanningViewModel(
+            authRepository,
+            eventsRepository,
+            campusLocationRepository,
+            groupSessionsRepository,
+            clock,
+        )
     testDispatcher.scheduler.advanceUntilIdle()
     return viewModel
   }
@@ -245,9 +254,7 @@ class EditEventScreenTest {
   @Test
   fun editStatelessScreenShowsRequiredFieldErrorForInvalidEvent() {
     val context = ApplicationProvider.getApplicationContext<Context>()
-    setEditStatelessScreen(
-        uiState = EventPlanningUiState(error = EventPlanningViewModel.INVALID_EVENT_ERROR)
-    )
+    setEditStatelessScreen(uiState = EventPlanningUiState(error = EventPlanningError.INVALID_EVENT))
 
     composeTestRule
         .onNodeWithTag(Tags.ERROR_TEXT)

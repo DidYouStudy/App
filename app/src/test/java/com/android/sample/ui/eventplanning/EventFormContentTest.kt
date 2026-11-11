@@ -365,7 +365,7 @@ class EventFormContentTest {
             startTime = null,
             endTime = null,
             subject = "",
-            error = EventPlanningViewModel.EVENT_DATE_AND_TIMES_REQUIRED_ERROR,
+            error = EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED,
         )
 
     composeTestRule.setContent {
@@ -397,7 +397,7 @@ class EventFormContentTest {
             startTime = null,
             endTime = null,
             subject = "",
-            error = EventPlanningViewModel.FAILED_TO_ADD_EVENT_ERROR,
+            error = EventPlanningError.FAILED_TO_ADD_EVENT,
         )
 
     composeTestRule.setContent {
