@@ -7,6 +7,9 @@ import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTouchInput
+import com.android.sample.model.location.CampusLocation
+import com.android.sample.model.location.CampusLocationType
+import com.android.sample.model.location.Location
 import com.android.sample.ui.theme.Dimens
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.LatLng
@@ -107,5 +110,28 @@ class MapTestDriver(
     const val TAP_SPACING_MS = 800L
     private const val POLL_MS = 50L
     private const val STILL_MS = 300L
+
+    /**
+     * Builds a lecture room for the map tests, named [name] and placed at [location]. Its building
+     * is the first word of the name, as in "AAB 0 26".
+     */
+    fun lectureRoom(name: String, location: Location) =
+        CampusLocation(
+            name,
+            name.substringBefore(' '),
+            CampusLocationType.LECTURE_ROOM,
+            0,
+            location,
+        )
+
+    /**
+     * The point halfway between [first] and [second]. Centring the camera there puts both near the
+     * middle of the screen, whatever its size.
+     */
+    fun midpoint(first: LatLng, second: LatLng) =
+        LatLng(
+            (first.latitude + second.latitude) / 2,
+            (first.longitude + second.longitude) / 2,
+        )
   }
 }

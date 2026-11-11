@@ -16,9 +16,7 @@ import com.android.sample.R
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
-import com.android.sample.model.location.CampusLocation
 import com.android.sample.model.location.CampusLocationRepositoryProvider
-import com.android.sample.model.location.CampusLocationType
 import com.android.sample.model.location.Location
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -49,8 +47,8 @@ class GroupSessionMapContentRealMapTest {
   private val now = Instant.parse("2030-01-01T09:00:00Z")
 
   // Two rooms close enough to both be on screen at the start zoom.
-  private val aab = room("AAB 0 26", Location(46.5191, 6.5660))
-  private val cm = room("CM 1 121", Location(46.5191, 6.5676))
+  private val aab = MapTestDriver.lectureRoom("AAB 0 26", Location(46.5191, 6.5660))
+  private val cm = MapTestDriver.lectureRoom("CM 1 121", Location(46.5191, 6.5676))
   private val rooms =
       listOf(
           RoomSessions(aab, listOf(item("s1", "Maths"), item("s2", "Physics"))),
@@ -59,9 +57,6 @@ class GroupSessionMapContentRealMapTest {
 
   private lateinit var camera: CameraPositionState
   private val map = MapTestDriver(composeTestRule) { camera }
-
-  private fun room(name: String, location: Location) =
-      CampusLocation(name, name.substringBefore(' '), CampusLocationType.LECTURE_ROOM, 0, location)
 
   private fun item(id: String, subject: String) =
       GroupSessionItem(
@@ -110,14 +105,7 @@ class GroupSessionMapContentRealMapTest {
   private fun previewRoom(name: String) = checkNotNull(previewRooms[name])
 
   private fun betweenThePreviewRooms() =
-      previewRoom(PREVIEW_FIRST_ROOM).let { first ->
-        previewRoom(PREVIEW_SECOND_ROOM).let { second ->
-          LatLng(
-              (first.latitude + second.latitude) / 2,
-              (first.longitude + second.longitude) / 2,
-          )
-        }
-      }
+      MapTestDriver.midpoint(previewRoom(PREVIEW_FIRST_ROOM), previewRoom(PREVIEW_SECOND_ROOM))
 
   /** Shows the preview, with the camera on both of its rooms. */
   private fun showPreview() {
@@ -157,30 +145,17 @@ class GroupSessionMapContentRealMapTest {
   private fun isShown(text: String) =
       composeTestRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
 
+  /** Tapping a pin opens the cards of its room only; tapping another pin switches to its cards. */
   @Test
-  fun beforeAnyTap_noListIsShown() {
+  fun tappingPins_showsTheCardsOfTheTappedRoomOnly() {
     showContent()
-
-    assert(!listIsShown())
-  }
-
-  @Test
-  fun tappingAPin_showsTheCardsOfThatRoomOnly() {
-    showContent()
+    assert(!listIsShown()) // no list before any tap
 
     map.tapPinUntil(aab.location.toLatLng()) { listIsShown() }
-
     composeTestRule.onNodeWithText("Maths").assertIsDisplayed()
     assert(!isShown("Chemistry"))
-  }
-
-  @Test
-  fun tappingAnotherPin_switchesToThatRoomsCards() {
-    showContent()
-    map.tapPinUntil(aab.location.toLatLng()) { listIsShown() }
 
     map.tapPinUntil(cm.location.toLatLng()) { isShown("Chemistry") }
-
     assert(!isShown("Maths"))
   }
 
@@ -196,46 +171,25 @@ class GroupSessionMapContentRealMapTest {
     composeTestRule.waitUntil(MapTestDriver.TIMEOUT_MS) { !listIsShown() }
   }
 
+  /** The preview shows no cards at first, then the session cards of whichever room is tapped. */
   @Test
-  fun preview_beforeAnyTap_showsNoCards() {
+  fun preview_tappingEachRoomsPin_showsItsSessionCards() {
     showPreview()
-
-    assert(!listIsShown())
-  }
-
-  @Test
-  fun preview_tappingTheFirstRoomsPin_showsItsSessionCards() {
-    showPreview()
+    assert(!listIsShown()) // no cards before any tap
 
     map.tapPinUntil(previewRoom(PREVIEW_FIRST_ROOM)) { listIsShown() }
-
     composeTestRule.onNodeWithText("Linear Algebra").assertIsDisplayed()
     composeTestRule
         .onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST)
         .performScrollToNode(hasText("Software Architecture"))
     composeTestRule.onNodeWithText("Software Architecture").assertIsDisplayed()
     assert(!isShown("Thermodynamics"))
-  }
 
-  @Test
-  fun preview_tappingTheSecondRoomsPin_showsItsSessionCard() {
-    showPreview()
-
-    map.tapPinUntil(previewRoom(PREVIEW_SECOND_ROOM)) { listIsShown() }
-
-    composeTestRule.onNodeWithText("Thermodynamics").assertIsDisplayed()
-    assert(!isShown("Linear Algebra"))
-  }
-
-  @Test
-  fun preview_tappingTheOtherRoomsPin_switchesTheCards() {
-    showPreview()
-    map.tapPinUntil(previewRoom(PREVIEW_FIRST_ROOM)) { listIsShown() }
+    // The first tap zoomed in, so bring the other room back on the screen.
     showBothPreviewRooms()
-
     map.tapPinUntil(previewRoom(PREVIEW_SECOND_ROOM)) { isShown("Thermodynamics") }
-
     assert(!isShown("Linear Algebra"))
+    assert(!isShown("Software Architecture"))
   }
 
   private companion object {

@@ -8,8 +8,6 @@ import androidx.core.content.res.ResourcesCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.sample.R
-import com.android.sample.model.location.CampusLocation
-import com.android.sample.model.location.CampusLocationType
 import com.android.sample.model.location.Location
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -37,24 +35,18 @@ class GroupSessionMapViewTest {
   private val defaultZoom = resourceFloat(R.dimen.map_default_zoom)
   private val focusZoom = resourceFloat(R.dimen.map_focus_zoom)
 
-  private val first = room("AAB 0 26", Location(46.5207473, 6.5632687))
-  private val second = room("CM 1 121", Location(46.5205949, 6.5676836))
+  private val first = MapTestDriver.lectureRoom("AAB 0 26", Location(46.5207473, 6.5632687))
+  private val second = MapTestDriver.lectureRoom("CM 1 121", Location(46.5205949, 6.5676836))
 
   // Halfway between the two pins, so both are near the middle of the screen at the start zoom, on
   // whatever size of screen the test runs.
   private val betweenThePins =
-      LatLng(
-          (first.location.latitude + second.location.latitude) / 2,
-          (first.location.longitude + second.location.longitude) / 2,
-      )
+      MapTestDriver.midpoint(first.location.toLatLng(), second.location.toLatLng())
 
   private lateinit var camera: CameraPositionState
   private val map = MapTestDriver(composeTestRule) { camera }
   private var tappedRoom: String? = null
   private var mapClicks = 0
-
-  private fun room(name: String, location: Location) =
-      CampusLocation(name, name.substringBefore(' '), CampusLocationType.LECTURE_ROOM, 0, location)
 
   private fun resourceFloat(id: Int): Float = ResourcesCompat.getFloat(resources, id)
 
@@ -107,28 +99,16 @@ class GroupSessionMapViewTest {
     waitForCameraAt(campusCenter, minZoom = defaultZoom)
   }
 
+  /**
+   * Tapping a pin reports its room and moves the camera onto it, and the tap is not also reported
+   * as a click on the map.
+   */
   @Test
-  fun tappingAPin_reportsItsRoom() {
+  fun tappingAPin_reportsItsRoomAndFocusesItWithoutAMapClick() {
     showMap(startAt = betweenThePins)
 
-    map.tapPinUntil(second.location.toLatLng()) { tappedRoom != null }
-
-    assertEquals(second.name, tappedRoom)
-  }
-
-  @Test
-  fun tappingAPin_movesTheCameraOntoItAtLeastToTheFocusZoom() {
-    showMap(startAt = betweenThePins)
-
-    map.tapPinUntil(second.location.toLatLng()) { tappedRoom != null }
-
-    waitForCameraAt(second.location, minZoom = focusZoom, maxZoom = 21f)
-  }
-
-  @Test
-  fun tappingAPin_doesNotReportAMapClick() {
-    showMap(startAt = betweenThePins)
     map.tapPinUntil(first.location.toLatLng()) { tappedRoom != null }
+    assertEquals(first.name, tappedRoom)
     waitForCameraAt(first.location, minZoom = focusZoom, maxZoom = 21f)
     // Taps that missed the pin while it was being drawn report their map clicks late.
     Thread.sleep(MapTestDriver.TAP_SPACING_MS)
@@ -139,6 +119,7 @@ class GroupSessionMapViewTest {
     assertTrue(map.waitFor { tappedRoom != null })
     Thread.sleep(MapTestDriver.TAP_SPACING_MS)
 
+    assertEquals(first.name, tappedRoom)
     assertEquals(clicksBefore, mapClicks)
   }
 
