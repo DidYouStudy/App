@@ -27,10 +27,8 @@ import com.android.sample.R
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
-import com.android.sample.model.location.CampusLocation
 import com.android.sample.model.location.CampusLocationRepositoryProvider
 import com.android.sample.model.location.Location
-import com.android.sample.model.location.SessionMarkers
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
@@ -45,43 +43,19 @@ object GroupSessionMapTestTags {
 }
 
 /**
- * The sessions held in one campus room, as the cards need them.
- *
- * @property room Room the sessions take place in.
- * @property items One list item per session, with the current user's membership; never empty.
- */
-data class RoomSessions(val room: CampusLocation, val items: List<GroupSessionItem>) {
-  init {
-    require(items.isNotEmpty()) { "A room must have at least one session" }
-  }
-}
-
-/**
- * Pairs each marker's room with the list items of its sessions, found by session ID in [items].
- * Markers keep their order, and a marker none of whose sessions is in [items] is dropped.
- */
-fun SessionMarkers.toRoomSessions(items: List<GroupSessionItem>): List<RoomSessions> {
-  val itemsById = items.associateBy { it.session.id }
-  return markers.mapNotNull { marker ->
-    val roomItems = marker.sessions.mapNotNull { itemsById[it.id] }
-    if (roomItems.isEmpty()) null else RoomSessions(marker.room, roomItems)
-  }
-}
-
-/**
  * The map view of the group session screen: a pin per room, and, once a pin is tapped, the cards of
  * the sessions held in that room in a list at the bottom. Tapping the map away from a pin closes
  * the list.
  *
  * The map moves its own camera onto a tapped pin; this composable only remembers which room is
- * selected.
+ * selected. When first shown, the camera moves to the campus centre.
  *
  * @param rooms Rooms that have sessions, each with its sessions' list items.
  * @param now Reference time of the cards' relative labels.
  * @param onJoin Called with the session ID when a card's join button is pressed.
  * @param onLeave Called with the session ID when a card's leave button is pressed.
  * @param initialSelectedRoom Name of the room selected when the map first appears, or null for
- *   none. Mainly for previews, which cannot tap a pin.
+ *   none. Mainly for tests of the cards, which cannot tap a pin on the stand-in map.
  * @param cameraPositionState Camera of the map, passed on to [GroupSessionMapView] for a caller
  *   that needs to read or move it, such as instrumented tests; by default the map makes its own.
  */
@@ -96,8 +70,7 @@ fun GroupSessionMapContent(
     cameraPositionState: CameraPositionState? = null,
 ) {
   var selectedRoom by rememberSaveable { mutableStateOf(initialSelectedRoom) }
-  val markers =
-      remember(rooms) { rooms.map { MapMarkerUi(it.room.name, it.room.location, it.items.size) } }
+  val campusRooms = remember(rooms) { rooms.map { it.room } }
   val selected = rooms.firstOrNull { it.room.name == selectedRoom }
   val maxListHeightFraction = floatResource(R.dimen.map_session_list_max_height_fraction)
   val campusCenter =
@@ -108,7 +81,7 @@ fun GroupSessionMapContent(
 
   BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     GroupSessionMapView(
-        markers = markers,
+        rooms = campusRooms,
         cameraTarget = campusCenter,
         onMarkerClick = { selectedRoom = it },
         onMapClick = { selectedRoom = null },

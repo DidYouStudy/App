@@ -11,6 +11,10 @@ package com.android.sample.model.location
  *
  * Build one resolver per list of rooms and reuse it for every session.
  *
+ * Not used by the app yet: it is meant for when the map is wired to the group sessions ViewModel,
+ * which would build one resolver from the rooms of the campus location repository and use it to
+ * place the screen's sessions on the map (see `groupByRoom`).
+ *
  * @param rooms Campus rooms the text can resolve to. If two rooms normalize to the same name, the
  *   first one in the list wins.
  */

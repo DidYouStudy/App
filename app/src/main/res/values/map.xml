@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Co-authored-by: Claude Sonnet 5.5 -->
 <resources>
-    <!-- Where the camera first looks: the centre of the EPFL campus. Read by GroupSessionMapView. -->
+    <!-- Where the camera first looks: the centre of the EPFL campus. Read by GroupSessionMapView
+         and GroupSessionMapContent. -->
     <item name="map_campus_center_latitude" type="dimen" format="float">46.5191</item>
     <item name="map_campus_center_longitude" type="dimen" format="float">6.5668</item>
 

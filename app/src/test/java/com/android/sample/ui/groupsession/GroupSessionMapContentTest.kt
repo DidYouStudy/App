@@ -18,17 +18,16 @@ import com.android.sample.model.event.GroupSession
 import com.android.sample.model.location.CampusLocation
 import com.android.sample.model.location.CampusLocationType
 import com.android.sample.model.location.Location
-import com.android.sample.model.location.RoomMarker
-import com.android.sample.model.location.SessionMarkers
 import java.time.Instant
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Tests of the map view's pins-to-sessions flow, with the real Google map replaced by its stand-in.
+ * Tests of [GroupSessionMapContent]'s selection and cards, with the real Google map replaced by its
+ * stand-in. The stand-in has no pins, so a room is selected through `initialSelectedRoom`; tapping
+ * the pins themselves is tested in the instrumented `GroupSessionMapContentRealMapTest`.
  */
 @RunWith(AndroidJUnit4::class)
 class GroupSessionMapContentTest {
@@ -73,14 +72,6 @@ class GroupSessionMapContentTest {
   private val chemistry = item("s3", "Chemistry")
   private val rooms =
       listOf(RoomSessions(aab, listOf(maths, physics)), RoomSessions(cm, listOf(chemistry)))
-
-  private fun setPreviewContent() {
-    composeTestRule.setContent {
-      CompositionLocalProvider(LocalInspectionMode provides true) {
-        GroupSessionMapContentPreview()
-      }
-    }
-  }
 
   private fun setContent(onJoin: (String) -> Unit = {}, initialSelectedRoom: String? = null) {
     composeTestRule.setContent {
@@ -172,48 +163,6 @@ class GroupSessionMapContentTest {
     composeTestRule.onNodeWithText(JOIN_LABEL).performClick()
 
     assertEquals("s3", joined)
-  }
-
-  @Test
-  fun toRoomSessions_pairsMarkersWithTheirItems() {
-    val markers =
-        SessionMarkers(
-            markers =
-                listOf(
-                    RoomMarker(cm, listOf(chemistry.session)),
-                    RoomMarker(aab, listOf(maths.session, physics.session)),
-                ),
-            unplacedCount = 0,
-        )
-
-    val result = markers.toRoomSessions(listOf(maths, physics, chemistry))
-
-    assertEquals(
-        listOf(RoomSessions(cm, listOf(chemistry)), RoomSessions(aab, listOf(maths, physics))),
-        result,
-    )
-  }
-
-  @Test
-  fun toRoomSessions_dropsMarkersWhoseSessionsAreNotInTheItems() {
-    val markers =
-        SessionMarkers(
-            markers =
-                listOf(
-                    RoomMarker(aab, listOf(maths.session)),
-                    RoomMarker(cm, listOf(chemistry.session)),
-                ),
-            unplacedCount = 0,
-        )
-
-    val result = markers.toRoomSessions(listOf(chemistry))
-
-    assertEquals(listOf(RoomSessions(cm, listOf(chemistry))), result)
-  }
-
-  @Test
-  fun roomSessions_withoutItems_isRejected() {
-    assertTrue(runCatching { RoomSessions(aab, emptyList()) }.isFailure)
   }
 
   private companion object {

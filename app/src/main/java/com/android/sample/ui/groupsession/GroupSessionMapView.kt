@@ -31,6 +31,7 @@ import androidx.compose.ui.res.integerResource
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.res.ResourcesCompat
 import com.android.sample.R
+import com.android.sample.model.location.CampusLocation
 import com.android.sample.model.location.Location
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
@@ -48,33 +49,34 @@ import kotlinx.coroutines.launch
 /**
  * Map of the campus with one pin per room.
  *
- * It is the only composable that touches Google Maps, so the rest of the screen stays free of map
- * types and can be tested without the real map. It holds no selection: tapping a pin moves the
- * camera onto it and reports the room to the caller, which decides what to show.
+ * It is the only composable that draws Google Maps, so the rest of the screen stays free of map
+ * types, apart from the optional camera passed through for tests, and can be tested without the
+ * real map. It holds no selection: tapping a pin moves the camera onto it and reports the room to
+ * the caller, which decides what to show.
  *
  * A button in the top-right corner moves the camera back to the campus centre at the default zoom.
  *
  * Needs a Maps API key in the app manifest; without one the map stays blank.
  *
- * @param markers Markers to draw.
+ * @param rooms Rooms to draw a pin for, at their coordinates.
  * @param cameraTarget Place to move the camera to whenever it changes, for moves the caller starts;
  *   null keeps the camera where the user left it.
- * @param onMarkerClick Called with the room name when a marker is tapped, after the camera starts
+ * @param onMarkerClick Called with the room name when a pin is tapped, after the camera starts
  *   moving onto it.
- * @param onMapClick Called when the map is tapped away from any marker.
+ * @param onMapClick Called when the map is tapped away from any pin.
  * @param cameraPositionState Camera of the map, for a caller that needs to read or move it, such as
  *   instrumented tests; by default a camera on the campus centre at the default zoom.
  */
 @Composable
 fun GroupSessionMapView(
-    markers: List<MapMarkerUi>,
+    rooms: List<CampusLocation>,
     cameraTarget: Location?,
     onMarkerClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     onMapClick: () -> Unit = {},
     cameraPositionState: CameraPositionState? = null,
 ) {
-  // The real map cannot load in the IDE preview, so it shows a stand-in listing the markers.
+  // The real map cannot load in the IDE preview, so it shows a stand-in.
   if (LocalInspectionMode.current) {
     MapPlaceholder(onMapClick, modifier)
     return
@@ -119,13 +121,13 @@ fun GroupSessionMapView(
         cameraPositionState = cameraPositionState,
         onMapClick = { onMapClick() },
     ) {
-      markers.forEach { marker ->
+      rooms.forEach { room ->
         MarkerComposable(
-            marker.roomName,
-            state = rememberUpdatedMarkerState(position = marker.location.toLatLng()),
+            room.name,
+            state = rememberUpdatedMarkerState(position = room.location.toLatLng()),
             onClick = {
-              scope.launch { focusOn(marker.location) }
-              onMarkerClick(marker.roomName)
+              scope.launch { focusOn(room.location) }
+              onMarkerClick(room.name)
               // Consumed: the camera move above replaces the map's default one.
               true
             },
