@@ -33,5 +33,5 @@ fun groupByRoom(items: List<GroupSessionItem>, resolver: SessionPlaceResolver): 
     val room = resolver.resolve(item.session.details.location) ?: continue
     byRoom.getOrPut(room) { mutableListOf() }.add(item)
   }
-  return byRoom.map { (room, grouped) -> RoomSessions(room, grouped) }
+  return byRoom.map { (room, grouped) -> RoomSessions(room, grouped.toList()) }
 }

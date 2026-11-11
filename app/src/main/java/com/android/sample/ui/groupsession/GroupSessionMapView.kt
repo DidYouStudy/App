@@ -25,8 +25,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.integerResource
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.res.ResourcesCompat
@@ -214,10 +214,13 @@ private fun MapPlaceholder(onMapClick: () -> Unit, modifier: Modifier = Modifier
   }
 }
 
-/** Reads a plain number declared as a float item in `res/values`, like `integerResource`. */
+/**
+ * Reads a plain number declared as a float item in `res/values`, like `integerResource`. It reads
+ * through [LocalResources], so it is read again if the configuration changes.
+ */
 @Composable
 internal fun floatResource(@DimenRes id: Int): Float =
-    ResourcesCompat.getFloat(LocalContext.current.resources, id)
+    ResourcesCompat.getFloat(LocalResources.current, id)
 
 /** Google Maps positions use the same degrees as [Location]. */
 internal fun Location.toLatLng(): LatLng = LatLng(latitude, longitude)
