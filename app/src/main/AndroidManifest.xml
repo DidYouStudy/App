@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Co-authored-by: Claude Opus 5.5 -->
 <!-- Co-authored-by: OpenAI Codex <noreply@openai.com> -->
+<!-- Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com> -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Device position for AndroidLocationProvider. Approximate is enough to work; precise gives
+         better distances when the user grants it. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <!-- Keep authentication state and private Firestore data out of system backups. -->
     <application
