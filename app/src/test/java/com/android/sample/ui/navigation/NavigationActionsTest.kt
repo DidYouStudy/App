@@ -6,6 +6,7 @@ import androidx.navigation.NavDestination
 import androidx.navigation.NavHostController
 import com.android.sample.ui.eventplanning.EventKind
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mockito.Mockito.mock
@@ -115,6 +116,26 @@ class NavigationActionsTest {
         Screen.EditEvent("e1", EventKind.GROUP_SESSION).route,
     )
     assertEquals("edit_event/{eventId}?kind={kind}", Screen.EditEvent.ROUTE)
+  }
+
+  /** Verifies that [Screen.EditEvent] defaults to [EventKind.PERSONAL] when kind is omitted. */
+  @Test
+  fun editEventDefaultsToPersonalKind() {
+    val editEvent = Screen.EditEvent("session-42")
+    assertEquals(EventKind.PERSONAL, editEvent.kind)
+    assertEquals("edit_event/session-42?kind=PERSONAL", editEvent.route)
+  }
+
+  /**
+   * Verifies that [Screen.AddEvent] and [Screen.AddGroupSession] are configured as non-top-level
+   * destinations.
+   */
+  @Test
+  fun addRoutesAreDistinctNonTopLevel() {
+    assertFalse(Screen.AddEvent.isTopLevelDestination)
+    assertFalse(Screen.AddGroupSession.isTopLevelDestination)
+    assertEquals("AddEvent", Screen.AddEvent.name)
+    assertEquals("AddGroupSession", Screen.AddGroupSession.name)
   }
 
   @Test

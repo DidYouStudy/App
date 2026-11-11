@@ -348,6 +348,29 @@ class NavigationTests {
     composeTestRule.onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON).performClick()
 
     checkAddEventScreenIsDisplayed()
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.BACK_BUTTON).performClick()
+    checkDashboardScreenIsDisplayed()
+  }
+
+  @Test
+  fun canNavigateToAddGroupSessionFromDashboardFabMenu() {
+    checkDashboardScreenIsDisplayed()
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.FAB_MENU_GROUP_SESSION_BUTTON)
+        .performClick()
+
+    checkAddEventScreenIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventPlanningScreenTestTags.TOP_BAR_TITLE)
+        .assertTextContains(
+            composeTestRule.activity.getString(com.android.sample.R.string.group_session_add_title)
+        )
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.ADD_TASK_BUTTON).assertDoesNotExist()
+
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.BACK_BUTTON).performClick()
+    checkDashboardScreenIsDisplayed()
   }
 
   @Test

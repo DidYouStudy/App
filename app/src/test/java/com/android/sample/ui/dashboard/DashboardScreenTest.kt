@@ -144,4 +144,30 @@ class DashboardScreenTest {
 
     verify(navActions).navigateTo(Screen.AddGroupSession)
   }
+
+  /**
+   * Verifies that clicking on the FAB items when no navigation actions instance is provided
+   * executes safely as a no-op without throwing an exception.
+   */
+  @Test
+  fun fabMenuClickWithNullNavigationActionsDoesNotCrash() {
+    composeTestRule.setContent { DashboardScreen(navigationActions = null) }
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.FAB_MENU_GROUP_SESSION_BUTTON)
+        .performClick()
+  }
+
+  /** Verifies that the preview composable renders cleanly without crashing. */
+  @Test
+  fun dashboardScreenPreviewRendersWithoutCrash() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    composeTestRule.setContent { DashBoardScreenPreview() }
+    composeTestRule
+        .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
+        .assertTextEquals(context.getString(R.string.dashboard_title))
+  }
 }

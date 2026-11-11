@@ -14,6 +14,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
@@ -623,5 +624,43 @@ class EditEventScreenTest {
         .onNodeWithTag(Tags.TOP_BAR_TITLE)
         .assertIsDisplayed()
         .assertTextEquals(context.getString(R.string.group_session_edit_title))
+  }
+
+  /**
+   * Verifies that the task management section is displayed when editing a personal event, but
+   * hidden when editing a group session.
+   */
+  @Test
+  fun editEventScreen_displaysTaskSection_forPersonalEvent() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      EditEventScreen(
+          eventId = "personal-1",
+          eventKind = EventKind.PERSONAL,
+          viewModel = viewModel,
+          onBackClick = {},
+          onEventSaved = {},
+          onEventDelete = {},
+      )
+    }
+    finishPendingComposeAndViewModelWork()
+    composeTestRule.onNodeWithTag(Tags.ADD_TASK_BUTTON).performScrollTo().assertIsDisplayed()
+  }
+
+  @Test
+  fun editEventScreen_hidesTaskSection_forGroupSession() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      EditEventScreen(
+          eventId = "group-1",
+          eventKind = EventKind.GROUP_SESSION,
+          viewModel = viewModel,
+          onBackClick = {},
+          onEventSaved = {},
+          onEventDelete = {},
+      )
+    }
+    finishPendingComposeAndViewModelWork()
+    composeTestRule.onNodeWithTag(Tags.ADD_TASK_BUTTON).assertDoesNotExist()
   }
 }

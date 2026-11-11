@@ -573,4 +573,36 @@ class AddEventScreenTest {
         .assertIsDisplayed()
         .assertTextEquals(context.getString(R.string.group_session_add_title))
   }
+
+  /**
+   * Verifies that the task management section is displayed when planning a personal event, but
+   * hidden when planning a group session.
+   */
+  @Test
+  fun addEventScreen_displaysTaskSection_forPersonalEvent() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      AddEventScreen(
+          viewModel = viewModel,
+          initialKind = EventKind.PERSONAL,
+          onBackClick = {},
+          onEventSaved = {},
+      )
+    }
+    composeTestRule.onNodeWithTag(Tags.ADD_TASK_BUTTON).performScrollTo().assertIsDisplayed()
+  }
+
+  @Test
+  fun addEventScreen_hidesTaskSection_forGroupSession() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      AddEventScreen(
+          viewModel = viewModel,
+          initialKind = EventKind.GROUP_SESSION,
+          onBackClick = {},
+          onEventSaved = {},
+      )
+    }
+    composeTestRule.onNodeWithTag(Tags.ADD_TASK_BUTTON).assertDoesNotExist()
+  }
 }
