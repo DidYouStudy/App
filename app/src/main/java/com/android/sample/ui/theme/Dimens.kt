@@ -109,4 +109,8 @@ object Dimens {
   val subjectPickerMaxHeight = 350.dp
   val locationPickerMaxHeight = 350.dp
   val noPadding = 0.dp
+  val datePickerInputHeight = 260.dp
+  val datePickerCalendarHeight = 512.dp
+  val datePickerMaxLandscapeHeight = 120.dp
+  val datePickerMinimumHeight = 200.dp
 }
