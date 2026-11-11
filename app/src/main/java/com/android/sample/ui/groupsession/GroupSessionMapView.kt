@@ -80,10 +80,11 @@ fun GroupSessionMapView(
     return
   }
 
-  val campusCenter = LatLng(
-      floatResource(R.dimen.map_campus_center_latitude).toDouble(),
-      floatResource(R.dimen.map_campus_center_longitude).toDouble(),
-  )
+  val campusCenter =
+      LatLng(
+          floatResource(R.dimen.map_campus_center_latitude).toDouble(),
+          floatResource(R.dimen.map_campus_center_longitude).toDouble(),
+      )
   val defaultZoom = floatResource(R.dimen.map_default_zoom)
   val focusZoom = floatResource(R.dimen.map_focus_zoom)
   val cameraAnimationMs = integerResource(R.integer.map_camera_animation_ms)
