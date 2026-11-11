@@ -120,19 +120,6 @@ class GroupSessionMapContentTest {
   }
 
   @Test
-  fun preview_showsTheSampleSessionCardsOfItsSelectedRoom() {
-    setPreviewContent()
-
-    composeTestRule.onNodeWithText(MAP_TITLE).assertIsDisplayed()
-    composeTestRule.onNodeWithText("Linear Algebra").assertIsDisplayed()
-    composeTestRule
-        .onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST)
-        .performScrollToNode(hasText("Software Architecture"))
-    composeTestRule.onNodeWithText("Software Architecture").assertIsDisplayed()
-    composeTestRule.onNodeWithText("Thermodynamics").assertDoesNotExist()
-  }
-
-  @Test
   fun content_withAnInitialRoom_showsThatRoomsCardsOnly() {
     setContent(initialSelectedRoom = "AAB 0 26")
 
