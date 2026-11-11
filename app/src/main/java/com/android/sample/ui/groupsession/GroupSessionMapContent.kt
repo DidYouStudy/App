@@ -33,6 +33,7 @@ import com.android.sample.model.location.SessionMarkers
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
+import com.google.maps.android.compose.CameraPositionState
 import java.time.Instant
 
 /** Test tags of the map content. */
@@ -79,6 +80,8 @@ fun SessionMarkers.toRoomSessions(items: List<GroupSessionItem>): List<RoomSessi
  * @param onLeave Called with the session ID when a card's leave button is pressed.
  * @param initialSelectedRoom Name of the room selected when the map first appears, or null for
  *   none. Mainly for previews, which cannot tap a pin.
+ * @param cameraPositionState Camera of the map, passed on to [GroupSessionMapView] for a caller
+ *   that needs to read or move it, such as instrumented tests; by default the map makes its own.
  */
 @Composable
 fun GroupSessionMapContent(
@@ -88,19 +91,26 @@ fun GroupSessionMapContent(
     onLeave: (String) -> Unit,
     modifier: Modifier = Modifier,
     initialSelectedRoom: String? = null,
+    cameraPositionState: CameraPositionState? = null,
 ) {
   var selectedRoom by rememberSaveable { mutableStateOf(initialSelectedRoom) }
   val markers =
       remember(rooms) { rooms.map { MapMarkerUi(it.room.name, it.room.location, it.items.size) } }
   val selected = rooms.firstOrNull { it.room.name == selectedRoom }
   val maxListHeightFraction = floatResource(R.dimen.map_session_list_max_height_fraction)
+  val campusCenter =
+      Location(
+          floatResource(R.dimen.map_campus_center_latitude).toDouble(),
+          floatResource(R.dimen.map_campus_center_longitude).toDouble(),
+      )
 
   BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     GroupSessionMapView(
         markers = markers,
-        cameraTarget = null,
+        cameraTarget = campusCenter,
         onMarkerClick = { selectedRoom = it },
         onMapClick = { selectedRoom = null },
+        cameraPositionState = cameraPositionState,
     )
     if (selected != null) {
       SessionCardList(

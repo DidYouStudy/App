@@ -1,19 +1,14 @@
 // Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.groupsession
 
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTouchInput
 import androidx.core.content.res.ResourcesCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.sample.R
 import com.android.sample.model.location.Location
-import com.android.sample.ui.theme.Dimens
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.CameraPositionState
@@ -45,6 +40,7 @@ class GroupSessionMapViewTest {
   private val second = MapMarkerUi("CM 1 121", Location(46.5191, 6.5676), count = 1)
 
   private lateinit var camera: CameraPositionState
+  private val map = MapTestDriver(composeTestRule) { camera }
   private var tappedRoom: String? = null
   private var mapClicks = 0
 
@@ -64,14 +60,11 @@ class GroupSessionMapViewTest {
           cameraPositionState = camera,
       )
     }
-    // The projection exists once the map is ready.
-    composeTestRule.waitUntil(TIMEOUT_MS) {
-      composeTestRule.runOnUiThread { camera.projection != null }
-    }
+    map.waitForMap()
   }
 
   private fun waitForCameraAt(target: Location, minZoom: Float, maxZoom: Float = minZoom) {
-    composeTestRule.waitUntil(TIMEOUT_MS) {
+    composeTestRule.waitUntil(MapTestDriver.TIMEOUT_MS) {
       val position = camera.position
       !camera.isMoving &&
           abs(position.target.latitude - target.latitude) < POSITION_TOLERANCE &&
@@ -79,44 +72,6 @@ class GroupSessionMapViewTest {
           position.zoom >= minZoom - ZOOM_TOLERANCE &&
           position.zoom <= maxZoom + ZOOM_TOLERANCE
     }
-  }
-
-  /** Where [location] is on the screen; Google Maps answers only on the main thread. */
-  private fun screenLocation(location: LatLng) = composeTestRule.runOnUiThread {
-    checkNotNull(camera.projection).toScreenLocation(location)
-  }
-
-  /** Taps on the pin of [marker]: its tip is on the coordinates, so the body is above them. */
-  private fun tapPin(marker: MapMarkerUi) {
-    val tip = screenLocation(marker.location.toLatLng())
-    val halfPin = with(composeTestRule.density) { Dimens.mapMarkerHeight.toPx() } / 2
-    composeTestRule.onRoot().performTouchInput { click(Offset(tip.x.toFloat(), tip.y - halfPin)) }
-  }
-
-  /**
-   * The pins are drawn a moment after the map, so the first taps land on the map. Each tap waits
-   * for the pin's report before the next one: the report arrives a moment after the tap, and any
-   * touch cancels the camera move the report starts. The wait also spaces the taps out, because
-   * taps in quick succession count as a double tap, which zooms the map and moves the pin from
-   * under the next tap.
-   */
-  private fun tapPinUntilReported(marker: MapMarkerUi) {
-    composeTestRule.waitUntil(TIMEOUT_MS) {
-      composeTestRule.waitUntil(TIMEOUT_MS) { !camera.isMoving }
-      tapPin(marker)
-      waitForPinReport()
-    }
-  }
-
-  /** Waits up to [TAP_SPACING_MS] for a pin tap to be reported; returns whether it was. */
-  private fun waitForPinReport(): Boolean {
-    val end = System.currentTimeMillis() + TAP_SPACING_MS
-    while (System.currentTimeMillis() < end) {
-      composeTestRule.waitForIdle()
-      if (tappedRoom != null) return true
-      Thread.sleep(POLL_MS)
-    }
-    return false
   }
 
   @Test
@@ -141,7 +96,7 @@ class GroupSessionMapViewTest {
   fun tappingAPin_reportsItsRoom() {
     showMap()
 
-    tapPinUntilReported(second)
+    map.tapPinUntil(second.location.toLatLng()) { tappedRoom != null }
 
     assertEquals("CM 1 121", tappedRoom)
   }
@@ -150,7 +105,7 @@ class GroupSessionMapViewTest {
   fun tappingAPin_movesTheCameraOntoItAtLeastToTheFocusZoom() {
     showMap()
 
-    tapPinUntilReported(second)
+    map.tapPinUntil(second.location.toLatLng()) { tappedRoom != null }
 
     waitForCameraAt(second.location, minZoom = focusZoom, maxZoom = 21f)
   }
@@ -158,16 +113,16 @@ class GroupSessionMapViewTest {
   @Test
   fun tappingAPin_doesNotReportAMapClick() {
     showMap()
-    tapPinUntilReported(first)
+    map.tapPinUntil(first.location.toLatLng()) { tappedRoom != null }
     waitForCameraAt(first.location, minZoom = focusZoom, maxZoom = 21f)
     // Taps that missed the pin while it was being drawn report their map clicks late.
-    Thread.sleep(TAP_SPACING_MS)
+    Thread.sleep(MapTestDriver.TAP_SPACING_MS)
     val clicksBefore = mapClicks
     tappedRoom = null
 
-    tapPin(first)
-    assertTrue(waitForPinReport())
-    Thread.sleep(TAP_SPACING_MS)
+    map.tapPin(first.location.toLatLng())
+    assertTrue(map.waitFor { tappedRoom != null })
+    Thread.sleep(MapTestDriver.TAP_SPACING_MS)
 
     assertEquals(clicksBefore, mapClicks)
   }
@@ -175,20 +130,15 @@ class GroupSessionMapViewTest {
   @Test
   fun tappingTheMapAwayFromPins_reportsAMapClickOnly() {
     showMap()
-    val away = screenLocation(LatLng(46.5170, 6.5600))
 
-    composeTestRule.onRoot().performTouchInput { click(Offset(away.x.toFloat(), away.y.toFloat())) }
+    map.tapAt(LatLng(46.5170, 6.5600))
 
-    composeTestRule.waitUntil(TIMEOUT_MS) { mapClicks == 1 }
+    composeTestRule.waitUntil(MapTestDriver.TIMEOUT_MS) { mapClicks == 1 }
     assertTrue(tappedRoom == null)
   }
 
   private companion object {
     const val START_ZOOM = 15f
-    const val TIMEOUT_MS = 30_000L
-    // Longer than the double-tap timeout, so that two taps are never read as one gesture.
-    const val TAP_SPACING_MS = 800L
-    const val POLL_MS = 50L
     const val POSITION_TOLERANCE = 0.0002
     const val ZOOM_TOLERANCE = 0.05f
   }

@@ -120,21 +120,10 @@ class GroupSessionMapContentTest {
   }
 
   @Test
-  fun preview_showsThePlaceholderMapWithAPinLinePerRoom() {
+  fun preview_showsTheSampleSessionCardsOfItsSelectedRoom() {
     setPreviewContent()
 
     composeTestRule.onNodeWithText(MAP_TITLE).assertIsDisplayed()
-    composeTestRule.onNodeWithText(AAB_PIN).assertIsDisplayed()
-    composeTestRule.onNodeWithText(CM_PIN).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST).assertDoesNotExist()
-  }
-
-  @Test
-  fun preview_tappingAPinLine_showsTheSampleSessionCardsOfThatRoom() {
-    setPreviewContent()
-
-    composeTestRule.onNodeWithText(AAB_PIN).performClick()
-
     composeTestRule.onNodeWithText("Linear Algebra").assertIsDisplayed()
     composeTestRule
         .onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST)
@@ -144,18 +133,8 @@ class GroupSessionMapContentTest {
   }
 
   @Test
-  fun content_givesTheMapOnePinPerRoomWithItsSessionCount() {
-    setContent()
-
-    composeTestRule.onNodeWithText(AAB_PIN).assertIsDisplayed()
-    composeTestRule.onNodeWithText(CM_PIN).assertIsDisplayed()
-  }
-
-  @Test
-  fun tappingAPin_showsTheCardsOfThatRoomOnly() {
-    setContent()
-
-    composeTestRule.onNodeWithText(AAB_PIN).performClick()
+  fun content_withAnInitialRoom_showsThatRoomsCardsOnly() {
+    setContent(initialSelectedRoom = "AAB 0 26")
 
     composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST).assertIsDisplayed()
     composeTestRule.onNodeWithText("Maths").assertIsDisplayed()
@@ -168,20 +147,8 @@ class GroupSessionMapContentTest {
   }
 
   @Test
-  fun tappingAnotherPin_switchesToThatRoomsCards() {
-    setContent()
-    composeTestRule.onNodeWithText(AAB_PIN).performClick()
-
-    composeTestRule.onNodeWithText(CM_PIN).performClick()
-
-    composeTestRule.onNodeWithText("Chemistry").assertIsDisplayed()
-    composeTestRule.onNodeWithText("Maths").assertDoesNotExist()
-  }
-
-  @Test
-  fun tappingTheMapAwayFromPins_closesTheList() {
-    setContent()
-    composeTestRule.onNodeWithText(AAB_PIN).performClick()
+  fun tappingTheMap_closesTheList() {
+    setContent(initialSelectedRoom = "AAB 0 26")
 
     composeTestRule.onNodeWithText(MAP_TITLE).performClick()
 
@@ -189,25 +156,31 @@ class GroupSessionMapContentTest {
   }
 
   @Test
-  fun selectedRoom_survivesTheStateBeingSavedAndRestored() {
+  fun selection_survivesTheStateBeingSavedAndRestored() {
     val restoration = StateRestorationTester(composeTestRule)
     restoration.setContent {
       CompositionLocalProvider(LocalInspectionMode provides true) {
-        GroupSessionMapContent(rooms = rooms, now = now, onJoin = {}, onLeave = {})
+        GroupSessionMapContent(
+            rooms = rooms,
+            now = now,
+            onJoin = {},
+            onLeave = {},
+            initialSelectedRoom = "CM 1 121",
+        )
       }
     }
-    composeTestRule.onNodeWithText(CM_PIN).performClick()
+    // Closing the list changes the selection away from its initial value.
+    composeTestRule.onNodeWithText(MAP_TITLE).performClick()
 
     restoration.emulateSavedInstanceStateRestore()
 
-    composeTestRule.onNodeWithText("Chemistry").assertIsDisplayed()
+    composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST).assertDoesNotExist()
   }
 
   @Test
   fun joinOnACard_reportsTheSessionId() {
     var joined: String? = null
-    setContent(onJoin = { joined = it })
-    composeTestRule.onNodeWithText(CM_PIN).performClick()
+    setContent(onJoin = { joined = it }, initialSelectedRoom = "CM 1 121")
 
     composeTestRule.onNodeWithText(JOIN_LABEL).performClick()
 
@@ -258,8 +231,6 @@ class GroupSessionMapContentTest {
 
   private companion object {
     const val MAP_TITLE = "Map (shown on a device only)"
-    const val AAB_PIN = "AAB 0 26: 2 sessions"
-    const val CM_PIN = "CM 1 121: 1 session"
     const val JOIN_LABEL = "Join"
   }
 }
