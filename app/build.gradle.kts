@@ -134,7 +134,6 @@ dependencies {
   implementation(libs.androidx.navigation.compose)
   implementation(libs.material)
   implementation(libs.androidx.lifecycle.runtime.ktx)
-  implementation(platform(libs.compose.bom))
 
   // ------------- Jetpack Compose ------------------
   implementation(composeBom)
