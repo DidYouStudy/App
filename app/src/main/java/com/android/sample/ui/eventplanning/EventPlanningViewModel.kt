@@ -24,12 +24,17 @@ import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.PersonalEvent
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
+import com.android.sample.model.location.CampusLocation
+import com.android.sample.model.location.CampusLocationFilter
+import com.android.sample.model.location.CampusLocationRepository
+import com.android.sample.model.location.CampusLocationRepositoryProvider
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -103,6 +108,8 @@ val EventPlanningError.stringResource: Int
  * @property eventKind whether the event is personal or a group session.
  * @property recommendedSubjects subjects the user has used before, most recent first, for the
  *   suggestions.
+ * @property locationSearchResults campus locations currently matching the location picker's search
+ *   text.
  * @property isEditing whether the form was filled from an existing event by
  *   [EventPlanningViewModel.loadEvent].
  * @property isLoading whether an existing event is being loaded into the form.
@@ -125,6 +132,7 @@ data class EventPlanningUiState(
     val description: String = "",
     val tasks: List<EventTask> = emptyList(),
     val recommendedSubjects: List<String> = emptyList(),
+    val locationSearchResults: List<CampusLocation> = emptyList(),
     val isEditing: Boolean = false,
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
@@ -155,6 +163,7 @@ data class EventPlanningUiState(
  * Builds, adds, edits and deletes events for the currently authenticated user through repository
  * contracts.
  *
+ * @param campusLocationRepository source of the campus locations shown by the location picker.
  * @param clock source of the current time (task completion, creation and update times) and of the
  *   time zone used to turn the picked date and times into instants.
  */
@@ -162,6 +171,7 @@ data class EventPlanningUiState(
 class EventPlanningViewModel(
     private val authRepository: AuthRepository,
     private val eventsRepository: EventsRepository,
+    private val campusLocationRepository: CampusLocationRepository,
     private val groupSessionsRepository: GroupSessionsRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
@@ -180,6 +190,12 @@ class EventPlanningViewModel(
    * The event loaded by [loadEvent]; [editEvent] replaces it and keeps its ID and creation time.
    */
   private var editingEvent: Event? = null
+
+  /**
+   * The latest [searchLocations] request; cancelled on every new call so a slow, stale response
+   * cannot overwrite a newer one's results.
+   */
+  private var locationSearchJob: Job? = null
 
   init {
     viewModelScope.launch {
@@ -203,6 +219,25 @@ class EventPlanningViewModel(
           it.withoutResults().copy(error = EventPlanningError.FAILED_TO_OBSERVE_USER)
         }
       }
+    }
+  }
+
+  /**
+   * Resolves campus locations matching [query] via [campusLocationRepository] and exposes them as
+   * [EventPlanningUiState.locationSearchResults] for the location picker. A blank query clears the
+   * results directly, without calling the repository: the picker starts empty, not pre-loaded with
+   * every location. Like [recommendedSubjects][EventPlanningUiState.recommendedSubjects], a lookup
+   * failure is not shown as an error: the results are simply left empty.
+   */
+  fun searchLocations(query: String) {
+    locationSearchJob?.cancel()
+    if (query.isBlank()) {
+      _uiState.update { it.copy(locationSearchResults = emptyList()) }
+      return
+    }
+    locationSearchJob = viewModelScope.launch {
+      val result = campusLocationRepository.search(CampusLocationFilter(query = query))
+      _uiState.update { it.copy(locationSearchResults = result.getOrDefault(emptyList())) }
     }
   }
 
@@ -636,6 +671,7 @@ class EventPlanningViewModel(
 class EventPlanningViewModelFactory(
     private val authRepository: AuthRepository,
     private val eventsRepository: EventsRepository,
+    private val campusLocationRepository: CampusLocationRepository,
     private val groupSessionsRepository: GroupSessionsRepository,
 ) : ViewModelProvider.Factory {
   /**
@@ -647,7 +683,13 @@ class EventPlanningViewModelFactory(
       "Unsupported ViewModel: ${modelClass.name}"
     }
     @Suppress("UNCHECKED_CAST")
-    return EventPlanningViewModel(authRepository, eventsRepository, groupSessionsRepository) as T
+    return EventPlanningViewModel(
+        authRepository,
+        eventsRepository,
+        campusLocationRepository,
+        groupSessionsRepository,
+    )
+        as T
   }
 }
 
@@ -663,6 +705,8 @@ fun eventsPlanningViewModel(): EventPlanningViewModel =
             EventPlanningViewModelFactory(
                 authRepository = AuthRepositoryProvider.getRepository(LocalContext.current),
                 eventsRepository = EventsRepositoryProvider.getRepository(),
+                campusLocationRepository =
+                    CampusLocationRepositoryProvider.getRepository(LocalContext.current),
                 groupSessionsRepository = GroupSessionsRepositoryProvider.getRepository(),
             )
     )

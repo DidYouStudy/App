@@ -25,6 +25,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
+import com.android.sample.model.location.CampusLocation
+import com.android.sample.model.location.CampusLocationType
+import com.android.sample.model.location.Location
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as EventTags
 import java.time.LocalDate
 import java.time.LocalTime
@@ -498,6 +501,125 @@ class FormContentHelperTests {
           currentSelection = "",
           allSubjects = listOf("Linear Algebra", "Analysis I"),
           onDismiss = {},
+          onConfirm = {},
+      )
+    }
+
+    val searchInputNode = composeTestRule.onNode(hasSetTextAction())
+    searchInputNode.assertIsDisplayed().performTextInput(query)
+    searchInputNode.assertTextContains(query)
+
+    restorationTester.emulateSavedInstanceStateRestore()
+
+    composeTestRule.onNode(hasSetTextAction()).assertIsDisplayed().assertTextContains(query)
+  }
+
+  /** Builds a minimal campus location for tests; only the name is usually relevant. */
+  private fun sampleLocation(name: String): CampusLocation =
+      CampusLocation(
+          name = name,
+          zone = "AAB",
+          type = CampusLocationType.LECTURE_ROOM,
+          floor = null,
+          location = Location(latitude = 46.52, longitude = 6.56),
+      )
+
+  @Test
+  fun locationPickerDialogContentDisplaysResultsAndConfirmsOnClick() {
+    var confirmedLocation = ""
+    val results = listOf(sampleLocation("AAB 0 26"), sampleLocation("AAC 0 06"))
+
+    composeTestRule.setContent {
+      LocationPickerDialogContent(
+          searchResults = results,
+          onDismiss = {},
+          onSearchQueryChange = {},
+          onConfirm = { confirmedLocation = it },
+      )
+    }
+
+    composeTestRule.onNodeWithText("AAC 0 06").assertIsDisplayed().performClick()
+    assertEquals("AAC 0 06", confirmedLocation)
+  }
+
+  @Test
+  fun locationPickerDialogContentReportsTypedTextThroughOnSearchQueryChange() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var reportedQuery = ""
+
+    composeTestRule.setContent {
+      LocationPickerDialogContent(
+          searchResults = emptyList(),
+          onDismiss = {},
+          onSearchQueryChange = { reportedQuery = it },
+          onConfirm = {},
+      )
+    }
+
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_search_placeholder))
+        .performTextInput("AAB")
+
+    assertEquals("AAB", reportedQuery)
+  }
+
+  @Test
+  fun locationPickerDialogContentShowsProperMessageWhenSearchResultsEmpty() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+
+    composeTestRule.setContent {
+      LocationPickerDialogContent(
+          searchResults = emptyList(),
+          onDismiss = {},
+          onSearchQueryChange = {},
+          onConfirm = {},
+      )
+    }
+
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_search_prompt))
+        .assertIsDisplayed()
+
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_search_placeholder))
+        .performTextInput("ZZZ")
+
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_empty_results))
+        .assertIsDisplayed()
+  }
+
+  @Test
+  fun locationPickerDialogShowsTitleAndCancelDismisses() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var dismissed = false
+
+    composeTestRule.setContent {
+      LocationPickerDialog(
+          searchResults = listOf(sampleLocation("AAB 0 26")),
+          onDismiss = { dismissed = true },
+          onSearchQueryChange = {},
+          onConfirm = {},
+      )
+    }
+
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_dialog_title))
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithText(context.getString(R.string.cancel)).performClick()
+    assertTrue(dismissed)
+  }
+
+  @Test
+  fun locationPickerDialogContentQuerySurvivesScreenRestoration() {
+    val restorationTester = StateRestorationTester(composeTestRule)
+    val query = "AAB"
+
+    restorationTester.setContent {
+      LocationPickerDialogContent(
+          searchResults = emptyList(),
+          onDismiss = {},
+          onSearchQueryChange = {},
           onConfirm = {},
       )
     }

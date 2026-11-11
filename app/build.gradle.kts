@@ -1,6 +1,7 @@
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Codex AI Agent
+// Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -163,6 +164,10 @@ dependencies {
   implementation(libs.androidx.credentials)
   implementation(libs.androidx.credentials.play.services.auth)
   implementation(libs.googleid)
+
+  // ------------- Location ----------------
+  // Fused Location Provider behind AndroidLocationProvider (R8 rules ship inside the AAR)
+  implementation(libs.play.services.location)
 
   // ------------- JSON parsing ----------------
   // Bundled campus locations (the library ships its own R8 rules)

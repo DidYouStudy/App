@@ -11,6 +11,7 @@ import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.PersonalEvent
 import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.model.location.CampusLocationRepository
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -19,11 +20,14 @@ import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Before
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.`when`
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.never
@@ -38,6 +42,13 @@ abstract class EventPlanningViewModelTestBase {
   protected lateinit var authRepository: AuthRepository
   protected lateinit var eventsRepository: EventsRepository
   protected lateinit var groupSessionsRepository: GroupSessionsRepository
+
+  /** Stubbed to return no locations by default; tests that need specific results re-stub it. */
+  protected val campusLocationRepository: CampusLocationRepository by lazy {
+    mock(CampusLocationRepository::class.java).also {
+      runBlocking { `when`(it.search(any())).thenReturn(Result.success(emptyList())) }
+    }
+  }
 
   protected val zone = ZoneId.of("Europe/Berlin")
   protected val now = Instant.parse("2026-10-27T12:00:00Z")
@@ -69,9 +80,10 @@ abstract class EventPlanningViewModelTestBase {
   protected fun createViewModel(
       authRepo: AuthRepository = authRepository,
       eventsRepo: EventsRepository = eventsRepository,
+      campusLocationRepo: CampusLocationRepository = campusLocationRepository,
       groupSessionsRepo: GroupSessionsRepository = groupSessionsRepository,
       clk: Clock = clock,
-  ) = EventPlanningViewModel(authRepo, eventsRepo, groupSessionsRepo, clk)
+  ) = EventPlanningViewModel(authRepo, eventsRepo, campusLocationRepo, groupSessionsRepo, clk)
 
   /** Returns the sessions passed to saveSession after verifying the expected number of saves. */
   protected suspend fun savedSessions(count: Int = 1): List<GroupSession> {

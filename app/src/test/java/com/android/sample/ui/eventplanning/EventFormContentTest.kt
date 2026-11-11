@@ -25,6 +25,7 @@ import java.time.LocalTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -44,6 +45,8 @@ class EventFormContentTest {
     var startTimeClicked = false
     var endTimeClicked = false
     var subjectClicked = false
+    var locationClicked = false
+    var locationCleared = false
     var locationInput = ""
     var descriptionInput = ""
     var addedTask = ""
@@ -71,7 +74,8 @@ class EventFormContentTest {
           onStartTimeClick = { startTimeClicked = true },
           onEndTimeClick = { endTimeClicked = true },
           onSubjectClick = { subjectClicked = true },
-          onLocationChange = { locationInput = it },
+          onLocationClick = { locationClicked = true },
+          onLocationClear = { locationCleared = true },
           onDescriptionChange = { descriptionInput = it },
           taskActions =
               TaskActions(
@@ -122,8 +126,11 @@ class EventFormContentTest {
     composeTestRule
         .onNodeWithTag(FormContentTestTags.LOCATION_LABEL, useUnmergedTree = true)
         .assertTextEquals(context.getString(R.string.event_planning_location_optional_label))
-    composeTestRule.onNodeWithTag(Tags.LOCATION_INPUT).performTextInput(" New")
-    assertTrue(locationInput.contains("New"))
+    composeTestRule.onNodeWithTag(Tags.LOCATION_SELECTOR).assertTextEquals("CM3").performClick()
+    assertTrue(locationClicked)
+
+    composeTestRule.onNodeWithTag(Tags.LOCATION_CLEAR_BUTTON, useUnmergedTree = true).performClick()
+    assertTrue(locationCleared)
 
     composeTestRule
         .onNodeWithTag(FormContentTestTags.DESCRIPTION_LABEL, useUnmergedTree = true)
@@ -178,7 +185,7 @@ class EventFormContentTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
       )
     }
@@ -210,7 +217,7 @@ class EventFormContentTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
           taskActions = defaultTaskActions,
       )
@@ -242,7 +249,7 @@ class EventFormContentTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
           taskActions = defaultTaskActions,
       )
@@ -251,6 +258,73 @@ class EventFormContentTest {
     composeTestRule.onNodeWithTag(Tags.TYPE_SELECTOR).performClick()
     composeTestRule.onNodeWithText("Course").assertIsDisplayed().performClick()
     assertEquals(EventType.COURSE, typeChanged)
+  }
+
+  /**
+   * Clicking the clear icon fires only [EventFormContent]'s onLocationClear, not onLocationClick
+   * (the nested clickable must not also trigger the pill's own click handler).
+   */
+  @Test
+  fun eventFormContentClearButtonTriggersOnlyOnLocationClear() {
+    var locationCleared = false
+    var locationClicked = false
+    val uiState = EventPlanningUiState(type = EventType.COURSE, location = "CM3")
+
+    composeTestRule.setContent {
+      EventFormContent(
+          uiState = uiState,
+          onTypeChange = {},
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationClick = { locationClicked = true },
+          onLocationClear = { locationCleared = true },
+          onDescriptionChange = {},
+          taskActions = defaultTaskActions,
+      )
+    }
+
+    composeTestRule
+        .onNodeWithTag(
+            com.android.sample.ui.sharedComponents.FormContentTestTags.LOCATION_CLEAR_BUTTON,
+            useUnmergedTree = true,
+        )
+        .performClick()
+
+    assertEquals(true, locationCleared)
+    assertEquals(false, locationClicked)
+  }
+
+  /** An empty location shows the picker's placeholder, not a blank pill. */
+  @Test
+  fun formContentShowsLocationPlaceholderWhenLocationBlank() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val uiState = EventPlanningUiState(location = "")
+
+    composeTestRule.setContent {
+      EventFormContent(
+          uiState = uiState,
+          onTypeChange = {},
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationClick = {},
+          onLocationClear = {
+            fail("onLocationClear should not be invoked when location is blank")
+          },
+          onDescriptionChange = {},
+          taskActions = defaultTaskActions,
+      )
+    }
+
+    composeTestRule
+        .onNodeWithTag(Tags.LOCATION_SELECTOR)
+        .assertTextEquals(context.getString(R.string.event_planning_location_placeholder))
+    composeTestRule
+        .onNodeWithTag(Tags.LOCATION_CLEAR_BUTTON, useUnmergedTree = true)
+        .assertDoesNotExist()
   }
 
   @Test
@@ -270,7 +344,7 @@ class EventFormContentTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
           taskActions = defaultTaskActions,
       )
@@ -302,7 +376,7 @@ class EventFormContentTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
           taskActions = defaultTaskActions,
       )
@@ -334,7 +408,7 @@ class EventFormContentTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
           taskActions = defaultTaskActions,
       )
@@ -362,7 +436,7 @@ class EventFormContentTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
           taskActions = defaultTaskActions,
       )
@@ -393,7 +467,7 @@ class EventFormContentTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
           taskActions =
               TaskActions(
@@ -450,7 +524,7 @@ class EventFormContentTest {
                 onStartTimeClick = {},
                 onEndTimeClick = {},
                 onSubjectClick = {},
-                onLocationChange = {},
+                onLocationClick = {},
                 onDescriptionChange = {},
                 taskActions = null,
             )
@@ -481,7 +555,7 @@ class EventFormContentTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
           taskActions =
               TaskActions(
