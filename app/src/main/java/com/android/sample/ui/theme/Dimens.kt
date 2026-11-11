@@ -108,4 +108,12 @@ object Dimens {
   val dialogCornerRadius = 28.dp
   val subjectPickerMaxHeight = 350.dp
   val noPadding = 0.dp
+
+  // Group session map
+  /** Icon of the recentre button; as wide as the pin. */
+  val mapRecenterIconSize = 32.dp
+  /** Pin: a droplet with its tip down and a white dot in the middle. */
+  val mapMarkerWidth = 32.dp
+  val mapMarkerHeight = 40.dp
+  val mapMarkerDotDiameter = 12.dp
 }
