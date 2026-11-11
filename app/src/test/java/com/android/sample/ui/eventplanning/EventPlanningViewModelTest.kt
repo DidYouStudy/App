@@ -357,9 +357,11 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     val viewModel = createViewModel()
     viewModel.setEventKind(EventKind.GROUP_SESSION)
 
-    assertThrows(IllegalArgumentException::class.java) {
-      viewModel.setTasks(listOf(EventTask("Task 1")))
-    }
+    val exception =
+        assertThrows(IllegalArgumentException::class.java) {
+          viewModel.setTasks(listOf(EventTask("Task 1")))
+        }
+    assertEquals("Tasks are only supported for personal events", exception.message)
   }
 
   @Test
@@ -367,7 +369,9 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     val viewModel = createViewModel()
     viewModel.setEventKind(EventKind.GROUP_SESSION)
 
-    assertThrows(IllegalArgumentException::class.java) { viewModel.addTask("Task 1") }
+    val exception =
+        assertThrows(IllegalArgumentException::class.java) { viewModel.addTask("Task 1") }
+    assertEquals("Tasks are only supported for personal events", exception.message)
   }
 
   @Test
@@ -375,7 +379,8 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     val viewModel = createViewModel()
     viewModel.setEventKind(EventKind.GROUP_SESSION)
 
-    assertThrows(IllegalArgumentException::class.java) { viewModel.removeTask(0) }
+    val exception = assertThrows(IllegalArgumentException::class.java) { viewModel.removeTask(0) }
+    assertEquals("Tasks are only supported for personal events", exception.message)
   }
 
   @Test
@@ -383,7 +388,8 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     val viewModel = createViewModel()
     viewModel.setEventKind(EventKind.GROUP_SESSION)
 
-    assertThrows(IllegalArgumentException::class.java) { viewModel.toggleTask(0) }
+    val exception = assertThrows(IllegalArgumentException::class.java) { viewModel.toggleTask(0) }
+    assertEquals("Tasks are only supported for personal events", exception.message)
   }
 
   // ---------------------------------------------------------------- addEvent: rejected before

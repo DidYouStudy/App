@@ -606,7 +606,9 @@ class EventPlanningViewModel(
 
   /** Ensures tasks are only modified when planning a personal event. */
   private fun requirePersonalEvent() {
-    require(_uiState.value.showTasksSection)
+    // Debugging error for developer misuse, not a user-facing error; safe to keep as a Kotlin
+    // string literal rather than in strings.xml.
+    require(_uiState.value.showTasksSection) { "Tasks are only supported for personal events" }
   }
 
   /** Applies a form edit and clears the previous save result. */
