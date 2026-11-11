@@ -18,7 +18,6 @@ interface AuthRepository {
    * without waiting for flow collection.
    */
   val isAuthenticated: Boolean
-    get() = false
 
   /**
    * The signed-in account, or null when nobody is signed in. This is the single source of truth for

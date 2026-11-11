@@ -1,5 +1,6 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.navigation
 
 import androidx.compose.runtime.Composable
@@ -38,6 +39,9 @@ class TopLevelScreensProfileButtonTest {
 
   private val fakeAuthRepository =
       object : AuthRepository {
+        override val isAuthenticated: Boolean
+          get() = false
+
         override val currentUser = MutableStateFlow<UserAccount?>(null)
 
         override suspend fun signInWithGoogle(idToken: String) =

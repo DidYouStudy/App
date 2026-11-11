@@ -20,9 +20,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runCurrent
@@ -324,30 +322,14 @@ class AuthRepositoryFirebaseTest {
     val user = firebaseUser(account)
     `when`(auth.currentUser).thenReturn(user)
 
-    assertEquals(true, repository.isAuthenticated)
+    assertTrue(repository.isAuthenticated)
   }
 
   @Test
   fun isAuthenticatedReturnsFalseWhenFirebaseHasNoCurrentUser() {
     `when`(auth.currentUser).thenReturn(null)
 
-    assertEquals(false, repository.isAuthenticated)
-  }
-
-  /** Verifies that the default implementation of [AuthRepository.isAuthenticated] returns false. */
-  @Test
-  fun authRepositoryDefaultIsAuthenticatedReturnsFalse() {
-    val defaultRepo =
-        object : AuthRepository {
-          override val currentUser: Flow<UserAccount?> = flowOf(null)
-
-          override suspend fun signInWithGoogle(idToken: String): UserAccount =
-              throw NotImplementedError()
-
-          override suspend fun signOut() = Unit
-        }
-
-    assertEquals(false, defaultRepo.isAuthenticated)
+    assertFalse(repository.isAuthenticated)
   }
 
   private fun firebaseUser(account: UserAccount): FirebaseUser {

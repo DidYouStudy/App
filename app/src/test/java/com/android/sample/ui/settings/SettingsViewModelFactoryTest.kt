@@ -1,4 +1,5 @@
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.settings
 
 import androidx.compose.runtime.mutableStateOf
@@ -149,6 +150,9 @@ class SettingsViewModelFactoryTest {
 
   /** Minimal in-memory repository: nobody is signed in and sign-outs are counted. */
   private class FakeAuthRepository : AuthRepository {
+    override val isAuthenticated: Boolean
+      get() = false
+
     override val currentUser = MutableStateFlow<UserAccount?>(null)
 
     var signOutCalls = 0

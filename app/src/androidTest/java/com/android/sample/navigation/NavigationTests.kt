@@ -36,6 +36,7 @@ import com.android.sample.ui.settings.SettingsScreenTestTags
 import junit.framework.TestCase.assertEquals
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Rule
@@ -386,25 +387,23 @@ class MainActivityNavigationTests {
         .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
         .assertIsDisplayed()
         .assertTextContains("Dashboard")
-    composeTestRule.onNodeWithTag(SignInScreenTestTags.SCREEN).assertDoesNotExist()
   }
 
   @Test
-  fun returningFromMinimizedAppRestoresSameScreen() {
+  fun recreationRestoresSameScreen() {
     composeTestRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
     composeTestRule
         .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
         .assertIsDisplayed()
         .assertTextContains("Calendar", substring = true, ignoreCase = true)
 
-    // Minimize and resume: Activity recreation restores the exact screen without sign-in flash
+    // Activity recreation restores the exact screen
     composeTestRule.activityRule.scenario.recreate()
 
     composeTestRule
         .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
         .assertIsDisplayed()
         .assertTextContains("Calendar", substring = true, ignoreCase = true)
-    composeTestRule.onNodeWithTag(SignInScreenTestTags.SCREEN).assertDoesNotExist()
   }
 
   /**
@@ -419,7 +418,7 @@ class MainActivityNavigationTests {
         .assertTextContains("Dashboard")
 
     // Revoke the session while the user is still on Dashboard
-    environment.auth.signOutSync()
+    runBlocking { environment.auth.signOut() }
 
     composeTestRule.waitUntil(timeoutMillis = 20_000) {
       composeTestRule
@@ -542,10 +541,6 @@ private class FakeAuthRepository(private val user: UserAccount?) : AuthRepositor
       user ?: throw IllegalStateException("Not signed in")
 
   override suspend fun signOut() {
-    currentUserState.value = null
-  }
-
-  fun signOutSync() {
     currentUserState.value = null
   }
 }

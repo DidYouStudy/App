@@ -1,5 +1,6 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.preferences
 
 import android.content.Context
@@ -49,6 +50,8 @@ private class FakePreferencesRepository(
 private class FakeAuthRepository(userId: String) : AuthRepository {
   override val currentUser: Flow<UserAccount?> =
       MutableStateFlow(UserAccount(userId, null, null, null))
+  override val isAuthenticated: Boolean
+    get() = true
 
   override suspend fun signInWithGoogle(idToken: String): UserAccount = throw NotImplementedError()
 

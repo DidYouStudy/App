@@ -1,6 +1,7 @@
 // Co-authored-by: Codex AI Agent
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: GitHub Copilot
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.auth
 
 import androidx.lifecycle.ViewModel
@@ -938,6 +939,9 @@ class AuthViewModelTest {
   /** A repository whose session flow is given by the test; the actions are not used. */
   private class SessionOnlyRepository(override val currentUser: Flow<UserAccount?>) :
       AuthRepository {
+    override val isAuthenticated: Boolean
+      get() = false
+
     override suspend fun signInWithGoogle(idToken: String): UserAccount = error("Not used")
 
     override suspend fun signOut() = error("Not used")
@@ -946,6 +950,9 @@ class AuthViewModelTest {
   /** A session repository whose sign-in succeeds while its session flow can fail independently. */
   private class SessionFailureRepository(override val currentUser: Flow<UserAccount?>) :
       AuthRepository {
+    override val isAuthenticated: Boolean
+      get() = false
+
     override suspend fun signInWithGoogle(idToken: String): UserAccount =
         UserAccount(
             uid = "alice",
@@ -959,6 +966,9 @@ class AuthViewModelTest {
 
   private class FakeAuthRepository : AuthRepository {
     override val currentUser = MutableSharedFlow<UserAccount?>()
+    override val isAuthenticated: Boolean
+      get() = false
+
     val tokens = mutableListOf<String>()
     var signOutCalls = 0
     var publishSessions = true
