@@ -9,7 +9,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.StateRestorationTester
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -26,6 +26,12 @@ import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.PersonalEvent
+import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.model.location.CampusLocation
+import com.android.sample.model.location.CampusLocationFilter
+import com.android.sample.model.location.CampusLocationRepository
+import com.android.sample.model.location.CampusLocationType
+import com.android.sample.model.location.Location
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
 import java.time.Clock
 import java.time.Instant
@@ -62,6 +68,8 @@ class AddEventScreenTest {
   private val currentUserFlow = MutableStateFlow<UserAccount?>(null)
   private lateinit var authRepository: AuthRepository
   private lateinit var eventsRepository: EventsRepository
+  private lateinit var campusLocationRepository: CampusLocationRepository
+  private lateinit var groupSessionsRepository: GroupSessionsRepository
 
   private val zone = ZoneId.of("Europe/Berlin")
   private val now = Instant.parse("2026-10-27T12:00:00Z")
@@ -72,10 +80,15 @@ class AddEventScreenTest {
     Dispatchers.setMain(testDispatcher)
     authRepository = mock(AuthRepository::class.java)
     eventsRepository = mock(EventsRepository::class.java)
+    campusLocationRepository = mock(CampusLocationRepository::class.java)
+    groupSessionsRepository = mock(GroupSessionsRepository::class.java)
     `when`(authRepository.currentUser).thenReturn(currentUserFlow)
     `when`(eventsRepository.newEventId()).thenReturn("event-1")
     `when`(eventsRepository.observeSubjects(any())).thenReturn(flowOf(Result.success(emptyList())))
-    runBlocking { `when`(eventsRepository.saveEvent(any())).thenReturn(Result.success(Unit)) }
+    runBlocking {
+      `when`(eventsRepository.saveEvent(any())).thenReturn(Result.success(Unit))
+      `when`(campusLocationRepository.search(any())).thenReturn(Result.success(emptyList()))
+    }
     currentUserFlow.value =
         UserAccount(uid = "user123", email = null, displayName = null, photoUrl = null)
   }
@@ -85,7 +98,24 @@ class AddEventScreenTest {
     Dispatchers.resetMain()
   }
 
-  private fun createViewModel() = EventPlanningViewModel(authRepository, eventsRepository, clock)
+  private fun createViewModel() =
+      EventPlanningViewModel(
+          authRepository,
+          eventsRepository,
+          campusLocationRepository,
+          groupSessionsRepository,
+          clock,
+      )
+
+  /** Builds a minimal campus location for tests; only the name is usually relevant. */
+  private fun sampleLocation(name: String): CampusLocation =
+      CampusLocation(
+          name = name,
+          zone = "BC",
+          type = CampusLocationType.LECTURE_ROOM,
+          floor = null,
+          location = Location(latitude = 46.52, longitude = 6.56),
+      )
 
   @Test
   fun statelessScreenRendersTopBarFormAndSaveButtonWhenNotSaving() {
@@ -103,7 +133,7 @@ class AddEventScreenTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
           onAddTask = {},
           onToggleTask = {},
@@ -140,7 +170,7 @@ class AddEventScreenTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
           onAddTask = {},
           onToggleTask = {},
@@ -238,6 +268,7 @@ class AddEventScreenTest {
 
   @Test
   fun statefulScreenPickerCallbacksAndInputHandlersWork() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
     var pickType = false
     var pickDate = false
     var pickStartTime = false
@@ -273,11 +304,58 @@ class AddEventScreenTest {
     composeTestRule.onNodeWithTag(Tags.SUBJECT_SELECTOR).performClick()
     assertTrue(pickSubject)
 
-    composeTestRule.onNodeWithTag(Tags.LOCATION_INPUT).performTextInput("Library")
-    assertEquals("Library", viewModel.uiState.value.location)
+    composeTestRule.onNodeWithTag(Tags.LOCATION_SELECTOR).performClick()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_dialog_title))
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithText(context.getString(R.string.cancel)).performClick()
 
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION_INPUT).performTextInput("Quiet zone")
     assertEquals("Quiet zone", viewModel.uiState.value.description)
+  }
+
+  /** Tapping a location picker result end to end sets the ViewModel's location. */
+  @Test
+  fun statefulScreenSelectingLocationFromPickerUpdatesViewModel() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val results = listOf(sampleLocation("BC 01"))
+    runBlocking {
+      `when`(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+          .thenReturn(Result.success(results))
+    }
+    val viewModel = createViewModel()
+
+    composeTestRule.setContent {
+      AddEventScreen(viewModel = viewModel, onBackClick = {}, onEventSaved = {})
+    }
+
+    composeTestRule.onNodeWithTag(Tags.LOCATION_SELECTOR).performClick()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_search_placeholder))
+        .performTextInput("BC")
+    composeTestRule.onNodeWithText("BC 01").performClick()
+
+    assertEquals("BC 01", viewModel.uiState.value.location)
+  }
+
+  /** Tapping the clear ("x") button on the location pill resets the ViewModel's location. */
+  @Test
+  fun statefulScreenClearingLocationUpdatesViewModel() {
+    val viewModel = createViewModel()
+    viewModel.setLocation("BC 01")
+
+    composeTestRule.setContent {
+      AddEventScreen(viewModel = viewModel, onBackClick = {}, onEventSaved = {})
+    }
+
+    composeTestRule
+        .onNodeWithTag(
+            com.android.sample.ui.sharedComponents.FormContentTestTags.LOCATION_CLEAR_BUTTON,
+            useUnmergedTree = true,
+        )
+        .performClick()
+
+    assertEquals("", viewModel.uiState.value.location)
   }
 
   @Test
@@ -295,7 +373,7 @@ class AddEventScreenTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
           onAddTask = {},
           onToggleTask = {},
@@ -337,7 +415,7 @@ class AddEventScreenTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
           onAddTask = { task -> submittedTask = task },
           onToggleTask = {},
@@ -369,7 +447,7 @@ class AddEventScreenTest {
             date = null,
             startTime = null,
             endTime = null,
-            error = EventPlanningViewModel.EVENT_DATE_AND_TIMES_REQUIRED_ERROR,
+            error = EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED,
         )
 
     composeTestRule.setContent {
@@ -381,7 +459,7 @@ class AddEventScreenTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
           onAddTask = {},
           onToggleTask = {},
@@ -405,7 +483,7 @@ class AddEventScreenTest {
             date = LocalDate.of(2026, 11, 1),
             startTime = LocalTime.of(10, 0),
             endTime = LocalTime.of(11, 0),
-            error = "Firestore timeout", // Complete fields with backend error
+            error = EventPlanningError.FAILED_TO_ADD_EVENT, // Complete fields with backend error
         )
 
     composeTestRule.setContent {
@@ -417,7 +495,7 @@ class AddEventScreenTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
           onAddTask = {},
           onToggleTask = {},

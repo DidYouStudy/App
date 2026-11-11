@@ -62,6 +62,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -655,22 +656,27 @@ private fun MetaInfoPill(
   }
 }
 
+/**
+ * Returns a short label telling how long until a session starts ("Started", "In 5 min", "In 1
+ * hour", "In 3 days"). The plural form is picked by the current locale's plural rules, so
+ * translations can provide every form their language needs.
+ */
 @Composable
 internal fun sessionStatusLabel(start: Instant, now: Instant): String {
   val duration = Duration.between(now, start)
   return when {
     duration.isNegative || duration.isZero -> stringResource(R.string.group_session_status_started)
-    duration.toMinutes() < 60 ->
-        stringResource(R.string.group_session_status_in_minutes, duration.toMinutes())
+    duration.toMinutes() < 60 -> {
+      val minutes = duration.toMinutes().toInt()
+      pluralStringResource(R.plurals.group_session_status_in_minutes, minutes, minutes)
+    }
     duration.toHours() < 24 -> {
-      val hours = duration.toHours()
-      if (hours == 1L) stringResource(R.string.group_session_status_in_hours_one, hours)
-      else stringResource(R.string.group_session_status_in_hours_other, hours)
+      val hours = duration.toHours().toInt()
+      pluralStringResource(R.plurals.group_session_status_in_hours, hours, hours)
     }
     else -> {
-      val days = duration.toDays()
-      if (days == 1L) stringResource(R.string.group_session_status_in_days_one, days)
-      else stringResource(R.string.group_session_status_in_days_other, days)
+      val days = duration.toDays().toInt()
+      pluralStringResource(R.plurals.group_session_status_in_days, days, days)
     }
   }
 }

@@ -1,5 +1,6 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
 
 import com.android.sample.model.auth.AuthRepository
@@ -7,7 +8,10 @@ import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsRepository
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.PersonalEvent
+import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.model.location.CampusLocationRepository
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -16,11 +20,14 @@ import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Before
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.`when`
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.never
@@ -34,6 +41,14 @@ abstract class EventPlanningViewModelTestBase {
   protected val currentUserFlow = MutableStateFlow<UserAccount?>(null)
   protected lateinit var authRepository: AuthRepository
   protected lateinit var eventsRepository: EventsRepository
+  protected lateinit var groupSessionsRepository: GroupSessionsRepository
+
+  /** Stubbed to return no locations by default; tests that need specific results re-stub it. */
+  protected val campusLocationRepository: CampusLocationRepository by lazy {
+    mock(CampusLocationRepository::class.java).also {
+      runBlocking { `when`(it.search(any())).thenReturn(Result.success(emptyList())) }
+    }
+  }
 
   protected val zone = ZoneId.of("Europe/Berlin")
   protected val now = Instant.parse("2026-10-27T12:00:00Z")
@@ -62,7 +77,20 @@ abstract class EventPlanningViewModelTestBase {
       UserAccount(uid = uid, email = null, displayName = null, photoUrl = null)
 
   /** Creates a ViewModel backed by the repositories configured by the test. */
-  protected fun createViewModel() = EventPlanningViewModel(authRepository, eventsRepository, clock)
+  protected fun createViewModel(
+      authRepo: AuthRepository = authRepository,
+      eventsRepo: EventsRepository = eventsRepository,
+      campusLocationRepo: CampusLocationRepository = campusLocationRepository,
+      groupSessionsRepo: GroupSessionsRepository = groupSessionsRepository,
+      clk: Clock = clock,
+  ) = EventPlanningViewModel(authRepo, eventsRepo, campusLocationRepo, groupSessionsRepo, clk)
+
+  /** Returns the sessions passed to saveSession after verifying the expected number of saves. */
+  protected suspend fun savedSessions(count: Int = 1): List<GroupSession> {
+    val captor = argumentCaptor<GroupSession>()
+    verify(groupSessionsRepository, times(count)).saveSession(any(), captor.capture())
+    return captor.allValues
+  }
 
   /** Fills a valid study-session form using the shared Berlin date and time fixtures. */
   protected fun EventPlanningViewModel.fillValidForm(

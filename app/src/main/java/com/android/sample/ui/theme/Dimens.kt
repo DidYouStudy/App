@@ -107,6 +107,7 @@ object Dimens {
   val errorVerticalPadding = 4.dp
   val dialogCornerRadius = 28.dp
   val subjectPickerMaxHeight = 350.dp
+  val locationPickerMaxHeight = 350.dp
   val noPadding = 0.dp
 
   // Group session map
