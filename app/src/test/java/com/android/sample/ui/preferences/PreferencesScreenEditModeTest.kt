@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: OpenAI Codex
 package com.android.sample.ui.preferences
 
 import android.content.Context
@@ -97,6 +98,17 @@ class PreferencesScreenEditModeTest {
     composeTestRule
         .onNodeWithTag(PreferencesScreenTestTags.PREFERENCE_TITLE)
         .assertTextEquals("Modify your preferences")
+  }
+
+  /** Shows the required file type on the preferences screen before opening the picker. */
+  @Test
+  fun editModeShowsRequiredCalendarFileType() {
+    setEditModeContent()
+
+    composeTestRule
+        .onNodeWithTag(PreferencesScreenTestTags.IMPORT_SCHEDULE_BUTTON)
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithText("Requires an .ics calendar file").assertIsDisplayed()
   }
 
   /** The Save button label comes from the string resource, so it can be translated. */
