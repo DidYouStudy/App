@@ -22,6 +22,7 @@ object EventPlanningScreenTestTags {
   const val END_TIME_SELECTOR = FormContentTestTags.END_TIME_SELECTOR
   const val SUBJECT_SELECTOR = FormContentTestTags.SUBJECT_SELECTOR
   const val LOCATION_SELECTOR = FormContentTestTags.LOCATION_SELECTOR
+  const val LOCATION_CLEAR_BUTTON = FormContentTestTags.LOCATION_CLEAR_BUTTON
   const val DESCRIPTION_INPUT = FormContentTestTags.DESCRIPTION_INPUT
 
   // Tasks

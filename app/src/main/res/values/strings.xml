@@ -101,7 +101,7 @@
     <string name="event_planning_delete_task_content_description">Delete task</string>
     <string name="event_planning_select_subject_title">Select subject</string>
     <string name="location_picker_dialog_title">Select location</string>
-    <string name="location_picker_search_placeholder">Search locations…</string>
+    <string name="location_picker_search_placeholder">Search locations&#8230;</string>
     <string name="location_picker_empty_results">No locations found</string>
     <string name="location_picker_search_prompt">Start typing for suggestions</string>
     <string name="clear_field_content_description">Clear</string>

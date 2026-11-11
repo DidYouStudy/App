@@ -261,21 +261,21 @@ fun EventFormContent(
     )
 
     /// Location (optional)
-      SectionLabel(
-          text = stringResource(R.string.event_planning_location_optional_label),
-          testTag = FormContentTestTags.LOCATION_LABEL,
-      )
-      SelectorFieldPill(
-          valueText = uiState.location,
-          placeholderText = stringResource(R.string.event_planning_location_placeholder),
-          onClick = {
-              focusManager.clearFocus()
-              onLocationClick()
-          },
-          testTag = FormContentTestTags.LOCATION_SELECTOR,
-          onClear = onLocationClear,
-          clearButtonTestTag = FormContentTestTags.LOCATION_CLEAR_BUTTON,
-      )
+    SectionLabel(
+        text = stringResource(R.string.event_planning_location_optional_label),
+        testTag = FormContentTestTags.LOCATION_LABEL,
+    )
+    SelectorFieldPill(
+        valueText = uiState.location,
+        placeholderText = stringResource(R.string.event_planning_location_placeholder),
+        onClick = {
+          focusManager.clearFocus()
+          onLocationClick()
+        },
+        testTag = FormContentTestTags.LOCATION_SELECTOR,
+        onClear = onLocationClear,
+        clearButtonTestTag = FormContentTestTags.LOCATION_CLEAR_BUTTON,
+    )
 
     // Description (optional)
     SectionLabel(
