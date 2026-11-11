@@ -4,6 +4,7 @@
 package com.android.sample.ui.eventplanning
 
 import androidx.lifecycle.ViewModel
+import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
@@ -940,5 +941,47 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     val state = viewModel.uiState.value
     assertFalse(state.isEventAdded)
     assertEquals(EventPlanningError.STORAGE_FAILURE, state.error)
+  }
+
+  /**
+   * Verifies that each [EventPlanningError] entry maps to its distinct, valid localized string
+   * resource identifier.
+   */
+  @Test
+  fun eventPlanningError_stringResource_mapsToExpectedResource() {
+    val expectedMappings =
+        mapOf(
+            EventPlanningError.FAILED_TO_OBSERVE_USER to
+                R.string.event_planning_error_failed_to_observe_user,
+            EventPlanningError.NO_SIGNED_IN_USER to R.string.event_planning_error_no_signed_in_user,
+            EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED to
+                R.string.event_planning_error_date_and_times_required,
+            EventPlanningError.NO_EVENT_TO_EDIT to R.string.event_planning_error_no_event_to_edit,
+            EventPlanningError.FAILED_TO_ADD_EVENT to
+                R.string.event_planning_error_failed_to_add_event,
+            EventPlanningError.FAILED_TO_EDIT_EVENT to
+                R.string.event_planning_error_failed_to_edit_event,
+            EventPlanningError.FAILED_TO_DELETE_EVENT to
+                R.string.event_planning_error_failed_to_delete_event,
+            EventPlanningError.FAILED_TO_LOAD_EVENT to
+                R.string.event_planning_error_failed_to_load_event,
+            EventPlanningError.INVALID_EVENT to R.string.event_planning_error_invalid_event,
+            EventPlanningError.EVENT_NOT_FOUND to R.string.event_planning_error_event_not_found,
+            EventPlanningError.PERMISSION_DENIED to R.string.event_planning_error_permission_denied,
+            EventPlanningError.INVALID_EVENT_DATA to
+                R.string.event_planning_error_invalid_event_data,
+            EventPlanningError.STORAGE_FAILURE to R.string.event_planning_error_storage_failure,
+        )
+
+    assertEquals(EventPlanningError.entries.toSet(), expectedMappings.keys)
+    assertEquals(expectedMappings.size, expectedMappings.values.toSet().size)
+
+    for (error in EventPlanningError.entries) {
+      assertEquals(
+          "Mapping mismatch for $error",
+          expectedMappings[error],
+          error.stringResource,
+      )
+    }
   }
 }
