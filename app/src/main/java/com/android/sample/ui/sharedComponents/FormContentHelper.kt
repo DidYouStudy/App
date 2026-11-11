@@ -511,7 +511,10 @@ fun EventDatePickerDialog(
 
       Box(
           modifier =
-              Modifier.fillMaxWidth().heightIn(max = maxLandscapeHeight).verticalScroll(scrollState)
+              Modifier.fillMaxWidth()
+                  .heightIn(max = maxLandscapeHeight)
+                  .verticalScroll(scrollState)
+                  .testTag(FormContentTestTags.LANDSCAPE_DATE_PICKER_SCROLL)
       ) {
         DatePicker(state = datePickerState)
       }
@@ -733,4 +736,5 @@ object FormContentTestTags {
 
   // Actions & Feedback
   const val ENDS_NEXT_DAY_WARNING = "form_content_ends_next_day_warning"
+  const val LANDSCAPE_DATE_PICKER_SCROLL = "form_content_landscape_date_picker_scroll"
 }
