@@ -613,6 +613,7 @@ class AddEventScreenTest {
   fun addEventScreen_backHandler_triggersOnBackClick() {
     var backClicked = false
     val viewModel = createViewModel()
+    viewModel.setSubject("Draft Subject")
     var backDispatcher: androidx.activity.OnBackPressedDispatcher? = null
     composeTestRule.setContent {
       backDispatcher =
@@ -627,6 +628,7 @@ class AddEventScreenTest {
 
     composeTestRule.runOnUiThread { backDispatcher?.onBackPressed() }
     assertTrue(backClicked)
+    assertTrue(viewModel.uiState.value.subject.isEmpty())
   }
 
   @Test

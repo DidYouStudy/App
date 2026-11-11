@@ -67,10 +67,14 @@ fun AddEventScreen(
 
   LaunchedEffect(initialKind) { viewModel.setEventKind(initialKind) }
 
-  BackHandler {
+  // Clears the form when exiting
+  val handleBack: () -> Unit = {
     focusManager.clearFocus()
+    viewModel.resetForm()
     onBackClick()
   }
+
+  BackHandler(onBack = handleBack)
 
   val titleRes =
       if (initialKind == EventKind.GROUP_SESSION) {
@@ -85,7 +89,7 @@ fun AddEventScreen(
       uiState =
           if (uiState.eventKind != initialKind) uiState.copy(eventKind = initialKind) else uiState,
       titleRes = titleRes,
-      onBackClick = onBackClick,
+      onBackClick = handleBack,
       onTypeChange = viewModel::setType,
       onDateSelected = viewModel::setDate,
       onStartTimeSelected = viewModel::setStartTime,
