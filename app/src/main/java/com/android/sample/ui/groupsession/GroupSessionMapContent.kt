@@ -15,6 +15,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -90,9 +91,7 @@ fun GroupSessionMapContent(
 ) {
   var selectedRoom by rememberSaveable { mutableStateOf(initialSelectedRoom) }
   val markers =
-      rememberSaveable(rooms) {
-        rooms.map { MapMarkerUi(it.room.name, it.room.location, it.items.size) }
-      }
+      remember(rooms) { rooms.map { MapMarkerUi(it.room.name, it.room.location, it.items.size) } }
   val selected = rooms.firstOrNull { it.room.name == selectedRoom }
   val maxListHeightFraction = floatResource(R.dimen.map_session_list_max_height_fraction)
 

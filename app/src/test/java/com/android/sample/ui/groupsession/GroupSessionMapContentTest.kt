@@ -5,6 +5,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -188,6 +189,21 @@ class GroupSessionMapContentTest {
   }
 
   @Test
+  fun selectedRoom_survivesTheStateBeingSavedAndRestored() {
+    val restoration = StateRestorationTester(composeTestRule)
+    restoration.setContent {
+      CompositionLocalProvider(LocalInspectionMode provides true) {
+        GroupSessionMapContent(rooms = rooms, now = now, onJoin = {}, onLeave = {})
+      }
+    }
+    composeTestRule.onNodeWithText(CM_PIN).performClick()
+
+    restoration.emulateSavedInstanceStateRestore()
+
+    composeTestRule.onNodeWithText("Chemistry").assertIsDisplayed()
+  }
+
+  @Test
   fun joinOnACard_reportsTheSessionId() {
     var joined: String? = null
     setContent(onJoin = { joined = it })
@@ -243,7 +259,7 @@ class GroupSessionMapContentTest {
   private companion object {
     const val MAP_TITLE = "Map (shown on a device only)"
     const val AAB_PIN = "AAB 0 26: 2 sessions"
-    const val CM_PIN = "CM 1 121: 1 sessions"
+    const val CM_PIN = "CM 1 121: 1 session"
     const val JOIN_LABEL = "Join"
   }
 }
