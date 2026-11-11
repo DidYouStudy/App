@@ -24,6 +24,7 @@ import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.UserProfile
 import com.android.sample.testing.RepositoryOverridesRule
+import com.android.sample.ui.app.AppViewModel
 import com.android.sample.ui.auth.SignInScreenTestTags
 import com.android.sample.ui.calendar.CalendarTestTags
 import com.android.sample.ui.dashboard.DashboardContentTestTags
@@ -463,6 +464,27 @@ class UnauthenticatedNavigationTests {
   fun activityStartsOnSignInForUnauthenticatedUser() {
     composeTestRule.onNodeWithTag(SignInScreenTestTags.SCREEN).assertIsDisplayed()
     composeTestRule.onNodeWithTag(SignInScreenTestTags.GOOGLE_BUTTON).assertIsDisplayed()
+  }
+}
+
+/** Verifies that [DidYouStudyApp] supports dependency injection of [AppViewModel]. */
+class DidYouStudyAppInjectionTests {
+  private val composeTestRule = createAndroidComposeRule<ComponentActivity>()
+
+  @get:Rule
+  val rules: RuleChain =
+      RuleChain.outerRule(signedInRepositories("injection-test-user")).around(composeTestRule)
+
+  /** Verifies that passing an explicit [AppViewModel] routes using its start destination. */
+  @Test
+  fun appRespectsExplicitApplicationViewModel() {
+    val auth = FakeAuthRepository(null)
+    val preferences = FakePreferencesRepository(null)
+    val customViewModel = AppViewModel(auth, preferences)
+
+    composeTestRule.setContent { DidYouStudyApp(applicationViewModel = customViewModel) }
+
+    composeTestRule.onNodeWithTag(SignInScreenTestTags.SCREEN).assertIsDisplayed()
   }
 }
 
