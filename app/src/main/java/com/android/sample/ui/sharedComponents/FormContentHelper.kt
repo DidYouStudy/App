@@ -87,6 +87,7 @@ import com.android.sample.R
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.ui.theme.AlphaTokens
+import com.android.sample.ui.theme.AnimationTokens
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.label
@@ -461,7 +462,11 @@ fun EventDatePickerDialog(
               } else {
                 Dimens.datePickerInputHeight
               },
-          animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+          animationSpec =
+              tween(
+                  durationMillis = AnimationTokens.DATE_PICKER_HEIGHT_TRANSITION_MS,
+                  easing = FastOutSlowInEasing,
+              ),
           label = "datePickerHeightAnimation",
       )
 
