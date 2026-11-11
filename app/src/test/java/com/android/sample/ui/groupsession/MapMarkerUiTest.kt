@@ -1,5 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5
-package com.android.sample.ui.groupsession.map
+package com.android.sample.ui.groupsession
 
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
@@ -8,8 +8,6 @@ import com.android.sample.model.location.CampusLocation
 import com.android.sample.model.location.CampusLocationType
 import com.android.sample.model.location.Location
 import com.android.sample.model.location.RoomMarker
-import com.android.sample.ui.groupsession.MapMarkerUi
-import com.android.sample.ui.groupsession.toMapMarker
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Test
