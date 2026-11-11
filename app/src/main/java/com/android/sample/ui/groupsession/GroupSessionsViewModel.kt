@@ -277,6 +277,7 @@ class GroupSessionsViewModel(
         .asSequence()
         .map { it.createdBy }
         .distinct()
+        // Skip the current user, hosts whose names are known, and hosts already being looked up.
         .filter { hostUserId ->
           hostUserId != currentUser &&
               hostUserId !in hostNamesByUserId &&
@@ -286,8 +287,11 @@ class GroupSessionsViewModel(
           hostLookupsInProgress += hostUserId
           viewModelScope.launch {
             try {
+              // Ignore results from earlier auth generations so a prior user's lookup can't apply.
               val result = profileRepository.getProfile(hostUserId)
               if (requestGeneration == authGeneration) {
+                // getProfile reports failures as Result; missing, blank, or failed profiles stay
+                // null, so the next list update can retry this host.
                 val hostName = result.getOrNull()?.username?.takeIf { it.isNotBlank() }
                 if (hostName != null) {
                   hostNamesByUserId[hostUserId] = hostName
@@ -296,6 +300,7 @@ class GroupSessionsViewModel(
               }
             } finally {
               if (requestGeneration == authGeneration) {
+                // Remove the in-progress mark so a later list update can retry this host.
                 hostLookupsInProgress.remove(hostUserId)
               }
             }
