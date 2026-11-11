@@ -26,8 +26,10 @@ import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.ui.navigation.NavigationTestTags
+import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneOffset
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -415,6 +417,17 @@ class GroupSessionScreenTest {
     assertEquals("In 5 hours", hoursOtherLabel)
     assertEquals("In 1 day", dayOneLabel)
     assertEquals("In 3 days", daysOtherLabel)
+  }
+
+  /** The badge follows the ViewModel's clock: the device's clock would give "In 1 hour" here. */
+  @Test
+  fun card_status_uses_the_time_from_the_viewmodel() {
+    val clock = Clock.fixed(testInstant.plus(Duration.ofMinutes(55)), ZoneOffset.UTC)
+    val viewModel = GroupSessionsViewModel(authRepository, repo, clock)
+
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+
+    composeTestRule.onNodeWithText("In 5 min").assertIsDisplayed()
   }
 
   private class FakeAuthRepository(private val currentUserId: String) : AuthRepository {
