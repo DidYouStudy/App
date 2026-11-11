@@ -15,6 +15,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
@@ -27,6 +28,11 @@ import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.PersonalEvent
 import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.model.location.CampusLocation
+import com.android.sample.model.location.CampusLocationFilter
+import com.android.sample.model.location.CampusLocationRepository
+import com.android.sample.model.location.CampusLocationType
+import com.android.sample.model.location.Location
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
 import java.time.Clock
 import java.time.Instant
@@ -64,6 +70,7 @@ class EditEventScreenTest {
   private val currentUser = MutableStateFlow<UserAccount?>(null)
   private val authRepository: AuthRepository = mock()
   private val eventsRepository: EventsRepository = mock()
+  private val campusLocationRepository: CampusLocationRepository = mock()
   private val groupSessionsRepository: GroupSessionsRepository = mock()
   private val clock = Clock.fixed(Instant.parse("2026-10-27T12:00:00Z"), ZoneId.of("Europe/Berlin"))
   private val storedEvent =
@@ -96,6 +103,7 @@ class EditEventScreenTest {
       whenever(eventsRepository.saveEvent(any())).thenReturn(Result.success(Unit))
       whenever(eventsRepository.deleteEvent("user-1", storedEvent.id))
           .thenReturn(Result.success(Unit))
+      whenever(campusLocationRepository.search(any())).thenReturn(Result.success(emptyList()))
     }
   }
 
@@ -106,7 +114,13 @@ class EditEventScreenTest {
 
   private fun createViewModel(): EventPlanningViewModel {
     val viewModel =
-        EventPlanningViewModel(authRepository, eventsRepository, groupSessionsRepository, clock)
+        EventPlanningViewModel(
+            authRepository,
+            eventsRepository,
+            campusLocationRepository,
+            groupSessionsRepository,
+            clock,
+        )
     testDispatcher.scheduler.advanceUntilIdle()
     return viewModel
   }
@@ -116,6 +130,16 @@ class EditEventScreenTest {
     testDispatcher.scheduler.advanceUntilIdle()
     composeTestRule.waitForIdle()
   }
+
+  /** Builds a minimal campus location for tests; only the name is usually relevant. */
+  private fun sampleLocation(name: String): CampusLocation =
+      CampusLocation(
+          name = name,
+          zone = "BC",
+          type = CampusLocationType.LECTURE_ROOM,
+          floor = null,
+          location = Location(latitude = 46.52, longitude = 6.56),
+      )
 
   /** Renders the shared stateless form explicitly in Edit mode for focused UI behavior tests. */
   private fun setEditStatelessScreen(
@@ -135,7 +159,7 @@ class EditEventScreenTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
           onAddTask = {},
           onToggleTask = {},
@@ -180,7 +204,7 @@ class EditEventScreenTest {
     composeTestRule.onNodeWithTag(Tags.START_TIME_SELECTOR).assertTextContains("09:00")
     composeTestRule.onNodeWithTag(Tags.END_TIME_SELECTOR).assertTextContains("11:00")
     composeTestRule.onNodeWithTag(Tags.SUBJECT_SELECTOR).assertTextContains("Operating Systems")
-    composeTestRule.onNodeWithTag(Tags.LOCATION_INPUT).assertTextContains("INF 1")
+    composeTestRule.onNodeWithTag(Tags.LOCATION_SELECTOR).assertTextContains("INF 1")
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION_INPUT).assertTextContains("Bring lecture notes")
     assertTrue(
         composeTestRule.onAllNodesWithText("Review chapter").fetchSemanticsNodes().isNotEmpty()
@@ -267,6 +291,7 @@ class EditEventScreenTest {
           onEndTimeSelected = { selectedEndTime = it },
           onSubjectSelected = { selectedSubject = it },
           onLocationChange = {},
+          onLocationSearchQueryChange = {},
           onDescriptionChange = {},
           onAddTask = {},
           onToggleTask = {},
@@ -333,6 +358,39 @@ class EditEventScreenTest {
     assertTrue(subjectPickerOpened)
   }
 
+  /** Tapping a location picker result end to end sets the ViewModel's location. */
+  @Test
+  fun editScreenSelectingLocationFromPickerUpdatesViewModel() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val results = listOf(sampleLocation("BC 01"))
+    runBlocking {
+      whenever(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+          .thenReturn(Result.success(results))
+    }
+    val viewModel = createViewModel()
+
+    composeTestRule.setContent {
+      EditEventScreen(
+          eventId = storedEvent.id,
+          viewModel = viewModel,
+          onBackClick = {},
+          onEventSaved = {},
+          onEventDelete = {},
+      )
+    }
+    finishPendingComposeAndViewModelWork()
+
+    composeTestRule.onNodeWithTag(Tags.LOCATION_SELECTOR).performScrollTo().performClick()
+    finishPendingComposeAndViewModelWork()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_search_placeholder))
+        .performTextInput("BC")
+    finishPendingComposeAndViewModelWork()
+    composeTestRule.onNodeWithText("BC 01").performClick()
+
+    assertEquals("BC 01", viewModel.uiState.value.location)
+  }
+
   @Test
   fun loadsExistingEventAndBackDoesNotSaveChanges() {
     val context = ApplicationProvider.getApplicationContext<Context>()
@@ -358,7 +416,7 @@ class EditEventScreenTest {
     composeTestRule.onNodeWithTag(Tags.START_TIME_SELECTOR).assertTextContains("09:00")
     composeTestRule.onNodeWithTag(Tags.END_TIME_SELECTOR).assertTextContains("11:00")
     composeTestRule.onNodeWithTag(Tags.SUBJECT_SELECTOR).assertTextContains("Operating Systems")
-    composeTestRule.onNodeWithTag(Tags.LOCATION_INPUT).assertTextContains("INF 1")
+    composeTestRule.onNodeWithTag(Tags.LOCATION_SELECTOR).assertTextContains("INF 1")
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION_INPUT).assertTextContains("Bring lecture notes")
     composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).assertIsEnabled()
     composeTestRule.onNodeWithTag(Tags.DELETE_BUTTON).assertIsDisplayed()
