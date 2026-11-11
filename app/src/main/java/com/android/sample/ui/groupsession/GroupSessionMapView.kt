@@ -6,7 +6,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -38,10 +37,11 @@ import com.android.sample.ui.theme.Spacing
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.rememberCameraPositionState
-import com.google.maps.android.compose.rememberMarkerState
+import com.google.maps.android.compose.rememberUpdatedMarkerState
 import kotlin.math.acos
 import kotlinx.coroutines.launch
 
@@ -52,6 +52,8 @@ import kotlinx.coroutines.launch
  * types and can be tested without the real map. It holds no selection: tapping a pin moves the
  * camera onto it and reports the room to the caller, which decides what to show.
  *
+ * A button in the top-right corner moves the camera back to the campus centre at the default zoom.
+ *
  * Needs a Maps API key in the app manifest; without one the map stays blank.
  *
  * @param markers Markers to draw.
@@ -60,8 +62,8 @@ import kotlinx.coroutines.launch
  * @param onMarkerClick Called with the room name when a marker is tapped, after the camera starts
  *   moving onto it.
  * @param onMapClick Called when the map is tapped away from any marker.
- *
- * A button in the top-right corner moves the camera back to the campus centre at the default zoom.
+ * @param cameraPositionState Camera of the map, for a caller that needs to read or move it, such as
+ *   instrumented tests; by default a camera on the campus centre at the default zoom.
  */
 @Composable
 fun GroupSessionMapView(
@@ -70,24 +72,26 @@ fun GroupSessionMapView(
     onMarkerClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     onMapClick: () -> Unit = {},
+    cameraPositionState: CameraPositionState? = null,
 ) {
   // The real map cannot load in the IDE preview, so it shows a stand-in listing the markers.
   if (LocalInspectionMode.current) {
-    MapPlaceholder(markers, onMarkerClick, onMapClick, modifier)
+    MapPlaceholder(onMapClick, modifier)
     return
   }
 
-  val campusCenter =
-      LatLng(
-          floatResource(R.dimen.map_campus_center_latitude).toDouble(),
-          floatResource(R.dimen.map_campus_center_longitude).toDouble(),
-      )
+  val campusCenter = LatLng(
+      floatResource(R.dimen.map_campus_center_latitude).toDouble(),
+      floatResource(R.dimen.map_campus_center_longitude).toDouble(),
+  )
   val defaultZoom = floatResource(R.dimen.map_default_zoom)
   val focusZoom = floatResource(R.dimen.map_focus_zoom)
   val cameraAnimationMs = integerResource(R.integer.map_camera_animation_ms)
-  val cameraPositionState = rememberCameraPositionState {
-    position = CameraPosition.fromLatLngZoom(campusCenter, defaultZoom)
-  }
+  val cameraPositionState =
+      cameraPositionState
+          ?: rememberCameraPositionState {
+            position = CameraPosition.fromLatLngZoom(campusCenter, defaultZoom)
+          }
 
   // Moves the camera onto a place, zooming in if the map is further out than the focus zoom.
   val focusOn: suspend (Location) -> Unit = { target ->
@@ -117,8 +121,7 @@ fun GroupSessionMapView(
       markers.forEach { marker ->
         MarkerComposable(
             marker.roomName,
-            state =
-                rememberMarkerState(key = marker.roomName, position = marker.location.toLatLng()),
+            state = rememberUpdatedMarkerState(position = marker.location.toLatLng()),
             onClick = {
               scope.launch { focusOn(marker.location) }
               onMarkerClick(marker.roomName)
@@ -153,8 +156,8 @@ private fun MarkerPin() {
   val width = Dimens.mapMarkerWidth
   val height = Dimens.mapMarkerHeight
   val dotDiameter = Dimens.mapMarkerDotDiameter
-  val quarterTurn = floatResource(R.dimen.map_quarter_turn_degrees)
-  val fullTurn = floatResource(R.dimen.map_full_turn_degrees)
+  val quarterTurn = integerResource(R.integer.map_quarter_turn_degrees).toFloat()
+  val fullTurn = integerResource(R.integer.map_full_turn_degrees).toFloat()
   val color = MaterialTheme.colorScheme.primary
   Canvas(modifier = Modifier.size(width, height)) {
     drawPath(dropletPath(size, quarterTurn, fullTurn), color)
@@ -188,17 +191,11 @@ internal fun dropletPath(size: Size, quarterTurn: Float, fullTurn: Float): Path 
 }
 
 /**
- * Stand-in for the map where the real one cannot load, in the IDE preview and in unit tests: the
- * markers as text. Tapping a marker's line or the background reports the same callbacks as the real
- * map, so the preview can be used in interactive mode.
+ * Stand-in for the map where the real one cannot load, in the IDE preview and in unit tests.
+ * Tapping it reports a map click, like the real map.
  */
 @Composable
-private fun MapPlaceholder(
-    markers: List<MapMarkerUi>,
-    onMarkerClick: (String) -> Unit,
-    onMapClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun MapPlaceholder(onMapClick: () -> Unit, modifier: Modifier = Modifier) {
   Box(
       modifier =
           modifier
@@ -207,25 +204,10 @@ private fun MapPlaceholder(
               .clickable { onMapClick() }
               .padding(Spacing.large)
   ) {
-    Column {
-      Text(
-          text = stringResource(R.string.group_session_map_preview_placeholder),
-          style = MaterialTheme.typography.titleMedium,
-      )
-      markers.forEach { marker ->
-        Text(
-            text =
-                stringResource(
-                    R.string.group_session_map_preview_marker,
-                    marker.roomName,
-                    marker.count,
-                ),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.clickable { onMarkerClick(marker.roomName) },
-        )
-      }
-    }
+    Text(
+        text = stringResource(R.string.group_session_map_preview_placeholder),
+        style = MaterialTheme.typography.titleMedium,
+    )
   }
 }
 
