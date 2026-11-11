@@ -17,6 +17,6 @@
     <item name="map_session_list_max_height_fraction" type="dimen" format="float">0.45</item>
 
     <!-- Angles, in degrees, used to draw the pin's outline. -->
-    <item name="map_quarter_turn_degrees" type="dimen" format="float">90</item>
-    <item name="map_full_turn_degrees" type="dimen" format="float">360</item>
+    <integer name="map_quarter_turn_degrees">90</integer>
+    <integer name="map_full_turn_degrees">360</integer>
 </resources>
