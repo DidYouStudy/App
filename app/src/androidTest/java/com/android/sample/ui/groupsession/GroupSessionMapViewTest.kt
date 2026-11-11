@@ -35,9 +35,16 @@ class GroupSessionMapViewTest {
   private val defaultZoom = resourceFloat(R.dimen.map_default_zoom)
   private val focusZoom = resourceFloat(R.dimen.map_focus_zoom)
 
-  // Two rooms close enough to both be on screen at the start zoom.
-  private val first = MapMarkerUi("AAB 0 26", Location(46.5191, 6.5660), count = 3)
-  private val second = MapMarkerUi("CM 1 121", Location(46.5191, 6.5676), count = 1)
+  private val first = MapMarkerUi("AAB 0 26", Location(46.5207473, 6.5632687), count = 3)
+  private val second = MapMarkerUi("CM 1 121", Location(46.5205949, 6.5676836), count = 1)
+
+  // Halfway between the two pins, so both are near the middle of the screen at the start zoom, on
+  // whatever size of screen the test runs.
+  private val betweenThePins =
+      LatLng(
+          (first.location.latitude + second.location.latitude) / 2,
+          (first.location.longitude + second.location.longitude) / 2,
+      )
 
   private lateinit var camera: CameraPositionState
   private val map = MapTestDriver(composeTestRule) { camera }
@@ -46,11 +53,14 @@ class GroupSessionMapViewTest {
 
   private fun resourceFloat(id: Int): Float = ResourcesCompat.getFloat(resources, id)
 
-  /** Shows the map with the camera far from the campus centre, at a zoom between the two used. */
-  private fun showMap(cameraTarget: Location? = null) {
+  /**
+   * Shows the map with the camera at [startAt], at a zoom between the two used. By default that is
+   * far from the campus centre and from the pins, so the tests of camera moves have a move to make.
+   */
+  private fun showMap(cameraTarget: Location? = null, startAt: LatLng = FAR_AWAY) {
     composeTestRule.setContent {
       camera = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(LatLng(46.5191, 6.5600), START_ZOOM)
+        position = CameraPosition.fromLatLngZoom(startAt, START_ZOOM)
       }
       GroupSessionMapView(
           markers = listOf(first, second),
@@ -94,16 +104,16 @@ class GroupSessionMapViewTest {
 
   @Test
   fun tappingAPin_reportsItsRoom() {
-    showMap()
+    showMap(startAt = betweenThePins)
 
     map.tapPinUntil(second.location.toLatLng()) { tappedRoom != null }
 
-    assertEquals("CM 1 121", tappedRoom)
+    assertEquals(second.roomName, tappedRoom)
   }
 
   @Test
   fun tappingAPin_movesTheCameraOntoItAtLeastToTheFocusZoom() {
-    showMap()
+    showMap(startAt = betweenThePins)
 
     map.tapPinUntil(second.location.toLatLng()) { tappedRoom != null }
 
@@ -112,7 +122,7 @@ class GroupSessionMapViewTest {
 
   @Test
   fun tappingAPin_doesNotReportAMapClick() {
-    showMap()
+    showMap(startAt = betweenThePins)
     map.tapPinUntil(first.location.toLatLng()) { tappedRoom != null }
     waitForCameraAt(first.location, minZoom = focusZoom, maxZoom = 21f)
     // Taps that missed the pin while it was being drawn report their map clicks late.
@@ -139,6 +149,7 @@ class GroupSessionMapViewTest {
 
   private companion object {
     const val START_ZOOM = 15f
+    val FAR_AWAY = LatLng(46.5191, 6.5600)
     const val POSITION_TOLERANCE = 0.0002
     const val ZOOM_TOLERANCE = 0.05f
   }
