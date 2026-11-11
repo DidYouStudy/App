@@ -166,18 +166,20 @@ class GroupSessionScreenTest {
     list.performScrollToNode(hasTestTag(GroupSessionScreenTestTags.sessionItem(0)))
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.sessionItem(0))
-        .assert(hasAnyDescendant(hasText("Your session (Host)")))
+        .assert(hasAnyDescendant(hasText(context.getString(R.string.group_session_host_self))))
 
     list.performScrollToNode(hasTestTag(GroupSessionScreenTestTags.sessionItem(1)))
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.sessionItem(1))
-        .assert(hasAnyDescendant(hasText("Hosted by Bob")))
+        .assert(
+            hasAnyDescendant(hasText(context.getString(R.string.group_session_hosted_by, "Bob")))
+        )
         .assert(!hasAnyDescendant(hasText("user-3", substring = true)))
 
     list.performScrollToNode(hasTestTag(GroupSessionScreenTestTags.sessionItem(3)))
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.sessionItem(3))
-        .assert(hasAnyDescendant(hasText("Unknown host")))
+        .assert(hasAnyDescendant(hasText(context.getString(R.string.group_session_host_unknown))))
         .assert(!hasAnyDescendant(hasText("user-4", substring = true)))
   }
 
