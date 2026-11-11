@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.groupsession
 
+import androidx.lifecycle.viewModelScope
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
@@ -18,12 +19,17 @@ import java.time.ZoneOffset
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -58,6 +64,7 @@ class GroupSessionsViewModelTest {
   fun signedOut_startsWithEmptyNonLoadingState() = runTest {
     val viewModel = createViewModel()
 
+    assertEquals(now, viewModel.uiState.value.now)
     assertFalse(viewModel.uiState.value.isLoading)
     assertEquals(emptyList<GroupSessionItem>(), viewModel.uiState.value.sessions)
     assertNull(viewModel.uiState.value.error)
@@ -485,6 +492,191 @@ class GroupSessionsViewModelTest {
     assertTrue(viewModel.uiState.value.sessions.isEmpty())
   }
 
+  /** Refresh updates the reference time even when no screen collects the state. */
+  @Test
+  fun now_refreshUpdatesTimeWithoutUiStateCollector() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val clock = MutableTestClock(now)
+    val viewModel =
+        GroupSessionsViewModel(
+            authRepository,
+            FlowGroupSessionsRepository(flowOf(Result.success(emptyList()))),
+            clock,
+        )
+    clock.currentInstant = Instant.parse("2025-03-01T12:00:25Z")
+
+    viewModel.refresh()
+    runCurrent()
+
+    assertEquals(Instant.parse("2025-03-01T12:00:25Z"), viewModel.uiState.value.now)
+  }
+
+  /** Signing in updates the reference time without waiting for a visible screen or tick. */
+  @Test
+  fun now_signInUpdatesTimeWithoutUiStateCollector() = runTest {
+    val clock = MutableTestClock(now)
+    val viewModel =
+        GroupSessionsViewModel(
+            authRepository,
+            FlowGroupSessionsRepository(flowOf(Result.success(emptyList()))),
+            clock,
+        )
+    clock.currentInstant = Instant.parse("2025-03-01T12:00:25Z")
+
+    authRepository.currentUser.value = account(ALICE)
+    runCurrent()
+
+    assertEquals(Instant.parse("2025-03-01T12:00:25Z"), viewModel.uiState.value.now)
+  }
+
+  /** The refreshed list cutoff and UI reference time come from the same clock read. */
+  @Test
+  fun now_refreshUsesSameInstantAsRepositoryCutoff() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val sessionsRepository =
+        FlowGroupSessionsRepository(flowOf(Result.success(emptyList<GroupSession>())))
+    val viewModel =
+        GroupSessionsViewModel(authRepository, sessionsRepository, AdvancingTestClock(now))
+
+    viewModel.refresh()
+    runCurrent()
+
+    assertEquals(sessionsRepository.endingAfters.last(), viewModel.uiState.value.now)
+  }
+
+  /** The first signed-in state carries the injected time before the repository emits. */
+  @Test
+  fun now_startsFromTheInjectedClock() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel =
+        GroupSessionsViewModel(
+            authRepository,
+            FlowGroupSessionsRepository(emissions),
+            MutableTestClock(now),
+        )
+
+    assertEquals(now, viewModel.uiState.value.now)
+    assertTrue(viewModel.uiState.value.isLoading)
+  }
+
+  /** The time changes after exactly 30 seconds of being observed, and not one moment earlier. */
+  @Test
+  fun now_refreshesEveryThirtySecondsWhileObserved() = runTest {
+    val clock = MutableTestClock(now)
+    val viewModel = GroupSessionsViewModel(authRepository, repository, clock)
+    observe(viewModel)
+    val later = now.plusSeconds(30)
+    clock.currentInstant = later
+
+    advanceTimeBy(29_999)
+    runCurrent()
+    assertEquals(now, viewModel.uiState.value.now)
+
+    advanceTimeBy(1)
+    runCurrent()
+    assertEquals(later, viewModel.uiState.value.now)
+  }
+
+  /** A time tick updates the clock without clearing an existing join failure. */
+  @Test
+  fun now_refreshPreservesJoinFailure() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val own = session("own", ALICE)
+    repository.saveSession(ALICE, own)
+    val clock = MutableTestClock(now)
+    val viewModel = GroupSessionsViewModel(authRepository, repository, clock)
+    viewModel.join("missing")
+    assertEquals(GroupSessionsError.JOIN_FAILED, viewModel.uiState.value.error)
+    observe(viewModel)
+    clock.currentInstant = Instant.parse("2025-03-01T12:00:30Z")
+
+    advanceTimeBy(30_000)
+    runCurrent()
+
+    assertEquals(Instant.parse("2025-03-01T12:00:30Z"), viewModel.uiState.value.now)
+    assertEquals(GroupSessionsError.JOIN_FAILED, viewModel.uiState.value.error)
+  }
+
+  /** A time tick preserves loading while the signed-in repository has not emitted. */
+  @Test
+  fun now_refreshPreservesLoadingBeforeFirstEmission() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val clock = MutableTestClock(now)
+    val viewModel =
+        GroupSessionsViewModel(authRepository, FlowGroupSessionsRepository(emissions), clock)
+    observe(viewModel)
+    clock.currentInstant = Instant.parse("2025-03-01T12:00:30Z")
+
+    advanceTimeBy(30_000)
+    runCurrent()
+
+    assertEquals(Instant.parse("2025-03-01T12:00:30Z"), viewModel.uiState.value.now)
+    assertTrue(viewModel.uiState.value.isLoading)
+  }
+
+  /** A hidden screen does no work, and coming back shows the right time without waiting. */
+  @Test
+  fun now_pausesWithoutCollectorAndUpdatesAsSoonAsOneReturns() = runTest {
+    val clock = MutableTestClock(now)
+    val viewModel = GroupSessionsViewModel(authRepository, repository, clock)
+    val hiddenAt = now.plusSeconds(600)
+    observe(viewModel).cancel()
+    clock.currentInstant = hiddenAt
+
+    advanceTimeBy(60_000)
+    runCurrent()
+    val timeWithoutCollector = viewModel.uiState.value.now
+
+    val collector = observe(viewModel)
+    val timeAfterReturn = viewModel.uiState.value.now
+    collector.cancel()
+    // Cancel ViewModel work before assertions so its collectors cannot mutate state afterward.
+    viewModel.viewModelScope.cancel()
+
+    assertEquals(now, timeWithoutCollector)
+    assertEquals(hiddenAt, timeAfterReturn)
+  }
+
+  /** The sign-out reset rebuilds the whole state, which must not bring back an old time. */
+  @Test
+  fun now_staysCurrentAfterSignOut() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val clock = MutableTestClock(now)
+    val viewModel = GroupSessionsViewModel(authRepository, repository, clock)
+    val signedOutAt = now.plusSeconds(600)
+    clock.currentInstant = signedOutAt
+
+    authRepository.currentUser.value = null
+
+    assertEquals(signedOutAt, viewModel.uiState.value.now)
+  }
+
+  /** A refresh only changes the time: the list, search text and filter stay as they were. */
+  @Test
+  fun now_refreshLeavesTheRestOfTheStateUntouched() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    repository.saveSession(ALICE, session("own", ALICE))
+    val clock = MutableTestClock(now)
+    val viewModel = GroupSessionsViewModel(authRepository, repository, clock)
+    viewModel.onQueryChange("bio")
+    viewModel.onFilterChange(GroupSessionFilter.JOINED)
+    val before = viewModel.uiState.value
+    observe(viewModel)
+    val later = now.plusSeconds(30)
+    clock.currentInstant = later
+
+    advanceTimeBy(30_000)
+    runCurrent()
+
+    assertEquals(before.copy(now = later), viewModel.uiState.value)
+  }
+
+  /** Collects the state like a visible screen does, until the test ends or the job is cancelled. */
+  private fun TestScope.observe(viewModel: GroupSessionsViewModel) =
+      backgroundScope.launch(testDispatcher) { viewModel.uiState.collect {} }
+
   private fun createViewModel(
       sessionsRepository: GroupSessionsRepository = repository,
   ): GroupSessionsViewModel =
@@ -535,11 +727,26 @@ class GroupSessionsViewModelTest {
     override fun instant(): Instant = currentInstant
   }
 
+  private class AdvancingTestClock(private val firstInstant: Instant) : Clock() {
+    private var reads = 0L
+
+    override fun getZone(): ZoneId = ZoneOffset.UTC
+
+    override fun withZone(zone: ZoneId): Clock =
+        require(zone == ZoneOffset.UTC) { "Test clock only supports UTC" }.let { this }
+
+    override fun instant(): Instant = firstInstant.plusSeconds(reads++)
+  }
+
   private class FlowGroupSessionsRepository(
       private val sessionsFlow: Flow<Result<List<GroupSession>>>
   ) : GroupSessionsRepository {
-    override fun observeSessions(endingAfter: Instant): Flow<Result<List<GroupSession>>> =
-        sessionsFlow
+    val endingAfters = mutableListOf<Instant>()
+
+    override fun observeSessions(endingAfter: Instant): Flow<Result<List<GroupSession>>> {
+      endingAfters.add(endingAfter)
+      return sessionsFlow
+    }
 
     override fun newSessionId(): String = "unused"
 

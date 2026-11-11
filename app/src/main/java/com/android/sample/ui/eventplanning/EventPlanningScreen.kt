@@ -365,9 +365,7 @@ fun EventPlanningScreenStateless(
             onLocationClick = onLocationClick,
             onLocationClear = onLocationClear,
             onDescriptionChange = onDescriptionChange,
-            onAddTask = onAddTask,
-            onToggleTask = onToggleTask,
-            onDeleteTask = onDeleteTask,
+            taskActions = TaskActions(onAddTask, onToggleTask, onDeleteTask),
             onTypeClick = onTypeClick,
             modifier = Modifier.fillMaxSize(),
         )
