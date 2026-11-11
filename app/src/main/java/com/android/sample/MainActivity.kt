@@ -3,6 +3,7 @@
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample
 
 import android.os.Bundle
@@ -134,6 +135,12 @@ fun DidYouStudyApp() {
                   applicationViewModel::canNavigateTo,
               )
             },
+            onGroupSessionClick = {
+              navigationActions.navigateIfAllowed(
+                  Screen.AddGroupSession,
+                  applicationViewModel::canNavigateTo,
+              )
+            },
         )
       }
     }
@@ -159,35 +166,28 @@ fun DidYouStudyApp() {
         startDestination = Screen.AddEvent.route,
         route = Screen.AddEvent.name,
     ) {
-      composable(
-          route = Screen.AddEvent.ROUTE,
-          arguments =
-              listOf(
-                  navArgument("kind") {
-                    type = NavType.StringType
-                    defaultValue = EventKind.PERSONAL.name
-                  }
-              ),
-      ) { backStackEntry ->
-        val kindStr = backStackEntry.arguments?.getString("kind")
-        val parsedKind = kindStr?.let { runCatching { EventKind.valueOf(it) }.getOrNull() }
-        if (parsedKind == null) {
-          LaunchedEffect(Unit) { navigationActions.goBack() }
-        } else {
-          AddEventScreen(
-              initialKind = parsedKind,
-              onBackClick = {
-                if (navigationActions.currentRoute().startsWith("add_event")) {
-                  navigationActions.goBack()
-                }
-              },
-              onEventSaved = {
-                if (navigationActions.currentRoute().startsWith("add_event")) {
-                  navigationActions.goBack()
-                }
-              },
-          )
-        }
+      val renderAddEvent: @Composable (EventKind, String) -> Unit = { initialKind, routePrefix ->
+        AddEventScreen(
+            initialKind = initialKind,
+            onBackClick = {
+              if (navigationActions.currentRoute().startsWith(routePrefix)) {
+                navigationActions.goBack()
+              }
+            },
+            onEventSaved = {
+              if (navigationActions.currentRoute().startsWith(routePrefix)) {
+                navigationActions.goBack()
+              }
+            },
+        )
+      }
+
+      composable(Screen.AddEvent.route) {
+        renderAddEvent(EventKind.PERSONAL, Screen.AddEvent.route)
+      }
+
+      composable(Screen.AddGroupSession.route) {
+        renderAddEvent(EventKind.GROUP_SESSION, Screen.AddGroupSession.route)
       }
 
       composable(
@@ -201,16 +201,14 @@ fun DidYouStudyApp() {
                   },
               ),
       ) { backStackEntry ->
-        val rawEventId = backStackEntry.arguments?.getString("eventId").orEmpty()
-        val eventId = runCatching {
-          Screen.EditEvent.decodePathSegment(rawEventId)
-        }
-            .getOrDefault(rawEventId)
-        val kindStr = backStackEntry.arguments?.getString("kind")
-        val parsedKind = kindStr?.let { runCatching { EventKind.valueOf(it) }.getOrNull() }
-        if (eventId.isBlank() || parsedKind == null) {
+        val eventId = backStackEntry.arguments?.getString("eventId").orEmpty()
+        if (eventId.isBlank()) {
           LaunchedEffect(Unit) { navigationActions.goBack() }
         } else {
+          val kindStr = backStackEntry.arguments?.getString("kind")
+          val parsedKind =
+              kindStr?.let { runCatching { EventKind.valueOf(it) }.getOrNull() }
+                  ?: EventKind.PERSONAL
           EditEventScreen(
               eventId = eventId,
               eventKind = parsedKind,
@@ -231,7 +229,7 @@ fun DidYouStudyApp() {
             navigationActions = navigationActions,
             onAddSessionClick = {
               navigationActions.navigateIfAllowed(
-                  Screen.AddEvent(EventKind.GROUP_SESSION),
+                  Screen.AddGroupSession,
                   applicationViewModel::canNavigateTo,
               )
             },

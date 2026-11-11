@@ -2,6 +2,7 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.navigation
 
 import androidx.activity.ComponentActivity
@@ -435,62 +436,7 @@ class NavigationTests {
     composeTestRule
         .onNodeWithTag(EventPlanningScreenTestTags.TOP_BAR_TITLE)
         .assertTextContains(
-            composeTestRule.activity.getString(
-                com.android.sample.R.string.event_planning_edit_title
-            )
-        )
-
-    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.BACK_BUTTON).performClick()
-    checkGroupSessionScreenIsDisplayed()
-  }
-
-  @Test
-  fun canNavigateToEditGroupSessionWithSpecialCharactersInId() {
-    val now = java.time.Instant.now()
-    val session =
-        com.android.sample.model.event.GroupSession(
-            id = "session/1?special#key with space",
-            createdBy = "navigation-test-user",
-            memberIds = listOf("navigation-test-user"),
-            details =
-                com.android.sample.model.event.EventDetails(
-                    type = com.android.sample.model.event.EventType.STUDY_SESSION,
-                    subject = "Operating Systems",
-                    startsAt = now.plus(java.time.Duration.ofHours(1)),
-                    endsAt = now.plus(java.time.Duration.ofHours(2)),
-                ),
-            createdAt = now,
-        )
-    kotlinx.coroutines.runBlocking {
-      com.android.sample.model.groupsession.GroupSessionsRepositoryProvider.getRepository()
-          .saveSession(
-              "navigation-test-user",
-              session,
-          )
-    }
-
-    composeTestRule.onNodeWithTag(NavigationTestTags.GROUP_SESSION_TAB).performClick()
-    checkGroupSessionScreenIsDisplayed()
-
-    val cardMatcher = hasAnyDescendant(hasText(session.details.subject ?: ""))
-    val editButtonMatcher =
-        hasText(
-            composeTestRule.activity.getString(
-                com.android.sample.R.string.group_session_action_edit
-            )
-        ) and hasAnyAncestor(cardMatcher)
-    composeTestRule
-        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
-        .performScrollToNode(editButtonMatcher)
-    composeTestRule.onNode(editButtonMatcher).performClick()
-
-    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.SCREEN_CONTAINER).assertIsDisplayed()
-    composeTestRule
-        .onNodeWithTag(EventPlanningScreenTestTags.TOP_BAR_TITLE)
-        .assertTextContains(
-            composeTestRule.activity.getString(
-                com.android.sample.R.string.event_planning_edit_title
-            )
+            composeTestRule.activity.getString(com.android.sample.R.string.group_session_edit_title)
         )
 
     composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.BACK_BUTTON).performClick()

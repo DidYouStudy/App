@@ -200,7 +200,7 @@ class GroupSessionScreenTest {
 
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ADD_BUTTON).performClick()
     assertEquals(
-        Screen.AddEvent(EventKind.GROUP_SESSION),
+        Screen.AddGroupSession,
         navActions.lastNavigatedScreen,
     )
   }
@@ -249,10 +249,7 @@ class GroupSessionScreenTest {
     composeTestRule.onNode(editButtonMatcher).performClick()
 
     assertEquals(
-        Screen.EditEvent(
-            "s1",
-            EventKind.GROUP_SESSION,
-        ),
+        Screen.EditEvent("s1", EventKind.GROUP_SESSION),
         navActions.lastNavigatedScreen,
     )
   }

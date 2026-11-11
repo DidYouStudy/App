@@ -3,6 +3,7 @@
 // Co-authored-by: Copilot
 // Co-authored-by: Gemini
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
 import androidx.compose.foundation.BorderStroke
@@ -111,9 +112,7 @@ object GroupSessionScreenTestTags {
 fun GroupSessionScreen(
     navigationActions: NavigationActions? = null,
     viewModel: GroupSessionsViewModel = groupSessionsViewModel(),
-    onAddSessionClick: () -> Unit = {
-      navigationActions?.navigateTo(Screen.AddEvent(EventKind.GROUP_SESSION))
-    },
+    onAddSessionClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddGroupSession) },
     onEditSessionClick: (String) -> Unit = { sessionId ->
       navigationActions?.navigateTo(Screen.EditEvent(sessionId, EventKind.GROUP_SESSION))
     },

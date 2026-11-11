@@ -187,11 +187,7 @@ class GroupSessionScreenTest {
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ADD_BUTTON).performClick()
     org.mockito.kotlin
         .verify(navActions)
-        .navigateTo(
-            com.android.sample.ui.navigation.Screen.AddEvent(
-                com.android.sample.ui.eventplanning.EventKind.GROUP_SESSION
-            )
-        )
+        .navigateTo(com.android.sample.ui.navigation.Screen.AddGroupSession)
   }
 
   @Test

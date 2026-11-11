@@ -1,5 +1,6 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.navigation
 
 import androidx.navigation.NavHostController
@@ -23,29 +24,14 @@ sealed class Screen(
   object GroupSession :
       Screen(route = "group_session", name = "GroupSession", isTopLevelDestination = true)
 
-  data class AddEvent(val kind: EventKind = EventKind.PERSONAL) :
-      Screen(route = "add_event?kind=${kind.name}", name = "AddEvent") {
-    companion object : Screen(route = "add_event?kind=PERSONAL", name = "AddEvent") {
-      const val ROUTE = "add_event?kind={kind}"
-    }
-  }
+  object AddEvent : Screen(route = "add_event", name = "AddEvent")
+
+  object AddGroupSession : Screen(route = "add_group_session", name = "AddGroupSession")
 
   data class EditEvent(val eventId: String, val kind: EventKind = EventKind.PERSONAL) :
-      Screen(
-          route = "edit_event/${encodePathSegment(eventId)}?kind=${kind.name}",
-          name = "EditEvent",
-      ) {
+      Screen(route = "edit_event/$eventId?kind=${kind.name}", name = "EditEvent") {
     companion object {
       const val ROUTE = "edit_event/{eventId}?kind={kind}"
-
-      /** Encodes an event ID so special characters like '/', '?', or '#' do not corrupt routes. */
-      fun encodePathSegment(value: String): String =
-          java.net.URLEncoder.encode(value, java.nio.charset.StandardCharsets.UTF_8.name())
-              .replace("+", "%20")
-
-      /** Decodes a previously encoded route path segment back into the original ID. */
-      fun decodePathSegment(value: String): String =
-          java.net.URLDecoder.decode(value, java.nio.charset.StandardCharsets.UTF_8.name())
     }
   }
 }

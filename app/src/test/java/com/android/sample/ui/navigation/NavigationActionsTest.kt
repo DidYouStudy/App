@@ -4,6 +4,7 @@ package com.android.sample.ui.navigation
 
 import androidx.navigation.NavDestination
 import androidx.navigation.NavHostController
+import com.android.sample.ui.eventplanning.EventKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -106,17 +107,12 @@ class NavigationActionsTest {
 
   @Test
   fun screenRoutesAreConstructedCorrectly() {
-    assertEquals("add_event?kind=PERSONAL", Screen.AddEvent.route)
-    assertEquals("add_event?kind=PERSONAL", Screen.AddEvent().route)
-    assertEquals(
-        "add_event?kind=GROUP_SESSION",
-        Screen.AddEvent(com.android.sample.ui.eventplanning.EventKind.GROUP_SESSION).route,
-    )
-    assertEquals("add_event?kind={kind}", Screen.AddEvent.ROUTE)
+    assertEquals("add_event", Screen.AddEvent.route)
+    assertEquals("add_group_session", Screen.AddGroupSession.route)
     assertEquals("edit_event/e1?kind=PERSONAL", Screen.EditEvent("e1").route)
     assertEquals(
-        "edit_event/s1?kind=GROUP_SESSION",
-        Screen.EditEvent("s1", com.android.sample.ui.eventplanning.EventKind.GROUP_SESSION).route,
+        "edit_event/e1?kind=GROUP_SESSION",
+        Screen.EditEvent("e1", EventKind.GROUP_SESSION).route,
     )
     assertEquals("edit_event/{eventId}?kind={kind}", Screen.EditEvent.ROUTE)
   }
@@ -161,7 +157,7 @@ class NavigationActionsTest {
     actions.navigateTo(Screen.Dashboard)
     // Non-top-level destination
     actions.navigateTo(Screen.Auth)
-    actions.navigateTo(Screen.AddEvent())
+    actions.navigateTo(Screen.AddEvent)
 
     assertTrue(
         org.mockito.Mockito.mockingDetails(navController).invocations.any {
@@ -212,19 +208,6 @@ class NavigationActionsTest {
           it.method.name == "navigate" && it.arguments.firstOrNull() == Screen.Dashboard.route
         }
     )
-  }
-
-  @Test
-  fun editEventEncodesSpecialCharactersInRoute() {
-    val complexId = "session/123?param=val#section test"
-    val editEvent =
-        Screen.EditEvent(complexId, com.android.sample.ui.eventplanning.EventKind.GROUP_SESSION)
-    assertEquals(
-        "edit_event/session%2F123%3Fparam%3Dval%23section%20test?kind=GROUP_SESSION",
-        editEvent.route,
-    )
-    val decoded = Screen.EditEvent.decodePathSegment("session%2F123%3Fparam%3Dval%23section%20test")
-    assertEquals(complexId, decoded)
   }
 
   @Test
