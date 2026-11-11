@@ -20,6 +20,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.sample.R
@@ -27,7 +28,7 @@ import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.location.CampusLocation
-import com.android.sample.model.location.CampusLocationType
+import com.android.sample.model.location.CampusLocationRepositoryProvider
 import com.android.sample.model.location.Location
 import com.android.sample.model.location.SessionMarkers
 import com.android.sample.ui.theme.DidYouStudyTheme
@@ -35,6 +36,7 @@ import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 import com.google.maps.android.compose.CameraPositionState
 import java.time.Instant
+import kotlinx.coroutines.runBlocking
 
 /** Test tags of the map content. */
 object GroupSessionMapTestTags {
@@ -153,10 +155,27 @@ private fun SessionCardList(
   }
 }
 
+/**
+ * Preview of the map content with two sample rooms, each holding sessions. The rooms are the real
+ * ones of the bundled campus data, so their names and coordinates are exact.
+ *
+ * @param cameraPositionState Camera of the map, for tests that need to read or move it.
+ */
 @Preview(showBackground = true)
 @Composable
-internal fun GroupSessionMapContentPreview() {
+internal fun GroupSessionMapContentPreview(cameraPositionState: CameraPositionState? = null) {
   val now = Instant.parse("2030-01-01T09:00:00Z")
+  val context = LocalContext.current
+  // Effects do not run in a static preview, so the bundled rooms are read right here; the file is
+  // small.
+  val campusRooms = remember {
+    runBlocking {
+      CampusLocationRepositoryProvider.getRepository(context).getAllLocations().getOrThrow()
+    }
+        .associateBy { it.name }
+  }
+
+  fun room(name: String) = checkNotNull(campusRooms[name]) { "No campus room named $name" }
 
   fun item(id: String, subject: String, type: EventType, room: String, startsInHours: Long) =
       GroupSessionItem(
@@ -179,37 +198,53 @@ internal fun GroupSessionMapContentPreview() {
           isCreator = false,
       )
 
-  fun room(name: String, latitude: Double, longitude: Double) =
-      CampusLocation(
-          name = name,
-          zone = name.substringBefore(' '),
-          type = CampusLocationType.LECTURE_ROOM,
-          floor = 0,
-          location = Location(latitude, longitude),
-      )
-
   DidYouStudyTheme {
     GroupSessionMapContent(
         rooms =
             listOf(
                 RoomSessions(
-                    room("AAB 0 26", 46.5186, 6.5619),
+                    room(PREVIEW_FIRST_ROOM),
                     listOf(
-                        item("s1", "Linear Algebra", EventType.STUDY_SESSION, "AAB 0 26", 1),
-                        item("s2", "Software Architecture", EventType.PROJECT, "AAB 0 26", 3),
+                        item(
+                            "s1",
+                            "Linear Algebra",
+                            EventType.STUDY_SESSION,
+                            PREVIEW_FIRST_ROOM,
+                            1,
+                        ),
+                        item(
+                            "s2",
+                            "Software Architecture",
+                            EventType.PROJECT,
+                            PREVIEW_FIRST_ROOM,
+                            3,
+                        ),
                     ),
                 ),
                 RoomSessions(
-                    room("CM 1 121", 46.5202, 6.5652),
-                    listOf(item("s3", "Thermodynamics", EventType.EXERCISE_SESSION, "CM 1 121", 2)),
+                    room(PREVIEW_SECOND_ROOM),
+                    listOf(
+                        item(
+                            "s3",
+                            "Thermodynamics",
+                            EventType.EXERCISE_SESSION,
+                            PREVIEW_SECOND_ROOM,
+                            2,
+                        )
+                    ),
                 ),
             ),
         now = now,
         onJoin = {},
         onLeave = {},
         initialSelectedRoom = null,
+        cameraPositionState = cameraPositionState,
     )
   }
 }
+
+/** Names of the two campus rooms the preview shows sessions in. */
+internal const val PREVIEW_FIRST_ROOM = "AAB 0 26"
+internal const val PREVIEW_SECOND_ROOM = "CM 1 121"
 
 private const val SECONDS_PER_HOUR = 3600L

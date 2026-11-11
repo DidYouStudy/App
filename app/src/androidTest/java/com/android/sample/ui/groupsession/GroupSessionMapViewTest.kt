@@ -22,8 +22,8 @@ import org.junit.runner.RunWith
 
 /**
  * Tests of the real Google map in [GroupSessionMapView], on a device or emulator with Google Play
- * services: the camera moves and the marker taps. The map tiles are not needed, so they pass
- * without a Maps key or a network.
+ * services and a Maps key: the camera moves and the marker taps. Without a valid key the map draws
+ * no pins and moves no camera, so these tests fail.
  */
 @RunWith(AndroidJUnit4::class)
 class GroupSessionMapViewTest {

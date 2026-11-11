@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTouchInput
 import com.android.sample.ui.theme.Dimens
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.CameraPositionState
 
@@ -45,6 +46,11 @@ class MapTestDriver(
         System.currentTimeMillis() - since >= STILL_MS
       }
     }
+  }
+
+  /** Moves the camera at once, without an animation; the map only answers on the main thread. */
+  fun moveCameraTo(target: LatLng, zoom: Float) {
+    composeTestRule.runOnUiThread { camera().move(CameraUpdateFactory.newLatLngZoom(target, zoom)) }
   }
 
   /** Where [location] is on the screen; Google Maps answers only on the main thread. */
