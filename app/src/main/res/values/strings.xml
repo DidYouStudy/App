@@ -78,7 +78,7 @@
     <string name="settings_logout_button">Log out</string>
 
     <!-- Event Planning -->
-    <string name="event_planning_add_title">Add new&#8230;</string>
+    <string name="event_planning_add_title">Add new event</string>
     <string name="event_planning_edit_title">Edit event</string>
     <string name="event_planning_save_button">Save</string>
     <string name="event_planning_delete_button">Delete event</string>
@@ -122,6 +122,8 @@
 
     <!-- Group Sessions Screen -->
     <string name="group_session_title">Group sessions</string>
+    <string name="group_session_add_title">Add new group session</string>
+    <string name="group_session_edit_title">Edit group session</string>
     <string name="group_session_error_dismiss">Dismiss</string>
     <string name="group_session_add_description">Add group session</string>
     <string name="group_session_error_load">Could not load sessions. Please try again.</string>

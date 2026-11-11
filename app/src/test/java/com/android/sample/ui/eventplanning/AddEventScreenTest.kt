@@ -1,5 +1,6 @@
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
 
 import android.content.Context
@@ -552,5 +553,24 @@ class AddEventScreenTest {
 
     composeTestRule.runOnUiThread { backDispatcher?.onBackPressed() }
     assertTrue(backClicked)
+  }
+
+  @Test
+  fun addEventScreen_displaysGroupSessionTitle_whenInitialKindIsGroupSession() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      AddEventScreen(
+          viewModel = viewModel,
+          initialKind = EventKind.GROUP_SESSION,
+          onBackClick = {},
+          onEventSaved = {},
+      )
+    }
+
+    composeTestRule
+        .onNodeWithTag(Tags.TOP_BAR_TITLE)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.group_session_add_title))
   }
 }

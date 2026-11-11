@@ -1,6 +1,8 @@
 // Co-authored-by: Copilot
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -77,6 +79,8 @@ import java.time.LocalTime
  *   time picker.
  * @param onPickEndTimeClick Optional external end-time picker action; null uses the built-in time
  *   picker.
+ * @param titleRes Optional custom string resource for the top-bar title; when null, the title is
+ *   selected based on [isEditing] and [uiState.eventKind].
  * @param onPickSubjectClick Optional external subject picker action; null uses the built-in subject
  *   picker.
  */
@@ -84,6 +88,7 @@ import java.time.LocalTime
 internal fun EventPlanningScreen(
     modifier: Modifier = Modifier,
     uiState: EventPlanningUiState,
+    @StringRes titleRes: Int? = null,
     onBackClick: () -> Unit,
     onTypeChange: (EventType) -> Unit,
     onDateSelected: (LocalDate) -> Unit,
@@ -112,6 +117,7 @@ internal fun EventPlanningScreen(
 
   EventPlanningScreenStateless(
       uiState = uiState,
+      titleRes = titleRes,
       onBackClick = onBackClick,
       onTypeChange = onTypeChange,
       onTypeClick = onTypeClick,
@@ -202,6 +208,8 @@ internal fun EventPlanningScreen(
  * @param onDeleteClick Optional delete action; when null, no Delete button is shown.
  * @param isEditing Whether to render Edit mode; defaults to Add mode.
  * @param isLoading Whether to show a loading indicator instead of the form.
+ * @param titleRes Optional custom string resource for the top-bar title; when null, the title is
+ *   selected based on [isEditing] and [uiState.eventKind].
  * @param onTypeClick Optional event-type picker action passed to the form.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -209,6 +217,7 @@ internal fun EventPlanningScreen(
 fun EventPlanningScreenStateless(
     modifier: Modifier = Modifier,
     uiState: EventPlanningUiState,
+    @StringRes titleRes: Int? = null,
     onBackClick: () -> Unit,
     onTypeChange: (EventType) -> Unit,
     onDateClick: () -> Unit,
@@ -230,16 +239,23 @@ fun EventPlanningScreenStateless(
       uiState.error == EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED ||
           uiState.error == EventPlanningError.INVALID_EVENT
 
+  val resolvedTitleRes =
+      titleRes
+          ?: when (uiState.eventKind) {
+            EventKind.GROUP_SESSION ->
+                if (isEditing) R.string.group_session_edit_title
+                else R.string.group_session_add_title
+            EventKind.PERSONAL ->
+                if (isEditing) R.string.event_planning_edit_title
+                else R.string.event_planning_add_title
+          }
+
   Scaffold(
       topBar = {
         MediumTopAppBar(
             title = {
               Text(
-                  text =
-                      stringResource(
-                          if (isEditing) R.string.event_planning_edit_title
-                          else R.string.event_planning_add_title
-                      ),
+                  text = stringResource(resolvedTitleRes),
                   style = MaterialTheme.typography.headlineLarge,
                   fontWeight = FontWeight.Bold,
                   modifier = Modifier.testTag(Tags.TOP_BAR_TITLE),

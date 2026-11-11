@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.android.sample.R
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import java.time.LocalDate
@@ -87,8 +88,18 @@ fun EditEventScreen(
 
   BackHandler(onBack = handleBack)
 
+  val titleRes =
+      if (eventKind == EventKind.GROUP_SESSION) {
+        R.string.group_session_edit_title
+      } else {
+        R.string.event_planning_edit_title
+      }
+
   EventPlanningScreen(
-      uiState = uiState,
+      // Ensure the form uses eventKind immediately while the ViewModel loads the event details
+      uiState =
+          if (uiState.eventKind != eventKind) uiState.copy(eventKind = eventKind) else uiState,
+      titleRes = titleRes,
       onBackClick = handleBack,
       onTypeChange = viewModel::setType,
       onDateSelected = viewModel::setDate,

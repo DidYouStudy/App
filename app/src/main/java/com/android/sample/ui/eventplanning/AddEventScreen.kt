@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.android.sample.R
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 
@@ -71,8 +72,19 @@ fun AddEventScreen(
     onBackClick()
   }
 
+  val titleRes =
+      if (initialKind == EventKind.GROUP_SESSION) {
+        R.string.group_session_add_title
+      } else {
+        R.string.event_planning_add_title
+      }
+
   EventPlanningScreen(
-      uiState = uiState,
+      // Ensure the form uses initialKind immediately, avoiding a flicker before LaunchedEffect
+      // syncs
+      uiState =
+          if (uiState.eventKind != initialKind) uiState.copy(eventKind = initialKind) else uiState,
+      titleRes = titleRes,
       onBackClick = onBackClick,
       onTypeChange = viewModel::setType,
       onDateSelected = viewModel::setDate,

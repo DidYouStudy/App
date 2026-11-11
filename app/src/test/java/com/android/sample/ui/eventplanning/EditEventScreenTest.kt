@@ -122,6 +122,7 @@ class EditEventScreenTest {
       onBackClick: () -> Unit = {},
       onSaveClick: () -> Unit = {},
       onDeleteClick: (() -> Unit)? = null,
+      isEditing: Boolean = true,
       isLoading: Boolean = false,
   ) {
     composeTestRule.setContent {
@@ -140,7 +141,7 @@ class EditEventScreenTest {
           onDeleteTask = {},
           onSaveClick = onSaveClick,
           onDeleteClick = onDeleteClick,
-          isEditing = true,
+          isEditing = isEditing,
           isLoading = isLoading,
       )
     }
@@ -559,5 +560,68 @@ class EditEventScreenTest {
 
     assertTrue(deleted)
     runBlocking { verify(groupSessionsRepository).deleteSession("user-1", "session-1") }
+  }
+
+  @Test
+  fun editEventScreen_displaysGroupSessionTitle_whenEventKindIsGroupSession() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val session =
+        GroupSession(
+            id = "session-1",
+            createdBy = "user-1",
+            memberIds = listOf("user-1"),
+            details =
+                EventDetails(
+                    type = EventType.STUDY_SESSION,
+                    subject = "Subject",
+                    startsAt = Instant.parse("2026-10-27T14:00:00Z"),
+                    endsAt = Instant.parse("2026-10-27T16:00:00Z"),
+                ),
+            createdAt = Instant.parse("2026-10-20T09:00:00Z"),
+        )
+    runBlocking {
+      whenever(groupSessionsRepository.getSession("session-1")).thenReturn(Result.success(session))
+    }
+
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      EditEventScreen(
+          eventId = "session-1",
+          eventKind = EventKind.GROUP_SESSION,
+          viewModel = viewModel,
+          onBackClick = {},
+          onEventSaved = {},
+          onEventDelete = {},
+      )
+    }
+
+    finishPendingComposeAndViewModelWork()
+
+    composeTestRule
+        .onNodeWithTag(Tags.TOP_BAR_TITLE)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.group_session_edit_title))
+  }
+
+  @Test
+  fun eventPlanningScreenStateless_displaysAddGroupSessionTitle() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val addState = EventPlanningUiState(eventKind = EventKind.GROUP_SESSION)
+    setEditStatelessScreen(uiState = addState, isEditing = false)
+    composeTestRule
+        .onNodeWithTag(Tags.TOP_BAR_TITLE)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.group_session_add_title))
+  }
+
+  @Test
+  fun eventPlanningScreenStateless_displaysEditGroupSessionTitle() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val editState = EventPlanningUiState(eventKind = EventKind.GROUP_SESSION, isEditing = true)
+    setEditStatelessScreen(uiState = editState, isEditing = true)
+    composeTestRule
+        .onNodeWithTag(Tags.TOP_BAR_TITLE)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.group_session_edit_title))
   }
 }
