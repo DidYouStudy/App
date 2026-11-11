@@ -25,7 +25,8 @@
     <string name="dashboard_stat_average_daily">Average daily study time</string>
     <string name="dashboard_stat_total_sessions">Total sessions</string>
     <string name="dashboard_stat_average_focus">Average focus duration</string>
-    <string name="dashboard_stat_empty_value">—</string>
+    <!-- Placeholder shown when a stat has no value yet -->
+    <string name="dashboard_stat_empty_value" translatable="false">&#8212;</string>
     <string name="dashboard_add_description">Add</string>
     <string name="dashboard_fab_event">Event</string>
     <string name="dashboard_fab_group_session">Group session</string>
@@ -43,19 +44,21 @@
     <string name="preferences_edit_header">Modify your preferences</string>
     <string name="preferences_retry_button_on_error">Retry</string>
     <string name="preferences_import_schedule_label">Import course schedule</string>
-    <string name="preferences_import_schedule_button">Import...</string>
+    <string name="preferences_import_schedule_button">Import&#8230;</string>
+    <!-- %1$d: number of events imported from the schedule file -->
     <plurals name="preferences_import_schedule_success">
-        <item quantity="one">Imported %d event</item>
-        <item quantity="other">Imported %d events</item>
+        <item quantity="one">Imported %1$d event</item>
+        <item quantity="other">Imported %1$d events</item>
     </plurals>
+    <!-- %1$d: number of schedule entries that could not be read -->
     <plurals name="preferences_import_schedule_partial">
-        <item quantity="one">Schedule imported, but %d entry could not be read and was skipped.</item>
-        <item quantity="other">Schedule imported, but %d entries could not be read and were skipped.</item>
+        <item quantity="one">Schedule imported, but %1$d entry could not be read and was skipped.</item>
+        <item quantity="other">Schedule imported, but %1$d entries could not be read and were skipped.</item>
     </plurals>
     <string name="preferences_import_schedule_incomplete">Schedule imported, but the file ends unexpectedly and some events may be missing.</string>
     <string name="preferences_import_schedule_failure">Could not import this schedule. Choose a valid .ics file.</string>
     <string name="preferences_add_study_locations_label">Add your study locations</string>
-    <string name="preferences_add_study_locations_button">Add...</string>
+    <string name="preferences_add_study_locations_button">Add&#8230;</string>
     <string name="preferences_study_time_label">When do you prefer to study?</string>
     <string name="preferences_session_length_label">How long do you want your study sessions to be?</string>
     <string name="preferences_break_duration_label">How much break time do you prefer?</string>
@@ -66,6 +69,7 @@
     <string name="preferences_error_save_failed">Failed to save preferences.</string>
     <string name="settings_header">Settings</string>
     <string name="settings_profile_picture">Profile picture</string>
+    <!-- %1$s: the user's display name -->
     <string name="settings_greeting">Hello, %1$s!</string>
     <string name="settings_edit_username">Edit username</string>
     <string name="settings_change_profile_picture">Change profile picture</string>
@@ -89,22 +93,42 @@
     <string name="event_planning_subject_optional_label">Subject (optional)</string>
     <string name="event_planning_select_or_enter_placeholder">Select or enter&#8230;</string>
     <string name="event_planning_location_optional_label">Location (optional)</string>
+    <string name="event_planning_location_placeholder">Select location&#8230;</string>
     <string name="event_planning_description_optional_label">Description (optional)</string>
     <string name="event_planning_description_placeholder">Enter description&#8230;</string>
     <string name="event_planning_tasks_optional_label">Tasks (optional)</string>
     <string name="event_planning_add_task_placeholder">Add a task&#8230;</string>
     <string name="event_planning_delete_task_content_description">Delete task</string>
     <string name="event_planning_select_subject_title">Select subject</string>
-    <string name="event_planning_subject_search_placeholder">Search or type new subject…</string>
+    <string name="location_picker_dialog_title">Select location</string>
+    <string name="location_picker_search_placeholder">Search locations&#8230;</string>
+    <string name="location_picker_empty_results">No locations found</string>
+    <string name="location_picker_search_prompt">Start typing for suggestions</string>
+    <string name="clear_field_content_description">Clear</string>
+    <string name="event_planning_subject_search_placeholder">Search or type new subject&#8230;</string>
     <string name="event_planning_ends_next_day_warning">Event ends the following day</string>
     <string name="event_planning_error_required_fields">Please fill in all required fields.</string>
     <string name="event_planning_error_save_failed">Failed to save event. Please try again.</string>
+    <string name="event_planning_error_task_actions_required">taskActions must be provided when form is used for a personal event</string>
+    <string name="event_planning_error_failed_to_observe_user">Failed to observe signed-in user</string>
+    <string name="event_planning_error_no_signed_in_user">No signed-in user</string>
+    <string name="event_planning_error_date_and_times_required">Event date, start time and end time are required</string>
+    <string name="event_planning_error_no_event_to_edit">No event loaded to edit</string>
+    <string name="event_planning_error_failed_to_add_event">Failed to add event</string>
+    <string name="event_planning_error_failed_to_edit_event">Failed to edit event</string>
+    <string name="event_planning_error_failed_to_delete_event">Failed to delete event</string>
+    <string name="event_planning_error_failed_to_load_event">Failed to load event</string>
+    <string name="event_planning_error_invalid_event">The event is invalid</string>
+    <string name="event_planning_error_event_not_found">This event no longer exists</string>
+    <string name="event_planning_error_permission_denied">You are not allowed to change this event</string>
+    <string name="event_planning_error_invalid_event_data">The stored event is corrupted</string>
+    <string name="event_planning_error_storage_failure">Your events could not be stored on this device</string>
     <string name="confirm">OK</string>
     <string name="cancel">Cancel</string>
 
     <!-- Group Sessions Screen -->
     <string name="group_session_title">Group sessions</string>
-    <string name="group_session_error_dismiss">DISMISS</string>
+    <string name="group_session_error_dismiss">Dismiss</string>
     <string name="group_session_add_description">Add group session</string>
     <string name="group_session_error_load">Could not load sessions. Please try again.</string>
     <string name="group_session_error_join">Could not join session. Please try again.</string>
@@ -115,20 +139,31 @@
     <string name="group_session_filter_all">All sessions</string>
     <string name="group_session_filter_my">My sessions</string>
     <string name="group_session_active_sessions_title">Active sessions</string>
-    <string name="group_session_loading">Loading sessions...</string>
+    <string name="group_session_loading">Loading sessions&#8230;</string>
     <string name="group_session_empty">No active sessions</string>
     <string name="group_session_subject_fallback">Other</string>
     <string name="group_session_host_self">Your session (Host)</string>
+    <!-- %1$s: display name of the session host -->
     <string name="group_session_hosted_by">Hosted by %1$s</string>
     <string name="group_session_description_fallback">Group study session</string>
     <string name="group_session_location_fallback">Location TBD</string>
     <string name="group_session_date_today">Today</string>
     <string name="group_session_status_started">Started</string>
-    <string name="group_session_status_in_minutes">In %1$d min</string>
-    <string name="group_session_status_in_hours_one">In %1$d hour</string>
-    <string name="group_session_status_in_hours_other">In %1$d hours</string>
-    <string name="group_session_status_in_days_one">In %1$d day</string>
-    <string name="group_session_status_in_days_other">In %1$d days</string>
+    <!-- %1$d: minutes until the session starts (always under 60) -->
+    <plurals name="group_session_status_in_minutes">
+        <item quantity="one">In %1$d min</item>
+        <item quantity="other">In %1$d min</item>
+    </plurals>
+    <!-- %1$d: hours until the session starts (always under 24) -->
+    <plurals name="group_session_status_in_hours">
+        <item quantity="one">In %1$d hour</item>
+        <item quantity="other">In %1$d hours</item>
+    </plurals>
+    <!-- %1$d: days until the session starts -->
+    <plurals name="group_session_status_in_days">
+        <item quantity="one">In %1$d day</item>
+        <item quantity="other">In %1$d days</item>
+    </plurals>
     <string name="group_session_action_edit">Edit</string>
     <string name="group_session_action_leave">Leave</string>
     <string name="group_session_action_joined">Joined</string>

@@ -1,15 +1,24 @@
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
 
 import androidx.lifecycle.ViewModel
+import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
-import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
 import com.android.sample.model.event.EventsRepository
+import com.android.sample.model.event.GroupSession
+import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.model.location.CampusLocation
+import com.android.sample.model.location.CampusLocationFilter
+import com.android.sample.model.location.CampusLocationType
+import com.android.sample.model.location.Location
+import java.time.Instant
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -32,7 +41,9 @@ import org.mockito.Mockito.never
 import org.mockito.Mockito.times
 import org.mockito.Mockito.`when`
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.doSuspendableAnswer
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.verify
 
 /**
@@ -55,10 +66,17 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
   fun setUp() {
     authRepository = mock(AuthRepository::class.java)
     eventsRepository = mock(EventsRepository::class.java)
+    groupSessionsRepository = mock(GroupSessionsRepository::class.java)
     `when`(authRepository.currentUser).thenReturn(currentUserFlow)
     `when`(eventsRepository.newEventId()).thenReturn("event-1")
     `when`(eventsRepository.observeSubjects(any())).thenReturn(subjects())
-    runBlocking { `when`(eventsRepository.saveEvent(any())).thenReturn(Result.success(Unit)) }
+    `when`(groupSessionsRepository.newSessionId()).thenReturn("session-1")
+    runBlocking {
+      `when`(eventsRepository.saveEvent(any())).thenReturn(Result.success(Unit))
+      `when`(groupSessionsRepository.saveSession(any(), any())).thenReturn(Result.success(Unit))
+      `when`(eventsRepository.deleteEvent(any(), any())).thenReturn(Result.success(Unit))
+      `when`(groupSessionsRepository.deleteSession(any(), any())).thenReturn(Result.success(Unit))
+    }
     currentUserFlow.value = account("user123")
   }
 
@@ -67,30 +85,16 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
 
   // ---------------------------------------------------------------- user observation
 
-  /** A message from a failed authentication flow is surfaced in UI state. */
+  /** A failed authentication flow sets the observation error category. */
   @Test
-  fun init_userFlowFailsWithMessage_exposesMessage() = runTest {
+  fun init_userFlowFails_setsObservationError() = runTest {
     `when`(authRepository.currentUser)
-        .thenReturn(flow<UserAccount?> { throw RuntimeException("Auth flow error") })
+        .thenReturn(flow { throw RuntimeException("Auth flow error") })
 
     val viewModel = createViewModel()
 
-    assertEquals("Auth flow error", viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.FAILED_TO_OBSERVE_USER, viewModel.uiState.value.error)
     assertFalse(viewModel.uiState.value.isEventAdded)
-  }
-
-  /** A failed authentication flow without a message uses the default observation error. */
-  @Test
-  fun init_userFlowFailsWithoutMessage_usesDefaultMessage() = runTest {
-    val exception = object : RuntimeException(null as String?) {}
-    `when`(authRepository.currentUser).thenReturn(flow<UserAccount?> { throw exception })
-
-    val viewModel = createViewModel()
-
-    assertEquals(
-        EventPlanningViewModel.FAILED_TO_OBSERVE_USER_ERROR,
-        viewModel.uiState.value.error,
-    )
   }
 
   /**
@@ -99,21 +103,20 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
   @Test
   fun init_userFlowFails_noUserIsKnownAndAddingIsRejected() = runTest {
     `when`(authRepository.currentUser)
-        .thenReturn(flow<UserAccount?> { throw RuntimeException("Auth flow error") })
+        .thenReturn(flow { throw RuntimeException("Auth flow error") })
     val viewModel = createViewModel()
     viewModel.fillValidForm()
 
     viewModel.addEvent()
 
-    assertEquals(EventPlanningViewModel.NO_SIGNED_IN_USER_ERROR, viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.NO_SIGNED_IN_USER, viewModel.uiState.value.error)
     verify(eventsRepository, never()).saveEvent(any())
   }
 
   /** Cancellation of authentication observation is propagated without displaying an error. */
   @Test
   fun init_userFlowCancelled_doesNotExposeError() = runTest {
-    `when`(authRepository.currentUser)
-        .thenReturn(flow<UserAccount?> { throw CancellationException("cancelled") })
+    `when`(authRepository.currentUser).thenReturn(flow { throw CancellationException("cancelled") })
 
     val viewModel = createViewModel()
 
@@ -154,6 +157,110 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
 
     assertEquals(emptyList<String>(), viewModel.uiState.value.recommendedSubjects)
     assertNull(viewModel.uiState.value.error)
+  }
+
+  // ---------------------------------------------------------------- location search
+
+  /** Builds a minimal campus location for tests; only the name is usually relevant. */
+  private fun sampleLocation(name: String): CampusLocation =
+      CampusLocation(
+          name = name,
+          zone = "AAB",
+          type = CampusLocationType.LECTURE_ROOM,
+          floor = null,
+          location = Location(latitude = 46.52, longitude = 6.56),
+      )
+
+  /** A successful search result is exposed as the location picker's search results. */
+  @Test
+  fun searchLocations_success_updatesLocationSearchResults() = runTest {
+    val results = listOf(sampleLocation("BC 01"), sampleLocation("BC 02"))
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+        .thenReturn(Result.success(results))
+    val viewModel = createViewModel()
+
+    viewModel.searchLocations("BC")
+    advanceUntilIdle()
+
+    assertEquals(results, viewModel.uiState.value.locationSearchResults)
+  }
+
+  /** A failed search leaves the results empty without surfacing an error. */
+  @Test
+  fun searchLocations_failure_leavesResultsEmptyWithoutError() = runTest {
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+        .thenReturn(Result.failure(RuntimeException("search failed")))
+    val viewModel = createViewModel()
+
+    viewModel.searchLocations("BC")
+    advanceUntilIdle()
+
+    assertEquals(emptyList<CampusLocation>(), viewModel.uiState.value.locationSearchResults)
+    assertNull(viewModel.uiState.value.error)
+  }
+
+  /** A failed search after a successful one clears the stale results instead of keeping them. */
+  @Test
+  fun searchLocations_failureAfterSuccess_clearsStaleResults() = runTest {
+    val results = listOf(sampleLocation("BC 01"))
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+        .thenReturn(Result.success(results))
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "ZZ")))
+        .thenReturn(Result.failure(RuntimeException("search failed")))
+    val viewModel = createViewModel()
+
+    viewModel.searchLocations("BC")
+    advanceUntilIdle()
+    assertEquals(results, viewModel.uiState.value.locationSearchResults)
+
+    viewModel.searchLocations("ZZ")
+    advanceUntilIdle()
+
+    assertEquals(emptyList<CampusLocation>(), viewModel.uiState.value.locationSearchResults)
+    assertNull(viewModel.uiState.value.error)
+  }
+
+  /**
+   * A blank query clears the results directly, without calling the repository: reopening the picker
+   * after a previous search must not show stale results for a search box that is empty again.
+   */
+  @Test
+  fun searchLocations_blankQuery_clearsResultsWithoutQueryingRepository() = runTest {
+    val results = listOf(sampleLocation("BC 01"))
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+        .thenReturn(Result.success(results))
+    val viewModel = createViewModel()
+    viewModel.searchLocations("BC")
+    advanceUntilIdle()
+    assertEquals(results, viewModel.uiState.value.locationSearchResults)
+
+    viewModel.searchLocations("")
+
+    assertEquals(emptyList<CampusLocation>(), viewModel.uiState.value.locationSearchResults)
+    verify(campusLocationRepository, never()).search(CampusLocationFilter(query = ""))
+  }
+
+  /** A new search cancels a slower, still-running one, so its stale result is dropped. */
+  @Test
+  fun searchLocations_newQueryCancelsPreviousSlowQuery() = runTest {
+    val staleGate = CompletableDeferred<Unit>()
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "stale")))
+        .doSuspendableAnswer {
+          staleGate.await()
+          Result.success(listOf(sampleLocation("STALE 01")))
+        }
+    val freshResults = listOf(sampleLocation("BC 01"))
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "fresh")))
+        .thenReturn(Result.success(freshResults))
+    val viewModel = createViewModel()
+
+    viewModel.searchLocations("stale")
+    viewModel.searchLocations("fresh")
+    advanceUntilIdle()
+    staleGate.complete(Unit)
+    advanceUntilIdle()
+
+    assertEquals(freshResults, viewModel.uiState.value.locationSearchResults)
   }
 
   // ---------------------------------------------------------------- form
@@ -204,6 +311,8 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.setTasks(tasks)
 
     val state = viewModel.uiState.value
+    assertEquals(EventKind.PERSONAL, state.eventKind)
+    assertTrue(state.showTasksSection)
     assertEquals(EventType.LAB, state.type)
     assertEquals("CompSec", state.subject)
     assertEquals(date, state.date)
@@ -212,6 +321,20 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertEquals("INF 1", state.location)
     assertEquals("Bring laptop", state.description)
     assertEquals(tasks, state.tasks)
+  }
+
+  /** setEventKind updates eventKind and toggles showTasksSection. */
+  @Test
+  fun setEventKind_updatesEventKindAndShowTasksSection() = runTest {
+    val viewModel = createViewModel()
+    assertEquals(EventKind.PERSONAL, viewModel.uiState.value.eventKind)
+    assertTrue(viewModel.uiState.value.showTasksSection)
+
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+
+    val state = viewModel.uiState.value
+    assertEquals(EventKind.GROUP_SESSION, state.eventKind)
+    assertFalse(state.showTasksSection)
   }
 
   /** Date and time setters accept null to clear previously selected values. */
@@ -336,6 +459,47 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertEquals(tasks, viewModel.uiState.value.tasks)
   }
 
+  /** Task operations throw when the form is currently in group session mode. */
+  @Test
+  fun setTasks_throwsForGroupSession() = runTest {
+    val viewModel = createViewModel()
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+
+    val exception =
+        assertThrows(IllegalArgumentException::class.java) {
+          viewModel.setTasks(listOf(EventTask("Task 1")))
+        }
+    assertEquals("Tasks are only supported for personal events", exception.message)
+  }
+
+  @Test
+  fun addTask_throwsForGroupSession() = runTest {
+    val viewModel = createViewModel()
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+
+    val exception =
+        assertThrows(IllegalArgumentException::class.java) { viewModel.addTask("Task 1") }
+    assertEquals("Tasks are only supported for personal events", exception.message)
+  }
+
+  @Test
+  fun removeTask_throwsForGroupSession() = runTest {
+    val viewModel = createViewModel()
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+
+    val exception = assertThrows(IllegalArgumentException::class.java) { viewModel.removeTask(0) }
+    assertEquals("Tasks are only supported for personal events", exception.message)
+  }
+
+  @Test
+  fun toggleTask_throwsForGroupSession() = runTest {
+    val viewModel = createViewModel()
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+
+    val exception = assertThrows(IllegalArgumentException::class.java) { viewModel.toggleTask(0) }
+    assertEquals("Tasks are only supported for personal events", exception.message)
+  }
+
   // ---------------------------------------------------------------- addEvent: rejected before
   // saving
 
@@ -349,7 +513,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     val state = viewModel.uiState.value
-    assertEquals(EventPlanningViewModel.NO_SIGNED_IN_USER_ERROR, state.error)
+    assertEquals(EventPlanningError.NO_SIGNED_IN_USER, state.error)
     assertFalse(state.isEventAdded)
     assertFalse(state.isSaving)
     verify(eventsRepository, never()).saveEvent(any())
@@ -364,7 +528,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
 
     viewModel.addEvent()
 
-    assertEquals(EventPlanningViewModel.NO_SIGNED_IN_USER_ERROR, viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.NO_SIGNED_IN_USER, viewModel.uiState.value.error)
     verify(eventsRepository, never()).saveEvent(any())
   }
 
@@ -378,7 +542,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     assertEquals(
-        EventPlanningViewModel.EVENT_DATE_AND_TIMES_REQUIRED_ERROR,
+        EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED,
         viewModel.uiState.value.error,
     )
     verify(eventsRepository, never()).saveEvent(any())
@@ -394,7 +558,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     assertEquals(
-        EventPlanningViewModel.EVENT_DATE_AND_TIMES_REQUIRED_ERROR,
+        EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED,
         viewModel.uiState.value.error,
     )
     verify(eventsRepository, never()).saveEvent(any())
@@ -410,7 +574,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     assertEquals(
-        EventPlanningViewModel.EVENT_DATE_AND_TIMES_REQUIRED_ERROR,
+        EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED,
         viewModel.uiState.value.error,
     )
     verify(eventsRepository, never()).saveEvent(any())
@@ -418,7 +582,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
 
   /** A blank subject is invalid for event types that require one. */
   @Test
-  fun addEvent_blankSubjectForNonOtherType_exposesValidationMessage() = runTest {
+  fun addEvent_blankSubjectForNonOtherType_setsInvalidEventError() = runTest {
     val viewModel = createViewModel()
     viewModel.fillValidForm()
     viewModel.setSubject("   ")
@@ -426,7 +590,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     val state = viewModel.uiState.value
-    assertTrue(state.error!!.contains("Subject"))
+    assertEquals(EventPlanningError.INVALID_EVENT, state.error)
     assertFalse(state.isEventAdded)
     assertFalse(state.isSaving)
     verify(eventsRepository, never()).saveEvent(any())
@@ -434,14 +598,14 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
 
   /** An event whose end time is not after its start time is rejected. */
   @Test
-  fun addEvent_endNotAfterStart_exposesValidationMessage() = runTest {
+  fun addEvent_endNotAfterStart_setsInvalidEventError() = runTest {
     val viewModel = createViewModel()
     viewModel.fillValidForm()
     viewModel.setEndTime(startTime)
 
     viewModel.addEvent()
 
-    assertEquals("End must be after start", viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.INVALID_EVENT, viewModel.uiState.value.error)
     verify(eventsRepository, never()).saveEvent(any())
   }
 
@@ -477,13 +641,21 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertEquals(now, saved.updatedAt)
   }
 
-  /** Successful creation resets form fields, retains suggestions, and raises the added signal. */
+  /**
+   * Successful creation resets form fields, retains subject suggestions, clears location search
+   * results, and raises the added signal.
+   */
   @Test
   fun addEvent_success_resetsFormKeepsSubjectsAndSignalsAdded() = runTest {
     `when`(eventsRepository.observeSubjects("user123")).thenReturn(subjects("Algebra"))
+    val locations = listOf(sampleLocation("BC 01"))
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+        .thenReturn(Result.success(locations))
     val viewModel = createViewModel()
     viewModel.fillValidForm()
     viewModel.addTask("Read chapter 3")
+    viewModel.searchLocations("BC")
+    advanceUntilIdle()
 
     viewModel.addEvent()
 
@@ -497,6 +669,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertNull(state.endTime)
     assertTrue(state.tasks.isEmpty())
     assertEquals(listOf("Algebra"), state.recommendedSubjects)
+    assertEquals(emptyList<CampusLocation>(), state.locationSearchResults)
   }
 
   /** Acknowledging a handled creation clears the event-added signal. */
@@ -625,16 +798,26 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertEquals(listOf("id-1", "id-2"), savedEvents(count = 2).map { it.id })
   }
 
-  /** Resetting the form preserves repository-provided subject suggestions. */
+  /**
+   * Resetting the form preserves subject suggestions, since they come from a long-lived
+   * subscription rather than the form being reset. Location search results are not preserved: they
+   * are scoped to the picker dialog, which already clears them on close.
+   */
   @Test
-  fun resetForm_keepsSubjectSuggestions() = runTest {
+  fun resetForm_keepsSubjectSuggestionsButClearsLocationSearchResults() = runTest {
     `when`(eventsRepository.observeSubjects("user123")).thenReturn(subjects("Algebra"))
+    val locations = listOf(sampleLocation("BC 01"))
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+        .thenReturn(Result.success(locations))
     val viewModel = createViewModel()
     viewModel.setSubject("typed but abandoned")
+    viewModel.searchLocations("BC")
+    advanceUntilIdle()
 
     viewModel.resetForm()
 
     assertEquals(listOf("Algebra"), viewModel.uiState.value.recommendedSubjects)
+    assertEquals(emptyList<CampusLocation>(), viewModel.uiState.value.locationSearchResults)
   }
 
   /** A second add request is ignored until the first repository save completes. */
@@ -664,37 +847,37 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
 
   // ---------------------------------------------------------------- addEvent: repository failures
 
-  /** Known repository errors map to stable, user-facing messages. */
+  /** Known repository errors map to stable, user-facing error categories. */
   @Test
   fun addEvent_repositoryFailure_exposesUserMessageForEachErrorCategory() = runTest {
     val expectations =
         mapOf(
-            EventsError.INVALID_ARGUMENT to EventPlanningViewModel.INVALID_EVENT_ERROR,
-            EventsError.NOT_FOUND to EventPlanningViewModel.EVENT_NOT_FOUND_ERROR,
-            EventsError.PERMISSION_DENIED to EventPlanningViewModel.PERMISSION_DENIED_ERROR,
-            EventsError.INVALID_EVENT_DATA to EventPlanningViewModel.INVALID_EVENT_DATA_ERROR,
-            EventsError.STORAGE_FAILURE to EventPlanningViewModel.STORAGE_FAILURE_ERROR,
-            EventsError.UNKNOWN to EventPlanningViewModel.FAILED_TO_ADD_EVENT_ERROR,
+            EventsError.INVALID_ARGUMENT to EventPlanningError.INVALID_EVENT,
+            EventsError.NOT_FOUND to EventPlanningError.EVENT_NOT_FOUND,
+            EventsError.PERMISSION_DENIED to EventPlanningError.PERMISSION_DENIED,
+            EventsError.INVALID_EVENT_DATA to EventPlanningError.INVALID_EVENT_DATA,
+            EventsError.STORAGE_FAILURE to EventPlanningError.STORAGE_FAILURE,
+            EventsError.UNKNOWN to EventPlanningError.FAILED_TO_ADD_EVENT,
         )
-    assertEquals(EventsError.values().toSet(), expectations.keys) // no category forgotten
+    assertEquals(EventsError.entries.toSet(), expectations.keys) // no category forgotten
     val viewModel = createViewModel()
     viewModel.fillValidForm()
 
-    for ((error, expectedMessage) in expectations) {
+    for ((error, expectedError) in expectations) {
       `when`(eventsRepository.saveEvent(any())).thenReturn(Result.failure(EventsException(error)))
 
       viewModel.addEvent()
 
       val state = viewModel.uiState.value
-      assertEquals(expectedMessage, state.error)
+      assertEquals(expectedError, state.error)
       assertFalse(state.isEventAdded)
       assertFalse(state.isSaving)
     }
   }
 
-  /** An unexpected repository failure preserves its available message. */
+  /** An unexpected repository failure translates to the default save error category. */
   @Test
-  fun addEvent_otherFailureWithMessage_exposesMessage() = runTest {
+  fun addEvent_otherFailure_setsFailedToAddEventError() = runTest {
     `when`(eventsRepository.saveEvent(any()))
         .thenReturn(Result.failure(IllegalStateException("disk full")))
     val viewModel = createViewModel()
@@ -702,26 +885,13 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
 
     viewModel.addEvent()
 
-    assertEquals("disk full", viewModel.uiState.value.error)
-  }
-
-  /** An unexpected repository failure without a message uses the default save error. */
-  @Test
-  fun addEvent_otherFailureWithoutMessage_usesDefaultMessage() = runTest {
-    `when`(eventsRepository.saveEvent(any()))
-        .thenReturn(Result.failure(RuntimeException(null as String?)))
-    val viewModel = createViewModel()
-    viewModel.fillValidForm()
-
-    viewModel.addEvent()
-
-    assertEquals(EventPlanningViewModel.FAILED_TO_ADD_EVENT_ERROR, viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.FAILED_TO_ADD_EVENT, viewModel.uiState.value.error)
     assertFalse(viewModel.uiState.value.isSaving)
   }
 
-  /** A repository exception is surfaced with its message and clears the saving state. */
+  /** A repository exception translates to the default save error category and clears saving. */
   @Test
-  fun addEvent_repositoryThrowsWithMessage_exposesMessage() = runTest {
+  fun addEvent_repositoryThrows_setsFailedToAddEventError() = runTest {
     `when`(eventsRepository.saveEvent(any())).thenThrow(IllegalStateException("boom"))
     val viewModel = createViewModel()
     viewModel.fillValidForm()
@@ -729,23 +899,9 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     val state = viewModel.uiState.value
-    assertEquals("boom", state.error)
+    assertEquals(EventPlanningError.FAILED_TO_ADD_EVENT, state.error)
     assertFalse(state.isEventAdded)
     assertFalse(state.isSaving)
-  }
-
-  /** A repository exception without a message uses the default save error. */
-  @Test
-  fun addEvent_repositoryThrowsWithoutMessage_usesDefaultMessage() = runTest {
-    val exception = object : RuntimeException(null as String?) {}
-    `when`(eventsRepository.saveEvent(any())).thenThrow(exception)
-    val viewModel = createViewModel()
-    viewModel.fillValidForm()
-
-    viewModel.addEvent()
-
-    assertEquals(EventPlanningViewModel.FAILED_TO_ADD_EVENT_ERROR, viewModel.uiState.value.error)
-    assertFalse(viewModel.uiState.value.isSaving)
   }
 
   /** Cancellation from a repository save is not presented as an error and ends loading. */
@@ -768,7 +924,13 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
   /** The factory creates an event-planning ViewModel for its supported type. */
   @Test
   fun factory_createsEventPlanningViewModel() {
-    val factory = EventPlanningViewModelFactory(authRepository, eventsRepository)
+    val factory =
+        EventPlanningViewModelFactory(
+            authRepository,
+            eventsRepository,
+            campusLocationRepository,
+            groupSessionsRepository,
+        )
 
     val viewModel = factory.create(EventPlanningViewModel::class.java)
 
@@ -778,7 +940,13 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
   /** The factory rejects ViewModel classes it does not support. */
   @Test
   fun factory_rejectsUnsupportedViewModelClass() {
-    val factory = EventPlanningViewModelFactory(authRepository, eventsRepository)
+    val factory =
+        EventPlanningViewModelFactory(
+            authRepository,
+            eventsRepository,
+            campusLocationRepository,
+            groupSessionsRepository,
+        )
 
     val exception =
         assertThrows(IllegalArgumentException::class.java) {
@@ -786,5 +954,177 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
         }
 
     assertTrue(exception.message!!.contains(OtherViewModel::class.java.name))
+  }
+
+  // ---------------------------------------------------------------- group sessions
+
+  /** Adding a group session creates a session with the user as creator and member. */
+  @Test
+  fun addEvent_groupSession_savesWithCreatorAsOnlyMember() = runTest {
+    val viewModel = createViewModel()
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+    viewModel.fillValidForm()
+    viewModel.setLocation("CM 3")
+    viewModel.setDescription("Chapter 5 prep")
+
+    viewModel.addEvent()
+
+    val state = viewModel.uiState.value
+    assertTrue(state.isEventAdded)
+    assertNull(state.error)
+
+    val captor = argumentCaptor<GroupSession>()
+    verify(groupSessionsRepository).saveSession(eq("user123"), captor.capture())
+    val saved = captor.firstValue
+    assertEquals("user123", saved.createdBy)
+    assertEquals(listOf("user123"), saved.memberIds)
+    assertEquals(EventType.STUDY_SESSION, saved.details.type)
+    assertEquals("Algebra", saved.details.subject)
+    assertEquals("CM 3", saved.details.location)
+    assertEquals("Chapter 5 prep", saved.details.description)
+  }
+
+  /** Editing a group session preserves existing member list and creation time. */
+  @Test
+  fun editEvent_groupSession_preservesExistingMembersAndCreatedAt() = runTest {
+    val initialCreatedAt = Instant.parse("2026-10-01T10:00:00Z")
+    val initial =
+        GroupSession(
+            id = "session-99",
+            createdBy = "user123",
+            memberIds = listOf("user123", "user456"),
+            details =
+                EventDetails(
+                    type = EventType.STUDY_SESSION,
+                    subject = "Initial Subject",
+                    startsAt = startsAt,
+                    endsAt = endsAt,
+                ),
+            createdAt = initialCreatedAt,
+        )
+    `when`(groupSessionsRepository.getSession("session-99")).thenReturn(Result.success(initial))
+
+    val viewModel = createViewModel()
+    viewModel.loadEvent("session-99", EventKind.GROUP_SESSION)
+
+    val loadedState = viewModel.uiState.value
+    assertTrue(loadedState.isEditing)
+    assertEquals("Initial Subject", loadedState.subject)
+
+    viewModel.setSubject("Updated Subject")
+    viewModel.setLocation("New Room")
+    viewModel.editEvent()
+
+    val state = viewModel.uiState.value
+    assertTrue(state.isEventEdited)
+
+    val captor = argumentCaptor<GroupSession>()
+    verify(groupSessionsRepository).saveSession(eq("user123"), captor.capture())
+    val updated = captor.firstValue
+    assertEquals("session-99", updated.id)
+    assertEquals("user123", updated.createdBy)
+    assertEquals(listOf("user123", "user456"), updated.memberIds)
+    assertEquals(initialCreatedAt, updated.createdAt)
+    assertEquals(now, updated.updatedAt)
+    assertEquals("Updated Subject", updated.details.subject)
+    assertEquals("New Room", updated.details.location)
+  }
+
+  /** Loading a group session with blank ID does nothing. */
+  @Test
+  fun loadEvent_blankId_doesNothing() {
+    val viewModel = createViewModel()
+    viewModel.loadEvent("   ", EventKind.GROUP_SESSION)
+    val state = viewModel.uiState.value
+    assertFalse(state.isLoading)
+    assertFalse(state.isEditing)
+  }
+
+  /** Loading a missing group session fails and resets editing state. */
+  @Test
+  fun loadEvent_groupSession_failsWhenNotFound() = runTest {
+    `when`(groupSessionsRepository.getSession("missing-session"))
+        .thenReturn(Result.failure(EventsException(EventsError.NOT_FOUND)))
+
+    val viewModel = createViewModel()
+    viewModel.loadEvent("missing-session", EventKind.GROUP_SESSION)
+
+    val state = viewModel.uiState.value
+    assertFalse(state.isLoading)
+    assertFalse(state.isEditing)
+    assertEquals(EventPlanningError.EVENT_NOT_FOUND, state.error)
+  }
+
+  /** Deleting a group session deletes from the group sessions repository. */
+  @Test
+  fun deleteEvent_groupSession_deletesFromGroupSessionsRepository() = runTest {
+    val viewModel = createViewModel()
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+
+    viewModel.deleteEvent("session-1")
+
+    val state = viewModel.uiState.value
+    assertTrue(state.isEventDeleted)
+    verify(groupSessionsRepository).deleteSession("user123", "session-1")
+    verify(eventsRepository, never()).deleteEvent(any(), any())
+  }
+
+  /** Group session repository save failure surfaces error. */
+  @Test
+  fun addEvent_groupSession_repositoryFailure_exposesError() = runTest {
+    `when`(groupSessionsRepository.saveSession(any(), any()))
+        .thenReturn(Result.failure(EventsException(EventsError.STORAGE_FAILURE)))
+
+    val viewModel = createViewModel()
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+    viewModel.fillValidForm()
+
+    viewModel.addEvent()
+
+    val state = viewModel.uiState.value
+    assertFalse(state.isEventAdded)
+    assertEquals(EventPlanningError.STORAGE_FAILURE, state.error)
+  }
+
+  /**
+   * Verifies that each [EventPlanningError] entry maps to its distinct, valid localized string
+   * resource identifier.
+   */
+  @Test
+  fun eventPlanningError_stringResource_mapsToExpectedResource() {
+    val expectedMappings =
+        mapOf(
+            EventPlanningError.FAILED_TO_OBSERVE_USER to
+                R.string.event_planning_error_failed_to_observe_user,
+            EventPlanningError.NO_SIGNED_IN_USER to R.string.event_planning_error_no_signed_in_user,
+            EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED to
+                R.string.event_planning_error_date_and_times_required,
+            EventPlanningError.NO_EVENT_TO_EDIT to R.string.event_planning_error_no_event_to_edit,
+            EventPlanningError.FAILED_TO_ADD_EVENT to
+                R.string.event_planning_error_failed_to_add_event,
+            EventPlanningError.FAILED_TO_EDIT_EVENT to
+                R.string.event_planning_error_failed_to_edit_event,
+            EventPlanningError.FAILED_TO_DELETE_EVENT to
+                R.string.event_planning_error_failed_to_delete_event,
+            EventPlanningError.FAILED_TO_LOAD_EVENT to
+                R.string.event_planning_error_failed_to_load_event,
+            EventPlanningError.INVALID_EVENT to R.string.event_planning_error_invalid_event,
+            EventPlanningError.EVENT_NOT_FOUND to R.string.event_planning_error_event_not_found,
+            EventPlanningError.PERMISSION_DENIED to R.string.event_planning_error_permission_denied,
+            EventPlanningError.INVALID_EVENT_DATA to
+                R.string.event_planning_error_invalid_event_data,
+            EventPlanningError.STORAGE_FAILURE to R.string.event_planning_error_storage_failure,
+        )
+
+    assertEquals(EventPlanningError.entries.toSet(), expectedMappings.keys)
+    assertEquals(expectedMappings.size, expectedMappings.values.toSet().size)
+
+    for (error in EventPlanningError.entries) {
+      assertEquals(
+          "Mapping mismatch for $error",
+          expectedMappings[error],
+          error.stringResource,
+      )
+    }
   }
 }
