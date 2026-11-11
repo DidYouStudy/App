@@ -120,6 +120,6 @@ fun TaskCheckRow(
           modifier = Modifier.padding(start = Dimens.taskTextStartPadding),
       )
     }
-      trailingContent?.invoke()
+    trailingContent?.invoke()
   }
 }
