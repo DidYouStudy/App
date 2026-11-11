@@ -508,6 +508,7 @@ class GroupSessionsViewModelTest {
         GroupSessionsViewModel(
             authRepository,
             FlowGroupSessionsRepository(flowOf(Result.success(emptyList()))),
+            profileRepository,
             clock,
         )
     clock.currentInstant = Instant.parse("2025-03-01T12:00:25Z")
@@ -526,6 +527,7 @@ class GroupSessionsViewModelTest {
         GroupSessionsViewModel(
             authRepository,
             FlowGroupSessionsRepository(flowOf(Result.success(emptyList()))),
+            profileRepository,
             clock,
         )
     clock.currentInstant = Instant.parse("2025-03-01T12:00:25Z")
@@ -543,7 +545,12 @@ class GroupSessionsViewModelTest {
     val sessionsRepository =
         FlowGroupSessionsRepository(flowOf(Result.success(emptyList<GroupSession>())))
     val viewModel =
-        GroupSessionsViewModel(authRepository, sessionsRepository, AdvancingTestClock(now))
+        GroupSessionsViewModel(
+            authRepository,
+            sessionsRepository,
+            profileRepository,
+            AdvancingTestClock(now),
+        )
 
     viewModel.refresh()
     runCurrent()
