@@ -88,8 +88,8 @@ fun EventFormContent(
     modifier: Modifier = Modifier,
     uiState: EventPlanningUiState,
     isValidationError: Boolean =
-        uiState.error == EventPlanningViewModel.EVENT_DATE_AND_TIMES_REQUIRED_ERROR ||
-            uiState.error == EventPlanningViewModel.INVALID_EVENT_ERROR,
+        uiState.error == EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED ||
+            uiState.error == EventPlanningError.INVALID_EVENT,
     onTypeChange: (EventType) -> Unit,
     onDateClick: () -> Unit,
     onStartTimeClick: () -> Unit,
