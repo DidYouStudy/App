@@ -95,7 +95,7 @@ class EventDetailsViewModel(
     _uiState.update { it.copy(isLoading = true, error = null) }
     viewModelScope.launch {
       try {
-        val ownerId = currentUserId ?: authRepository.currentUser.first()?.uid
+        val ownerId = authRepository.currentUser.first()?.uid
         if (ownerId == null) {
           _uiState.update { it.copy(isLoading = false, error = NO_SIGNED_IN_USER_ERROR) }
           return@launch
@@ -144,7 +144,7 @@ class EventDetailsViewModel(
     _uiState.update { it.copy(isDeleting = true, error = null) }
     viewModelScope.launch {
       try {
-        val ownerId = currentUserId ?: authRepository.currentUser.first()?.uid
+        val ownerId = authRepository.currentUser.first()?.uid
         if (ownerId == null) {
           _uiState.update { it.copy(isDeleting = false, error = NO_SIGNED_IN_USER_ERROR) }
           return@launch
