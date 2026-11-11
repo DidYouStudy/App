@@ -207,9 +207,6 @@ fun DidYouStudyApp(
               )
             },
             onManageFriendsClick = { /* TODO */ },
-            onLogoutSuccess = {
-              navigationActions.navigateToAndClear(Screen.Auth, Screen.Auth, clearAll = true)
-            },
         )
       }
     }
