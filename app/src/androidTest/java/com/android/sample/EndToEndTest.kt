@@ -7,6 +7,9 @@ import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -425,7 +428,16 @@ class EndToEndTest {
     val nextHour = (LocalTime.now().hour + 1) % 24
     composeRule.onNodeWithContentDescription("$nextHour hours").performClick()
     composeRule.onNodeWithText("OK").performClick()
-    composeRule.onNodeWithTag(EventTags.LOCATION_INPUT).performTextInput("E2E Room")
+    // The location is picked from the campus locations: search, then tap the matching row.
+    composeRule.onNodeWithTag(EventTags.LOCATION_SELECTOR).performClick()
+    composeRule.onNodeWithText("Search locations", substring = true).performTextInput(LOCATION)
+    // Results arrive asynchronously, and the search field also shows the typed text: wait for the
+    // row.
+    val resultRow = hasText(LOCATION) and hasClickAction() and !hasSetTextAction()
+    composeRule.waitUntil(timeoutMillis = TIMEOUT_MILLIS) {
+      composeRule.onAllNodes(resultRow).fetchSemanticsNodes().isNotEmpty()
+    }
+    composeRule.onNode(resultRow).performClick()
     composeRule.onNodeWithTag(EventTags.SAVE_BUTTON).performClick()
 
     // Saving returns to the calendar and the event reaches the user's Firestore collection.
@@ -434,12 +446,12 @@ class EndToEndTest {
     composeRule.waitUntil(timeoutMillis = TIMEOUT_MILLIS) { storedEvents(uid).isNotEmpty() }
     val event = storedEvents(uid).single()
     assertEquals("OTHER", event.getString("type"))
-    assertEquals("E2E Room", event.getString("location"))
+    assertEquals(LOCATION, event.getString("location"))
   }
 
   @Test
   fun returningUser_joinsAndLeavesGroupSession_syncedToFirestore() {
-    // Creating a session from the UI is still a TODO in the app, so another user hosts one.
+    // Another user hosts the session, so the app user is not a member yet and can join it.
     val session = seedHostedGroupSession()
     val hostId = session.createdBy
     val uid = seedReturningUser { UserPreferences(userId = it) }.userId
@@ -506,6 +518,9 @@ class EndToEndTest {
     const val FIRESTORE_PORT = 8080
     const val PROJECT_ID = "demo-didyoustudy"
     const val TIMEOUT_MILLIS = 30_000L
+
+    /** A room of the bundled campus locations (`campus_locations.json`), used by the event test. */
+    const val LOCATION = "AAB 0 26"
 
     /** Creates a uniquely named app on a demo project, so it can never address production. */
     fun initializeEmulatorApp(prefix: String): FirebaseApp =
