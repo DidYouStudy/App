@@ -1,11 +1,16 @@
 // Co-authored-by: Codex AI Agent
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Copilot
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Gemini
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -43,6 +48,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -54,14 +60,20 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -69,6 +81,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
 import com.android.sample.ui.eventplanning.EventKind
@@ -91,10 +104,12 @@ import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.launch
 
 object GroupSessionScreenTestTags {
   const val SCREEN = "groupSessionScreen"
   const val SEARCH = "groupSessionSearch"
+  const val FILTER_BUTTON = "groupSessionFilterButton"
   const val ALL_SESSIONS_FILTER = "groupSessionAllFilter"
   const val MY_SESSIONS_FILTER = "groupSessionMyFilter"
   const val ACTIVE_TITLE = "groupSessionActiveTitle"
@@ -119,6 +134,32 @@ fun GroupSessionScreen(
     },
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+  var pendingLocationRadius by rememberSaveable { mutableStateOf<Int?>(null) }
+  var showFilterSheet by rememberSaveable { mutableStateOf(false) }
+  val filterSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  val coroutineScope = rememberCoroutineScope()
+  val context = LocalContext.current
+  val hasLocationPermission =
+      ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+          PackageManager.PERMISSION_GRANTED ||
+          ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+              PackageManager.PERMISSION_GRANTED
+  val locationPermissionLauncher =
+      rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+          results ->
+        if (isLocationPermissionGranted(results)) {
+          viewModel.onRadiusFilterSelected(pendingLocationRadius)
+        } else {
+          viewModel.onRadiusFilterSelected(null)
+        }
+        pendingLocationRadius = null
+      }
+  fun closeFilterSheet() {
+    coroutineScope.launch {
+      if (filterSheetState.isVisible) filterSheetState.hide()
+      showFilterSheet = false
+    }
+  }
   val snackbarHostState = remember { SnackbarHostState() }
   val loadErrorMessage = stringResource(R.string.group_session_error_load)
   val locationLoadErrorMessage = stringResource(R.string.group_session_error_location_load)
@@ -195,9 +236,42 @@ fun GroupSessionScreen(
             onJoin = viewModel::join,
             onLeave = viewModel::leave,
             onEdit = onEditSessionClick,
+            onOpenFilters = { showFilterSheet = true },
         )
       },
   )
+  if (showFilterSheet) {
+    ModalBottomSheet(
+        sheetState = filterSheetState,
+        onDismissRequest = ::closeFilterSheet,
+    ) {
+      GroupSessionFilterSheetContent(
+          filters =
+              GroupSessionFilters(
+                  radiusMeters = uiState.selectedRadiusMeters,
+                  zones = uiState.selectedZones,
+                  showLabs = uiState.showLabRoomType,
+              ),
+          availableZones = uiState.availableZones,
+          matchingSessionCount = uiState.sessions.size,
+          hasLocationPermission = hasLocationPermission,
+          onRadiusSelected = viewModel::onRadiusFilterSelected,
+          onZonesSelected = viewModel::onZonesFilterSelected,
+          onShowLabsChanged = viewModel::onShowLabRoomTypeChange,
+          onLocationPermissionNeeded = { radius ->
+            pendingLocationRadius = radius
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                )
+            )
+          },
+          onResetAll = viewModel::resetAdvancedFilters,
+          onShowSessions = ::closeFilterSheet,
+      )
+    }
+  }
 }
 
 @Composable
@@ -209,6 +283,7 @@ private fun GroupSessionContent(
     onJoin: (String) -> Unit = {},
     onLeave: (String) -> Unit = {},
     onEdit: (String) -> Unit = {},
+    onOpenFilters: () -> Unit = {},
 ) {
   Column(modifier = modifier.fillMaxSize().padding(horizontal = Spacing.large)) {
     OutlinedTextField(
@@ -224,7 +299,10 @@ private fun GroupSessionContent(
           )
         },
         trailingIcon = {
-          IconButton(onClick = { /* TODO ADVANCED FILTERS */ }) {
+          IconButton(
+              modifier = Modifier.testTag(GroupSessionScreenTestTags.FILTER_BUTTON),
+              onClick = onOpenFilters,
+          ) {
             Icon(
                 Icons.Outlined.Tune,
                 contentDescription = stringResource(R.string.group_session_filter_icon_description),
