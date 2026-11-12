@@ -27,6 +27,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -335,18 +336,20 @@ private fun FilterSegmentRow(
 @Composable
 internal fun GroupSessionFilterSheetLightPreview() {
   DidYouStudyTheme {
-    GroupSessionFilterSheetContent(
-        filters = GroupSessionFilters(),
-        availableZones = listOf("AI", "BC", "CM", "CO", "GC"),
-        matchingSessionCount = 4,
-        hasLocationPermission = true,
-        onRadiusSelected = {},
-        onZonesSelected = {},
-        onShowLabsChanged = {},
-        onLocationPermissionNeeded = {},
-        onResetAll = {},
-        onShowSessions = {},
-    )
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
+      GroupSessionFilterSheetContent(
+          filters = GroupSessionFilters(),
+          availableZones = listOf("AI", "BC", "CM", "CO", "GC"),
+          matchingSessionCount = 4,
+          hasLocationPermission = true,
+          onRadiusSelected = {},
+          onZonesSelected = {},
+          onShowLabsChanged = {},
+          onLocationPermissionNeeded = {},
+          onResetAll = {},
+          onShowSessions = {},
+      )
+    }
   }
 }
 
@@ -355,18 +358,20 @@ internal fun GroupSessionFilterSheetLightPreview() {
 @Composable
 internal fun GroupSessionFilterSheetDarkPreview() {
   DidYouStudyTheme {
-    GroupSessionFilterSheetContent(
-        filters = GroupSessionFilters(),
-        availableZones = listOf("AI", "BC", "CM", "CO", "GC"),
-        matchingSessionCount = 4,
-        hasLocationPermission = true,
-        onRadiusSelected = {},
-        onZonesSelected = {},
-        onShowLabsChanged = {},
-        onLocationPermissionNeeded = {},
-        onResetAll = {},
-        onShowSessions = {},
-    )
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
+      GroupSessionFilterSheetContent(
+          filters = GroupSessionFilters(),
+          availableZones = listOf("AI", "BC", "CM", "CO", "GC"),
+          matchingSessionCount = 4,
+          hasLocationPermission = true,
+          onRadiusSelected = {},
+          onZonesSelected = {},
+          onShowLabsChanged = {},
+          onLocationPermissionNeeded = {},
+          onResetAll = {},
+          onShowSessions = {},
+      )
+    }
   }
 }
 

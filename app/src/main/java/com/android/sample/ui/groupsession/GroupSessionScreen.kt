@@ -1,6 +1,7 @@
 // Co-authored-by: Codex AI Agent
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Copilot
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Gemini
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
@@ -66,7 +67,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -106,24 +106,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 
-private val GroupSessionFiltersSaver =
-    Saver<GroupSessionFilters, android.os.Bundle>(
-        save = { filters ->
-          android.os.Bundle().apply {
-            putInt("radiusMeters", filters.radiusMeters ?: -1)
-            putStringArrayList("zones", ArrayList(filters.zones))
-            putBoolean("showLabs", filters.showLabs)
-          }
-        },
-        restore = { bundle ->
-          GroupSessionFilters(
-              radiusMeters = bundle.getInt("radiusMeters", -1).takeIf { it >= 0 },
-              zones = bundle.getStringArrayList("zones")?.toSet().orEmpty(),
-              showLabs = bundle.getBoolean("showLabs"),
-          )
-        },
-    )
-
 object GroupSessionScreenTestTags {
   const val SCREEN = "groupSessionScreen"
   const val SEARCH = "groupSessionSearch"
@@ -152,10 +134,6 @@ fun GroupSessionScreen(
     },
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-  var groupSessionFilters by
-      rememberSaveable(stateSaver = GroupSessionFiltersSaver) {
-        mutableStateOf(GroupSessionFilters())
-      }
   var pendingLocationRadius by rememberSaveable { mutableStateOf<Int?>(null) }
   var showFilterSheet by rememberSaveable { mutableStateOf(false) }
   val filterSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -170,13 +148,12 @@ fun GroupSessionScreen(
       rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
           results ->
         if (isLocationPermissionGranted(results)) {
-          groupSessionFilters = groupSessionFilters.copy(radiusMeters = pendingLocationRadius)
+          viewModel.onRadiusFilterSelected(pendingLocationRadius)
         } else {
-          groupSessionFilters = groupSessionFilters.copy(radiusMeters = null)
+          viewModel.onRadiusFilterSelected(null)
         }
         pendingLocationRadius = null
       }
-  // TODO(#220): Move these filter selections into GroupSessionsViewModel.
   fun closeFilterSheet() {
     coroutineScope.launch {
       if (filterSheetState.isVisible) filterSheetState.hide()
@@ -269,20 +246,18 @@ fun GroupSessionScreen(
         onDismissRequest = ::closeFilterSheet,
     ) {
       GroupSessionFilterSheetContent(
-          filters = groupSessionFilters,
-          // TODO(#220): GroupSessionsViewModel will provide available zones.
-          availableZones = emptyList(),
+          filters =
+              GroupSessionFilters(
+                  radiusMeters = uiState.selectedRadiusMeters,
+                  zones = uiState.selectedZones,
+                  showLabs = uiState.showLabRoomType,
+              ),
+          availableZones = uiState.availableZones,
           matchingSessionCount = uiState.sessions.size,
           hasLocationPermission = hasLocationPermission,
-          onRadiusSelected = { radius ->
-            groupSessionFilters = groupSessionFilters.copy(radiusMeters = radius)
-          },
-          onZonesSelected = { zones ->
-            groupSessionFilters = groupSessionFilters.copy(zones = zones)
-          },
-          onShowLabsChanged = { showLabs ->
-            groupSessionFilters = groupSessionFilters.copy(showLabs = showLabs)
-          },
+          onRadiusSelected = viewModel::onRadiusFilterSelected,
+          onZonesSelected = viewModel::onZonesFilterSelected,
+          onShowLabsChanged = viewModel::onShowLabRoomTypeChange,
           onLocationPermissionNeeded = { radius ->
             pendingLocationRadius = radius
             locationPermissionLauncher.launch(
@@ -292,7 +267,7 @@ fun GroupSessionScreen(
                 )
             )
           },
-          onResetAll = { groupSessionFilters = GroupSessionFilters() },
+          onResetAll = viewModel::resetAdvancedFilters,
           onShowSessions = ::closeFilterSheet,
       )
     }
