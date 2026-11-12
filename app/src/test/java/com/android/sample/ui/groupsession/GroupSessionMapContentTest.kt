@@ -48,7 +48,12 @@ class GroupSessionMapContentTest {
           Location(46.52, 6.56),
       )
 
-  private fun item(id: String, subject: String, isCreator: Boolean = false) =
+  private fun item(
+      id: String,
+      subject: String,
+      isCreator: Boolean = false,
+      isMember: Boolean = false,
+  ) =
       GroupSessionItem(
           session =
               GroupSession(
@@ -64,26 +69,31 @@ class GroupSessionMapContentTest {
                       ),
                   createdAt = now,
               ),
-          isMember = false,
+          isMember = isMember,
           isCreator = isCreator,
       )
 
   private val aab = room("AAB 0 26")
   private val cm = room("CM 1 121")
   private val bc = room("BC 410")
+  private val inm = room("INM 202")
   private val maths = item("s1", "Maths")
   private val physics = item("s2", "Physics")
   private val chemistry = item("s3", "Chemistry")
   private val ownSession = item("s4", "Algebra", isCreator = true)
+  // A session the current user has joined but did not create: its card offers Leave.
+  private val joinedSession = item("s5", "Biology", isMember = true)
   private val rooms =
       listOf(
           RoomSessions(aab, listOf(maths, physics)),
           RoomSessions(cm, listOf(chemistry)),
           RoomSessions(bc, listOf(ownSession)),
+          RoomSessions(inm, listOf(joinedSession)),
       )
 
   private fun setContent(
       onJoin: (String) -> Unit = {},
+      onLeave: (String) -> Unit = {},
       onEdit: (String) -> Unit = {},
       initialSelectedRoom: String? = null,
   ) {
@@ -95,7 +105,7 @@ class GroupSessionMapContentTest {
             rooms = rooms,
             now = now,
             onJoin = onJoin,
-            onLeave = {},
+            onLeave = onLeave,
             onEdit = onEdit,
             initialSelectedRoom = initialSelectedRoom,
         )
@@ -180,6 +190,17 @@ class GroupSessionMapContentTest {
     assertEquals("s3", joined)
   }
 
+  /** Leave on a joined session's card reports that session's ID, like Join and Edit do. */
+  @Test
+  fun leaveOnAJoinedCard_reportsTheSessionId() {
+    var left: String? = null
+    setContent(onLeave = { left = it }, initialSelectedRoom = "INM 202")
+
+    composeTestRule.onNodeWithText(LEAVE_LABEL).performClick()
+
+    assertEquals("s5", left)
+  }
+
   @Test
   fun editOnTheCreatorsCard_reportsTheSessionId() {
     var edited: String? = null
@@ -224,6 +245,7 @@ class GroupSessionMapContentTest {
   private companion object {
     const val MAP_TITLE = "Map (shown on a device only)"
     const val JOIN_LABEL = "Join"
+    const val LEAVE_LABEL = "Leave"
     const val EDIT_LABEL = "Edit"
     const val DROPLET_EXACT = 0.01f
     const val DROPLET_ARC_TOLERANCE = 3f
