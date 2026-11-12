@@ -13,13 +13,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.ui.app.AppUiState
@@ -28,6 +31,9 @@ import com.android.sample.ui.auth.SignInRoute
 import com.android.sample.ui.calendar.CalendarRoute
 import com.android.sample.ui.dashboard.DashboardScreen
 import com.android.sample.ui.eventplanning.AddEventScreen
+import com.android.sample.ui.eventplanning.EditEventScreen
+import com.android.sample.ui.eventplanning.EventDetailsScreen
+import com.android.sample.ui.eventplanning.eventDetailsViewModel
 import com.android.sample.ui.groupsession.GroupSessionScreen
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.Screen
@@ -35,6 +41,8 @@ import com.android.sample.ui.preferences.PreferencesScreen
 import com.android.sample.ui.preferences.rememberScheduleImportLauncher
 import com.android.sample.ui.settings.SettingsScreen
 import com.android.sample.ui.theme.DidYouStudyTheme
+
+private const val EVENT_EDITED_RESULT = "eventEdited"
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -137,7 +145,7 @@ fun DidYouStudyApp() {
         startDestination = Screen.Calendar.route,
         route = Screen.Calendar.name,
     ) {
-      composable(Screen.Calendar.route) {
+      composable(Screen.Calendar.route) { entry ->
         CalendarRoute(
             navigationActions = navigationActions,
             onAddClick = {
@@ -145,6 +153,14 @@ fun DidYouStudyApp() {
                   Screen.AddEvent,
                   applicationViewModel::canNavigateTo,
               )
+            },
+            onEventClick = { eventId ->
+              if (navController.currentBackStackEntry == entry) {
+                navigationActions.navigateIfAllowed(
+                    Screen.EventDetails(eventId),
+                    applicationViewModel::canNavigateTo,
+                )
+              }
             },
         )
       }
@@ -168,6 +184,63 @@ fun DidYouStudyApp() {
             },
         )
       }
+    }
+
+    composable(
+        Screen.EventDetails.ROUTE,
+        arguments = listOf(navArgument(Screen.EVENT_ID_ARGUMENT) { type = NavType.StringType }),
+    ) { entry ->
+      val eventId = entry.arguments?.getString(Screen.EVENT_ID_ARGUMENT) ?: return@composable
+      val viewModel = eventDetailsViewModel()
+      val eventEdited by
+          entry.savedStateHandle
+              .getStateFlow(EVENT_EDITED_RESULT, false)
+              .collectAsStateWithLifecycle()
+      LaunchedEffect(eventEdited) {
+        if (eventEdited) {
+          viewModel.loadEvent(eventId, refresh = true)
+          entry.savedStateHandle[EVENT_EDITED_RESULT] = false
+        }
+      }
+      EventDetailsScreen(
+          eventId = eventId,
+          viewModel = viewModel,
+          onNavigateBack = {
+            if (navController.currentBackStackEntry == entry) navigationActions.goBack()
+          },
+          onEdit = { selectedEventId ->
+            if (navController.currentBackStackEntry == entry) {
+              navigationActions.navigateIfAllowed(
+                  Screen.EditEvent(selectedEventId),
+                  applicationViewModel::canNavigateTo,
+              )
+            }
+          },
+      )
+    }
+
+    composable(
+        Screen.EditEvent.ROUTE,
+        arguments = listOf(navArgument(Screen.EVENT_ID_ARGUMENT) { type = NavType.StringType }),
+    ) { entry ->
+      val eventId = entry.arguments?.getString(Screen.EVENT_ID_ARGUMENT) ?: return@composable
+      EditEventScreen(
+          eventId = eventId,
+          onBackClick = {
+            if (navController.currentBackStackEntry == entry) navigationActions.goBack()
+          },
+          onEventSaved = {
+            if (navController.currentBackStackEntry == entry) {
+              navController.previousBackStackEntry?.savedStateHandle?.set(EVENT_EDITED_RESULT, true)
+              navigationActions.goBack()
+            }
+          },
+          onEventDelete = {
+            if (navController.currentBackStackEntry == entry) {
+              navigationActions.goBackPast(Screen.EventDetails(eventId))
+            }
+          },
+      )
     }
 
     navigation(

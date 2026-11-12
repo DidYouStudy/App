@@ -1,7 +1,9 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.ui.navigation
 
+import android.net.Uri
 import androidx.navigation.NavHostController
 
 sealed class Screen(
@@ -23,6 +25,28 @@ sealed class Screen(
       Screen(route = "group_session", name = "GroupSession", isTopLevelDestination = true)
 
   object AddEvent : Screen(route = "add_event", name = "AddEvent")
+
+  /** Details destination for a personal event. */
+  class EventDetails(eventId: String) :
+      Screen(route = "$PATH/${Uri.encode(eventId)}", name = "EventDetails") {
+    companion object {
+      private const val PATH = "event_details"
+      const val ROUTE = "$PATH/{$EVENT_ID_ARGUMENT}"
+    }
+  }
+
+  /** Edit destination for a personal event. */
+  class EditEvent(eventId: String) :
+      Screen(route = "$PATH/${Uri.encode(eventId)}", name = "EditEvent") {
+    companion object {
+      private const val PATH = "edit_event"
+      const val ROUTE = "$PATH/{$EVENT_ID_ARGUMENT}"
+    }
+  }
+
+  companion object {
+    const val EVENT_ID_ARGUMENT = "eventId"
+  }
 }
 
 open class NavigationActions(
@@ -106,6 +130,11 @@ open class NavigationActions(
     if (currentRoute().isEmpty()) {
       navController.navigate(Screen.Dashboard.route) { launchSingleTop = true }
     }
+  }
+
+  /** Returns to the entry immediately before [screen], removing it and any entries above it. */
+  fun goBackPast(screen: Screen) {
+    navController.popBackStack(screen.route, inclusive = true)
   }
 
   /**

@@ -1,4 +1,5 @@
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.ui.eventplanning
 
 import androidx.compose.runtime.Composable
@@ -83,10 +84,11 @@ class EventDetailsViewModel(
    * Loads the [PersonalEvent] with [eventId] for the signed-in user.
    *
    * @param eventId ID of the event to load.
+   * @param refresh Fetch the event again even if it is already displayed.
    */
-  fun loadEvent(eventId: String) {
+  fun loadEvent(eventId: String, refresh: Boolean = false) {
     if (eventId.isBlank() || _uiState.value.isLoading) return
-    if (_uiState.value.event?.id == eventId) return
+    if (!refresh && _uiState.value.event?.id == eventId) return
 
     _uiState.update { it.copy(isLoading = true, error = null) }
     viewModelScope.launch {

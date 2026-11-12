@@ -113,6 +113,7 @@ object CalendarTestTags {
  * @param onPreviousWeek Callback invoked when the previous-week control is clicked.
  * @param onNextWeek Callback invoked when the next-week control is clicked.
  * @param modifier The modifier applied to the weekly calendar's root column.
+ * @param onEventClick Callback receiving the selected event's ID.
  */
 @Composable
 internal fun CalendarWeeklyView(
@@ -120,6 +121,7 @@ internal fun CalendarWeeklyView(
     onPreviousWeek: () -> Unit,
     onNextWeek: () -> Unit,
     modifier: Modifier = Modifier,
+    onEventClick: (String) -> Unit = {},
 ) {
   BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     // Checks the dimensions of the screen and decide whether to make the headers compact
@@ -140,6 +142,7 @@ internal fun CalendarWeeklyView(
           events = uiState.events,
           weekDates = uiState.weekDates,
           modifier = Modifier.weight(1f),
+          onEventClick = onEventClick,
       )
     }
   }
@@ -330,17 +333,19 @@ private fun CalendarTodayCircle(modifier: Modifier = Modifier) {
 }
 
 /**
- * Renders the empty weekly timeline with hour labels and seven equally sized day columns. The
- * timeline scrolls vertically as one unit and initially positions the view around 8 AM when the
- * measured viewport has enough scroll range.
+ * Renders the weekly timeline with hour labels and seven equally sized day columns. The timeline
+ * scrolls vertically as one unit and initially positions the view around 8 AM when the measured
+ * viewport has enough scroll range.
  *
  * @param modifier The modifier applied to the timeline container.
+ * @param onEventClick Callback receiving the selected event's ID.
  */
 @Composable
 fun CalendarTimeGrid(
     modifier: Modifier = Modifier,
     events: List<Event> = emptyList(),
     weekDates: List<LocalDate> = emptyList(),
+    onEventClick: (String) -> Unit = {},
 ) {
   // Keep the grid vertically scrollable
   val scrollState = remember { ScrollState(0) }
@@ -420,6 +425,7 @@ fun CalendarTimeGrid(
                           .offset(y = placement.top)
                           .height(maxOf(Dimens.calendarEventCardMinHeight, placement.height))
                           .testTag(CalendarTestTags.eventCard(placement.event.id, dayIndex)),
+                  onClick = { onEventClick(placement.event.id) },
               )
             }
           }
