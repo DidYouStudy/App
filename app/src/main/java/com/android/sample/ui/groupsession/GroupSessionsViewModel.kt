@@ -146,14 +146,14 @@ data class GroupSessionsUiState(
  *
  * Sessions are sorted by the repository. Search checks subject, location, and description without
  * case sensitivity; joining and leaving use the current user's identity. Session type, start time,
- * proximity, zone, room type, and capacity criteria are applied together to that list. A refreshed observation
- * uses the current clock instant, because an existing repository flow retains its original cutoff.
- * Successful list emissions and refreshes clear only [GroupSessionsError.LOAD_FAILED]; action
- * errors remain until cleared or the observed user ID changes. Action results from an earlier
- * observed user ID are ignored. Host usernames are loaded asynchronously through
- * [profileRepository], so profile lookups never delay the session list. [GroupSessionsUiState.now]
- * is refreshed from [clock] while [uiState] has a collector, immediately when a collector returns,
- * and when the list is observed again.
+ * proximity, zone, room type, and capacity criteria are applied together to that list. A refreshed
+ * observation uses the current clock instant, because an existing repository flow retains its
+ * original cutoff. Successful list emissions and refreshes clear only
+ * [GroupSessionsError.LOAD_FAILED]; action errors remain until cleared or the observed user ID
+ * changes. Action results from an earlier observed user ID are ignored. Host usernames are loaded
+ * asynchronously through [profileRepository], so profile lookups never delay the session list.
+ * [GroupSessionsUiState.now] is refreshed from [clock] while [uiState] has a collector, immediately
+ * when a collector returns, and when the list is observed again.
  */
 class GroupSessionsViewModel(
     private val authRepository: AuthRepository,
