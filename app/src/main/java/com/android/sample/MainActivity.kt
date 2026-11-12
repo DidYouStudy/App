@@ -150,12 +150,17 @@ fun DidYouStudyApp() {
         route = Screen.Calendar.name,
     ) {
       composable(Screen.Calendar.route) {
-        // Group-session creation has no main-app route yet.
         CalendarRoute(
             navigationActions = navigationActions,
             onAddEventClick = {
               navigationActions.navigateIfAllowed(
                   Screen.AddEvent,
+                  applicationViewModel::canNavigateTo,
+              )
+            },
+            onAddGroupSessionClick = {
+              navigationActions.navigateIfAllowed(
+                  Screen.AddGroupSession,
                   applicationViewModel::canNavigateTo,
               )
             },
