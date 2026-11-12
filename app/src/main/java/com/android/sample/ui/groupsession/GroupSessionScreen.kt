@@ -252,52 +252,10 @@ internal fun GroupSessionContent(
             onQueryChange = onQueryChange,
         )
         Spacer(Modifier.height(Spacing.small))
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
-          FilterChip(
-              modifier = Modifier.testTag(GroupSessionScreenTestTags.ALL_SESSIONS_FILTER),
-              selected = state.filter == GroupSessionFilter.ALL,
-              onClick = { onFilterChange(GroupSessionFilter.ALL) },
-              label = { Text(stringResource(R.string.group_session_filter_all)) },
-              leadingIcon =
-                  if (state.filter == GroupSessionFilter.ALL) {
-                    {
-                      Icon(
-                          Icons.Default.Check,
-                          contentDescription = null,
-                          modifier = Modifier.size(Dimens.iconSizeSmall),
-                      )
-                    }
-                  } else null,
-              shape = RoundedCornerShape(Dimens.cornerMedium),
-              border =
-                  FilterChipDefaults.filterChipBorder(
-                      enabled = true,
-                      selected = state.filter == GroupSessionFilter.ALL,
-                  ),
-          )
-          FilterChip(
-              modifier = Modifier.testTag(GroupSessionScreenTestTags.MY_SESSIONS_FILTER),
-              selected = state.filter == GroupSessionFilter.JOINED,
-              onClick = { onFilterChange(GroupSessionFilter.JOINED) },
-              label = { Text(stringResource(R.string.group_session_filter_my)) },
-              leadingIcon =
-                  if (state.filter == GroupSessionFilter.JOINED) {
-                    {
-                      Icon(
-                          Icons.Default.Check,
-                          contentDescription = null,
-                          modifier = Modifier.size(Dimens.iconSizeSmall),
-                      )
-                    }
-                  } else null,
-              shape = RoundedCornerShape(Dimens.cornerMedium),
-              border =
-                  FilterChipDefaults.filterChipBorder(
-                      enabled = true,
-                      selected = state.filter == GroupSessionFilter.JOINED,
-                  ),
-          )
-        }
+        GroupSessionFilterRow(
+            filter = state.filter,
+            onFilterChange = onFilterChange,
+        )
         Text(
             stringResource(R.string.group_session_active_sessions_title),
             style = MaterialTheme.typography.titleLarge,
@@ -358,13 +316,22 @@ internal fun GroupSessionContent(
             onSelectedRoomChange = onSelectedRoomChange,
             onLocationClick = onLocationClick,
         )
-        GroupSessionSearchBar(
-            query = state.query,
-            onQueryChange = onQueryChange,
+        Column(
             modifier =
                 Modifier.align(Alignment.TopCenter)
+                    .fillMaxWidth()
                     .padding(horizontal = Spacing.large, vertical = Spacing.small),
-        )
+        ) {
+          GroupSessionSearchBar(
+              query = state.query,
+              onQueryChange = onQueryChange,
+          )
+          Spacer(Modifier.height(Spacing.small))
+          GroupSessionFilterRow(
+              filter = state.filter,
+              onFilterChange = onFilterChange,
+          )
+        }
         GroupSessionViewSwitcher(
             viewMode = viewMode,
             onViewModeChange = onViewModeChange,
@@ -372,6 +339,72 @@ internal fun GroupSessionContent(
         )
       }
     }
+  }
+}
+
+/** Filter chips row (All sessions / My sessions) used across both list and map views. */
+@Composable
+internal fun GroupSessionFilterRow(
+    filter: GroupSessionFilter,
+    onFilterChange: (GroupSessionFilter) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+  val chipColors =
+      FilterChipDefaults.filterChipColors(
+          containerColor = MaterialTheme.colorScheme.surface,
+          selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+      )
+
+  Row(
+      modifier = modifier,
+      horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+  ) {
+    FilterChip(
+        modifier = Modifier.testTag(GroupSessionScreenTestTags.ALL_SESSIONS_FILTER),
+        selected = filter == GroupSessionFilter.ALL,
+        onClick = { onFilterChange(GroupSessionFilter.ALL) },
+        label = { Text(stringResource(R.string.group_session_filter_all)) },
+        leadingIcon =
+            if (filter == GroupSessionFilter.ALL) {
+              {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(Dimens.iconSizeSmall),
+                )
+              }
+            } else null,
+        shape = RoundedCornerShape(Dimens.cornerMedium),
+        colors = chipColors,
+        border =
+            FilterChipDefaults.filterChipBorder(
+                enabled = true,
+                selected = filter == GroupSessionFilter.ALL,
+            ),
+    )
+    FilterChip(
+        modifier = Modifier.testTag(GroupSessionScreenTestTags.MY_SESSIONS_FILTER),
+        selected = filter == GroupSessionFilter.JOINED,
+        onClick = { onFilterChange(GroupSessionFilter.JOINED) },
+        label = { Text(stringResource(R.string.group_session_filter_my)) },
+        leadingIcon =
+            if (filter == GroupSessionFilter.JOINED) {
+              {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(Dimens.iconSizeSmall),
+                )
+              }
+            } else null,
+        shape = RoundedCornerShape(Dimens.cornerMedium),
+        colors = chipColors,
+        border =
+            FilterChipDefaults.filterChipBorder(
+                enabled = true,
+                selected = filter == GroupSessionFilter.JOINED,
+            ),
+    )
   }
 }
 

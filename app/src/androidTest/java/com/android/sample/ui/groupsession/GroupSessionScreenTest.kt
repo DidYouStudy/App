@@ -592,6 +592,10 @@ class GroupSessionScreenTest {
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.MAP_CONTENT).assertIsDisplayed()
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST).assertDoesNotExist()
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SEARCH).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.ALL_SESSIONS_FILTER)
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.MY_SESSIONS_FILTER).assertIsDisplayed()
 
     // Switch back to list view mode
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.LIST_VIEW_BUTTON).performClick()
