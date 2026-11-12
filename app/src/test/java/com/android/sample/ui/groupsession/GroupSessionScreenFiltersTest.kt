@@ -105,22 +105,21 @@ class GroupSessionScreenFiltersTest {
     composeTestRule.onNodeWithText("Filter sessions").assertDoesNotExist()
   }
 
-  /** Lists the campus zones supplied by the ViewModel among the sheet's selectable zones. */
+  /** Loads a non-fixed campus zone from the ViewModel and applies its selection. */
   @Test
-  fun sheetDisplaysCampusZoneChips() {
-    composeTestRule.setContent { GroupSessionScreen(viewModel = newViewModel()) }
+  fun zoneListComesFromViewModel() {
+    val viewModel = newViewModel()
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
 
     openFilterSheet()
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.VIEW_MORE).performClick()
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.zoneOption("AI"))
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.zoneOption("AI")).performClick()
+    composeTestRule.waitForIdle()
 
-    composeTestRule
-        .onNodeWithTag(GroupSessionFilterSheetTestTags.zoneChip("BC"))
-        .assertIsDisplayed()
-    composeTestRule
-        .onNodeWithTag(GroupSessionFilterSheetTestTags.zoneChip("CM"))
-        .assertIsDisplayed()
-    composeTestRule
-        .onNodeWithTag(GroupSessionFilterSheetTestTags.zoneChip("CO"))
-        .assertIsDisplayed()
+    assertEquals(setOf("AI"), viewModel.uiState.value.selectedZones)
   }
 
   /** Retains a ViewModel-selected radius when the filter sheet is closed and reopened. */
@@ -247,7 +246,8 @@ class GroupSessionScreenFiltersTest {
   fun filterSelectionsSurviveScreenRestoration() {
     grantFineLocationPermission()
     val restorationTester = StateRestorationTester(composeTestRule)
-    restorationTester.setContent { GroupSessionScreen(viewModel = newViewModel()) }
+    val viewModel = newViewModel()
+    restorationTester.setContent { GroupSessionScreen(viewModel = viewModel) }
 
     openFilterSheet()
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(500)).performClick()
@@ -313,6 +313,7 @@ class GroupSessionScreenFiltersTest {
                       campusLocation("CM 1", "CM"),
                       campusLocation("BC 2", "BC"),
                       campusLocation("CO 4", "CO"),
+                      campusLocation("AI 1", "AI"),
                   ),
               ),
       )
