@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Co-authored-by: Claude Sonnet 5.5 -->
+<resources>
+    <!-- Where the camera first looks: the centre of the EPFL campus. Read by GroupSessionMapView
+         and GroupSessionMapContent. -->
+    <item name="map_campus_center_latitude" type="dimen" format="float">46.5191</item>
+    <item name="map_campus_center_longitude" type="dimen" format="float">6.5668</item>
+
+    <!-- Zoom levels: close enough to see the campus buildings, and close enough to a room when
+         the camera moves to it. -->
+    <item name="map_default_zoom" type="dimen" format="float">16.5</item>
+    <item name="map_focus_zoom" type="dimen" format="float">17</item>
+
+    <!-- Duration of the camera animation to a new target, in milliseconds. -->
+    <integer name="map_camera_animation_ms">600</integer>
+
+    <!-- Largest share of the screen height taken by the list of sessions opened from a pin. -->
+    <item name="map_session_list_max_height_fraction" type="dimen" format="float">0.45</item>
+
+    <!-- Angles, in degrees, used to draw the pin's outline. -->
+    <integer name="map_quarter_turn_degrees">90</integer>
+    <integer name="map_full_turn_degrees">360</integer>
+</resources>
