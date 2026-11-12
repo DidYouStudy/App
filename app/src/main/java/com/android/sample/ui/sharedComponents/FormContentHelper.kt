@@ -35,7 +35,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -531,22 +530,62 @@ fun EventTimePickerDialog(
           is24Hour = true,
       )
 
-  AlertDialog(
+  val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+  Dialog(
       onDismissRequest = onDismiss,
-      confirmButton = {
-        TextButton(
-            onClick = {
-              onTimeSelected(LocalTime.of(timePickerState.hour, timePickerState.minute))
-              onDismiss()
-            }
+      properties = DialogProperties(usePlatformDefaultWidth = false),
+  ) {
+    Surface(
+        shape = RoundedCornerShape(Dimens.dialogCornerRadius),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier =
+            Modifier.padding(
+                horizontal = Dimens.formHorizontalPadding,
+                vertical = if (isLandscape) Dimens.cornerSmall else Dimens.formVerticalPadding,
+            ),
+    ) {
+      Column(
+          modifier =
+              Modifier.verticalScroll(rememberScrollState())
+                  .padding(
+                      horizontal = Dimens.formHorizontalPadding,
+                      vertical =
+                          if (isLandscape) Dimens.cornerMedium else Dimens.formHorizontalPadding,
+                  ),
+          horizontalAlignment = Alignment.CenterHorizontally,
+      ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier =
+                Modifier.align(Alignment.Start)
+                    .padding(bottom = if (isLandscape) Dimens.cornerSmall else Dimens.cornerLarge),
+        )
+
+        TimePicker(state = timePickerState)
+
+        Row(
+            modifier =
+                Modifier.align(Alignment.End)
+                    .padding(top = if (isLandscape) Dimens.noPadding else Dimens.cornerMedium),
+            horizontalArrangement = Arrangement.End,
         ) {
-          Text(stringResource(R.string.confirm))
+          TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+          Spacer(modifier = Modifier.width(Dimens.cornerSmall))
+          TextButton(
+              onClick = {
+                onTimeSelected(LocalTime.of(timePickerState.hour, timePickerState.minute))
+                onDismiss()
+              }
+          ) {
+            Text(stringResource(R.string.confirm))
+          }
         }
-      },
-      dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
-      title = { Text(text = title, style = MaterialTheme.typography.labelLarge) },
-      text = { Column(modifier = Modifier.fillMaxWidth()) { TimePicker(state = timePickerState) } },
-  )
+      }
+    }
+  }
 }
 
 /** Subject Picker Dialog content with integrated search and custom new subject entry. */
