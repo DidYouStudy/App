@@ -20,6 +20,7 @@ import com.android.sample.model.location.CampusLocationFilter
 import com.android.sample.model.location.CampusLocationType
 import com.android.sample.model.location.Location
 import java.time.Clock
+import com.android.sample.model.preferences.UserPreferences
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -80,6 +81,15 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
       `when`(groupSessionsRepository.saveSession(any(), any())).thenReturn(Result.success(Unit))
       `when`(eventsRepository.deleteEvent(any(), any())).thenReturn(Result.success(Unit))
       `when`(groupSessionsRepository.deleteSession(any(), any())).thenReturn(Result.success(Unit))
+      `when`(preferencesRepository.getPreferences(any()))
+          .thenReturn(
+              Result.success(
+                  UserPreferences(
+                      userId = "user123",
+                      sessionLengthMinutes = 60,
+                  )
+              )
+          )
     }
     currentUserFlow.value = account("user123")
   }
@@ -993,6 +1003,65 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertFalse(state.isSaving)
   }
 
+  // ---------------------------------------------------------------- session length and start time
+
+  /**
+   * Setting start time automatically populates end time to start time plus sessionLengthMinutes.
+   */
+  @Test
+  fun setStartTime_automaticallySetsEndTimeBasedOnPreferencesSessionLength() = runTest {
+    runBlocking {
+      `when`(preferencesRepository.getPreferences("user123"))
+          .thenReturn(
+              Result.success(UserPreferences(userId = "user123", sessionLengthMinutes = 90))
+          )
+    }
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+
+    viewModel.setStartTime(LocalTime.of(14, 0))
+
+    assertEquals(LocalTime.of(14, 0), viewModel.uiState.value.startTime)
+    assertEquals(LocalTime.of(15, 30), viewModel.uiState.value.endTime)
+  }
+
+  /** When preferences fail to load, setting start time falls back to default session length. */
+  @Test
+  fun setStartTime_preferencesFailure_fallsBackToDefaultSessionLength() = runTest {
+    runBlocking {
+      `when`(preferencesRepository.getPreferences("user123"))
+          .thenReturn(Result.failure(RuntimeException("Network failure")))
+    }
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+
+    viewModel.setStartTime(LocalTime.of(10, 0))
+
+    assertEquals(LocalTime.of(10, 0), viewModel.uiState.value.startTime)
+    assertEquals(LocalTime.of(11, 0), viewModel.uiState.value.endTime)
+    assertNull(viewModel.uiState.value.error)
+  }
+
+  /** Setting start time does not overwrite end time if a custom end time was already set. */
+  @Test
+  fun setStartTime_doesNotOverwriteCustomEndTime_whenCustomEndTimeIsSet() = runTest {
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+
+    // User sets start time first -> auto fills 14:00 - 15:00
+    viewModel.setStartTime(LocalTime.of(14, 0))
+    assertEquals(LocalTime.of(15, 0), viewModel.uiState.value.endTime)
+
+    // User manually sets custom end time -> 18:00
+    viewModel.setEndTime(LocalTime.of(18, 0))
+    assertEquals(LocalTime.of(18, 0), viewModel.uiState.value.endTime)
+
+    // User changes start time to 15:00 -> custom end time 18:00 is preserved
+    viewModel.setStartTime(LocalTime.of(15, 0))
+    assertEquals(LocalTime.of(15, 0), viewModel.uiState.value.startTime)
+    assertEquals(LocalTime.of(18, 0), viewModel.uiState.value.endTime)
+  }
+
   // factory tests
 
   /** The factory creates an event-planning ViewModel for its supported type. */
@@ -1004,6 +1073,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
             eventsRepository,
             campusLocationRepository,
             groupSessionsRepository,
+            preferencesRepository,
         )
 
     val viewModel = factory.create(EventPlanningViewModel::class.java)
@@ -1020,6 +1090,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
             eventsRepository,
             campusLocationRepository,
             groupSessionsRepository,
+            preferencesRepository,
         )
 
     val exception =
@@ -1027,7 +1098,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
           factory.create(OtherViewModel::class.java)
         }
 
-    assertTrue(exception.message!!.contains(OtherViewModel::class.java.name))
+    assertEquals("Unsupported ViewModel: ${OtherViewModel::class.java.name}", exception.message)
   }
 
   // ---------------------------------------------------------------- group sessions

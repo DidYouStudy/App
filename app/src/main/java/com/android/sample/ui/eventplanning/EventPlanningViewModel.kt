@@ -26,6 +26,10 @@ import com.android.sample.model.location.CampusLocation
 import com.android.sample.model.location.CampusLocationFilter
 import com.android.sample.model.location.CampusLocationRepository
 import com.android.sample.model.location.CampusLocationRepositoryProvider
+import com.android.sample.model.preferences.PreferenceDefaults
+import com.android.sample.model.preferences.PreferencesRepository
+import com.android.sample.model.preferences.PreferencesRepositoryProvider
+import com.android.sample.model.preferences.UserPreferences
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -78,6 +82,7 @@ enum class EventKind {
  *   [EventPlanningViewModel.onEventEditedHandled].
  * @property isEventDeleted same for a successful delete, cleared by
  *   [EventPlanningViewModel.onEventDeletedHandled].
+ * @property hasSetCustomEndTime whether a custom end time has been set or loaded.
  */
 data class EventPlanningUiState(
     val eventKind: EventKind = EventKind.PERSONAL,
@@ -86,6 +91,7 @@ data class EventPlanningUiState(
     val date: LocalDate? = null,
     val startTime: LocalTime? = null,
     val endTime: LocalTime? = null,
+    val hasSetCustomEndTime: Boolean = false,
     val location: String = "",
     val description: String = "",
     val tasks: List<EventTask> = emptyList(),
@@ -136,11 +142,20 @@ class EventPlanningViewModel(
     private val campusLocationRepository: CampusLocationRepository,
     private val groupSessionsRepository: GroupSessionsRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
+    private val preferencesRepository: PreferencesRepository =
+        object : PreferencesRepository {
+          override suspend fun getPreferences(userId: String): Result<UserPreferences?> =
+              Result.success(null)
+
+          override suspend fun savePreferences(preferences: UserPreferences): Result<Unit> =
+              Result.success(Unit)
+        },
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(EventPlanningUiState())
   val uiState: StateFlow<EventPlanningUiState> = _uiState.asStateFlow()
 
   private var currentUserId: String? = null
+  private var sessionLengthMinutes: Int = PreferenceDefaults.DEFAULT_SESSION_MINUTES
 
   /**
    * ID of the event being added. Generated on the first attempt and reused by retries, so that a
@@ -163,7 +178,16 @@ class EventPlanningViewModel(
     viewModelScope.launch {
       try {
         authRepository.currentUser
-            .onEach { user -> currentUserId = user?.uid }
+            .onEach { user ->
+              currentUserId = user?.uid
+              sessionLengthMinutes =
+                  if (user == null) {
+                    PreferenceDefaults.DEFAULT_SESSION_MINUTES
+                  } else {
+                    preferencesRepository.getPreferences(user.uid).getOrNull()?.sessionLengthMinutes
+                        ?: PreferenceDefaults.DEFAULT_SESSION_MINUTES
+                  }
+            }
             .flatMapLatest { user ->
               if (user == null) flowOf(Result.success(emptyList()))
               else eventsRepository.observeSubjects(user.uid)
@@ -218,11 +242,26 @@ class EventPlanningViewModel(
   /** Updates the event date. */
   fun setDate(date: LocalDate?) = updateForm { copy(date = date) }
 
-  /** Updates the start time of day. */
-  fun setStartTime(startTime: LocalTime?) = updateForm { copy(startTime = startTime) }
+  /**
+   * Updates the start time of day and automatically sets the end time to start time plus
+   * sessionLengthMinutes from user preferences unless a custom end time has already been set.
+   */
+  fun setStartTime(startTime: LocalTime?) {
+    updateForm {
+      val computedEndTime =
+          if (!hasSetCustomEndTime && startTime != null) {
+            startTime.plusMinutes(sessionLengthMinutes.toLong())
+          } else {
+            endTime
+          }
+      copy(startTime = startTime, endTime = computedEndTime)
+    }
+  }
 
   /** Updates the end time of day. */
-  fun setEndTime(endTime: LocalTime?) = updateForm { copy(endTime = endTime) }
+  fun setEndTime(endTime: LocalTime?) = updateForm {
+    copy(endTime = endTime, hasSetCustomEndTime = true)
+  }
 
   /** Updates the optional event location. */
   fun setLocation(location: String) = updateForm { copy(location = location) }
@@ -604,6 +643,7 @@ class EventPlanningViewModel(
           date = start.toLocalDate(),
           startTime = start.toLocalTime(),
           endTime = end.toLocalTime(),
+          hasSetCustomEndTime = true,
           location = event.details.location.orEmpty(),
           description = event.details.description.orEmpty(),
           tasks = (event as? PersonalEvent)?.tasks.orEmpty(),
@@ -639,6 +679,8 @@ class EventPlanningViewModelFactory(
     private val eventsRepository: EventsRepository,
     private val campusLocationRepository: CampusLocationRepository,
     private val groupSessionsRepository: GroupSessionsRepository,
+    private val preferencesRepository: PreferencesRepository =
+        PreferencesRepositoryProvider.getRepository(),
 ) : ViewModelProvider.Factory {
   /**
    * Creates an EventsPlanningViewModel and rejects unrelated ViewModel types rather than casting
@@ -654,6 +696,8 @@ class EventPlanningViewModelFactory(
         eventsRepository,
         campusLocationRepository,
         groupSessionsRepository,
+        Clock.systemDefaultZone(),
+        preferencesRepository,
     )
         as T
   }
@@ -674,5 +718,6 @@ fun eventsPlanningViewModel(): EventPlanningViewModel =
                 campusLocationRepository =
                     CampusLocationRepositoryProvider.getRepository(LocalContext.current),
                 groupSessionsRepository = GroupSessionsRepositoryProvider.getRepository(),
+                preferencesRepository = PreferencesRepositoryProvider.getRepository(),
             )
     )
