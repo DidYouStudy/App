@@ -3,6 +3,8 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.sample
 
+import android.content.Context
+import androidx.annotation.StringRes
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -136,6 +138,10 @@ class EndToEndTest {
         }
       }
 
+  /** Returns the app's string resource [id], so tests follow the UI texts instead of literals. */
+  private fun string(@StringRes id: Int): String =
+      ApplicationProvider.getApplicationContext<Context>().getString(id)
+
   /** Waits until a node with [tag] exists; on timeout logs the UI tree (tag `E2EDUMP`). */
   private fun waitForTag(tag: String) {
     try {
@@ -160,7 +166,7 @@ class EndToEndTest {
   /** Waits for the dashboard to be shown after sign-in or preferences saving. */
   private fun assertOnDashboard() {
     waitForTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU)
-    assertTopBarTitle("Dashboard")
+    assertTopBarTitle(string(R.string.dashboard_title))
   }
 
   /** Taps the Google button: fake picker -> Firebase Auth emulator, as in production. */
@@ -308,9 +314,9 @@ class EndToEndTest {
 
     // Walk through every bottom navigation tab and come back.
     composeRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
-    assertTopBarTitle("Calendar")
+    assertTopBarTitle(string(R.string.calendar_title))
     composeRule.onNodeWithTag(NavigationTestTags.GROUP_SESSION_TAB).performClick()
-    assertTopBarTitle("Group Sessions")
+    assertTopBarTitle(string(R.string.group_session_title))
     composeRule.onNodeWithTag(NavigationTestTags.DASHBOARD_TAB).performClick()
     assertOnDashboard()
 
@@ -357,7 +363,9 @@ class EndToEndTest {
     openSettings()
     composeRule.onNodeWithTag(SettingsScreenTestTags.PREFERENCES_BUTTON).performClick()
     waitForTag(PrefTags.PREFERENCE_SCREEN)
-    composeRule.onNodeWithTag(PrefTags.PREFERENCE_TITLE).assertTextEquals("Modify your preferences")
+    composeRule
+        .onNodeWithTag(PrefTags.PREFERENCE_TITLE)
+        .assertTextEquals(string(R.string.preferences_edit_header))
     composeRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).assertIsDisplayed()
 
     // Changing a value then going back returns to Settings and persists nothing.
@@ -414,29 +422,33 @@ class EndToEndTest {
 
     // The calendar's add button opens the event form.
     composeRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
-    assertTopBarTitle("Calendar")
+    assertTopBarTitle(string(R.string.calendar_title))
     composeRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).performClick()
     waitForTag(EventTags.SCREEN_CONTAINER)
 
     // "Other" needs no subject. Date and start time keep the pickers' defaults (today, now).
     composeRule.onNodeWithTag(EventTags.TYPE_SELECTOR).performClick()
-    composeRule.onNodeWithText("Other").performClick()
+    composeRule.onNodeWithText(string(R.string.event_type_other)).performClick()
     composeRule.onNodeWithTag(EventTags.DATE_SELECTOR).performClick()
-    composeRule.onNodeWithText("OK").performClick()
+    composeRule.onNodeWithText(string(R.string.confirm)).performClick()
     composeRule.onNodeWithTag(EventTags.START_TIME_SELECTOR).performClick()
-    composeRule.onNodeWithText("OK").performClick()
+    composeRule.onNodeWithContentDescription("8 hours").performClick()
+    composeRule.onNodeWithText(string(R.string.confirm)).performClick()
     // The end time must differ from the start: tap the next hour on the picker's clock face
     // (an end before the start is accepted too, it ends the next day).
     composeRule.onNodeWithTag(EventTags.END_TIME_SELECTOR).performClick()
     val nextHour = (LocalTime.now().hour + 1) % 24
     composeRule.onNodeWithContentDescription("$nextHour hours").performClick()
-    composeRule.onNodeWithText("OK").performClick()
+    composeRule.onNodeWithText(string(R.string.confirm)).performClick()
     // The location is picked from the campus locations: search, then tap the matching row.
     // Scroll first: on a small screen the selector is below the fold and a tap would be lost.
     composeRule.onNodeWithTag(EventTags.LOCATION_SELECTOR).performScrollTo().performClick()
     // Wait for the picker dialog, then type in its only text field (not found by placeholder).
     composeRule.waitUntil(timeoutMillis = TIMEOUT_MILLIS) {
-      composeRule.onAllNodesWithText("Select location").fetchSemanticsNodes().isNotEmpty()
+      composeRule
+          .onAllNodesWithText(string(R.string.location_picker_dialog_title))
+          .fetchSemanticsNodes()
+          .isNotEmpty()
     }
     composeRule.onNode(hasSetTextAction() and hasAnyAncestor(isDialog())).performTextInput(LOCATION)
     // Results arrive asynchronously, and the search field also shows the typed text: wait for the
@@ -467,22 +479,28 @@ class EndToEndTest {
     assertOnDashboard()
 
     composeRule.onNodeWithTag(NavigationTestTags.GROUP_SESSION_TAB).performClick()
-    assertTopBarTitle("Group Sessions")
+    assertTopBarTitle(string(R.string.group_session_title))
     waitForTag(GroupSessionScreenTestTags.sessionItem(0))
     composeRule.onNodeWithText("E2E Algebra").assertIsDisplayed()
     assertEquals(listOf(hostId), storedMemberIds(session.id))
 
     // Joining adds the user to the session in Firestore and the card now offers Leave.
-    composeRule.onNodeWithText("Join").performClick()
+    composeRule.onNodeWithText(string(R.string.group_session_action_join)).performClick()
     composeRule.waitUntil(timeoutMillis = TIMEOUT_MILLIS) {
-      composeRule.onAllNodesWithText("Leave").fetchSemanticsNodes().isNotEmpty()
+      composeRule
+          .onAllNodesWithText(string(R.string.group_session_action_leave))
+          .fetchSemanticsNodes()
+          .isNotEmpty()
     }
     assertEquals(listOf(hostId, uid), storedMemberIds(session.id))
 
     // Leaving removes the user again and the card goes back to Join.
-    composeRule.onNodeWithText("Leave").performClick()
+    composeRule.onNodeWithText(string(R.string.group_session_action_leave)).performClick()
     composeRule.waitUntil(timeoutMillis = TIMEOUT_MILLIS) {
-      composeRule.onAllNodesWithText("Join").fetchSemanticsNodes().isNotEmpty()
+      composeRule
+          .onAllNodesWithText(string(R.string.group_session_action_join))
+          .fetchSemanticsNodes()
+          .isNotEmpty()
     }
     assertEquals(listOf(hostId), storedMemberIds(session.id))
   }
@@ -493,14 +511,14 @@ class EndToEndTest {
     signInThroughUi()
     assertOnDashboard()
     composeRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
-    assertTopBarTitle("Calendar")
+    assertTopBarTitle(string(R.string.calendar_title))
 
     // A configuration change recreates the activity: no sign-in screen, same session and screen.
     composeRule.activityRule.scenario.recreate()
     waitForTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU)
     composeRule.onNodeWithTag(SignInScreenTestTags.SCREEN).assertDoesNotExist()
     assertEquals(uid, auth.currentUser?.uid)
-    assertTopBarTitle("Calendar")
+    assertTopBarTitle(string(R.string.calendar_title))
   }
 
   /**
