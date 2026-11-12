@@ -1,3 +1,4 @@
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.eventplanning
 
@@ -40,6 +41,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argThat
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verifyBlocking
 import org.mockito.kotlin.whenever
@@ -149,7 +151,8 @@ class EventDetailsScreenTest {
     whenever(authRepository.currentUser).thenReturn(MutableStateFlow<UserAccount?>(user))
     eventsRepository = mock()
     runBlocking {
-      whenever(eventsRepository.saveEvent(any())).thenReturn(Result.success(Unit))
+      whenever(eventsRepository.updateEventTasks(any(), any(), any(), any()))
+          .thenReturn(Result.success(Unit))
       whenever(eventsRepository.deleteEvent(any(), any())).thenReturn(Result.success(Unit))
     }
   }
@@ -301,11 +304,12 @@ class EventDetailsScreenTest {
   }
 
   @Test
-  fun busyStateDisablesBothActions() {
+  fun busyStateDisablesActionsAndTaskCheckboxes() {
     setStatelessContent(isBusy = true)
 
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EDIT_BUTTON).assertIsNotEnabled()
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_BUTTON).assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.taskCheckbox(0)).assertIsNotEnabled()
   }
 
   @Test
@@ -447,7 +451,7 @@ class EventDetailsScreenTest {
   }
 
   @Test
-  fun togglingATaskUpdatesTheScreenAndSavesTheEvent() {
+  fun togglingATaskUpdatesTheScreenAndSavesTheChecklist() {
     stubGetEvent(Result.success(samplePersonalEvent()))
     setStatefulContent(createViewModel())
     settle()
@@ -458,7 +462,12 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.taskCheckbox(0)).assertIsOn()
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.taskCheckbox(1)).assertIsOff()
     verifyBlocking(eventsRepository) {
-      saveEvent(argThat { tasks[0].isCompleted && !tasks[1].isCompleted })
+      updateEventTasks(
+          eq(USER_ID),
+          eq(EVENT_ID),
+          argThat { this[0].isCompleted && !this[1].isCompleted },
+          any(),
+      )
     }
   }
 
@@ -466,7 +475,7 @@ class EventDetailsScreenTest {
   fun failedTaskSaveRollsBackTheCheckboxAndShowsTheError() {
     stubGetEvent(Result.success(samplePersonalEvent()))
     runBlocking {
-      whenever(eventsRepository.saveEvent(any()))
+      whenever(eventsRepository.updateEventTasks(any(), any(), any(), any()))
           .thenReturn(Result.failure(RuntimeException(SAVE_ERROR)))
     }
     setStatefulContent(createViewModel())

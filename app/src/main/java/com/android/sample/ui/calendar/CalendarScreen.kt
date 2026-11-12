@@ -76,6 +76,7 @@ fun CalendarScreen(
     navigationActions: NavigationActions? = null,
     onAddEventClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
     onAddGroupSessionClick: () -> Unit = {},
+    onEventClick: (String) -> Unit = {},
 ) {
   // The menu leaves composition while hidden, so it returns in its collapsed state.
   var isAddMenuVisible by remember { mutableStateOf(true) }
@@ -200,6 +201,7 @@ fun CalendarScreen(
               onPreviousWeek = onPreviousWeek,
               onNextWeek = onNextWeek,
               modifier = Modifier.padding(paddingValues),
+              onEventClick = onEventClick,
           )
         }
       },

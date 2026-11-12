@@ -1,4 +1,5 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.calendar
 
 // import androidx.compose.ui.test.assertDoesNotExist
@@ -275,6 +276,39 @@ class CalendarWeeklyViewTest {
     assertEquals(2, placement.dayIndex)
     assertEquals(95.dp, placement.top)
     assertEquals(15.dp, placement.height)
+  }
+
+  /**
+   * Overlapping cards share lanes, a lane is reused once its card has ended, and a later card
+   * starts a new full-width group. Short cards overlap by their rendered minimum height.
+   */
+  @Test
+  fun overlappingPlacementsShareLanesAndReuseFreedLanes() {
+    val event = eventOn(LocalDate.of(2026, 10, 14), LocalTime.of(9, 0), LocalTime.of(10, 0))
+    fun placement(top: Int, height: Int) =
+        CalendarEventPlacement(event, dayIndex = 0, top = top.dp, height = height.dp)
+    val first = placement(top = 0, height = 100)
+    val second = placement(top = 50, height = 100)
+    val third = placement(top = 120, height = 50)
+    val alone = placement(top = 300, height = 50)
+    val short = placement(top = 400, height = 10)
+    val belowShort = placement(top = 420, height = 50)
+
+    val lanes =
+        placeOverlappingEventsSideBySide(listOf(third, alone, belowShort, first, short, second))
+            .map { it.top.value.toInt() to (it.laneIndex to it.laneCount) }
+
+    assertEquals(
+        listOf(
+            0 to (0 to 2),
+            50 to (1 to 2),
+            120 to (0 to 2),
+            300 to (0 to 1),
+            400 to (0 to 2),
+            420 to (1 to 2),
+        ),
+        lanes,
+    )
   }
 
   /** Positions a Zurich event by wall-clock time on the 2026 autumn clock-change day. */
