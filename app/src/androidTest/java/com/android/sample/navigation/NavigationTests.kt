@@ -466,6 +466,24 @@ class UnauthenticatedNavigationTests {
   }
 }
 
+/**
+ * Verifies that an authenticated user without preferences starts directly on preferences screen.
+ */
+class AuthenticatedWithoutPreferencesNavigationTests {
+  private val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+  @get:Rule
+  val rules: RuleChain =
+      RuleChain.outerRule(signedInWithoutPreferencesRepositories("onboarding-user"))
+          .around(composeTestRule)
+
+  @Test
+  fun activityStartsOnPreferencesForUserWithoutPreferences() {
+    composeTestRule.onNodeWithTag(PreferencesScreenTestTags.PREFERENCE_SCREEN).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE).assertDoesNotExist()
+  }
+}
+
 /** Verifies that [DidYouStudyApp] supports dependency injection of [AppViewModel]. */
 class DidYouStudyAppInjectionTests {
   private val composeTestRule = createAndroidComposeRule<ComponentActivity>()
@@ -514,6 +532,21 @@ private fun signedInRepositories(uid: String): RepositoryOverridesRule {
   return RepositoryOverridesRule(
       auth = FakeAuthRepository(user),
       preferences = FakePreferencesRepository(UserPreferences(userId = user.uid)),
+      profile = FakeProfileRepository(),
+      events = InMemoryEventsRepository(),
+      groupSessions = InMemoryGroupSessionsRepository(),
+  )
+}
+
+/**
+ * Fakes for a signed-in user [uid] who has not yet saved preferences, so the app opens directly on
+ * the preferences screen.
+ */
+private fun signedInWithoutPreferencesRepositories(uid: String): RepositoryOverridesRule {
+  val user = UserAccount(uid, null, null, null)
+  return RepositoryOverridesRule(
+      auth = FakeAuthRepository(user),
+      preferences = FakePreferencesRepository(null),
       profile = FakeProfileRepository(),
       events = InMemoryEventsRepository(),
       groupSessions = InMemoryGroupSessionsRepository(),
