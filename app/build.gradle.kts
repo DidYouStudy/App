@@ -1,11 +1,13 @@
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Codex AI Agent
+// Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
   alias(libs.plugins.androidApplication)
   alias(libs.plugins.kotlinCompose)
+  alias(libs.plugins.kotlinSerialization)
   alias(libs.plugins.ktfmt)
   alias(libs.plugins.googleServices)
   id("jacoco")
@@ -119,12 +121,6 @@ sonar {
   }
 }
 
-// When a library is used both by robolectric and connected tests, use this function
-fun DependencyHandlerScope.globalTestImplementation(dep: Any) {
-  androidTestImplementation(dep)
-  testImplementation(dep)
-}
-
 // Kaspresso -> espresso-contrib -> accessibility-test-framework pulls protobuf-lite 3.0.1, whose
 // GeneratedMessageLite shadows protobuf-javalite and crashes Firestore in instrumented tests.
 configurations
@@ -132,21 +128,16 @@ configurations
     .configureEach { exclude(group = "com.google.protobuf", module = "protobuf-lite") }
 
 dependencies {
+  val composeBom = platform(libs.compose.bom)
+
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.appcompat)
   implementation(libs.androidx.navigation.compose)
   implementation(libs.material)
   implementation(libs.androidx.lifecycle.runtime.ktx)
-  implementation(platform(libs.compose.bom))
-  testImplementation(libs.junit)
-  globalTestImplementation(libs.androidx.junit)
-  globalTestImplementation(libs.androidx.espresso.core)
 
   // ------------- Jetpack Compose ------------------
-  val composeBom = platform(libs.compose.bom)
   implementation(composeBom)
-  globalTestImplementation(composeBom)
-
   implementation(libs.compose.ui)
   implementation(libs.compose.ui.graphics)
   implementation(libs.compose.material)
@@ -159,20 +150,6 @@ dependencies {
   implementation(libs.compose.viewmodel)
   // Android Studio Preview support
   implementation(libs.compose.preview)
-  debugImplementation(libs.compose.tooling)
-  // UI Tests
-  globalTestImplementation(libs.compose.test.junit)
-  debugImplementation(libs.compose.test.manifest)
-
-  // --------- Kaspresso test framework ----------
-  globalTestImplementation(libs.kaspresso)
-  globalTestImplementation(libs.kaspresso.compose)
-
-  // ----------       Robolectric & Mocking     ------------
-  testImplementation(libs.robolectric)
-  testImplementation(libs.mockito.core)
-  testImplementation(libs.mockito.kotlin)
-  testImplementation(libs.coroutines.test)
 
   // ---------------- Firebase -------------------
   implementation(platform(libs.firebase.bom))
@@ -188,10 +165,40 @@ dependencies {
   implementation(libs.androidx.credentials.play.services.auth)
   implementation(libs.googleid)
 
+  // ------------- Location ----------------
+  // Fused Location Provider behind AndroidLocationProvider (R8 rules ship inside the AAR)
+  implementation(libs.play.services.location)
+
+  // ------------- JSON parsing ----------------
+  // Bundled campus locations (the library ships its own R8 rules)
+  implementation(libs.kotlinx.serialization.json)
+
   // Coil3 library which handles image loading through URL's ---- currently are untrusted artifacts
   // but they will be needed for future implementations
   //  implementation(libs.coil.compose)
   //  implementation(libs.coil.network.okhttp)
+
+  debugImplementation(libs.compose.tooling)
+  debugImplementation(libs.compose.test.manifest)
+
+  androidTestImplementation(libs.androidx.junit)
+  androidTestImplementation(libs.androidx.espresso.core)
+  androidTestImplementation(composeBom)
+  androidTestImplementation(libs.compose.test.junit)
+  androidTestImplementation(libs.kaspresso)
+  androidTestImplementation(libs.kaspresso.compose)
+
+  testImplementation(libs.junit)
+  testImplementation(libs.androidx.junit)
+  testImplementation(libs.androidx.espresso.core)
+  testImplementation(composeBom)
+  testImplementation(libs.compose.test.junit)
+  testImplementation(libs.kaspresso)
+  testImplementation(libs.kaspresso.compose)
+  testImplementation(libs.robolectric)
+  testImplementation(libs.mockito.core)
+  testImplementation(libs.mockito.kotlin)
+  testImplementation(libs.coroutines.test)
 }
 
 tasks.withType<Test> {
@@ -203,6 +210,9 @@ tasks.withType<Test> {
 }
 
 tasks.register("jacocoTestReport", JacocoReport::class) {
+  group = "verification"
+  description =
+      "Generates JaCoCo coverage reports from debug unit and available instrumented tests."
   dependsOn("testDebugUnitTest")
   mustRunAfter("testDebugUnitTest", "connectedDebugAndroidTest")
 
