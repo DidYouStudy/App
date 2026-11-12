@@ -20,6 +20,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.printToLog
 import androidx.credentials.ClearCredentialStateRequest
@@ -431,7 +432,8 @@ class EndToEndTest {
     composeRule.onNodeWithContentDescription("$nextHour hours").performClick()
     composeRule.onNodeWithText("OK").performClick()
     // The location is picked from the campus locations: search, then tap the matching row.
-    composeRule.onNodeWithTag(EventTags.LOCATION_SELECTOR).performClick()
+    // Scroll first: on a small screen the selector is below the fold and a tap would be lost.
+    composeRule.onNodeWithTag(EventTags.LOCATION_SELECTOR).performScrollTo().performClick()
     // Wait for the picker dialog, then type in its only text field (not found by placeholder).
     composeRule.waitUntil(timeoutMillis = TIMEOUT_MILLIS) {
       composeRule.onAllNodesWithText("Select location").fetchSemanticsNodes().isNotEmpty()
