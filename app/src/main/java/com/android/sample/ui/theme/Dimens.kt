@@ -1,6 +1,7 @@
 // Co-authored-by: Codex AI Agent
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.theme
 
@@ -65,6 +66,14 @@ object Dimens {
   // Preferences screen
   val preferencesWideButtonHeight = 56.dp
   val preferencesChoiceHeight = 40.dp
+
+  // Height for group-session filter choices.
+  val filterChoiceButtonHeight = 48.dp
+  // Height for the group-session filter action.
+  val filterActionButtonHeight = 56.dp
+  val groupSessionZoneMenuMaxHeight = 392.dp
+  val groupSessionZoneMenuItemHeight = 56.dp
+  val groupSessionZoneMenuShadowElevation = 8.dp
 
   // Calendar screen
   val calendarWeekSwitchHeaderHeight = 52.dp
