@@ -86,6 +86,7 @@ class GroupSessionMapContentTest {
             now = now,
             onJoin = onJoin,
             onLeave = {},
+            onEdit = {},
             initialSelectedRoom = initialSelectedRoom,
         )
       }
@@ -146,6 +147,7 @@ class GroupSessionMapContentTest {
             now = now,
             onJoin = {},
             onLeave = {},
+            onEdit = {},
             initialSelectedRoom = "CM 1 121",
         )
       }

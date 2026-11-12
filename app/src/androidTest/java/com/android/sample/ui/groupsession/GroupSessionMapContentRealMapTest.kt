@@ -88,6 +88,7 @@ class GroupSessionMapContentRealMapTest {
           now = now,
           onJoin = {},
           onLeave = {},
+          onEdit = {},
           cameraPositionState = camera,
       )
     }

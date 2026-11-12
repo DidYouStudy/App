@@ -65,6 +65,7 @@ fun GroupSessionMapContent(
     now: Instant,
     onJoin: (String) -> Unit,
     onLeave: (String) -> Unit,
+    onEdit: (String) -> Unit,
     modifier: Modifier = Modifier,
     initialSelectedRoom: String? = null,
     cameraPositionState: CameraPositionState? = null,
@@ -93,6 +94,7 @@ fun GroupSessionMapContent(
           now = now,
           onJoin = onJoin,
           onLeave = onLeave,
+          onEdit = onEdit,
           modifier =
               Modifier.align(Alignment.BottomCenter)
                   .heightIn(max = maxHeight * maxListHeightFraction),
@@ -108,6 +110,7 @@ private fun SessionCardList(
     now: Instant,
     onJoin: (String) -> Unit,
     onLeave: (String) -> Unit,
+    onEdit: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
   Surface(
@@ -122,7 +125,13 @@ private fun SessionCardList(
         verticalArrangement = Arrangement.spacedBy(Spacing.medium),
     ) {
       items(items = room.items, key = { it.session.id }) { item ->
-        GroupSessionCard(item = item, now = now, onJoin = onJoin, onLeave = onLeave)
+        GroupSessionCard(
+            item = item,
+            now = now,
+            onJoin = onJoin,
+            onLeave = onLeave,
+            onEdit = onEdit,
+        )
       }
     }
   }
@@ -210,7 +219,7 @@ internal fun GroupSessionMapContentPreview(cameraPositionState: CameraPositionSt
         now = now,
         onJoin = {},
         onLeave = {},
-        initialSelectedRoom = null,
+        onEdit = {},
         cameraPositionState = cameraPositionState,
     )
   }
