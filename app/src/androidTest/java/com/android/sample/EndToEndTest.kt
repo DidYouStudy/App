@@ -7,9 +7,11 @@ import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -430,7 +432,11 @@ class EndToEndTest {
     composeRule.onNodeWithText("OK").performClick()
     // The location is picked from the campus locations: search, then tap the matching row.
     composeRule.onNodeWithTag(EventTags.LOCATION_SELECTOR).performClick()
-    composeRule.onNodeWithText("Search locations", substring = true).performTextInput(LOCATION)
+    // Wait for the picker dialog, then type in its only text field (not found by placeholder).
+    composeRule.waitUntil(timeoutMillis = TIMEOUT_MILLIS) {
+      composeRule.onAllNodesWithText("Select location").fetchSemanticsNodes().isNotEmpty()
+    }
+    composeRule.onNode(hasSetTextAction() and hasAnyAncestor(isDialog())).performTextInput(LOCATION)
     // Results arrive asynchronously, and the search field also shows the typed text: wait for the
     // row.
     val resultRow = hasText(LOCATION) and hasClickAction() and !hasSetTextAction()
