@@ -1,59 +1,58 @@
 # AGENTS.md
 
-Durable rules for any AI agent working in this repository. Read this before acting.
-Writing them down also helps the human team agree on how we build.
+These are the standing rules for AI agents working in this repository. Read them before making changes. Documenting them also helps the team align on how we work.
 
 ## The app
 
-A Kotlin/Android Study planner app (`com.android.sample`), built with an **MVVM** architecture.
+This is a Kotlin/Android study planner app (`com.android.sample`) built using **MVVM** architecture.
 
-- `model/` holds the data and repositories (Authentication, events, preferences, profile...)
-- `ui/` holds the screens and their **ViewModels**, as well as the screen navigation actions and the tokens to be used on screens. 
+- `model/` contains data and repositories for authentication, events, preferences, profiles, and related areas.
+- `ui/` contains screens and their **ViewModels**, along with screen navigation actions and the tokens used by screens.
 
 ## Architecture rules
 
-- Keep the **MVVM** separation. Data manipulation always happens in the ViewModel and not the screen itself. **ViewModels never import Firebase** or a repository implementation; they depend on repository interfaces. Firebase lives only in the `model/` repositories.
-- Do not edit anything under `sigchecks/` or generated code.
+- Preserve the **MVVM** separation. Put all data manipulation in the ViewModel, never in the screen. **ViewModels must not import Firebase** or repository implementations; they must depend on repository interfaces. Keep Firebase code only in the `model/` repositories.
+- Do not modify files in `sigchecks/` or generated code.
 
 ## Definition of done
 
-- The feature works and matches its acceptance criteria set on the scrum board.
-- `./gradlew check` is green (unit tests + lint) and `./gradlew ktfmtCheck` passes (formatting) before you submit.
-- Features covered by instrumented tests (under `androidTest/`, e.g. the Firestore repository) must also pass `./gradlew connectedDebugAndroidTest`, with an Android emulator and the Firebase emulator running.
+- The feature works and satisfies its acceptance criteria set on the scrum board. 
+- Before submitting, ensure `./gradlew check` passes (unit tests and lint) and `./gradlew ktfmtCheck` passes (formatting).
+- For features covered by instrumented tests (in `androidTest/`, such as the Firestore repository), also pass `./gradlew connectedDebugAndroidTest` using a running Android emulator and Firebase emulator.
 
-## Coding Guidelines
+## Coding guidelines
 
-- When referring to specific pieces of code, specify the line number and file path when possible.
-- During code generation, add clear and appropriate comments to new classes and functions created.
-- Avoid functions with many nested statements, in which case consider splitting them up into multiple functions. 
-- Restrain from using string/size/color literals. For string literals, add tokens in `string.xml` and use the string resource instead. For color and numerical sizes (font and padding sizes), check in `ui/theme` for existing tokens to use, and add new tokens with appropriate names where needed. 
-- **Acknowledge your contributors** at the top of the file: credit the AI that wrote it with a `Co-authored-by` line. An AI agent is a contributor, so credit it. No need to mention `Co-authored-by` in commit message. If there exists already a line indicating credit for the agent, do not add a new one.  
+- When mentioning specific code, include its file path and line number when possible.
+- When generating code, add clear, suitable comments to every new class and function.
+- Avoid functions with deeply nested statements; consider breaking them into smaller functions.
+- Avoid hard-coded string, size, and color values. Put strings in `string.xml` and use their resources. For colors and numeric dimensions such as font and padding sizes, look for existing tokens in `ui/theme`; add appropriately named tokens when needed.
+- **Credit contributors** at the top of each file by adding a `Co-authored-by` line for the AI that wrote it. AI agents count as contributors. Do not add `Co-authored-by` to commit messages. If the file already credits the agent, do not add another line.
 
-## Test
+## Tests
 
-- **All new classes and functions comes with unit tests.**
-- `test/` holds all the unit tests, while `androidTest/` holds the emulator tests. 
-- All tests are effective and cover a possible situation. 
-- Add a one-line comment to the test that specifies the functionality being tested.
-- When existing classes and functions are modified, modify all tests containing their instances. 
+- **Write unit tests for every new class and function.**
+- Store unit tests in `test/` and emulator tests in `androidTest/`.
+- Ensure all tests are effective and cover a realistic case.
+- Add a one-line comment to each test describing the functionality it checks.
+- When modifying existing classes or functions, update every test that contains instances of them.
 
 ## Commits
 
-- Commit with an imperative subject of at most 50 characters. The subject should have a prefix indicating its type, followed by a body in imperative tone, with the first letter capitalized (e.g. `Add user authentication`). Add a body wrapped at 72 characters when the subject for describing the changes.
-- Stage only the files you changed; never `git add .` or `git add -A` (it can pull in local config like `local.properties`).
-- Before each commit, run the tests being added and make sure they all pass. In case that tests are failing, examine the error messages and iterate until `./gradlew check` passes.
+- Use an imperative commit subject of no more than 50 characters. Start it with a type prefix, then an imperative description whose first letter is capitalized (for example, `Add user authentication`). Add a commit body when the subject alone does not describe the change sufficiently.
+- Stage only the files you changed. Never run `git add .` or `git add -A`, since those commands may include local configuration such as `local.properties`.
+- Before each commit, run the tests you added and confirm they pass. If tests fail, review the errors and iterate until `./gradlew check` passes.
 
 ## Pull requests
 
-- Open new pull requests when a **substantial, bounded** change was made. A PR over 100 lines counts as significant, whereas PRs over 1000 lines, if possible, should be split into smaller, standalone PRs.
+- Open a pull request for substantial, well-scoped changes. Changes exceeding 100 lines count as significant. When possible, split changes over 1000 lines into smaller, independent pull requests.
 
 ## Reviewing pull requests
 
-- Check the functionality of code against the changes specified in the PR message. 
-- Ensure that the design is consistent with the **MVVM** concept and with the rest of the codebase.
-- Verify that all tests are effective. Consider any uncovered edge cases.
-- Check that all classes and functions have sensible and concise names.
+- Confirm that the code works as described in the pull request message.
+- Check that the design follows **MVVM** and is consistent with the rest of the codebase.
+- Confirm that tests are effective, and consider whether they miss any edge cases.
+- Check that class and function names are clear and concise.
 
 ## The developer's role
 
-The developer provides the goal, the context, the acceptance criteria and the permissions. The agent plans, acts and observes. **The developer review the diff, and owns every line submitted.** "The agent wrote it" is not a defense.
+The developer sets the goal, context, acceptance criteria, and permissions. The agent plans, acts, and observes. **The developer reviews the diff and is responsible for every submitted line.** Saying "the agent wrote it" is not a defense.
