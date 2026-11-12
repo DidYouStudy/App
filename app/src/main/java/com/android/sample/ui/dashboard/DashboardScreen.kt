@@ -25,7 +25,7 @@ import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.profile.ProfileButton
-import com.android.sample.ui.sharedComponents.DashboardAddFabMenu
+import com.android.sample.ui.sharedComponents.AddFabMenu
 import com.android.sample.ui.theme.Dimens
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,7 +73,7 @@ fun DashboardScreen(
         )
       },
       floatingActionButton = {
-        DashboardAddFabMenu(
+        AddFabMenu(
             onEventClick = onEventClick,
             onGroupSessionClick = onGroupSessionClick,
             modifier = Modifier.testTag(DashboardContentTestTags.ADD_BUTTON),
