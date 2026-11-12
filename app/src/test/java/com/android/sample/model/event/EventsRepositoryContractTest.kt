@@ -119,6 +119,34 @@ abstract class EventsRepositoryContractTest {
     assertEquals(EventsError.NOT_FOUND, repository.getEvent(owner, event.id).error())
   }
 
+  /** Rejects an update when either the owner or the event ID is blank. */
+  @Test
+  fun checklistUpdateRejectsBlankOwnerAndEventId() = runTest {
+    val tasks = listOf(EventTask("Review"))
+
+    assertEquals(
+        EventsError.INVALID_ARGUMENT,
+        repository.updateEventTasks(" ", "a", tasks, created).error(),
+    )
+    assertEquals(
+        EventsError.INVALID_ARGUMENT,
+        repository.updateEventTasks(owner, " ", tasks, created).error(),
+    )
+  }
+
+  /** An owner without any events cannot update a different owner's checklist. */
+  @Test
+  fun checklistUpdateRequiresAnEventForTheRequestedOwner() = runTest {
+    val original = event("a", 9, 10)
+    repository.saveEvent(original).getOrThrow()
+
+    val result =
+        repository.updateEventTasks(otherOwner, original.id, listOf(EventTask("Review")), created)
+
+    assertEquals(EventsError.NOT_FOUND, result.error())
+    assertEquals(original, repository.getEvent(owner, original.id).getOrThrow())
+  }
+
   /** Lists imported events only for the requested owner, regardless of their dates. */
   @Test
   fun getImportedEvents_returnsOnlyTheOwnersImportedEventsOfAnyDate() = runTest {

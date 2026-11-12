@@ -94,6 +94,36 @@ class EventsRepositoryFirestoreTest {
     verify(batch).commit()
   }
 
+  /** Reports the event as missing when it disappears before the checklist write is visible. */
+  @Test
+  fun checklistUpdateReportsEventRemovedDuringWrite() = runTest {
+    val batch: WriteBatch = mock()
+    val query: Query = mock()
+    val existing: QuerySnapshot = mock()
+    val removed: QuerySnapshot = mock()
+    val updatedAt = Instant.parse("2026-10-19T10:00:00Z")
+    val tasks = listOf(EventTask("Review", updatedAt))
+    val fields = EventFirestoreMapper.encodeTaskUpdate(tasks, updatedAt)
+    whenever(events.whereEqualTo(FieldPath.documentId(), "id")).thenReturn(query)
+    whenever(existing.isEmpty).thenReturn(false)
+    whenever(removed.isEmpty).thenReturn(true)
+    whenever(query.get(Source.CACHE))
+        .thenReturn(Tasks.forResult(existing), Tasks.forResult(removed))
+    whenever(db.batch()).thenReturn(batch)
+    whenever(batch.update(document, fields)).thenReturn(batch)
+    whenever(batch.commit()).thenReturn(TaskCompletionSource<Void>().task)
+
+    val result = repository.updateEventTasks("owner", "id", tasks, updatedAt)
+
+    assertEquals(EventsError.NOT_FOUND, result.error())
+    inOrder(query, batch) {
+      verify(query).get(Source.CACHE)
+      verify(batch).update(document, fields)
+      verify(batch).commit()
+      verify(query).get(Source.CACHE)
+    }
+  }
+
   /** A later invalid event prevents the entire batch from reaching Firestore. */
   @Test
   fun rejectsLaterInvalidEventBeforeWriting() = runTest {
