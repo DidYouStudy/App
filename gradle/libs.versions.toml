@@ -28,6 +28,8 @@ mockitoKotlin = "5.4.0"
 credentials = "1.6.0"
 googleid = "1.2.1"
 serialization = "1.12.0"
+mapsCompose = "9.0.1"
+playServicesMaps = "20.1.0"
 playServicesLocation = "21.4.0"
 #coil = "3.6.3"
 
@@ -75,6 +77,8 @@ kaspresso-compose = { group = "com.kaspersky.android-components", name = "kaspre
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "coroutines" }
 
+maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
+play-services-maps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "playServicesMaps" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }

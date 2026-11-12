@@ -327,7 +327,7 @@ private fun GroupSessionContent(
 }
 
 @Composable
-private fun GroupSessionCard(
+internal fun GroupSessionCard(
     item: GroupSessionItem,
     now: Instant,
     onJoin: (String) -> Unit,
