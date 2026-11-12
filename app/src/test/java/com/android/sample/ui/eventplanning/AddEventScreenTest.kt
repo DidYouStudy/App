@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
@@ -11,6 +12,7 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -218,7 +220,7 @@ class AddEventScreenTest {
     // Fill valid form fields via ViewModel and trigger addEvent
     viewModel.setType(EventType.STUDY_SESSION)
     viewModel.setSubject("Algebra")
-    viewModel.setDate(LocalDate.of(2026, 10, 27))
+    viewModel.setDate(LocalDate.of(2026, 10, 28))
     viewModel.setStartTime(LocalTime.of(9, 0))
     viewModel.setEndTime(LocalTime.of(11, 0))
 
@@ -448,7 +450,7 @@ class AddEventScreenTest {
             date = null,
             startTime = null,
             endTime = null,
-            error = EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED,
+            error = EventPlanningError.REQUIRED_FIELDS_MISSING,
         )
 
     composeTestRule.setContent {
@@ -508,7 +510,33 @@ class AddEventScreenTest {
     composeTestRule
         .onNodeWithTag(Tags.ERROR_TEXT)
         .assertIsDisplayed()
-        .assertTextEquals(context.getString(R.string.event_planning_error_save_failed))
+        .assertTextEquals(context.getString(R.string.event_planning_error_failed_to_add_event))
+  }
+
+  @Test
+  fun validationErrorDisappearsAfterFourSeconds() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val viewModel = createViewModel()
+    viewModel.addEvent()
+    assertEquals(EventPlanningError.REQUIRED_FIELDS_MISSING, viewModel.uiState.value.error)
+    composeTestRule.mainClock.autoAdvance = false
+
+    composeTestRule.setContent {
+      AddEventScreen(viewModel = viewModel, onBackClick = {}, onEventSaved = {})
+    }
+
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithTag(Tags.ERROR_TEXT)
+        .assertTextEquals(context.getString(R.string.event_planning_error_required_fields))
+
+    composeTestRule.mainClock.advanceTimeBy(3_900)
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(Tags.ERROR_TEXT).assertIsDisplayed()
+
+    composeTestRule.mainClock.advanceTimeBy(200)
+    composeTestRule.waitForIdle()
+    assertTrue(composeTestRule.onAllNodesWithTag(Tags.ERROR_TEXT).fetchSemanticsNodes().isEmpty())
   }
 
   @Test
