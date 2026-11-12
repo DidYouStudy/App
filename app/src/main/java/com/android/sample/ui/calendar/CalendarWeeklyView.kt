@@ -402,12 +402,13 @@ fun CalendarTimeGrid(
             events
                 .flatMap { event -> calculateEventPlacements(event, weekDates, hourHeight) }
                 .groupBy { placement -> placement.dayIndex }
+                .mapValues { (_, placements) -> placeOverlappingEventsSideBySide(placements) }
           }
       Row(modifier = Modifier.weight(1f)) {
         repeat(DAYS_PER_WEEK) { dayIndex ->
           val placements = placementsByDay[dayIndex].orEmpty()
 
-          Box(modifier = Modifier.weight(1f)) {
+          BoxWithConstraints(modifier = Modifier.weight(1f)) {
             Column {
               repeat(HOURS_PER_DAY) { hour ->
                 CalendarEmptyHourCell(
@@ -418,11 +419,12 @@ fun CalendarTimeGrid(
               }
             }
             placements.forEach { placement ->
+              val cardWidth = maxWidth / placement.laneCount
               CalendarEventCard(
                   event = placement.event,
                   modifier =
-                      Modifier.fillMaxWidth()
-                          .offset(y = placement.top)
+                      Modifier.width(cardWidth)
+                          .offset(x = cardWidth * placement.laneIndex, y = placement.top)
                           .height(maxOf(Dimens.calendarEventCardMinHeight, placement.height))
                           .testTag(CalendarTestTags.eventCard(placement.event.id, dayIndex)),
                   onClick = { onEventClick(placement.event.id) },
@@ -441,7 +443,35 @@ internal data class CalendarEventPlacement(
     val dayIndex: Int,
     val top: Dp,
     val height: Dp,
+    val laneIndex: Int = 0,
+    val laneCount: Int = 1,
 )
+
+/** Divides each group of overlapping cards into lanes, using the rendered minimum card height. */
+private fun placeOverlappingEventsSideBySide(
+    placements: List<CalendarEventPlacement>
+): List<CalendarEventPlacement> = buildList {
+  val laneEnds = mutableListOf<Dp>()
+  val group = mutableListOf<CalendarEventPlacement>()
+
+  // A completed group knows its total width in lanes, so its cards can share the day column.
+  fun finishGroup() {
+    group.forEach { add(it.copy(laneCount = laneEnds.size)) }
+    group.clear()
+    laneEnds.clear()
+  }
+
+  for (placement in placements.sortedBy { it.top }) {
+    if (laneEnds.all { it <= placement.top }) finishGroup()
+
+    val laneEnd = placement.top + maxOf(Dimens.calendarEventCardMinHeight, placement.height)
+    val availableLane = laneEnds.indexOfFirst { it <= placement.top }
+    val laneIndex = if (availableLane >= 0) availableLane else laneEnds.size
+    if (laneIndex == laneEnds.size) laneEnds.add(laneEnd) else laneEnds[laneIndex] = laneEnd
+    group.add(placement.copy(laneIndex = laneIndex))
+  }
+  finishGroup()
+}
 
 /**
  * Splits an event at local midnight and calculates each segment's grid position.

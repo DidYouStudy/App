@@ -1,3 +1,4 @@
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Claude Sonnet 5.5
 
 package com.android.sample.ui.eventplanning
@@ -115,7 +116,10 @@ fun EventDetailsScreen(
       snackbarHostState = snackbarHostState,
       onBack = onNavigateBack,
       onToggleTask = viewModel::toggleTask,
-      onEdit = { uiState.event?.let { onEdit(it.id) } },
+      onEdit = {
+        val state = viewModel.uiState.value
+        if (!state.isBusy) state.event?.let { onEdit(it.id) }
+      },
       onDelete = viewModel::deleteEvent,
   )
 }
@@ -179,7 +183,12 @@ internal fun EventDetailsStateless(
     ) {
       Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
         when {
-          display != null -> EventDetailsBody(display = display, onToggleTask = onToggleTask)
+          display != null ->
+              EventDetailsBody(
+                  display = display,
+                  tasksEnabled = !isBusy,
+                  onToggleTask = onToggleTask,
+              )
           isLoading ->
               CircularProgressIndicator(
                   modifier =
@@ -207,6 +216,7 @@ internal fun EventDetailsStateless(
 @Composable
 private fun EventDetailsBody(
     display: EventDetailsDisplay,
+    tasksEnabled: Boolean,
     onToggleTask: (Int) -> Unit,
 ) {
   Column(
@@ -270,6 +280,7 @@ private fun EventDetailsBody(
                 isCompleted = task.isCompleted,
                 onToggle = { onToggleTask(index) },
                 checkboxTag = EventDetailsScreenTestTags.taskCheckbox(index),
+                enabled = tasksEnabled,
             )
           }
         }

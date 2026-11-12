@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
  * @property event the [PersonalEvent] loaded for display, or null if not yet loaded or on error.
  * @property isLoading true while an event is being loaded from the repository.
  * @property isDeleting true while the event is being deleted.
+ * @property isUpdatingTasks true while a checklist update is being saved.
  * @property isEventDeleted set to true when the event is successfully deleted, cleared by
  *   [EventDetailsViewModel.onEventDeletedHandled].
  * @property error failure category to display to the user, or null when there is none.
@@ -39,10 +40,11 @@ data class EventDetailsUiState(
     val isDeleting: Boolean = false,
     val isEventDeleted: Boolean = false,
     val error: EventPlanningError? = null,
+    val isUpdatingTasks: Boolean = false,
 ) {
-  /** True while any asynchronous operation (loading or deleting) is in progress. */
+  /** True while loading, deleting, or saving a checklist change. */
   val isBusy: Boolean
-    get() = isLoading || isDeleting
+    get() = isLoading || isDeleting || isUpdatingTasks
 }
 
 /**
@@ -87,7 +89,7 @@ class EventDetailsViewModel(
    * @param refresh Fetch the event again even if it is already displayed.
    */
   fun loadEvent(eventId: String, refresh: Boolean = false) {
-    if (eventId.isBlank() || _uiState.value.isLoading) return
+    if (eventId.isBlank() || _uiState.value.isBusy) return
     if (!refresh && _uiState.value.event?.id == eventId) return
 
     _uiState.update { it.copy(isLoading = true, error = null) }
@@ -196,7 +198,9 @@ class EventDetailsViewModel(
    * @param index index of the task to toggle in [PersonalEvent.tasks].
    */
   fun toggleTask(index: Int) {
-    val currentEvent = _uiState.value.event ?: return
+    val state = _uiState.value
+    if (state.isBusy) return
+    val currentEvent = state.event ?: return
     if (index !in currentEvent.tasks.indices) return
 
     val now = clock.instant()
@@ -210,18 +214,19 @@ class EventDetailsViewModel(
     _uiState.update { it.copy(error = null) }
   }
 
+  /** Shows the toggle immediately and rolls it back if the checklist patch fails. */
   private fun updateEventTasks(previousEvent: PersonalEvent, updatedEvent: PersonalEvent) {
-    _uiState.update { it.copy(event = updatedEvent, error = null) }
+    _uiState.update { it.copy(event = updatedEvent, error = null, isUpdatingTasks = true) }
     viewModelScope.launch {
       try {
-        eventsRepository.saveEvent(updatedEvent).onFailure { exception ->
-          _uiState.update {
-            it.copy(
-                event = previousEvent,
-                error = exception.toUserError(EventPlanningError.FAILED_TO_EDIT_EVENT),
+        eventsRepository
+            .updateEventTasks(
+                updatedEvent.ownerId,
+                updatedEvent.id,
+                updatedEvent.tasks,
+                updatedEvent.updatedAt,
             )
-          }
-        }
+            .getOrThrow()
       } catch (exception: CancellationException) {
         throw exception
       } catch (exception: Exception) {
@@ -231,6 +236,8 @@ class EventDetailsViewModel(
               error = exception.toUserError(EventPlanningError.FAILED_TO_EDIT_EVENT),
           )
         }
+      } finally {
+        _uiState.update { it.copy(isUpdatingTasks = false) }
       }
     }
   }

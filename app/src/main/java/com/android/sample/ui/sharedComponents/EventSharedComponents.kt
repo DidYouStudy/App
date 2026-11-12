@@ -1,3 +1,4 @@
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Claude Sonnet 5.5
 
 package com.android.sample.ui.sharedComponents
@@ -86,6 +87,7 @@ fun TaskCheckRow(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
     checkboxTag: String? = null,
+    enabled: Boolean = true,
     trailingContent: (@Composable () -> Unit)? = null,
 ) {
   Row(
@@ -104,6 +106,7 @@ fun TaskCheckRow(
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
       Checkbox(
           checked = isCompleted,
+          enabled = enabled,
           onCheckedChange = { onToggle() },
           colors =
               CheckboxDefaults.colors(

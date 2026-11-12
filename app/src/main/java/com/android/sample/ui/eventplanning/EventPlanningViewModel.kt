@@ -1,3 +1,4 @@
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
@@ -109,6 +110,10 @@ data class EventPlanningUiState(
   /** Whether a request is running; the screen can disable its buttons meanwhile. */
   val isBusy: Boolean
     get() = isSaving || isLoading || isDeleting
+
+  /** Keeps Edit open until a write fails or its success callback is delivered. */
+  val canLeaveEdit: Boolean
+    get() = !isSaving && !isDeleting && !isEventEdited && !isEventDeleted
 
   /** The same state without the previous error and add, edit or delete result. */
   internal fun withoutResults() =
@@ -415,7 +420,7 @@ class EventPlanningViewModel(
   }
 
   /** Validates form inputs and builds [EventDetails], or sets the error and returns null. */
-  private fun validateAndBuildDetails(): EventDetails? {
+  private fun validateAndBuildDetails(original: EventDetails?): EventDetails? {
     val state = _uiState.value
     val date = state.date
     val startTime = state.startTime
@@ -425,7 +430,7 @@ class EventPlanningViewModel(
       return null
     }
 
-    val (startsAt, endsAt) = calculateStartAndEndInstants(date, startTime, endTime, clock)
+    val (startsAt, endsAt) = calculateStartAndEndInstants(date, startTime, endTime, clock, original)
 
     return try {
       EventDetails(
@@ -456,7 +461,7 @@ class EventPlanningViewModel(
       return
     }
 
-    val details = validateAndBuildDetails() ?: return
+    val details = validateAndBuildDetails(editingEvent?.details?.takeIf { isEditing }) ?: return
     val now = clock.instant()
     val defaultError =
         if (isEditing) EventPlanningError.FAILED_TO_EDIT_EVENT
