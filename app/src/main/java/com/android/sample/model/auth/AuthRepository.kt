@@ -20,6 +20,13 @@ interface AuthRepository {
   val isAuthenticated: Boolean
 
   /**
+   * The unique ID of the currently authenticated user, or null when nobody is signed in.
+   * Synchronous check for immediate routing and local cache access without waiting for flow
+   * collection.
+   */
+  val currentUserId: String?
+
+  /**
    * The signed-in account, or null when nobody is signed in. This is the single source of truth for
    * "who is signed in": the ViewModel observes it instead of keeping its own copy, and uses it for
    * example to choose between the login screen and the rest of the app.

@@ -332,6 +332,21 @@ class AuthRepositoryFirebaseTest {
     assertFalse(repository.isAuthenticated)
   }
 
+  @Test
+  fun currentUserIdReturnsUidWhenFirebaseHasCurrentUser() {
+    val user = firebaseUser(account)
+    `when`(auth.currentUser).thenReturn(user)
+
+    assertEquals(account.uid, repository.currentUserId)
+  }
+
+  @Test
+  fun currentUserIdReturnsNullWhenFirebaseHasNoCurrentUser() {
+    `when`(auth.currentUser).thenReturn(null)
+
+    assertNull(repository.currentUserId)
+  }
+
   private fun firebaseUser(account: UserAccount): FirebaseUser {
     val user = mock(FirebaseUser::class.java)
     `when`(user.uid).thenReturn(account.uid)

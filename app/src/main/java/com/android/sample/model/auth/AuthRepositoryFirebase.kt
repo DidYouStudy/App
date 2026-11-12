@@ -35,6 +35,9 @@ class AuthRepositoryFirebase(
   override val isAuthenticated: Boolean
     get() = firebaseAuth.currentUser != null
 
+  override val currentUserId: String?
+    get() = firebaseAuth.currentUser?.uid
+
   // Runs sign-in and sign-out one at a time; see the AuthRepository documentation.
   private val operationMutex = Mutex()
 

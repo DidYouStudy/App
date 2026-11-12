@@ -537,6 +537,9 @@ private class FakeAuthRepository(private val user: UserAccount?) : AuthRepositor
   override val isAuthenticated: Boolean
     get() = currentUserState.value != null
 
+  override val currentUserId: String?
+    get() = currentUserState.value?.uid
+
   override suspend fun signInWithGoogle(idToken: String): UserAccount =
       user ?: throw IllegalStateException("Not signed in")
 

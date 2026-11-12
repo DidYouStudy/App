@@ -13,6 +13,9 @@ class TestAuthRepository : AuthRepository {
   override val isAuthenticated: Boolean
     get() = currentUser.value != null
 
+  override val currentUserId: String?
+    get() = currentUser.value?.uid
+
   override val currentUser = MutableStateFlow<UserAccount?>(null)
   val tokens = mutableListOf<String>()
   var signInAction: suspend (String) -> UserAccount = {

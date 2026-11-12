@@ -47,11 +47,14 @@ private class FakePreferencesRepository(
   }
 }
 
-private class FakeAuthRepository(userId: String) : AuthRepository {
+private class FakeAuthRepository(private val userId: String) : AuthRepository {
   override val currentUser: Flow<UserAccount?> =
       MutableStateFlow(UserAccount(userId, null, null, null))
   override val isAuthenticated: Boolean
     get() = true
+
+  override val currentUserId: String
+    get() = userId
 
   override suspend fun signInWithGoogle(idToken: String): UserAccount = throw NotImplementedError()
 

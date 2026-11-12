@@ -321,6 +321,9 @@ class CalendarViewModelTest {
     override val isAuthenticated: Boolean
       get() = false
 
+    override val currentUserId: String?
+      get() = null
+
     override val currentUser: Flow<UserAccount?> = flow {
       throw IllegalStateException("auth failed")
     }

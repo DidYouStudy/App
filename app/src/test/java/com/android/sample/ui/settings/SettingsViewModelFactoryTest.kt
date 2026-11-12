@@ -153,6 +153,9 @@ class SettingsViewModelFactoryTest {
     override val isAuthenticated: Boolean
       get() = false
 
+    override val currentUserId: String?
+      get() = null
+
     override val currentUser = MutableStateFlow<UserAccount?>(null)
 
     var signOutCalls = 0

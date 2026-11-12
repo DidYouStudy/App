@@ -942,6 +942,9 @@ class AuthViewModelTest {
     override val isAuthenticated: Boolean
       get() = false
 
+    override val currentUserId: String?
+      get() = null
+
     override suspend fun signInWithGoogle(idToken: String): UserAccount = error("Not used")
 
     override suspend fun signOut() = error("Not used")
@@ -952,6 +955,9 @@ class AuthViewModelTest {
       AuthRepository {
     override val isAuthenticated: Boolean
       get() = false
+
+    override val currentUserId: String?
+      get() = null
 
     override suspend fun signInWithGoogle(idToken: String): UserAccount =
         UserAccount(
@@ -968,6 +974,9 @@ class AuthViewModelTest {
     override val currentUser = MutableSharedFlow<UserAccount?>()
     override val isAuthenticated: Boolean
       get() = false
+
+    override val currentUserId: String?
+      get() = null
 
     val tokens = mutableListOf<String>()
     var signOutCalls = 0

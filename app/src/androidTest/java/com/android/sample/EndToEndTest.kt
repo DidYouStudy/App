@@ -244,6 +244,9 @@ private class FakeSessionAuthRepository : AuthRepository {
   override val isAuthenticated: Boolean
     get() = session.value != null
 
+  override val currentUserId: String?
+    get() = session.value?.uid
+
   /** Current session value, for assertions. */
   val currentUserValue: UserAccount?
     get() = session.value
