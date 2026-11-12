@@ -98,13 +98,16 @@ class EndToEndTest {
     db.terminate().await()
     db.clearPersistence().await()
     app.delete()
-    try {
-      clearEmulator("http://$HOST:$AUTH_PORT/emulator/v1/projects/$PROJECT_ID/accounts")
-    } finally {
-      // Still wipe Firestore if the Auth cleanup failed; the first failure is still reported.
-      clearEmulator(
-          "http://$HOST:$FIRESTORE_PORT/emulator/v1/projects/$PROJECT_ID/databases/(default)/documents"
-      )
+    // Run every wipe even if an earlier one fails, then report all failures together.
+    val failures =
+        listOf(
+                "http://$HOST:$AUTH_PORT/emulator/v1/projects/$PROJECT_ID/accounts",
+                "http://$HOST:$FIRESTORE_PORT/emulator/v1/projects/$PROJECT_ID/databases/(default)/documents",
+            )
+            .mapNotNull { url -> runCatching { clearEmulator(url) }.exceptionOrNull() }
+    failures.firstOrNull()?.let { first ->
+      failures.drop(1).forEach(first::addSuppressed)
+      throw first
     }
   }
 
