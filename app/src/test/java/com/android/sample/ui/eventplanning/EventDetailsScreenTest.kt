@@ -415,7 +415,9 @@ class EventDetailsScreenTest {
     settle()
     showSnackbar()
 
-    composeTestRule.onNodeWithText(LOAD_ERROR).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(string(R.string.event_planning_error_failed_to_load_event))
+        .assertIsDisplayed()
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.NOT_FOUND).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EDIT_BUTTON).assertIsNotEnabled()
   }
@@ -475,7 +477,9 @@ class EventDetailsScreenTest {
     testDispatcher.scheduler.advanceUntilIdle()
     showSnackbar()
 
-    composeTestRule.onNodeWithText(SAVE_ERROR).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(string(R.string.event_planning_error_failed_to_edit_event))
+        .assertIsDisplayed()
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.taskCheckbox(0)).assertIsOff()
   }
 
@@ -509,7 +513,9 @@ class EventDetailsScreenTest {
     testDispatcher.scheduler.advanceUntilIdle()
     showSnackbar()
 
-    composeTestRule.onNodeWithText(DELETE_ERROR).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(string(R.string.event_planning_error_failed_to_delete_event))
+        .assertIsDisplayed()
     assertFalse(events.contains("back"))
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SUBJECT).assertIsDisplayed()
   }

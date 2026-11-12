@@ -87,6 +87,7 @@ fun EventDetailsScreen(
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val snackbarHostState = remember { SnackbarHostState() }
+  val errorMessage = uiState.error?.let { stringResource(it.stringResource) }
 
   LaunchedEffect(eventId) { viewModel.loadEvent(eventId) }
 
@@ -97,8 +98,8 @@ fun EventDetailsScreen(
     }
   }
 
-  LaunchedEffect(uiState.error) {
-    uiState.error?.let { message ->
+  LaunchedEffect(errorMessage) {
+    errorMessage?.let { message ->
       snackbarHostState.showSnackbar(message)
       viewModel.clearError()
     }
