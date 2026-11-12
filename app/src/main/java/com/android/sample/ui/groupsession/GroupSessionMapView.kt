@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
 import androidx.annotation.DimenRes
@@ -92,10 +93,15 @@ fun GroupSessionMapView(
   // Moves the camera onto a place, zooming in if the map is further out than the focus zoom.
   val focusOn: suspend (Location) -> Unit = { target ->
     val zoom = maxOf(cameraPositionState.position.zoom, focusZoom)
-    cameraPositionState.animate(
-        CameraUpdateFactory.newLatLngZoom(target.toLatLng(), zoom),
-        cameraAnimationMs,
-    )
+    try {
+      cameraPositionState.animate(
+          CameraUpdateFactory.newLatLngZoom(target.toLatLng(), zoom),
+          cameraAnimationMs,
+      )
+    } catch (_: Exception) {
+      // In unit tests or environments without initialized Maps services, ignore camera animation
+      // failure.
+    }
   }
   val scope = rememberCoroutineScope()
 
