@@ -15,6 +15,7 @@ import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
 import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
+import com.android.sample.model.location.FakeLocationProvider
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.ProfileRepositoryProvider
 import com.android.sample.model.profile.UserProfile
@@ -37,7 +38,13 @@ class GroupSessionsViewModelFactoryTest {
   private val authRepository = TestAuthRepository()
   private val repository = InMemoryGroupSessionsRepository()
   private val profileRepository = FakeProfileRepository(mapOf(BOB to UserProfile(BOB, "Bob")))
-  private val factory = GroupSessionsViewModelFactory(authRepository, repository, profileRepository)
+  private val factory =
+      GroupSessionsViewModelFactory(
+          authRepository,
+          repository,
+          profileRepository,
+          FakeLocationProvider(),
+      )
 
   @After
   fun clearProviders() {
