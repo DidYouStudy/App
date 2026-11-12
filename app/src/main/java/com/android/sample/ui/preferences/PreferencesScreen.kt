@@ -1,6 +1,7 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: OpenAI Codex
 package com.android.sample.ui.preferences
 
 import androidx.compose.foundation.background
@@ -230,6 +231,11 @@ fun PreferenceScreenStateless(
             stringResource(id = R.string.preferences_import_schedule_button),
             onImportClick,
             Tags.IMPORT_SCHEDULE_BUTTON,
+        )
+        Text(
+            text = stringResource(R.string.preferences_import_schedule_file_type),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
         // add study locations section
