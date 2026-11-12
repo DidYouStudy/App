@@ -1,8 +1,8 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude AI Agent
 package com.android.sample.ui.groupsession
 
 import android.content.res.Configuration
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,16 +14,13 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -36,12 +33,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -50,6 +47,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.android.sample.R
+import com.android.sample.ui.sharedComponents.SegmentedChoiceRow
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
@@ -306,52 +304,19 @@ private fun FilterSegmentRow(
     onSelected: (String?) -> Unit,
     selectedValues: Set<String>? = null,
 ) {
-  Row(modifier = Modifier.fillMaxWidth()) {
-    choices.forEachIndexed { index, choice ->
-      val isSelected =
-          if (selectedValues == null) choice.value == selectedValue
-          else if (choice.value == null) selectedValues.isEmpty()
-          else choice.value in selectedValues
-      val shape =
-          when (index) {
-            0 ->
-                RoundedCornerShape(
-                    topStart = Dimens.cornerMedium,
-                    bottomStart = Dimens.cornerMedium,
-                )
-            choices.lastIndex ->
-                RoundedCornerShape(topEnd = Dimens.cornerMedium, bottomEnd = Dimens.cornerMedium)
-            else -> RectangleShape
-          }
-      OutlinedButton(
-          modifier =
-              Modifier.weight(1f)
-                  .height(Dimens.filterChoiceButtonHeight)
-                  .semantics { selected = isSelected }
-                  .testTag(testTag(choice.value)),
-          onClick = { onSelected(choice.value) },
-          shape = shape,
-          border =
-              BorderStroke(
-                  Dimens.borderThin,
-                  if (isSelected) MaterialTheme.colorScheme.secondary
-                  else MaterialTheme.colorScheme.outlineVariant,
-              ),
-          colors =
-              ButtonDefaults.outlinedButtonColors(
-                  containerColor =
-                      if (isSelected) MaterialTheme.colorScheme.secondary
-                      else MaterialTheme.colorScheme.secondaryContainer,
-                  contentColor =
-                      if (isSelected) MaterialTheme.colorScheme.onSecondary
-                      else MaterialTheme.colorScheme.onSecondaryContainer,
-              ),
-          contentPadding = androidx.compose.foundation.layout.PaddingValues(Spacing.extraSmall),
-      ) {
-        Text(stringResource(choice.labelRes), maxLines = 1)
-      }
-    }
-  }
+  val isMultiSelect = selectedValues != null
+  val role = if (isMultiSelect) Role.Checkbox else Role.RadioButton
+  SegmentedChoiceRow(
+      items = choices,
+      isSelected = { choice ->
+        if (selectedValues == null) choice.value == selectedValue
+        else if (choice.value == null) selectedValues.isEmpty() else choice.value in selectedValues
+      },
+      onClick = { choice -> onSelected(choice.value) },
+      label = { choice -> stringResource(choice.labelRes) },
+      testTag = { choice -> testTag(choice.value) },
+      role = role,
+  )
 }
 
 /** Provides a light-mode preview of the group-session filter sheet. */
