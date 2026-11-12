@@ -246,25 +246,25 @@ internal fun GroupSessionContent(
 ) {
   when (viewMode) {
     GroupSessionViewMode.LIST -> {
-      Column(modifier = modifier.fillMaxSize().padding(horizontal = Spacing.large)) {
-        GroupSessionSearchBar(
-            query = state.query,
-            onQueryChange = onQueryChange,
-        )
-        Spacer(Modifier.height(Spacing.small))
-        GroupSessionFilterRow(
-            filter = state.filter,
-            onFilterChange = onFilterChange,
-        )
-        Text(
-            stringResource(R.string.group_session_active_sessions_title),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier =
-                Modifier.padding(vertical = Spacing.mediumSmall)
-                    .testTag(GroupSessionScreenTestTags.ACTIVE_TITLE),
-        )
-        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+      Box(modifier = modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().padding(horizontal = Spacing.large)) {
+          GroupSessionSearchBar(
+              query = state.query,
+              onQueryChange = onQueryChange,
+          )
+          Spacer(Modifier.height(Spacing.small))
+          GroupSessionFilterRow(
+              filter = state.filter,
+              onFilterChange = onFilterChange,
+          )
+          Text(
+              stringResource(R.string.group_session_active_sessions_title),
+              style = MaterialTheme.typography.titleLarge,
+              fontWeight = FontWeight.Bold,
+              modifier =
+                  Modifier.padding(vertical = Spacing.mediumSmall)
+                      .testTag(GroupSessionScreenTestTags.ACTIVE_TITLE),
+          )
           when {
             state.isLoading ->
                 Text(
@@ -275,7 +275,7 @@ internal fun GroupSessionContent(
             else ->
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(Spacing.medium),
-                    contentPadding = PaddingValues(bottom = Spacing.small),
+                    contentPadding = PaddingValues(bottom = Dimens.fabClearance),
                     modifier =
                         Modifier.fillMaxSize().testTag(GroupSessionScreenTestTags.SESSION_LIST),
                 ) {
@@ -299,8 +299,7 @@ internal fun GroupSessionContent(
         GroupSessionViewSwitcher(
             viewMode = viewMode,
             onViewModeChange = onViewModeChange,
-            modifier =
-                Modifier.align(Alignment.CenterHorizontally).padding(vertical = Spacing.small),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = Spacing.large),
         )
       }
     }

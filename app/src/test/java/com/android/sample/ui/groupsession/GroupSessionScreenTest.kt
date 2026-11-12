@@ -435,6 +435,8 @@ class GroupSessionScreenTest {
     val leaveText = context.getString(R.string.group_session_action_leave)
     val leaveErrorText = context.getString(R.string.group_session_error_leave)
 
+    val searchPlaceholder = context.getString(R.string.group_session_search_placeholder)
+    composeTestRule.onNodeWithText(searchPlaceholder).performTextInput("exam")
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
         .performScrollToNode(hasText(leaveText))
