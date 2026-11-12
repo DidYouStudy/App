@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,7 +49,9 @@ object GroupSessionMapTestTags {
  * the list.
  *
  * The map moves its own camera onto a tapped pin; this composable only remembers which room is
- * selected. When first shown, the camera moves to the campus centre.
+ * selected. If the selected room disappears from [rooms], it is deselected for good: the list does
+ * not reopen when sessions return to that room. When first shown, the camera moves to the campus
+ * centre.
  *
  * @param rooms Rooms that have sessions, each with its sessions' list items.
  * @param now Reference time of the cards' relative labels.
@@ -74,6 +77,12 @@ fun GroupSessionMapContent(
   var selectedRoom by rememberSaveable { mutableStateOf(initialSelectedRoom) }
   val campusRooms = remember(rooms) { rooms.map { it.room } }
   val selected = rooms.firstOrNull { it.room.name == selectedRoom }
+  // A room no longer in the rooms list should no longer be selected. Without this, the saved name
+  // would reopen the list on its own if a session in that room appeared again. It is an effect
+  // because state must not be written while composing.
+  LaunchedEffect(selectedRoom, selected == null) {
+    if (selectedRoom != null && selected == null) selectedRoom = null
+  }
   val maxListHeightFraction = floatResource(R.dimen.map_session_list_max_height_fraction)
   val campusCenter =
       Location(
