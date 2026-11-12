@@ -3,30 +3,28 @@ package com.android.sample.ui.groupsession
 
 import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -38,8 +36,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -47,6 +46,9 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import com.android.sample.R
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
@@ -94,6 +96,8 @@ fun GroupSessionFilterSheetContent(
 ) {
   var showMoreZones by remember { mutableStateOf(false) }
   var showPermissionRationale by remember { mutableStateOf(false) }
+  var viewMoreButtonWidthPx by remember { mutableStateOf(0) }
+  val density = LocalDensity.current
   val zoneChoices =
       listOf(
           FilterChoice(R.string.group_session_filter_any, null),
@@ -152,7 +156,7 @@ fun GroupSessionFilterSheetContent(
           }
         },
     )
-    if (showPermissionRationale) {
+    if (showPermissionRationale && !hasLocationPermission) {
       Text(
           text = stringResource(R.string.group_session_filter_permission_rationale),
           modifier = Modifier.testTag(GroupSessionFilterSheetTestTags.PERMISSION_RATIONALE),
@@ -178,7 +182,10 @@ fun GroupSessionFilterSheetContent(
     )
     Box(modifier = Modifier.fillMaxWidth()) {
       FilledTonalButton(
-          modifier = Modifier.fillMaxWidth().testTag(GroupSessionFilterSheetTestTags.VIEW_MORE),
+          modifier =
+              Modifier.fillMaxWidth()
+                  .onSizeChanged { viewMoreButtonWidthPx = it.width }
+                  .testTag(GroupSessionFilterSheetTestTags.VIEW_MORE),
           onClick = { showMoreZones = true },
       ) {
         Text(stringResource(R.string.group_session_filter_view_more))
@@ -187,46 +194,62 @@ fun GroupSessionFilterSheetContent(
             contentDescription = null,
         )
       }
-      DropdownMenu(
-          expanded = showMoreZones,
-          onDismissRequest = { showMoreZones = false },
-      ) {
-        availableZones.forEach { zone ->
-          val isSelected = zone in filters.zones
-          DropdownMenuItem(
+      if (showMoreZones) {
+        val menuHeightPx =
+            with(density) {
+              val rowHeightPx = Dimens.groupSessionZoneMenuItemHeight.roundToPx()
+              val dividerHeightPx = Dimens.borderThin.roundToPx()
+              val contentHeightPx =
+                  rowHeightPx * availableZones.size +
+                      dividerHeightPx * (availableZones.size - 1).coerceAtLeast(0)
+              minOf(contentHeightPx, Dimens.groupSessionZoneMenuMaxHeight.roundToPx())
+            }
+        Popup(
+            alignment = Alignment.TopStart,
+            offset = IntOffset(x = 0, y = -menuHeightPx),
+            onDismissRequest = { showMoreZones = false },
+            properties = PopupProperties(focusable = true),
+        ) {
+          Surface(
               modifier =
-                  Modifier.testTag(GroupSessionFilterSheetTestTags.zoneOption(zone)).semantics {
-                    selected = isSelected
-                  },
-              text = {
+                  Modifier.width(with(density) { viewMoreButtonWidthPx.toDp() })
+                      .heightIn(max = Dimens.groupSessionZoneMenuMaxHeight),
+              shape = MaterialTheme.shapes.large,
+              color = MaterialTheme.colorScheme.surfaceContainerLow,
+              shadowElevation = Dimens.groupSessionZoneMenuShadowElevation,
+          ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+            ) {
+              availableZones.forEachIndexed { index, zone ->
+                val isSelected = zone in filters.zones
                 Row(
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .height(Dimens.groupSessionZoneMenuItemHeight)
+                            .semantics { selected = isSelected }
+                            .testTag(GroupSessionFilterSheetTestTags.zoneOption(zone))
+                            .clickable {
+                              onZonesSelected(
+                                  if (isSelected) filters.zones - zone else filters.zones + zone
+                              )
+                            }
+                            .padding(horizontal = Spacing.large),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.medium),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                  Box(
-                      modifier =
-                          Modifier.size(Dimens.iconSizeMedium)
-                              .border(
-                                  width = Dimens.borderThin,
-                                  color =
-                                      if (isSelected) MaterialTheme.colorScheme.primary
-                                      else MaterialTheme.colorScheme.outline,
-                                  shape = CircleShape,
-                              )
-                              .padding(Spacing.extraSmall)
-                              .clip(CircleShape)
-                              .background(
-                                  if (isSelected) MaterialTheme.colorScheme.primary
-                                  else MaterialTheme.colorScheme.surface,
-                              )
-                  )
-                  Text(zone)
+                  Text(zone, style = MaterialTheme.typography.bodyLarge)
+                  RadioButton(selected = isSelected, onClick = null)
                 }
-              },
-              onClick = {
-                onZonesSelected(if (isSelected) filters.zones - zone else filters.zones + zone)
-              },
-          )
+                if (index < availableZones.lastIndex) {
+                  HorizontalDivider(
+                      thickness = Dimens.borderThin,
+                      color = MaterialTheme.colorScheme.outlineVariant,
+                  )
+                }
+              }
+            }
+          }
         }
       }
     }
