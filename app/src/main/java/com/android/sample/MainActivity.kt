@@ -104,9 +104,18 @@ fun DidYouStudyApp(
         route = Screen.Preferences.name,
     ) {
       composable(Screen.Preferences.route) {
-        // A returning user (Dashboard state) opened this from Settings: edit mode, not onboarding.
-        // Fixed for the lifetime of this entry so the saving transition doesn't flip the UI.
-        val isEditing = remember { appState == AppUiState.Dashboard }
+        // A returning user opened this from Settings: edit mode with back navigation.
+        // Onboarding has no previous back stack entry. Fixed for the lifetime of this entry.
+        val isEditing = remember { navController.previousBackStackEntry != null }
+        LaunchedEffect(appState) {
+          if (appState == AppUiState.Dashboard && !isEditing) {
+            navigationActions.navigateToAndClear(
+                Screen.Dashboard,
+                Screen.Preferences,
+                clearAll = true,
+            )
+          }
+        }
         PreferencesScreen(
             onImportClick = rememberScheduleImportLauncher(),
             onAddLocationClick = {},

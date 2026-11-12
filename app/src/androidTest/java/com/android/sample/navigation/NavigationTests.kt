@@ -581,6 +581,35 @@ class AuthenticatedWithoutPreferencesNavigationTests {
   }
 }
 
+/**
+ * Verifies that an authenticated existing user who has preferences in the repository but no local
+ * onboarding flag (e.g. after updating the app) automatically advances to the dashboard.
+ */
+class AuthenticatedExistingUserNavigationTests {
+  private val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+  @get:Rule
+  val rules: RuleChain =
+      RuleChain.outerRule(signedInWithoutOnboardingFlagRepositories("existing-user"))
+          .around(composeTestRule)
+
+  @Test
+  fun activityNavigatesToDashboardForExistingUserWithoutOnboardingFlag() {
+    composeTestRule.waitUntil(timeoutMillis = 20_000) {
+      composeTestRule
+          .onAllNodesWithTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU)
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    composeTestRule
+        .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
+        .assertIsDisplayed()
+        .assertTextContains("Dashboard", substring = true, ignoreCase = true)
+    composeTestRule.onNodeWithTag(PreferencesScreenTestTags.PREFERENCE_SCREEN).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU).assertIsDisplayed()
+  }
+}
+
 /** Verifies that [DidYouStudyApp] supports dependency injection of [AppViewModel]. */
 class DidYouStudyAppInjectionTests {
   private val composeTestRule = createAndroidComposeRule<ComponentActivity>()
@@ -651,6 +680,22 @@ private fun signedInWithoutPreferencesRepositories(uid: String): RepositoryOverr
       events = InMemoryEventsRepository(),
       groupSessions = InMemoryGroupSessionsRepository(),
       onboardingStore = FakeOnboardingStore(mapOf(uid to false)),
+  )
+}
+
+/**
+ * Fakes for a signed-in user [uid] who has preferences in the repository but no local onboarding
+ * flag (simulating an existing user on first launch after an update or on a new device).
+ */
+private fun signedInWithoutOnboardingFlagRepositories(uid: String): RepositoryOverridesRule {
+  val user = UserAccount(uid, null, null, null)
+  return RepositoryOverridesRule(
+      auth = FakeAuthRepository(user),
+      preferences = FakePreferencesRepository(UserPreferences(userId = user.uid)),
+      profile = FakeProfileRepository(),
+      events = InMemoryEventsRepository(),
+      groupSessions = InMemoryGroupSessionsRepository(),
+      onboardingStore = FakeOnboardingStore(),
   )
 }
 
