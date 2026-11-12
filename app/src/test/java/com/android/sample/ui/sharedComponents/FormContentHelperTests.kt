@@ -1,0 +1,796 @@
+// Co-authored-by: Claude AI Agent
+package com.android.sample.ui.sharedComponents
+
+import android.content.Context
+import android.content.res.Configuration
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.junit4.StateRestorationTester
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.sample.R
+import com.android.sample.model.event.EventTask
+import com.android.sample.model.event.EventType
+import com.android.sample.model.location.CampusLocation
+import com.android.sample.model.location.CampusLocationType
+import com.android.sample.model.location.Location
+import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as EventTags
+import java.time.LocalDate
+import java.time.LocalTime
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class FormContentHelperTests {
+
+  @get:Rule val composeTestRule = createComposeRule()
+
+  @Test
+  fun sectionLabelRendersTextAndTestTag() {
+    composeTestRule.setContent { SectionLabel(text = "Header Test", testTag = "header_tag") }
+    composeTestRule.onNodeWithTag("header_tag").assertIsDisplayed().assertTextEquals("Header Test")
+  }
+
+  @Test
+  fun selectorFieldPillDisplaysValueTextAndTriggersClick() {
+    var clicked = false
+    composeTestRule.setContent {
+      SelectorFieldPill(
+          valueText = "Selected Value",
+          placeholderText = "Placeholder",
+          onClick = { clicked = true },
+          testTag = "pill_tag",
+          hasDropdownArrow = true,
+      )
+    }
+
+    composeTestRule.onNodeWithTag("pill_tag").assertIsDisplayed().performClick()
+    composeTestRule.onNodeWithText("Selected Value").assertIsDisplayed()
+    assertTrue(clicked)
+  }
+
+  @Test
+  fun selectorFieldPillDisplaysPlaceholderWhenValueTextNull() {
+    composeTestRule.setContent {
+      SelectorFieldPill(
+          valueText = null,
+          placeholderText = "Select something...",
+          onClick = {},
+          testTag = "pill_tag",
+          hasDropdownArrow = false,
+      )
+    }
+
+    composeTestRule.onNodeWithTag("pill_tag").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Select something...").assertIsDisplayed()
+  }
+
+  @Test
+  fun selectorFieldPillDisplaysPlaceholderWhenValueTextBlank() {
+    composeTestRule.setContent {
+      SelectorFieldPill(
+          valueText = "   ",
+          placeholderText = "Select something...",
+          onClick = {},
+          testTag = "pill_tag",
+      )
+    }
+
+    composeTestRule.onNodeWithTag("pill_tag").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Select something...").assertIsDisplayed()
+  }
+
+  @Test
+  fun pillActionButtonSaveTagRendersLabelAndInvokesCallback() {
+    var clicked = false
+    composeTestRule.setContent {
+      MaterialTheme {
+        PillActionButton(
+            onClick = { clicked = true },
+            enabled = true,
+            isInProgress = false,
+            label = "Save",
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            buttonTag = EventTags.SAVE_BUTTON,
+            progressTag = EventTags.SAVE_BUTTON_PROGRESS,
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(EventTags.SAVE_BUTTON).assertIsDisplayed().performClick()
+    composeTestRule.onNodeWithText("Save").assertIsDisplayed()
+    assertTrue(clicked)
+  }
+
+  @Test
+  fun pillActionButtonDeleteTagRendersLabelAndInvokesCallback() {
+    var clicked = false
+    composeTestRule.setContent {
+      MaterialTheme {
+        PillActionButton(
+            onClick = { clicked = true },
+            enabled = true,
+            isInProgress = false,
+            label = "Delete",
+            containerColor = MaterialTheme.colorScheme.error,
+            contentColor = MaterialTheme.colorScheme.onError,
+            buttonTag = EventTags.DELETE_BUTTON,
+            progressTag = EventTags.DELETE_BUTTON_PROGRESS,
+            icon = Icons.Outlined.Delete,
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(EventTags.DELETE_BUTTON).assertIsDisplayed().performClick()
+    composeTestRule.onNodeWithText("Delete").assertIsDisplayed()
+    assertTrue(clicked)
+  }
+
+  @Test
+  fun pillActionButtonDisabledSaveAndDeleteCannotBeClicked() {
+    var clicked = false
+    composeTestRule.setContent {
+      MaterialTheme {
+        Column {
+          PillActionButton(
+              onClick = { clicked = true },
+              enabled = false,
+              isInProgress = false,
+              label = "Save",
+              containerColor = MaterialTheme.colorScheme.primary,
+              contentColor = MaterialTheme.colorScheme.onPrimary,
+              buttonTag = EventTags.SAVE_BUTTON,
+              progressTag = EventTags.SAVE_BUTTON_PROGRESS,
+          )
+          PillActionButton(
+              onClick = { clicked = true },
+              enabled = false,
+              isInProgress = false,
+              label = "Delete",
+              containerColor = MaterialTheme.colorScheme.error,
+              contentColor = MaterialTheme.colorScheme.onError,
+              buttonTag = EventTags.DELETE_BUTTON,
+              progressTag = EventTags.DELETE_BUTTON_PROGRESS,
+              icon = Icons.Outlined.Delete,
+          )
+        }
+      }
+    }
+
+    composeTestRule.onNodeWithTag(EventTags.SAVE_BUTTON).assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(EventTags.DELETE_BUTTON).assertIsNotEnabled()
+    assertFalse(clicked)
+  }
+
+  @Test
+  fun pillActionButtonShowsSaveAndDeleteProgressInsteadOfLabels() {
+    composeTestRule.setContent {
+      MaterialTheme {
+        Column {
+          PillActionButton(
+              onClick = {},
+              enabled = false,
+              isInProgress = true,
+              label = "Save",
+              containerColor = MaterialTheme.colorScheme.primary,
+              contentColor = MaterialTheme.colorScheme.onPrimary,
+              buttonTag = EventTags.SAVE_BUTTON,
+              progressTag = EventTags.SAVE_BUTTON_PROGRESS,
+          )
+          PillActionButton(
+              onClick = {},
+              enabled = false,
+              isInProgress = true,
+              label = "Delete",
+              containerColor = MaterialTheme.colorScheme.error,
+              contentColor = MaterialTheme.colorScheme.onError,
+              buttonTag = EventTags.DELETE_BUTTON,
+              progressTag = EventTags.DELETE_BUTTON_PROGRESS,
+              icon = Icons.Outlined.Delete,
+          )
+        }
+      }
+    }
+
+    composeTestRule.onNodeWithTag(EventTags.SAVE_BUTTON_PROGRESS).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventTags.DELETE_BUTTON_PROGRESS).assertIsDisplayed()
+    assertTrue(composeTestRule.onAllNodesWithText("Save").fetchSemanticsNodes().isEmpty())
+    assertTrue(composeTestRule.onAllNodesWithText("Delete").fetchSemanticsNodes().isEmpty())
+  }
+
+  @Test
+  fun outlinedInputFieldDisplaysValueAndTriggersOnValueChange() {
+    var updatedText = ""
+    composeTestRule.setContent {
+      OutlinedInputField(
+          value = "",
+          onValueChange = { updatedText = it },
+          placeholder = "Enter text",
+          testTag = "input_tag",
+      )
+    }
+
+    composeTestRule.onNodeWithTag("input_tag").assertIsDisplayed()
+    composeTestRule.onNodeWithTag("input_tag").performTextInput("Library")
+    assertEquals("Library", updatedText)
+  }
+
+  @Test
+  fun taskRowItemDisplaysTaskAndInvokesToggleAndDeleteCallbacks() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var toggleCount = 0
+    var deleteCount = 0
+    val task = EventTask(text = "Read Chapter 1")
+
+    composeTestRule.setContent {
+      TaskRowItem(
+          task = task,
+          onToggle = { toggleCount++ },
+          onDelete = { deleteCount++ },
+          itemTag = "item_tag",
+          checkboxTag = "checkbox_tag",
+          deleteTag = "delete_tag",
+      )
+    }
+
+    composeTestRule.onNodeWithTag("item_tag").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Read Chapter 1").assertIsDisplayed()
+
+    composeTestRule.onNodeWithTag("checkbox_tag").performClick()
+    assertEquals(1, toggleCount)
+
+    val deleteDescription =
+        context.getString(R.string.event_planning_delete_task_content_description)
+    composeTestRule.onNodeWithContentDescription(deleteDescription).performClick()
+    assertEquals(1, deleteCount)
+  }
+
+  @Test
+  fun addTaskInputFieldInvokesOnAddTaskOnImeDoneWhenNotBlankAndClearsInput() {
+    var addedTaskText = ""
+    composeTestRule.setContent {
+      AddTaskInputField(
+          onAddTask = { addedTaskText = it },
+          testTag = "add_task_tag",
+      )
+    }
+
+    composeTestRule.onNodeWithTag("add_task_tag").assertIsDisplayed()
+    composeTestRule.onNodeWithTag("add_task_tag").performTextInput("New Checklist Task")
+    composeTestRule.onNodeWithTag("add_task_tag").performImeAction()
+
+    assertEquals("New Checklist Task", addedTaskText)
+  }
+
+  @Test
+  fun addTaskInputFieldDoesNotInvokeOnAddTaskWhenTextIsBlank() {
+    var invoked = false
+    composeTestRule.setContent {
+      AddTaskInputField(
+          onAddTask = { invoked = true },
+          testTag = "add_task_tag",
+      )
+    }
+
+    composeTestRule.onNodeWithTag("add_task_tag").performTextInput("   ")
+    composeTestRule.onNodeWithTag("add_task_tag").performImeAction()
+
+    assertFalse(invoked)
+  }
+
+  @Test
+  fun eventTypeDropdownMenuRendersAllOptions() {
+    var selectedType: EventType? = null
+    composeTestRule.setContent {
+      EventTypeDropdownMenu(
+          expanded = true,
+          onDismissRequest = {},
+          onTypeSelected = { selectedType = it },
+      )
+    }
+
+    composeTestRule.onNodeWithText("Course").assertIsDisplayed().performClick()
+    assertEquals(EventType.COURSE, selectedType)
+  }
+
+  /**
+   * Verifies that confirming the EventDatePickerDialog returns the selected LocalDate and closes.
+   */
+  @Test
+  fun eventDatePickerDialogTriggersConfirmAndDismiss() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var selectedDate: LocalDate? = null
+    var dismissed = false
+    val expectedDate = LocalDate.of(2026, 11, 1)
+
+    composeTestRule.setContent {
+      EventDatePickerDialog(
+          initialDate = expectedDate,
+          onDateSelected = { selectedDate = it },
+          onDismiss = { dismissed = true },
+      )
+    }
+
+    composeTestRule.onNodeWithText(context.getString(R.string.confirm)).performClick()
+    assertEquals(expectedDate, selectedDate)
+    assertTrue(dismissed)
+  }
+
+  /** Verifies that EventDatePickerDialog properly handles a null initial date parameter. */
+  @Test
+  fun eventDatePickerDialogHandlesNullInitialDate() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var selectedDate: LocalDate? = null
+    var dismissed = false
+
+    composeTestRule.setContent {
+      EventDatePickerDialog(
+          initialDate = null,
+          onDateSelected = { selectedDate = it },
+          onDismiss = { dismissed = true },
+      )
+    }
+
+    composeTestRule.onNodeWithText(context.getString(R.string.confirm)).performClick()
+    assertNotNull(selectedDate)
+    assertTrue(dismissed)
+  }
+
+  /** Verifies that EventDatePickerDialog renders correctly in landscape orientation. */
+  @Test
+  fun eventDatePickerDialogRendersInLandscapeMode() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var selectedDate: LocalDate? = null
+    var dismissed = false
+    val expectedDate = LocalDate.of(2026, 11, 1)
+
+    val landscapeConfig =
+        Configuration(context.resources.configuration).apply {
+          orientation = Configuration.ORIENTATION_LANDSCAPE
+        }
+
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalConfiguration provides landscapeConfig) {
+        EventDatePickerDialog(
+            initialDate = expectedDate,
+            onDateSelected = { selectedDate = it },
+            onDismiss = { dismissed = true },
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithText(context.getString(R.string.confirm)).performClick()
+    assertEquals(expectedDate, selectedDate)
+    assertTrue(dismissed)
+  }
+
+  /**
+   * Verifies that when in landscape orientation, the date picker container is scrollable, allowing
+   * the user to scroll through the content, select a specific date, and confirm it.
+   */
+  @Test
+  fun eventDatePickerDialogAllowsScrollingAndSelectingDateInLandscape() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var selectedDate: LocalDate? = null
+    var dismissed = false
+    val initialDate = LocalDate.of(2026, 11, 1)
+
+    val landscapeConfig =
+        Configuration(context.resources.configuration).apply {
+          orientation = Configuration.ORIENTATION_LANDSCAPE
+        }
+
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalConfiguration provides landscapeConfig) {
+        EventDatePickerDialog(
+            initialDate = initialDate,
+            onDateSelected = { selectedDate = it },
+            onDismiss = { dismissed = true },
+        )
+      }
+    }
+
+    // Scroll through the date picker container in landscape view
+    composeTestRule
+        .onNodeWithTag(FormContentTestTags.LANDSCAPE_DATE_PICKER_SCROLL)
+        .performTouchInput { swipeUp() }
+
+    // Select day 15 in the picker
+    composeTestRule.onAllNodesWithText("15", substring = true)[0].performClick()
+
+    // Confirm selection
+    composeTestRule.onNodeWithText(context.getString(R.string.confirm)).performClick()
+
+    assertEquals(LocalDate.of(2026, 11, 15), selectedDate)
+    assertTrue(dismissed)
+  }
+
+  /** Verifies that clicking the cancel button in EventDatePickerDialog invokes onDismiss. */
+  @Test
+  fun eventDatePickerDialogDismissButtonTriggersCallback() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var dismissed = false
+
+    composeTestRule.setContent {
+      EventDatePickerDialog(
+          initialDate = LocalDate.of(2026, 11, 1),
+          onDateSelected = {},
+          onDismiss = { dismissed = true },
+      )
+    }
+
+    composeTestRule.onNodeWithText(context.getString(R.string.cancel)).performClick()
+    assertTrue(dismissed)
+  }
+
+  @Test
+  fun eventTimePickerDialogTriggersConfirmAndDismiss() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var selectedTime: LocalTime? = null
+    var dismissed = false
+
+    composeTestRule.setContent {
+      EventTimePickerDialog(
+          initialTime = LocalTime.of(14, 30),
+          title = "Select Time",
+          onTimeSelected = { selectedTime = it },
+          onDismiss = { dismissed = true },
+      )
+    }
+
+    composeTestRule.onNodeWithText("Select Time").assertIsDisplayed()
+    composeTestRule.onNodeWithText(context.getString(R.string.confirm)).performClick()
+    assertEquals(LocalTime.of(14, 30), selectedTime)
+
+    composeTestRule.onNodeWithText(context.getString(R.string.cancel)).performClick()
+    assertTrue(dismissed)
+  }
+
+  @Test
+  fun eventTimePickerDialogRendersInLandscapeModeAndConfirmsAndDismisses() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var selectedTime: LocalTime? = null
+    var dismissed = false
+    val expectedTime = LocalTime.of(9, 45)
+
+    val landscapeConfig =
+        Configuration(context.resources.configuration).apply {
+          orientation = Configuration.ORIENTATION_LANDSCAPE
+        }
+
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalConfiguration provides landscapeConfig) {
+        EventTimePickerDialog(
+            initialTime = expectedTime,
+            title = "Start Time",
+            onTimeSelected = { selectedTime = it },
+            onDismiss = { dismissed = true },
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithText("Start Time").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.confirm))
+        .assertIsDisplayed()
+        .performClick()
+    assertEquals(expectedTime, selectedTime)
+    assertTrue(dismissed)
+
+    dismissed = false
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.cancel))
+        .assertIsDisplayed()
+        .performClick()
+    assertTrue(dismissed)
+  }
+
+  @Test
+  fun eventTimePickerDialogHandlesNullInitialTime() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var selectedTime: LocalTime? = null
+    var dismissed = false
+
+    composeTestRule.setContent {
+      EventTimePickerDialog(
+          initialTime = null,
+          title = "End Time",
+          onTimeSelected = { selectedTime = it },
+          onDismiss = { dismissed = true },
+      )
+    }
+
+    composeTestRule.onNodeWithText(context.getString(R.string.confirm)).performClick()
+    assertNotNull(selectedTime)
+    assertTrue(dismissed)
+  }
+
+  @Test
+  fun subjectPickerDialogContentFiltersAndConfirms() {
+    var confirmedSubject = ""
+    composeTestRule.setContent {
+      SubjectPickerDialogContent(
+          currentSelection = "Math",
+          allSubjects = listOf("Algebra", "Calculus", "Physics"),
+          onDismiss = {},
+          onConfirm = { confirmedSubject = it },
+      )
+    }
+
+    composeTestRule.onNodeWithText("Calculus").assertIsDisplayed().performClick()
+    assertEquals("Calculus", confirmedSubject)
+  }
+
+  @Test
+  fun subjectPickerDialogFiltersListAndSelectsExistingSubject() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var confirmedSubject = ""
+    val subjects = listOf("Analysis I", "Algorithms", "Linear Algebra")
+
+    composeTestRule.setContent {
+      SubjectPickerDialog(
+          currentSelection = "",
+          allSubjects = subjects,
+          onDismiss = {},
+          onConfirm = { confirmedSubject = it },
+      )
+    }
+
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.event_planning_subject_search_placeholder))
+        .performTextInput("Alg")
+
+    composeTestRule.onNodeWithText("Algorithms").assertIsDisplayed().performClick()
+    assertEquals("Algorithms", confirmedSubject)
+  }
+
+  @Test
+  fun subjectPickerDialogAllowsSelectingCustomNewSubject() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var confirmedSubject = ""
+    val subjects = listOf("Analysis I", "Algorithms")
+
+    composeTestRule.setContent {
+      SubjectPickerDialog(
+          currentSelection = "",
+          allSubjects = subjects,
+          onDismiss = {},
+          onConfirm = { confirmedSubject = it },
+      )
+    }
+
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.event_planning_subject_search_placeholder))
+        .performTextInput("Quantum Computing")
+
+    composeTestRule.onNodeWithText("+ Use \"Quantum Computing\"").assertIsDisplayed().performClick()
+    assertEquals("Quantum Computing", confirmedSubject)
+  }
+
+  @Test
+  fun subjectPickerDialogConfirmButtonUsesCurrentSelectionIfSearchBlank() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var confirmedSubject = ""
+
+    composeTestRule.setContent {
+      SubjectPickerDialog(
+          currentSelection = "Physics",
+          allSubjects = listOf("Physics", "Chemistry"),
+          onDismiss = {},
+          onConfirm = { confirmedSubject = it },
+      )
+    }
+
+    composeTestRule.onNodeWithText(context.getString(R.string.confirm)).performClick()
+    assertEquals("Physics", confirmedSubject)
+  }
+
+  @Test
+  fun subjectPickerDialogCancelTriggersDismiss() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var dismissed = false
+
+    composeTestRule.setContent {
+      SubjectPickerDialog(
+          currentSelection = "Physics",
+          allSubjects = listOf("Physics"),
+          onDismiss = { dismissed = true },
+          onConfirm = {},
+      )
+    }
+
+    composeTestRule.onNodeWithText(context.getString(R.string.cancel)).performClick()
+    assertTrue(dismissed)
+  }
+
+  @Test
+  fun inputFieldsGainFocusAndTriggerBringIntoView() {
+    composeTestRule.setContent {
+      Column {
+        OutlinedInputField(
+            value = "",
+            onValueChange = {},
+            placeholder = "Focus Location",
+            testTag = "focus_input",
+        )
+        AddTaskInputField(
+            onAddTask = {},
+            testTag = "focus_task_input",
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag("focus_input").performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag("focus_task_input").performClick()
+    composeTestRule.waitForIdle()
+  }
+
+  @Test
+  fun subjectPickerDialogQuerySurvivesScreenRestoration() {
+    val restorationTester = StateRestorationTester(composeTestRule)
+    val query = "Linear Algebra"
+
+    restorationTester.setContent {
+      SubjectPickerDialogContent(
+          currentSelection = "",
+          allSubjects = listOf("Linear Algebra", "Analysis I"),
+          onDismiss = {},
+          onConfirm = {},
+      )
+    }
+
+    val searchInputNode = composeTestRule.onNode(hasSetTextAction())
+    searchInputNode.assertIsDisplayed().performTextInput(query)
+    searchInputNode.assertTextContains(query)
+
+    restorationTester.emulateSavedInstanceStateRestore()
+
+    composeTestRule.onNode(hasSetTextAction()).assertIsDisplayed().assertTextContains(query)
+  }
+
+  /** Builds a minimal campus location for tests; only the name is usually relevant. */
+  private fun sampleLocation(name: String): CampusLocation =
+      CampusLocation(
+          name = name,
+          zone = "AAB",
+          type = CampusLocationType.LECTURE_ROOM,
+          floor = null,
+          location = Location(latitude = 46.52, longitude = 6.56),
+      )
+
+  @Test
+  fun locationPickerDialogContentDisplaysResultsAndConfirmsOnClick() {
+    var confirmedLocation = ""
+    val results = listOf(sampleLocation("AAB 0 26"), sampleLocation("AAC 0 06"))
+
+    composeTestRule.setContent {
+      LocationPickerDialogContent(
+          searchResults = results,
+          onDismiss = {},
+          onSearchQueryChange = {},
+          onConfirm = { confirmedLocation = it },
+      )
+    }
+
+    composeTestRule.onNodeWithText("AAC 0 06").assertIsDisplayed().performClick()
+    assertEquals("AAC 0 06", confirmedLocation)
+  }
+
+  @Test
+  fun locationPickerDialogContentReportsTypedTextThroughOnSearchQueryChange() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var reportedQuery = ""
+
+    composeTestRule.setContent {
+      LocationPickerDialogContent(
+          searchResults = emptyList(),
+          onDismiss = {},
+          onSearchQueryChange = { reportedQuery = it },
+          onConfirm = {},
+      )
+    }
+
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_search_placeholder))
+        .performTextInput("AAB")
+
+    assertEquals("AAB", reportedQuery)
+  }
+
+  @Test
+  fun locationPickerDialogContentShowsProperMessageWhenSearchResultsEmpty() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+
+    composeTestRule.setContent {
+      LocationPickerDialogContent(
+          searchResults = emptyList(),
+          onDismiss = {},
+          onSearchQueryChange = {},
+          onConfirm = {},
+      )
+    }
+
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_search_prompt))
+        .assertIsDisplayed()
+
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_search_placeholder))
+        .performTextInput("ZZZ")
+
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_empty_results))
+        .assertIsDisplayed()
+  }
+
+  @Test
+  fun locationPickerDialogShowsTitleAndCancelDismisses() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var dismissed = false
+
+    composeTestRule.setContent {
+      LocationPickerDialog(
+          searchResults = listOf(sampleLocation("AAB 0 26")),
+          onDismiss = { dismissed = true },
+          onSearchQueryChange = {},
+          onConfirm = {},
+      )
+    }
+
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_dialog_title))
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithText(context.getString(R.string.cancel)).performClick()
+    assertTrue(dismissed)
+  }
+
+  @Test
+  fun locationPickerDialogContentQuerySurvivesScreenRestoration() {
+    val restorationTester = StateRestorationTester(composeTestRule)
+    val query = "AAB"
+
+    restorationTester.setContent {
+      LocationPickerDialogContent(
+          searchResults = emptyList(),
+          onDismiss = {},
+          onSearchQueryChange = {},
+          onConfirm = {},
+      )
+    }
+
+    val searchInputNode = composeTestRule.onNode(hasSetTextAction())
+    searchInputNode.assertIsDisplayed().performTextInput(query)
+    searchInputNode.assertTextContains(query)
+
+    restorationTester.emulateSavedInstanceStateRestore()
+
+    composeTestRule.onNode(hasSetTextAction()).assertIsDisplayed().assertTextContains(query)
+  }
+}

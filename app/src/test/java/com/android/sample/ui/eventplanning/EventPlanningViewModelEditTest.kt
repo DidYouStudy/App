@@ -1,10 +1,14 @@
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
 
-import com.android.sample.model.event.Event
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
+import com.android.sample.model.event.PersonalEvent
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -18,12 +22,14 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doSuspendableAnswer
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.times
@@ -47,16 +53,22 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
   fun setUp() {
     authRepository = mock()
     eventsRepository = mock()
+    groupSessionsRepository = mock()
     whenever(authRepository.currentUser).thenReturn(currentUserFlow)
     whenever(eventsRepository.observeSubjects(any())).thenAnswer {
       subjectsOf(it.getArgument<String>(0))
     }
     whenever(eventsRepository.newEventId()).thenAnswer { "new-event-${++idCounter}" }
+    whenever(groupSessionsRepository.newSessionId()).thenAnswer { "new-session-${++idCounter}" }
     runBlocking {
       whenever(eventsRepository.saveEvent(any())).thenReturn(Result.success(Unit))
       whenever(eventsRepository.getEvent(any(), any()))
           .thenReturn(Result.failure(EventsException(EventsError.NOT_FOUND)))
       whenever(eventsRepository.deleteEvent(any(), any())).thenReturn(Result.success(Unit))
+      whenever(groupSessionsRepository.saveSession(any(), any())).thenReturn(Result.success(Unit))
+      whenever(groupSessionsRepository.getSession(any()))
+          .thenReturn(Result.failure(EventsException(EventsError.NOT_FOUND)))
+      whenever(groupSessionsRepository.deleteSession(any(), any())).thenReturn(Result.success(Unit))
     }
     currentUserFlow.value = account("user123")
   }
@@ -74,22 +86,27 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
       startsAt: Instant = this.startsAt,
       endsAt: Instant = this.endsAt,
   ) =
-      Event(
+      PersonalEvent(
           id = id,
           ownerId = "user123",
-          type = type,
-          subject = subject,
-          startsAt = startsAt,
-          endsAt = endsAt,
+          details =
+              EventDetails(
+                  type = type,
+                  subject = subject,
+                  startsAt = startsAt,
+                  endsAt = endsAt,
+                  location = location,
+                  description = description,
+              ),
           createdAt = createdAt,
           updatedAt = createdAt,
-          location = location,
-          description = description,
           tasks = tasks,
       )
 
   /** A view model with the stored event already loaded into its form. */
-  private suspend fun loadedViewModel(event: Event = storedEvent()): EventPlanningViewModel {
+  private suspend fun loadedViewModel(
+      event: PersonalEvent = storedEvent()
+  ): EventPlanningViewModel {
     whenever(eventsRepository.getEvent("user123", event.id)).thenReturn(Result.success(event))
     val viewModel = createViewModel()
     viewModel.loadEvent(event.id)
@@ -137,7 +154,7 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
 
     viewModel.loadEvent("stored-1")
 
-    assertEquals(EventPlanningViewModel.NO_SIGNED_IN_USER_ERROR, viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.NO_SIGNED_IN_USER, viewModel.uiState.value.error)
     assertFalse(viewModel.uiState.value.isLoading)
     verify(eventsRepository, never()).getEvent(any(), any())
   }
@@ -149,43 +166,32 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     viewModel.loadEvent("missing")
 
     val state = viewModel.uiState.value
-    assertEquals(EventPlanningViewModel.EVENT_NOT_FOUND_ERROR, state.error)
+    assertEquals(EventPlanningError.EVENT_NOT_FOUND, state.error)
     assertFalse(state.isEditing)
     assertFalse(state.isLoading)
   }
 
   @Test
-  fun loadEvent_otherFailureWithoutMessage_usesDefaultMessage() = runTest {
+  fun loadEvent_otherFailure_setsFailedToLoadEventError() = runTest {
     whenever(eventsRepository.getEvent(any(), any()))
         .thenReturn(Result.failure(RuntimeException(null as String?)))
     val viewModel = createViewModel()
 
     viewModel.loadEvent("stored-1")
 
-    assertEquals(EventPlanningViewModel.FAILED_TO_LOAD_EVENT_ERROR, viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.FAILED_TO_LOAD_EVENT, viewModel.uiState.value.error)
     assertFalse(viewModel.uiState.value.isLoading)
   }
 
   @Test
-  fun loadEvent_repositoryThrowsWithMessage_exposesMessage() = runTest {
+  fun loadEvent_repositoryThrows_setsFailedToLoadEventError() = runTest {
     whenever(eventsRepository.getEvent(any(), any())).thenThrow(IllegalStateException("boom"))
     val viewModel = createViewModel()
 
     viewModel.loadEvent("stored-1")
 
-    assertEquals("boom", viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.FAILED_TO_LOAD_EVENT, viewModel.uiState.value.error)
     assertFalse(viewModel.uiState.value.isLoading)
-  }
-
-  @Test
-  fun loadEvent_repositoryThrowsWithoutMessage_usesDefaultMessage() = runTest {
-    whenever(eventsRepository.getEvent(any(), any()))
-        .thenThrow(object : RuntimeException(null as String?) {})
-    val viewModel = createViewModel()
-
-    viewModel.loadEvent("stored-1")
-
-    assertEquals(EventPlanningViewModel.FAILED_TO_LOAD_EVENT_ERROR, viewModel.uiState.value.error)
   }
 
   @Test
@@ -219,6 +225,56 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     assertTrue(viewModel.uiState.value.isEditing)
   }
 
+  @Test
+  fun loadEvent_whenAlreadyLoaded_doesNotReloadOrOverwriteEdits() = runTest {
+    val viewModel = loadedViewModel()
+    viewModel.setSubject("User Edits")
+
+    // Call loadEvent again with the same event ID
+    viewModel.loadEvent("stored-1")
+
+    // Edits are preserved and repository is not re-queried
+    assertEquals("User Edits", viewModel.uiState.value.subject)
+    verify(eventsRepository, times(1)).getEvent(any(), any())
+  }
+
+  @Test
+  fun loadEvent_withDifferentIdWhenAlreadyLoaded_loadsTheNewEvent() = runTest {
+    val secondEvent = storedEvent(id = "stored-2", subject = "Different Subject")
+    whenever(eventsRepository.getEvent(any(), eq("stored-2")))
+        .thenReturn(Result.success(secondEvent))
+
+    val viewModel = loadedViewModel()
+    assertEquals("CompSec", viewModel.uiState.value.subject)
+
+    viewModel.loadEvent("stored-2")
+    assertEquals("Different Subject", viewModel.uiState.value.subject)
+    verify(eventsRepository, times(1)).getEvent(any(), eq("stored-2"))
+  }
+
+  @Test
+  fun loadEvent_whileLoadingIsActive_ignoresConcurrentLoadRequest() = runTest {
+    val gate = CompletableDeferred<Unit>()
+    whenever(eventsRepository.getEvent(any(), eq("stored-1"))).doSuspendableAnswer {
+      gate.await()
+      Result.success(storedEvent(id = "stored-1"))
+    }
+    val viewModel = createViewModel()
+
+    viewModel.loadEvent("stored-1")
+    assertTrue(viewModel.uiState.value.isLoading)
+
+    // Second call while loading is in progress
+    viewModel.loadEvent("stored-2")
+
+    gate.complete(Unit)
+    advanceUntilIdle()
+
+    // Second call was ignored, only stored-1 was fetched
+    verify(eventsRepository, times(1)).getEvent(any(), any())
+    verify(eventsRepository, never()).getEvent(any(), eq("stored-2"))
+  }
+
   // ---------------------------------------------------------------- editEvent
 
   @Test
@@ -227,7 +283,7 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
 
     viewModel.editEvent()
 
-    assertEquals(EventPlanningViewModel.NO_EVENT_TO_EDIT_ERROR, viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.NO_EVENT_TO_EDIT, viewModel.uiState.value.error)
     assertNothingSaved()
   }
 
@@ -243,13 +299,27 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     val saved = savedEvents().single()
     assertEquals("stored-1", saved.id)
     assertEquals("user123", saved.ownerId)
-    assertEquals("Algebra", saved.subject)
-    assertEquals(startsAt, saved.startsAt)
-    assertEquals(Instant.parse("2026-10-27T11:00:00Z"), saved.endsAt)
-    assertNull(saved.location)
+    assertEquals("Algebra", saved.details.subject)
+    assertEquals(startsAt, saved.details.startsAt)
+    assertEquals(Instant.parse("2026-10-27T11:00:00Z"), saved.details.endsAt)
+    assertNull(saved.details.location)
     assertEquals(createdAt, saved.createdAt)
     assertEquals(now, saved.updatedAt)
     verify(eventsRepository, never()).newEventId()
+  }
+
+  /** A description-only edit preserves the exact schedule of a full-day event. */
+  @Test
+  fun editEvent_preservesUnchanged24HourSchedule() = runTest {
+    val event = storedEvent(endsAt = startsAt.plus(EventDetails.MAX_DURATION))
+    val viewModel = loadedViewModel(event)
+    viewModel.setDescription("Updated description")
+
+    viewModel.editEvent()
+
+    val saved = savedEvents().single()
+    assertEquals(event.details.copy(description = "Updated description"), saved.details)
+    assertTrue(viewModel.uiState.value.isEventEdited)
   }
 
   @Test
@@ -274,21 +344,26 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
   fun editEvent_afterSuccess_noEventIsLoadedAnymore() = runTest {
     val viewModel = loadedViewModel()
     viewModel.editEvent()
+    assertTrue(viewModel.uiState.value.isEventEdited)
 
     viewModel.editEvent()
 
-    assertEquals(EventPlanningViewModel.NO_EVENT_TO_EDIT_ERROR, viewModel.uiState.value.error)
+    val state = viewModel.uiState.value
+    assertEquals(EventPlanningError.NO_EVENT_TO_EDIT, state.error)
+    assertFalse(state.isEventEdited)
+    assertFalse(state.isEventAdded)
+    assertFalse(state.isEventDeleted)
     verify(eventsRepository, times(1)).saveEvent(any())
   }
 
   @Test
-  fun editEvent_invalidForm_exposesValidationMessage() = runTest {
+  fun editEvent_invalidForm_setsInvalidEventError() = runTest {
     val viewModel = loadedViewModel()
     viewModel.setSubject("   ")
 
     viewModel.editEvent()
 
-    assertTrue(viewModel.uiState.value.error!!.contains("Subject"))
+    assertEquals(EventPlanningError.INVALID_EVENT, viewModel.uiState.value.error)
     assertNothingSaved()
   }
 
@@ -305,7 +380,7 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     viewModel.editEvent()
 
     val failed = viewModel.uiState.value
-    assertEquals(EventPlanningViewModel.STORAGE_FAILURE_ERROR, failed.error)
+    assertEquals(EventPlanningError.STORAGE_FAILURE, failed.error)
     assertTrue(failed.isEditing)
     assertFalse(failed.isEventEdited)
     assertEquals("Algebra", failed.subject)
@@ -324,7 +399,7 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
 
     viewModel.editEvent()
 
-    assertEquals(EventPlanningViewModel.FAILED_TO_EDIT_EVENT_ERROR, viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.FAILED_TO_EDIT_EVENT, viewModel.uiState.value.error)
   }
 
   @Test
@@ -350,7 +425,7 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     viewModel.editEvent()
 
     assertFalse(viewModel.uiState.value.isEditing)
-    assertEquals(EventPlanningViewModel.NO_EVENT_TO_EDIT_ERROR, viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.NO_EVENT_TO_EDIT, viewModel.uiState.value.error)
   }
 
   @Test
@@ -381,7 +456,7 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
 
     viewModel.deleteEvent("stored-1")
 
-    assertEquals(EventPlanningViewModel.NO_SIGNED_IN_USER_ERROR, viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.NO_SIGNED_IN_USER, viewModel.uiState.value.error)
     verify(eventsRepository, never()).deleteEvent(any(), any())
   }
 
@@ -409,10 +484,31 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
   fun deleteEvent_afterwards_noEventIsLoadedAnymore() = runTest {
     val viewModel = loadedViewModel()
     viewModel.deleteEvent("stored-1")
+    assertTrue(viewModel.uiState.value.isEventDeleted)
 
     viewModel.editEvent()
 
-    assertEquals(EventPlanningViewModel.NO_EVENT_TO_EDIT_ERROR, viewModel.uiState.value.error)
+    val state = viewModel.uiState.value
+    assertEquals(EventPlanningError.NO_EVENT_TO_EDIT, state.error)
+    assertFalse(state.isEventEdited)
+    assertFalse(state.isEventAdded)
+    assertFalse(state.isEventDeleted)
+  }
+
+  @Test
+  fun fail_clearsPreviousSuccessResults() = runTest {
+    val viewModel = loadedViewModel()
+    viewModel.editEvent()
+    assertTrue(viewModel.uiState.value.isEventEdited)
+
+    viewModel.setSubject("   ")
+    viewModel.addEvent()
+
+    val state = viewModel.uiState.value
+    assertNotNull(state.error)
+    assertFalse(state.isEventEdited)
+    assertFalse(state.isEventAdded)
+    assertFalse(state.isEventDeleted)
   }
 
   @Test
@@ -434,7 +530,7 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     viewModel.deleteEvent("stored-1")
 
     val state = viewModel.uiState.value
-    assertEquals(EventPlanningViewModel.PERMISSION_DENIED_ERROR, state.error)
+    assertEquals(EventPlanningError.PERMISSION_DENIED, state.error)
     assertFalse(state.isEventDeleted)
     assertFalse(state.isDeleting)
     assertTrue(state.isEditing)
@@ -449,45 +545,31 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     viewModel.deleteEvent("stored-1")
 
     assertEquals(
-        EventPlanningViewModel.FAILED_TO_DELETE_EVENT_ERROR,
+        EventPlanningError.FAILED_TO_DELETE_EVENT,
         viewModel.uiState.value.error,
     )
   }
 
   @Test
-  fun deleteEvent_otherFailureWithMessage_exposesMessage() = runTest {
+  fun deleteEvent_otherFailure_setsFailedToDeleteEventError() = runTest {
     whenever(eventsRepository.deleteEvent(any(), any()))
         .thenReturn(Result.failure(IllegalStateException("disk full")))
     val viewModel = createViewModel()
 
     viewModel.deleteEvent("stored-1")
 
-    assertEquals("disk full", viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.FAILED_TO_DELETE_EVENT, viewModel.uiState.value.error)
   }
 
   @Test
-  fun deleteEvent_repositoryThrowsWithMessage_exposesMessage() = runTest {
+  fun deleteEvent_repositoryThrows_setsFailedToDeleteEventError() = runTest {
     whenever(eventsRepository.deleteEvent(any(), any())).thenThrow(IllegalStateException("boom"))
     val viewModel = createViewModel()
 
     viewModel.deleteEvent("stored-1")
 
-    assertEquals("boom", viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.FAILED_TO_DELETE_EVENT, viewModel.uiState.value.error)
     assertFalse(viewModel.uiState.value.isDeleting)
-  }
-
-  @Test
-  fun deleteEvent_repositoryThrowsWithoutMessage_usesDefaultMessage() = runTest {
-    whenever(eventsRepository.deleteEvent(any(), any()))
-        .thenThrow(object : RuntimeException(null as String?) {})
-    val viewModel = createViewModel()
-
-    viewModel.deleteEvent("stored-1")
-
-    assertEquals(
-        EventPlanningViewModel.FAILED_TO_DELETE_EVENT_ERROR,
-        viewModel.uiState.value.error,
-    )
   }
 
   @Test
@@ -593,8 +675,8 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     val saved = savedEvents().single()
-    assertEquals(Instant.parse("2026-10-27T21:00:00Z"), saved.startsAt) // 22:00 on the 27th
-    assertEquals(Instant.parse("2026-10-28T00:00:00Z"), saved.endsAt) // 01:00 on the 28th
+    assertEquals(Instant.parse("2026-10-27T21:00:00Z"), saved.details.startsAt) // 22:00 on the 27th
+    assertEquals(Instant.parse("2026-10-28T00:00:00Z"), saved.details.endsAt) // 01:00 on the 28th
     assertTrue(viewModel.uiState.value.isEventAdded)
   }
 
@@ -605,7 +687,7 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
 
     viewModel.addEvent()
 
-    assertEquals("End must be after start", viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.INVALID_EVENT, viewModel.uiState.value.error)
     assertNothingSaved()
   }
 
@@ -617,8 +699,8 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     val saved = savedEvents().single()
-    assertEquals(startsAt, saved.startsAt)
-    assertEquals(endsAt, saved.endsAt)
+    assertEquals(startsAt, saved.details.startsAt)
+    assertEquals(endsAt, saved.details.endsAt)
   }
 
   @Test
@@ -634,8 +716,8 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     val saved = savedEvents().single()
-    assertEquals(Instant.parse("2026-10-24T20:00:00Z"), saved.startsAt)
-    assertEquals(Instant.parse("2026-10-25T03:00:00Z"), saved.endsAt)
+    assertEquals(Instant.parse("2026-10-24T20:00:00Z"), saved.details.startsAt)
+    assertEquals(Instant.parse("2026-10-25T03:00:00Z"), saved.details.endsAt)
   }
 
   @Test
@@ -648,8 +730,8 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
 
     val saved = savedEvents().single()
     assertEquals("stored-1", saved.id)
-    assertEquals(Instant.parse("2026-10-27T22:00:00Z"), saved.startsAt)
-    assertEquals(Instant.parse("2026-10-28T06:00:00Z"), saved.endsAt)
+    assertEquals(Instant.parse("2026-10-27T22:00:00Z"), saved.details.startsAt)
+    assertEquals(Instant.parse("2026-10-28T06:00:00Z"), saved.details.endsAt)
   }
 
   @Test
@@ -667,7 +749,7 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     viewModel.editEvent()
 
     val saved = savedEvents().single()
-    assertEquals(overnight.startsAt, saved.startsAt)
-    assertEquals(overnight.endsAt, saved.endsAt)
+    assertEquals(overnight.details.startsAt, saved.details.startsAt)
+    assertEquals(overnight.details.endsAt, saved.details.endsAt)
   }
 }

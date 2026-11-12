@@ -1,73 +1,59 @@
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.activity.compose.BackHandler
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MediumTopAppBar
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
-import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
-import com.android.sample.ui.theme.Dimens
 
 /**
  * Stateful destination screen for creating and saving a new event.
  *
- * Collects state from [EventPlanningViewModel], handles the event-saved navigation side effect, and
- * embeds [AddEventScreenStateless] inside a Scaffold.
+ * Collects form state from [EventPlanningViewModel], handles successful-save acknowledgement and
+ * navigation, and delegates form and picker rendering to [EventPlanningScreen]. The event is
+ * persisted only when the user presses Save.
  *
  * @param modifier Modifier applied to the root screen layout.
- * @param viewModel ViewModel backing the event creation workflow.
- * @param onBackClick Invoked when the top app bar navigation icon is pressed.
- * @param onEventSaved Invoked once the event has been successfully persisted.
- * @param onPickTypeClick Intent to trigger the type selection modal.
- * @param onPickDateClick Intent to trigger the date picker dialog.
- * @param onPickStartTimeClick Intent to trigger the start time picker dialog.
- * @param onPickEndTimeClick Intent to trigger the end time picker dialog.
- * @param onPickSubjectClick Intent to trigger the subject search modal.
+ * @param initialKind Category of event to create (defaults to [EventKind.PERSONAL]).
+ * @param viewModel ViewModel backing the event creation workflow; defaults to the screen's
+ *   repository-backed ViewModel.
+ * @param onBackClick Invoked by the top-bar back button or system back action.
+ * @param onEventSaved Invoked after a successful save has been acknowledged by the ViewModel.
+ * @param onPickTypeClick Optional external event-type picker action; when null, the screen uses its
+ *   built-in type selector.
+ * @param onPickDateClick Optional external date picker action; when null, the screen uses its
+ *   built-in date picker.
+ * @param onPickStartTimeClick Optional external start-time picker action; when null, the screen
+ *   uses its built-in time picker.
+ * @param onPickEndTimeClick Optional external end-time picker action; when null, the screen uses
+ *   its built-in time picker.
+ * @param onPickSubjectClick Optional external subject picker action; when null, the screen uses its
+ *   built-in subject picker.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEventScreen(
     modifier: Modifier = Modifier,
+    initialKind: EventKind = EventKind.PERSONAL,
     viewModel: EventPlanningViewModel = eventsPlanningViewModel(),
     onBackClick: () -> Unit,
     onEventSaved: () -> Unit,
-    onPickTypeClick: () -> Unit = {},
-    onPickDateClick: () -> Unit = {},
-    onPickStartTimeClick: () -> Unit = {},
-    onPickEndTimeClick: () -> Unit = {},
-    onPickSubjectClick: () -> Unit = {},
+    onPickTypeClick: (() -> Unit)? = null,
+    onPickDateClick: (() -> Unit)? = null,
+    onPickStartTimeClick: (() -> Unit)? = null,
+    onPickEndTimeClick: (() -> Unit)? = null,
+    onPickSubjectClick: (() -> Unit)? = null,
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+  val focusManager = LocalFocusManager.current
 
   LaunchedEffect(uiState.isEventAdded) {
     if (uiState.isEventAdded) {
@@ -76,141 +62,61 @@ fun AddEventScreen(
     }
   }
 
-  Scaffold(
-      topBar = {
-        MediumTopAppBar(
-            title = {
-              Text(
-                  text = stringResource(R.string.event_planning_add_title),
-                  style = MaterialTheme.typography.headlineLarge,
-                  fontWeight = FontWeight.Bold,
-                  modifier = Modifier.testTag(Tags.TOP_BAR_TITLE),
-              )
-            },
-            navigationIcon = {
-              IconButton(onClick = onBackClick, modifier = Modifier.testTag(Tags.BACK_BUTTON)) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.button_go_back),
-                )
-              }
-            },
-            colors =
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                ),
-            modifier = Modifier.testTag(Tags.TOP_APP_BAR),
-        )
-      },
-      modifier = modifier.fillMaxSize(),
-  ) { innerPadding ->
-    AddEventScreenStateless(
-        uiState = uiState,
-        onTypeClick = onPickTypeClick,
-        onDateClick = onPickDateClick,
-        onStartTimeClick = onPickStartTimeClick,
-        onEndTimeClick = onPickEndTimeClick,
-        onSubjectClick = onPickSubjectClick,
-        onLocationChange = viewModel::setLocation,
-        onDescriptionChange = viewModel::setDescription,
-        onAddTask = viewModel::addTask,
-        onToggleTask = viewModel::toggleTask,
-        onDeleteTask = viewModel::removeTask,
-        onSaveClick = viewModel::addEvent,
-        modifier = Modifier.padding(innerPadding),
-    )
+  // clear form if it was previously being edited
+  LaunchedEffect(Unit) { if (uiState.isEditing) viewModel.resetForm() }
+
+  LaunchedEffect(initialKind) { viewModel.setEventKind(initialKind) }
+
+  // Clears the form when exiting
+  val handleBack: () -> Unit = {
+    focusManager.clearFocus()
+    viewModel.resetForm()
+    onBackClick()
   }
-}
 
-/** Stateless AddEventScreen displaying form content and the pinned Save button. */
-@Composable
-fun AddEventScreenStateless(
-    uiState: EventPlanningUiState,
-    onTypeClick: () -> Unit,
-    onDateClick: () -> Unit,
-    onStartTimeClick: () -> Unit,
-    onEndTimeClick: () -> Unit,
-    onSubjectClick: () -> Unit,
-    onLocationChange: (String) -> Unit,
-    onDescriptionChange: (String) -> Unit,
-    onAddTask: (String) -> Unit,
-    onToggleTask: (Int) -> Unit,
-    onDeleteTask: (Int) -> Unit,
-    onSaveClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-  Column(
-      modifier =
-          modifier
-              .fillMaxSize()
-              .background(MaterialTheme.colorScheme.background)
-              .testTag(Tags.SCREEN_CONTAINER),
-  ) {
-    // 1. Scrollable form takes all remaining vertical space ABOVE the button
-    EventFormContent(
-        uiState = uiState,
-        onTypeClick = onTypeClick,
-        onDateClick = onDateClick,
-        onStartTimeClick = onStartTimeClick,
-        onEndTimeClick = onEndTimeClick,
-        onSubjectClick = onSubjectClick,
-        onLocationChange = onLocationChange,
-        onDescriptionChange = onDescriptionChange,
-        onAddTask = onAddTask,
-        onToggleTask = onToggleTask,
-        onDeleteTask = onDeleteTask,
-        modifier = Modifier.weight(1f).fillMaxWidth(),
-    )
+  BackHandler(onBack = handleBack)
 
-    // 2. Button container sits physically below the form, never overlapping it
-    Surface(
-        color = MaterialTheme.colorScheme.background,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-      Button(
-          onClick = onSaveClick,
-          enabled = !uiState.isSaving,
-          colors =
-              ButtonDefaults.buttonColors(
-                  containerColor = MaterialTheme.colorScheme.primary,
-                  contentColor = MaterialTheme.colorScheme.onPrimary,
-                  disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                  disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
-              ),
-          shape = RoundedCornerShape(Dimens.cornerPill),
-          modifier =
-              Modifier.fillMaxWidth()
-                  .padding(
-                      horizontal = Dimens.saveButtonHorizontalPadding,
-                      vertical = Dimens.saveButtonVerticalPadding,
-                  )
-                  .height(Dimens.saveButtonHeight)
-                  .testTag(Tags.SAVE_BUTTON),
-      ) {
-        if (uiState.isSaving) {
-          CircularProgressIndicator(
-              modifier =
-                  Modifier.size(Dimens.saveButtonProgressSize).testTag(Tags.SAVE_BUTTON_PROGRESS),
-              color = MaterialTheme.colorScheme.onPrimary,
-              strokeWidth = Dimens.progressIndicatorStrokeWidth,
-          )
-        } else {
-          Text(
-              text = stringResource(R.string.event_planning_save_button),
-              style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-              color = MaterialTheme.colorScheme.onPrimary,
-          )
-        }
+  val titleRes =
+      if (initialKind == EventKind.GROUP_SESSION) {
+        R.string.group_session_add_title
+      } else {
+        R.string.event_planning_add_title
       }
-    }
-  }
+
+  EventPlanningScreen(
+      // Ensure the form uses initialKind immediately, avoiding a flicker before LaunchedEffect
+      // syncs
+      uiState =
+          if (uiState.eventKind != initialKind) uiState.copy(eventKind = initialKind) else uiState,
+      titleRes = titleRes,
+      onBackClick = handleBack,
+      onTypeChange = viewModel::setType,
+      onDateSelected = viewModel::setDate,
+      onStartTimeSelected = viewModel::setStartTime,
+      onEndTimeSelected = viewModel::setEndTime,
+      onSubjectSelected = viewModel::setSubject,
+      onLocationChange = viewModel::setLocation,
+      onLocationSearchQueryChange = viewModel::searchLocations,
+      onDescriptionChange = viewModel::setDescription,
+      onAddTask = viewModel::addTask,
+      onToggleTask = viewModel::toggleTask,
+      onDeleteTask = viewModel::removeTask,
+      onSaveClick = viewModel::addEvent,
+      isEditing = false,
+      modifier = modifier,
+      onTypeClick = onPickTypeClick,
+      onPickDateClick = onPickDateClick,
+      onPickStartTimeClick = onPickStartTimeClick,
+      onPickEndTimeClick = onPickEndTimeClick,
+      onPickSubjectClick = onPickSubjectClick,
+  )
 }
 
 @Preview
 @Composable
-private fun AddEventScreenPreview() {
+internal fun AddEventScreenPreview() {
   MaterialTheme {
-    AddEventScreenStateless(
+    EventPlanningScreenStateless(
         uiState =
             EventPlanningUiState(
                 type = EventType.COURSE,
@@ -219,17 +125,20 @@ private fun AddEventScreenPreview() {
                 description = "Bring course pack and notes.",
                 tasks = listOf(EventTask("Read Chapter 4"), EventTask("Do homework 2")),
             ),
+        onBackClick = {},
         onTypeClick = {},
         onDateClick = {},
         onStartTimeClick = {},
         onEndTimeClick = {},
         onSubjectClick = {},
-        onLocationChange = {},
+        onLocationClick = {},
         onDescriptionChange = {},
         onAddTask = {},
         onToggleTask = {},
         onDeleteTask = {},
         onSaveClick = {},
+        onTypeChange = {},
+        modifier = Modifier,
     )
   }
 }

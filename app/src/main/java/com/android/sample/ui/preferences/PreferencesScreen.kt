@@ -1,6 +1,7 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: OpenAI Codex
 package com.android.sample.ui.preferences
 
 import androidx.compose.foundation.background
@@ -35,11 +36,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
+import com.android.sample.ui.theme.Dimens
+import com.android.sample.ui.theme.Spacing
 
 /*
    Actual stateful preference screen
@@ -121,7 +123,7 @@ fun PreferencesScreen(
                   verticalArrangement = Arrangement.Center,
                   horizontalAlignment = Alignment.CenterHorizontally,
               ) {
-                Text(state.message)
+                Text(stringResource(id = state.error.toMessageRes()))
                 Button(
                     onClick = viewModel::loadPreferences,
                 ) {
@@ -216,9 +218,9 @@ fun PreferenceScreenStateless(
           modifier =
               Modifier.weight(1f)
                   .verticalScroll(rememberScrollState())
-                  .padding(horizontal = 16.dp, vertical = 8.dp)
+                  .padding(horizontal = Spacing.large, vertical = Spacing.small)
                   .testTag(Tags.PREFERENCE_SCROLL_CONTAINER),
-          verticalArrangement = Arrangement.spacedBy(8.dp),
+          verticalArrangement = Arrangement.spacedBy(Spacing.small),
       ) {
         // import schedule section
         SectionLabel(
@@ -229,6 +231,11 @@ fun PreferenceScreenStateless(
             stringResource(id = R.string.preferences_import_schedule_button),
             onImportClick,
             Tags.IMPORT_SCHEDULE_BUTTON,
+        )
+        Text(
+            text = stringResource(R.string.preferences_import_schedule_file_type),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
         // add study locations section
@@ -287,16 +294,16 @@ fun PreferenceScreenStateless(
         )
 
         // Keeps the last row clear of the pinned Save button
-        Spacer(Modifier.height(88.dp))
+        Spacer(Modifier.height(Dimens.fabClearance))
       }
     }
 
     // Save button
     WidePillButton(
-        text = "Save",
+        text = stringResource(id = R.string.preferences_save_button),
         onClick = onSaveClick,
         testTag = Tags.SAVE_BUTTON,
-        modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+        modifier = Modifier.align(Alignment.BottomCenter).padding(Spacing.large),
         enabled = saveEnabled,
     )
   }

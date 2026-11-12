@@ -1,4 +1,5 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.calendar
 
 import androidx.compose.foundation.ScrollState
@@ -31,9 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -47,17 +46,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.android.sample.R
+import com.android.sample.model.event.Event
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
+import com.android.sample.ui.theme.calendarDateLabelStyle
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
 private const val HOURS_PER_DAY = 24
-
 private const val DAYS_PER_WEEK = 7
 private const val FIRST_VISIBLE_HOUR = 8
 private const val DEFAULT_VISIBLE_HOURS = 10
@@ -67,11 +69,17 @@ private val HOUR_FORMAT = DateTimeFormatter.ofPattern("h a", Locale.US)
 /** Test tags for the weekly calendar controls and date headings. */
 object CalendarTestTags {
   const val WEEK_RANGE = "calendar_weekRange"
+  const val WEEK_HEADER = "calendar_weekHeader"
+  const val DAY_HEADER = "calendar_dayHeader"
   const val PREVIOUS_WEEK = "calendar_previousWeek"
   const val NEXT_WEEK = "calendar_nextWeek"
   const val TIME_GRID = "calendar_timeGrid"
   const val ADD_BUTTON = "calendar_addButton"
   const val TODAY_BUTTON = "calendar_todayButton"
+
+  /** Creates a stable tag for an event card in a specific day column. */
+  fun eventCard(eventId: String, dayIndex: Int): String =
+      "calendar_eventCard_${eventId}_day_$dayIndex"
 
   /**
    * Creates the test tag used to identify a date number in a weekly day header.
@@ -99,47 +107,45 @@ object CalendarTestTags {
 }
 
 /**
- * Displays the weekly calendar, including a navigable date range, seven day headings, and a
- * vertically scrollable empty timeline. The initial week is the Monday-to-Sunday week containing
- * [today], and the selected week is retained across supported saved-state recreation.
+ * Displays the weekly calendar from [uiState] and forwards week navigation actions to its owner.
+ * Date selection and event loading are owned by [CalendarViewModel].
  *
- * @param today The date used to choose the initial week and highlight today in its day heading.
- * @param todayNavigationRequested Whether the screen has requested navigation to today's week.
- * @param onTodayNavigationRequestHandled Callback used to clear the handled navigation request.
+ * @param uiState The ViewModel state containing today's date and the displayed week's dates.
+ * @param onPreviousWeek Callback invoked when the previous-week control is clicked.
+ * @param onNextWeek Callback invoked when the next-week control is clicked.
  * @param modifier The modifier applied to the weekly calendar's root column.
+ * @param onEventClick Callback receiving the selected event's ID.
  */
 @Composable
 internal fun CalendarWeeklyView(
+    uiState: CalendarUiState,
+    onPreviousWeek: () -> Unit,
+    onNextWeek: () -> Unit,
     modifier: Modifier = Modifier,
-    today: LocalDate,
-    todayNavigationRequested: Boolean = false,
-    onTodayNavigationRequestHandled: () -> Unit = {},
+    onEventClick: (String) -> Unit = {},
 ) {
-  val dateHelper = remember { CalendarDateHelper() }
-  var weekStartEpochDay by
-      rememberSaveable(today.toEpochDay()) {
-        mutableLongStateOf(dateHelper.weekDates(today).first().toEpochDay())
-      }
-  val weekStart = LocalDate.ofEpochDay(weekStartEpochDay)
-  val weekDates = remember(weekStartEpochDay) { dateHelper.weekDates(weekStart) }
-
-  LaunchedEffect(todayNavigationRequested) {
-    if (todayNavigationRequested) {
-      weekStartEpochDay = dateHelper.weekDates(today).first().toEpochDay()
-      onTodayNavigationRequestHandled()
+  BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+    // Checks the dimensions of the screen and decide whether to make the headers compact
+    val compactHeaders = maxWidth > maxHeight
+    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+      CalendarWeekRangeHeader(
+          weekDates = uiState.weekDates,
+          onPreviousWeek = onPreviousWeek,
+          onNextWeek = onNextWeek,
+          compact = compactHeaders,
+      )
+      CalendarDayHeader(
+          weekDates = uiState.weekDates,
+          today = uiState.today,
+          compact = compactHeaders,
+      )
+      CalendarTimeGrid(
+          events = uiState.events,
+          weekDates = uiState.weekDates,
+          modifier = Modifier.weight(1f),
+          onEventClick = onEventClick,
+      )
     }
-  }
-
-  Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-    CalendarWeekRangeHeader(
-        weekDates = weekDates,
-        onPreviousWeek = {
-          weekStartEpochDay = dateHelper.previousWeek(weekStart).first().toEpochDay()
-        },
-        onNextWeek = { weekStartEpochDay = dateHelper.nextWeek(weekStart).first().toEpochDay() },
-    )
-    CalendarDayHeader(weekDates = weekDates, today = today)
-    CalendarTimeGrid(modifier = Modifier.weight(1f))
   }
 }
 
@@ -150,6 +156,7 @@ internal fun CalendarWeeklyView(
  * @param weekDates The seven consecutive Monday-through-Sunday dates currently displayed.
  * @param onPreviousWeek Callback invoked when the previous-week control is clicked.
  * @param onNextWeek Callback invoked when the next-week control is clicked.
+ * @param compact Whether to use the shorter landscape header height.
  * @param modifier The modifier applied to the header row.
  */
 @Composable
@@ -158,14 +165,19 @@ fun CalendarWeekRangeHeader(
     onPreviousWeek: () -> Unit,
     onNextWeek: () -> Unit,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
   // Place the previous control, week label, and next control in one row.
   Row(
       modifier =
           modifier
               .fillMaxWidth()
-              .height(Dimens.calendarWeekSwitchHeaderHeight)
+              .height(
+                  if (compact) Dimens.calendarWeekSwitchHeaderHeightLandscape
+                  else Dimens.calendarWeekSwitchHeaderHeight
+              )
               .background(MaterialTheme.colorScheme.surface)
+              .testTag(CalendarTestTags.WEEK_HEADER)
               .padding(horizontal = Spacing.large),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.SpaceBetween,
@@ -229,6 +241,7 @@ fun CalendarWeekRangeHeader(
  *
  * @param weekDates The dates to display, normally the seven dates of the visible calendar week.
  * @param today The date to highlight when it is included in [weekDates].
+ * @param compact Whether to use the shorter landscape header height.
  * @param modifier The modifier applied to the row of day headings.
  */
 @Composable
@@ -236,14 +249,19 @@ fun CalendarDayHeader(
     weekDates: List<LocalDate>,
     today: LocalDate,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
   // Lay out the date headings in one row above the weekly grid.
   Row(
       modifier =
           modifier
               .fillMaxWidth()
-              .height(Dimens.calendarDayHeaderHeight)
+              .height(
+                  if (compact) Dimens.calendarDayHeaderHeightLandscape
+                  else Dimens.calendarDayHeaderHeight
+              )
               .background(MaterialTheme.colorScheme.surface)
+              .testTag(CalendarTestTags.DAY_HEADER)
               .border(
                   width = Dimens.calendarDayHeaderBorderWidth,
                   color = MaterialTheme.colorScheme.outlineVariant,
@@ -269,7 +287,7 @@ fun CalendarDayHeader(
             text = date.dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.US),
             modifier = Modifier.testTag(CalendarTestTags.dayName(date)).offset(y = dateTopSpacing),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 10.sp,
+            fontSize = calendarDateLabelStyle.fontSize,
         )
         Spacer(modifier = Modifier.height(Spacing.extraExtraSmall))
 
@@ -292,7 +310,7 @@ fun CalendarDayHeader(
                   if (isToday) MaterialTheme.colorScheme.onPrimary
                   else MaterialTheme.colorScheme.onSurface,
               fontWeight = FontWeight.Bold,
-              fontSize = 10.sp,
+              fontSize = calendarDateLabelStyle.fontSize,
           )
         }
       }
@@ -316,34 +334,40 @@ private fun CalendarTodayCircle(modifier: Modifier = Modifier) {
 }
 
 /**
- * Renders the empty weekly timeline with hour labels and seven equally sized day columns. The
- * timeline scrolls vertically as one unit and initially positions the view around 8 AM when the
- * measured viewport has enough scroll range.
+ * Renders the weekly timeline with hour labels and seven equally sized day columns. The timeline
+ * scrolls vertically as one unit and initially positions the view around 8 AM when the measured
+ * viewport has enough scroll range.
  *
  * @param modifier The modifier applied to the timeline container.
+ * @param onEventClick Callback receiving the selected event's ID.
  */
 @Composable
 fun CalendarTimeGrid(
     modifier: Modifier = Modifier,
+    events: List<Event> = emptyList(),
+    weekDates: List<LocalDate> = emptyList(),
+    onEventClick: (String) -> Unit = {},
 ) {
   // Keep the grid vertically scrollable
   val scrollState = remember { ScrollState(0) }
   val density = LocalDensity.current
   var initialScrollApplied by remember { androidx.compose.runtime.mutableStateOf(false) }
 
-  // Use the available height to size rows so ten hours fit in the viewport.
+  // Keep rows readable in short landscape viewports, even when fewer than ten hours fit.
   BoxWithConstraints(modifier = modifier.fillMaxSize().testTag(CalendarTestTags.TIME_GRID)) {
-    val hourHeight = maxHeight / DEFAULT_VISIBLE_HOURS
+    val hourHeight = maxOf(maxHeight / DEFAULT_VISIBLE_HOURS, Dimens.calendarMinHourRowHeight)
 
     // Decide the initial position after the first layout, even if this viewport cannot scroll.
-    LaunchedEffect(hourHeight) {
+    LaunchedEffect(maxHeight) {
       if (!initialScrollApplied) {
         withFrameNanos {}
-        val initialOffset =
-            with(density) {
-              (hourHeight * FIRST_VISIBLE_HOUR - Dimens.calendarInitialLabelClearance).roundToPx()
-            }
-        scrollState.scrollTo(initialOffset.coerceIn(0, scrollState.maxValue))
+        if (maxHeight > Dimens.noPadding) {
+          val initialOffset =
+              with(density) {
+                (hourHeight * FIRST_VISIBLE_HOUR - Dimens.calendarInitialLabelClearance).roundToPx()
+              }
+          scrollState.scrollTo(initialOffset.coerceIn(0, scrollState.maxValue))
+        }
         initialScrollApplied = true
       }
     }
@@ -374,14 +398,37 @@ fun CalendarTimeGrid(
         }
       }
       // Divide the remaining width evenly among the seven empty day columns.
+      val placementsByDay =
+          remember(events, weekDates, hourHeight) {
+            events
+                .flatMap { event -> calculateEventPlacements(event, weekDates, hourHeight) }
+                .groupBy { placement -> placement.dayIndex }
+                .mapValues { (_, placements) -> placeOverlappingEventsSideBySide(placements) }
+          }
       Row(modifier = Modifier.weight(1f)) {
         repeat(DAYS_PER_WEEK) { dayIndex ->
-          Column(modifier = Modifier.weight(1f)) {
-            repeat(HOURS_PER_DAY) { hour ->
-              CalendarEmptyHourCell(
-                  hourHeight = hourHeight,
-                  isLastHour = hour == HOURS_PER_DAY - 1,
-                  isFirstDay = dayIndex == 0,
+          val placements = placementsByDay[dayIndex].orEmpty()
+
+          BoxWithConstraints(modifier = Modifier.weight(1f)) {
+            Column {
+              repeat(HOURS_PER_DAY) { hour ->
+                CalendarEmptyHourCell(
+                    hourHeight = hourHeight,
+                    isLastHour = hour == HOURS_PER_DAY - 1,
+                    isFirstDay = dayIndex == 0,
+                )
+              }
+            }
+            placements.forEach { placement ->
+              val cardWidth = maxWidth / placement.laneCount
+              CalendarEventCard(
+                  event = placement.event,
+                  modifier =
+                      Modifier.width(cardWidth)
+                          .offset(x = cardWidth * placement.laneIndex, y = placement.top)
+                          .height(maxOf(Dimens.calendarEventCardMinHeight, placement.height))
+                          .testTag(CalendarTestTags.eventCard(placement.event.id, dayIndex)),
+                  onClick = { onEventClick(placement.event.id) },
               )
             }
           }
@@ -389,6 +436,93 @@ fun CalendarTimeGrid(
       }
     }
   }
+}
+
+/** Provides the grid coordinates calculated for an event in the displayed week. */
+internal data class CalendarEventPlacement(
+    val event: Event,
+    val dayIndex: Int,
+    val top: Dp,
+    val height: Dp,
+    val laneIndex: Int = 0,
+    val laneCount: Int = 1,
+)
+
+/** Divides each group of overlapping cards into lanes, using the rendered minimum card height. */
+internal fun placeOverlappingEventsSideBySide(
+    placements: List<CalendarEventPlacement>
+): List<CalendarEventPlacement> = buildList {
+  val laneEnds = mutableListOf<Dp>()
+  val group = mutableListOf<CalendarEventPlacement>()
+
+  // A completed group knows its total width in lanes, so its cards can share the day column.
+  fun finishGroup() {
+    group.forEach { add(it.copy(laneCount = laneEnds.size)) }
+    group.clear()
+    laneEnds.clear()
+  }
+
+  for (placement in placements.sortedBy { it.top }) {
+    if (laneEnds.all { it <= placement.top }) finishGroup()
+
+    val laneEnd = placement.top + maxOf(Dimens.calendarEventCardMinHeight, placement.height)
+    val availableLane = laneEnds.indexOfFirst { it <= placement.top }
+    val laneIndex = if (availableLane >= 0) availableLane else laneEnds.size
+    if (laneIndex == laneEnds.size) laneEnds.add(laneEnd) else laneEnds[laneIndex] = laneEnd
+    group.add(placement.copy(laneIndex = laneIndex))
+  }
+  finishGroup()
+}
+
+/**
+ * Splits an event at local midnight and calculates each segment's grid position.
+ *
+ * Events outside [weekDates] produce no placements. A placement keeps the original event, so cards
+ * created for separate day segments display identical contents.
+ */
+internal fun calculateEventPlacements(
+    event: Event,
+    weekDates: List<LocalDate>,
+    hourHeight: Dp,
+    zone: ZoneId = ZoneId.systemDefault(),
+): List<CalendarEventPlacement> {
+  val start = event.details.startsAt.atZone(zone)
+  val end = event.details.endsAt.atZone(zone)
+  val placements = mutableListOf<CalendarEventPlacement>()
+  var date = start.toLocalDate()
+
+  // Visit the start date and every following date touched before the event ends.
+  while (!date.isAfter(end.toLocalDate())) {
+    val dayStart = date.atStartOfDay(zone).toInstant()
+    val nextDayStart = date.plusDays(1).atStartOfDay(zone).toInstant()
+
+    // Clamp this segment to the current day: start at the event time, and end at midnight.
+    val segmentStart = maxOf(event.details.startsAt, dayStart)
+    val segmentEnd = minOf(event.details.endsAt, nextDayStart)
+    val dayIndex = weekDates.indexOf(date)
+
+    if (dayIndex >= 0 && segmentStart.isBefore(segmentEnd)) {
+      // Position by wall-clock time because every displayed day has 24 equal hour rows.
+      val localDayStart = date.atStartOfDay()
+      val localSegmentStart = segmentStart.atZone(zone).toLocalDateTime()
+      val localSegmentEnd = segmentEnd.atZone(zone).toLocalDateTime()
+      val minutesFromMidnight = Duration.between(localDayStart, localSegmentStart).toMinutes()
+      val segmentMinutes =
+          Duration.between(localSegmentStart, localSegmentEnd).toMinutes().coerceAtLeast(0)
+      placements +=
+          CalendarEventPlacement(
+              event = event,
+              dayIndex = dayIndex,
+              top = hourHeight * (minutesFromMidnight / 60f),
+              height = hourHeight * (segmentMinutes / 60f),
+          )
+    }
+
+    // Move to the next local date; the loop stops after the event's ending date.
+    date = date.plusDays(1)
+  }
+
+  return placements
 }
 
 /**

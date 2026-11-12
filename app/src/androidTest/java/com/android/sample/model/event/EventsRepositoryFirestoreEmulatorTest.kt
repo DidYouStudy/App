@@ -1,4 +1,5 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.event
 
 import androidx.test.core.app.ApplicationProvider
@@ -80,17 +81,26 @@ class EventsRepositoryFirestoreEmulatorTest {
   }
 
   /** Builds a complete event with exact microsecond precision for server round trips. */
-  private fun event(id: String = "a", start: Long = 9, end: Long = 10) =
-      Event(
-          id,
-          uid,
-          EventType.PROJECT,
-          "Analysis",
-          day.plusSeconds(start * 3600),
-          day.plusSeconds(end * 3600),
-          day,
-          location = "BC 410",
-          description = "Details",
+  private fun event(
+      id: String = "a",
+      start: Long = 9,
+      end: Long = 10,
+      type: EventType = EventType.PROJECT,
+      subject: String? = "Analysis",
+  ) =
+      PersonalEvent(
+          id = id,
+          ownerId = uid,
+          details =
+              EventDetails(
+                  type = type,
+                  subject = subject,
+                  startsAt = day.plusSeconds(start * 3600),
+                  endsAt = day.plusSeconds(end * 3600),
+                  location = "BC 410",
+                  description = "Details",
+              ),
+          createdAt = day,
           tasks = listOf(EventTask("Exercise"), EventTask("Read", day.plusSeconds(1))),
       )
 
@@ -101,11 +111,45 @@ class EventsRepositoryFirestoreEmulatorTest {
   private fun document(id: String) =
       db.collection("users").document(uid).collection("events").document(id)
 
+  /**
+   * A checklist patch works offline, preserves newer details, and cannot restore a deleted event.
+   */
+  @Test
+  fun offlineChecklistPatchPreservesDetailsAndDoesNotRecreateDeletedEvent() = runBlocking {
+    val original = event()
+    repository.saveEvent(original).getOrThrow()
+    val edited = original.copy(details = original.details.copy(description = "New description"))
+    repository.saveEvent(edited).getOrThrow()
+    sync()
+    val tasks = listOf(EventTask("Review", day.plusSeconds(60)))
+    val updatedAt = day.plusSeconds(60)
+
+    db.disableNetwork().await()
+    withTimeout(5000) {
+      repository.updateEventTasks(uid, original.id, tasks, updatedAt).getOrThrow()
+    }
+    assertEquals(
+        edited.copy(tasks = tasks, updatedAt = updatedAt),
+        repository.getEvent(uid, original.id).getOrThrow(),
+    )
+    db.enableNetwork().await()
+    sync()
+    val stored = document(original.id).get(Source.SERVER).await()
+    assertEquals("New description", stored.getString("description"))
+    assertEquals(tasks, repository.getEvent(uid, original.id).getOrThrow().tasks)
+
+    repository.deleteEvent(uid, original.id).getOrThrow()
+    val result = repository.updateEventTasks(uid, original.id, tasks, updatedAt)
+    assertEquals(EventsError.NOT_FOUND, (result.exceptionOrNull() as EventsException).error)
+    sync()
+    assertFalse(document(original.id).get(Source.SERVER).await().exists())
+  }
+
   /** A bulk save persists every event and each subject suggestion through the real SDK. */
   @Test
   fun bulkSavePersistsEventsAndSubjects() = runBlocking {
-    val first = event("first").copy(subject = "Analysis")
-    val second = event("second").copy(subject = "Physics")
+    val first = event("first", subject = "Analysis")
+    val second = event("second", subject = "Physics")
 
     repository.saveEvents(listOf(first, second)).getOrThrow()
     sync()
@@ -122,7 +166,7 @@ class EventsRepositoryFirestoreEmulatorTest {
   @Test
   fun bulkSaveRejectsInvalidLaterEventWithoutWrites() = runBlocking {
     val valid = event("first")
-    val invalid = event("invalid/id").copy(subject = "Physics")
+    val invalid = event("invalid/id", subject = "Physics")
 
     assertEquals(
         EventsError.INVALID_ARGUMENT,
@@ -143,7 +187,11 @@ class EventsRepositoryFirestoreEmulatorTest {
     assertEquals(original, repository.getEvent(uid, "a").getOrThrow())
     assertEquals("PROJECT", document("a").get(Source.SERVER).await().getString("type"))
     val edited =
-        original.copy(subject = "Physics", tasks = emptyList(), location = null, description = null)
+        original.copy(
+            details =
+                original.details.copy(subject = "Physics", location = null, description = null),
+            tasks = emptyList(),
+        )
     repeat(2) { repository.saveEvent(edited).getOrThrow() }
     sync()
     assertEquals(edited, repository.getEvent(uid, "a").getOrThrow())
@@ -183,26 +231,26 @@ class EventsRepositoryFirestoreEmulatorTest {
   /** Suggestions merge case/space variants and remain after deletes or subject removal. */
   @Test
   fun subjectCatalogAndOptionalFields() = runBlocking {
-    repository.saveEvent(event().copy(subject = " analysis ")).getOrThrow()
+    repository.saveEvent(event(subject = " analysis ")).getOrThrow()
     repository
-        .saveEvent(event("b").copy(subject = "Physics", updatedAt = day.plusSeconds(1)))
+        .saveEvent(event("b", subject = "Physics").copy(updatedAt = day.plusSeconds(1)))
         .getOrThrow()
     repository
-        .saveEvent(event("c").copy(subject = "Analysis", updatedAt = day.plusSeconds(2)))
+        .saveEvent(event("c", subject = "Analysis").copy(updatedAt = day.plusSeconds(2)))
         .getOrThrow()
     repository.deleteEvent(uid, "c").getOrThrow()
-    repository.saveEvent(event().copy(type = EventType.OTHER, subject = null)).getOrThrow()
+    repository.saveEvent(event(type = EventType.OTHER, subject = null)).getOrThrow()
     sync()
     assertEquals(
         listOf("Analysis", "Physics"),
         withTimeout(15000) { repository.observeSubjects(uid).first().getOrThrow() },
     )
     val optional =
-        EventFirestoreMapper.encode(event("optional").copy(type = EventType.OTHER)).toMutableMap()
+        EventFirestoreMapper.encode(event("optional", type = EventType.OTHER)).toMutableMap()
     listOf("subject", "location", "description", "tasks").forEach { optional.remove(it) }
     document("optional").set(optional).await()
     val read = repository.getEvent(uid, "optional").getOrThrow()
-    assertNull(read.subject)
+    assertNull(read.details.subject)
     assertTrue(read.tasks.isEmpty())
   }
 
@@ -212,7 +260,7 @@ class EventsRepositoryFirestoreEmulatorTest {
     repository.saveEvent(event("delete")).getOrThrow()
     sync()
     db.disableNetwork().await()
-    val expected = event().copy(subject = "Physics")
+    val expected = event(subject = "Physics")
     withTimeout(5000) {
       repository.saveEvent(event()).getOrThrow()
       repository.saveEvent(expected).getOrThrow()

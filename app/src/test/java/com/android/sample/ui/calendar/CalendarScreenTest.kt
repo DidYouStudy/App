@@ -1,4 +1,5 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.calendar
 
 import android.content.Context
@@ -19,23 +20,33 @@ import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
 import java.time.LocalDate
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 
-/** Covers the calendar screen shell, selected navigation item, and add affordance. */
+/** Covers the calendar screen's scaffold, displayed state, and action callbacks. */
 @RunWith(AndroidJUnit4::class)
 class CalendarScreenTest {
   @get:Rule val composeTestRule = createComposeRule()
 
-  /** Shows the title, selects Calendar, exposes the add action, and routes tab clicks. */
+  /** Shows the calendar chrome and routes navigation clicks. */
   @Test
   fun screenShowsCalendarChromeAndHandlesNavigationClick() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     val navigationActions = mock<NavigationActions>()
-    composeTestRule.setContent { CalendarScreen(navigationActions) }
+    composeTestRule.setContent {
+      CalendarScreen(
+          uiState = calendarUiState(LocalDate.of(2026, 10, 28)),
+          onToday = {},
+          onPreviousWeek = {},
+          onNextWeek = {},
+          onRetry = {},
+          navigationActions = navigationActions,
+      )
+    }
 
     composeTestRule
         .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
@@ -58,19 +69,113 @@ class CalendarScreenTest {
     verify(navigationActions).navigateTo(Screen.Dashboard)
   }
 
-  /** Keeps the Today button available in every week and navigates to today's week when clicked. */
+  /** Keeps the Today button visible and forwards its click to the route callback. */
   @Test
-  fun todayButtonAlwaysAppearsAndNavigatesToCurrentWeek() {
-    val today = LocalDate.now()
-    composeTestRule.setContent { CalendarScreen() }
+  fun todayButtonIsVisibleAndForwardsClick() {
+    var todayClicks = 0
+    composeTestRule.setContent {
+      CalendarScreen(
+          uiState = calendarUiState(LocalDate.of(2026, 10, 28)),
+          onToday = { todayClicks++ },
+          onPreviousWeek = {},
+          onNextWeek = {},
+          onRetry = {},
+      )
+    }
 
-    composeTestRule.onNodeWithTag(CalendarTestTags.TODAY_BUTTON).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(CalendarTestTags.NEXT_WEEK).performClick()
-    composeTestRule.onNodeWithTag(CalendarTestTags.TODAY_BUTTON).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(CalendarTestTags.TODAY_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(CalendarTestTags.TODAY_BUTTON).assertIsDisplayed().performClick()
+
+    composeTestRule.runOnIdle { assertEquals(1, todayClicks) }
+  }
+
+  /** Forwards the floating action button click to the onAddClick callback. */
+  @Test
+  fun addButtonForwardsClick() {
+    var addClicks = 0
+    composeTestRule.setContent {
+      CalendarScreen(
+          uiState = calendarUiState(LocalDate.of(2026, 10, 28)),
+          onToday = {},
+          onPreviousWeek = {},
+          onNextWeek = {},
+          onRetry = {},
+          onAddClick = { addClicks++ },
+      )
+    }
+
+    composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).assertIsDisplayed().performClick()
+
+    composeTestRule.runOnIdle { assertEquals(1, addClicks) }
+  }
+
+  /** Shows the error message and forwards the Retry button click. */
+  @Test
+  fun eventLoadFailureShowsRetryButton() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var retryClicks = 0
+    composeTestRule.setContent {
+      CalendarScreen(
+          uiState =
+              calendarUiState(
+                  LocalDate.of(2026, 10, 28),
+                  error = CalendarViewModelError.LOAD_EVENTS_FAILED,
+              ),
+          onToday = {},
+          onPreviousWeek = {},
+          onNextWeek = {},
+          onRetry = { retryClicks++ },
+      )
+    }
 
     composeTestRule
-        .onNodeWithTag(CalendarTestTags.WEEK_RANGE)
-        .assertTextEquals(formatWeekRange(CalendarDateHelper().weekDates(today)))
+        .onNodeWithText(context.getString(R.string.calendar_load_events_error))
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.calendar_retry_button))
+        .assertIsDisplayed()
+        .performClick()
+    composeTestRule.runOnIdle { assertEquals(1, retryClicks) }
+  }
+
+  /** Renders the standard preview and confirms its calendar content is visible. */
+  @Test
+  fun calendarScreenPreviewShowsWeeklyCalendar() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    composeTestRule.setContent { CalendarScreenPreview() }
+
+    composeTestRule
+        .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.calendar_title))
+    composeTestRule.onNodeWithTag(CalendarTestTags.TODAY_BUTTON).assertIsDisplayed()
+  }
+
+  /** Renders the error preview and confirms its message and retry action are visible. */
+  @Test
+  fun calendarScreenErrorPreviewShowsLoadErrorAndRetry() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    composeTestRule.setContent { CalendarScreenErrorPreview() }
+
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.calendar_load_events_error))
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.calendar_retry_button))
+        .assertIsDisplayed()
+  }
+
+  /** Creates predictable weekly display state for screen tests. */
+  private fun calendarUiState(
+      today: LocalDate,
+      error: CalendarViewModelError? = null,
+  ): CalendarUiState {
+    val weekDates = CalendarDateHelper().weekDates(today)
+    return CalendarUiState(
+        today = today,
+        weekStart = weekDates.first(),
+        weekDates = weekDates,
+        isLoading = false,
+        error = error,
+    )
   }
 }

@@ -6,7 +6,7 @@ import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Stores a user's personal [Event]s without exposing Firestore to ViewModels or screens.
+ * Stores a user's [PersonalEvent]s without exposing Firestore to ViewModels or screens.
  *
  * Failures are returned as [Result.failure] containing an [EventsException]; cancellation is
  * propagated rather than converted into a failed [Result].
@@ -25,10 +25,10 @@ interface EventsRepository {
    * @return a flow emitting [Result.failure] with [EventsError.INVALID_ARGUMENT] when [ownerId] is
    *   blank or [to] is not after [from].
    */
-  fun observeEvents(ownerId: String, from: Instant, to: Instant): Flow<Result<List<Event>>>
+  fun observeEvents(ownerId: String, from: Instant, to: Instant): Flow<Result<List<PersonalEvent>>>
 
   /**
-   * Returns a new unique event ID, available offline, to build an [Event] before saving it.
+   * Returns a new unique event ID, available offline, to build a [PersonalEvent] before saving it.
    *
    * Saving again with the same ID replaces the event, so a retried save never creates a duplicate.
    */
@@ -39,14 +39,14 @@ interface EventsRepository {
    *
    * @return [Result.failure] with [EventsError.NOT_FOUND] when the owner has no event with this ID.
    */
-  suspend fun getEvent(ownerId: String, eventId: String): Result<Event>
+  suspend fun getEvent(ownerId: String, eventId: String): Result<PersonalEvent>
 
   /**
    * Observes the subjects the owner has used, most recently used first, for the form's suggestions.
    *
    * Subjects are trimmed and compared ignoring case; the spelling of the latest save is kept, and
-   * its [Event.updatedAt] decides the order. Deleting events does not remove their subjects. The
-   * flow emits the current list, then again after every change.
+   * its [PersonalEvent.updatedAt] decides the order. Deleting events does not remove their
+   * subjects. The flow emits the current list, then again after every change.
    *
    * @return a flow emitting [Result.failure] with [EventsError.INVALID_ARGUMENT] when [ownerId] is
    *   blank.
@@ -55,14 +55,14 @@ interface EventsRepository {
 
   /**
    * Returns every event of the owner that was imported from a schedule file (has an
-   * [Event.importKey]), whatever its date, so a new import can update or remove them.
+   * [PersonalEvent.importKey]), whatever its date, so a new import can update or remove them.
    *
    * @return [Result.failure] with [EventsError.INVALID_ARGUMENT] when [ownerId] is blank.
    */
-  suspend fun getImportedEvents(ownerId: String): Result<List<Event>>
+  suspend fun getImportedEvents(ownerId: String): Result<List<PersonalEvent>>
 
   /** Creates the event, or replaces the owner's event with the same ID, and records its subject. */
-  suspend fun saveEvent(event: Event): Result<Unit>
+  suspend fun saveEvent(event: PersonalEvent): Result<Unit>
 
   /**
    * Saves multiple events in one batch, recording their subjects. All events must have the same
@@ -71,7 +71,20 @@ interface EventsRepository {
    * @return [Result.success] when all events are saved, or [Result.failure] if validation or
    *   writing fails.
    */
-  suspend fun saveEvents(events: List<Event>): Result<Unit>
+  suspend fun saveEvents(events: List<PersonalEvent>): Result<Unit>
+
+  /**
+   * Updates the checklist and modification time of an existing event, preserving other fields.
+   *
+   * Load the event with [getEvent] first so it is available in the local cache. Firestore returns
+   * [EventsError.NOT_FOUND] on a cache miss, even if the event exists on the server.
+   */
+  suspend fun updateEventTasks(
+      ownerId: String,
+      eventId: String,
+      tasks: List<EventTask>,
+      updatedAt: Instant,
+  ): Result<Unit>
 
   /** Deletes the owner's event; deleting an event that does not exist also succeeds. */
   suspend fun deleteEvent(ownerId: String, eventId: String): Result<Unit>

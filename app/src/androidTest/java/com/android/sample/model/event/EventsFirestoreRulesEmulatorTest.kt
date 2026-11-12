@@ -1,4 +1,5 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.event
 
 import androidx.test.core.app.ApplicationProvider
@@ -70,7 +71,18 @@ class EventsFirestoreRulesEmulatorTest {
   /** Produces a valid event payload for direct SDK requests. */
   private fun eventData(): Map<String, Any?> =
       EventFirestoreMapper.encode(
-          Event("a", uid, EventType.PROJECT, "Analysis", day, day.plusSeconds(3600), day)
+          PersonalEvent(
+              id = "a",
+              ownerId = uid,
+              details =
+                  EventDetails(
+                      type = EventType.PROJECT,
+                      subject = "Analysis",
+                      startsAt = day,
+                      endsAt = day.plusSeconds(3600),
+                  ),
+              createdAt = day,
+          )
       )
 
   /** Resolves an event document belonging to the test owner. */

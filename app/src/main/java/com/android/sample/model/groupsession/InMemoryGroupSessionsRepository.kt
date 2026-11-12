@@ -1,9 +1,11 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: GitHub Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.sample.model.groupsession
 
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
+import com.android.sample.model.event.GroupSession
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
@@ -14,7 +16,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * In-memory [GroupSessionsRepository] for tests and early UI development; data is not persisted.
+ * In-memory [GroupSessionsRepository] test double. It accepts extra initial members and does not
+ * check whether a session has ended when joining, unlike the Firestore security rules.
  */
 class InMemoryGroupSessionsRepository : GroupSessionsRepository {
   private val sessions = MutableStateFlow<Map<String, GroupSession>>(emptyMap())
@@ -25,8 +28,14 @@ class InMemoryGroupSessionsRepository : GroupSessionsRepository {
       sessions
           .map { stored ->
             stored.values
-                .filter { it.endsAt.isAfter(endingAfter) }
-                .sortedWith(compareBy<GroupSession>({ it.startsAt }, { it.endsAt }, { it.id }))
+                .filter { it.details.endsAt.isAfter(endingAfter) }
+                .sortedWith(
+                    compareBy<GroupSession>(
+                        { it.details.startsAt },
+                        { it.details.endsAt },
+                        { it.id },
+                    )
+                )
           }
           .distinctUntilChanged()
           .map { Result.success(it) }
@@ -85,6 +94,7 @@ class InMemoryGroupSessionsRepository : GroupSessionsRepository {
           sessions.value[sessionId]
               ?: return@withLock Result.failure(EventsException(EventsError.NOT_FOUND))
       if (userId !in existing.memberIds) {
+        if (existing.memberIds.size >= GroupSession.MAX_MEMBERS) return@withLock permissionDenied()
         sessions.value =
             sessions.value + (sessionId to existing.copy(memberIds = existing.memberIds + userId))
       }

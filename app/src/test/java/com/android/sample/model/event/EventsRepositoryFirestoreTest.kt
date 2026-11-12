@@ -1,4 +1,5 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.event
 
 import com.google.android.gms.tasks.TaskCompletionSource
@@ -62,8 +63,19 @@ class EventsRepositoryFirestoreTest {
     val subjects: DocumentReference = mock()
     val start = Instant.parse("2026-01-01T10:00:00Z")
     val event =
-        Event("id", "owner", EventType.COURSE, "Analysis", start, start.plusSeconds(3600), start)
-    val other = event.copy(id = "second", subject = "Physics")
+        PersonalEvent(
+            id = "id",
+            ownerId = "owner",
+            details =
+                EventDetails(
+                    type = EventType.COURSE,
+                    subject = "Analysis",
+                    startsAt = start,
+                    endsAt = start.plusSeconds(3600),
+                ),
+            createdAt = start,
+        )
+    val other = event.copy(details = event.details.copy(subject = "Physics"), id = "second")
     whenever(events.document("second")).thenReturn(second)
     whenever(owner.collection("meta")).thenReturn(meta)
     whenever(meta.document("subjects")).thenReturn(subjects)
@@ -82,11 +94,53 @@ class EventsRepositoryFirestoreTest {
     verify(batch).commit()
   }
 
+  /** Reports the event as missing when it disappears before the checklist write is visible. */
+  @Test
+  fun checklistUpdateReportsEventRemovedDuringWrite() = runTest {
+    val batch: WriteBatch = mock()
+    val query: Query = mock()
+    val existing: QuerySnapshot = mock()
+    val removed: QuerySnapshot = mock()
+    val updatedAt = Instant.parse("2026-10-19T10:00:00Z")
+    val tasks = listOf(EventTask("Review", updatedAt))
+    val fields = EventFirestoreMapper.encodeTaskUpdate(tasks, updatedAt)
+    whenever(events.whereEqualTo(FieldPath.documentId(), "id")).thenReturn(query)
+    whenever(existing.isEmpty).thenReturn(false)
+    whenever(removed.isEmpty).thenReturn(true)
+    whenever(query.get(Source.CACHE))
+        .thenReturn(Tasks.forResult(existing), Tasks.forResult(removed))
+    whenever(db.batch()).thenReturn(batch)
+    whenever(batch.update(document, fields)).thenReturn(batch)
+    whenever(batch.commit()).thenReturn(TaskCompletionSource<Void>().task)
+
+    val result = repository.updateEventTasks("owner", "id", tasks, updatedAt)
+
+    assertEquals(EventsError.NOT_FOUND, result.error())
+    inOrder(query, batch) {
+      verify(query).get(Source.CACHE)
+      verify(batch).update(document, fields)
+      verify(batch).commit()
+      verify(query).get(Source.CACHE)
+    }
+  }
+
   /** A later invalid event prevents the entire batch from reaching Firestore. */
   @Test
   fun rejectsLaterInvalidEventBeforeWriting() = runTest {
     val start = Instant.parse("2026-01-01T10:00:00Z")
-    val event = Event("id", "owner", EventType.OTHER, null, start, start.plusSeconds(3600), start)
+    val event =
+        PersonalEvent(
+            id = "id",
+            ownerId = "owner",
+            details =
+                EventDetails(
+                    type = EventType.OTHER,
+                    subject = null,
+                    startsAt = start,
+                    endsAt = start.plusSeconds(3600),
+                ),
+            createdAt = start,
+        )
 
     assertEquals(
         EventsError.INVALID_ARGUMENT,
@@ -99,7 +153,19 @@ class EventsRepositoryFirestoreTest {
   @Test
   fun rejectsMixedOwnersBeforeWriting() = runTest {
     val start = Instant.parse("2026-01-01T10:00:00Z")
-    val event = Event("id", "owner", EventType.OTHER, null, start, start.plusSeconds(3600), start)
+    val event =
+        PersonalEvent(
+            id = "id",
+            ownerId = "owner",
+            details =
+                EventDetails(
+                    type = EventType.OTHER,
+                    subject = null,
+                    startsAt = start,
+                    endsAt = start.plusSeconds(3600),
+                ),
+            createdAt = start,
+        )
 
     assertEquals(
         EventsError.INVALID_ARGUMENT,
@@ -115,7 +181,19 @@ class EventsRepositoryFirestoreTest {
     whenever(otherUser.uid).thenReturn("other")
     whenever(auth.currentUser).thenReturn(user, otherUser)
     val start = Instant.parse("2026-01-01T10:00:00Z")
-    val event = Event("id", "owner", EventType.OTHER, null, start, start.plusSeconds(3600), start)
+    val event =
+        PersonalEvent(
+            id = "id",
+            ownerId = "owner",
+            details =
+                EventDetails(
+                    type = EventType.OTHER,
+                    subject = null,
+                    startsAt = start,
+                    endsAt = start.plusSeconds(3600),
+                ),
+            createdAt = start,
+        )
 
     assertEquals(
         EventsError.INVALID_ARGUMENT,
@@ -128,7 +206,19 @@ class EventsRepositoryFirestoreTest {
   @Test
   fun rejectsInvalidNestedTaskBeforeWriting() = runTest {
     val start = Instant.parse("2026-01-01T10:00:00Z")
-    val event = Event("id", "owner", EventType.OTHER, null, start, start.plusSeconds(3600), start)
+    val event =
+        PersonalEvent(
+            id = "id",
+            ownerId = "owner",
+            details =
+                EventDetails(
+                    type = EventType.OTHER,
+                    subject = null,
+                    startsAt = start,
+                    endsAt = start.plusSeconds(3600),
+                ),
+            createdAt = start,
+        )
     val invalidTask: EventTask = mock()
     whenever(invalidTask.text).thenReturn("")
     val tasks = mutableListOf<EventTask>()
@@ -186,13 +276,16 @@ class EventsRepositoryFirestoreTest {
     val base = Instant.parse("2026-10-15T08:00:00Z")
     fun importedDocument(id: String, startsAt: Instant): DocumentSnapshot {
       val event =
-          Event(
+          PersonalEvent(
               id = id,
               ownerId = "owner",
-              type = EventType.OTHER,
-              subject = null,
-              startsAt = startsAt,
-              endsAt = startsAt.plusSeconds(3600),
+              details =
+                  EventDetails(
+                      type = EventType.OTHER,
+                      subject = null,
+                      startsAt = startsAt,
+                      endsAt = startsAt.plusSeconds(3600),
+                  ),
               createdAt = base,
               importKey = "key-$id",
           )
@@ -271,7 +364,18 @@ class EventsRepositoryFirestoreTest {
     val changed: DocumentSnapshot = mock()
     val start = Instant.parse("2026-01-01T10:00:00Z")
     val event =
-        Event("id", "owner", EventType.COURSE, "Physics", start, start.plusSeconds(3600), start)
+        PersonalEvent(
+            id = "id",
+            ownerId = "owner",
+            details =
+                EventDetails(
+                    type = EventType.COURSE,
+                    subject = "Physics",
+                    startsAt = start,
+                    endsAt = start.plusSeconds(3600),
+                ),
+            createdAt = start,
+        )
     whenever(owner.collection("meta")).thenReturn(meta)
     whenever(meta.document("subjects")).thenReturn(subjects)
     whenever(subjects.addSnapshotListener(any<EventListener<DocumentSnapshot>>()))

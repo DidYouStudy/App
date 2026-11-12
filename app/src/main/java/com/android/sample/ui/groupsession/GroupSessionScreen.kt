@@ -1,8 +1,16 @@
+// Co-authored-by: Codex AI Agent
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Copilot
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Gemini
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -40,6 +48,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -51,24 +60,31 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
-import com.android.sample.model.event.EventType
+import com.android.sample.ui.eventplanning.EventKind
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -76,18 +92,24 @@ import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.profile.ProfileButton
 import com.android.sample.ui.sharedComponents.AddButton
+import com.android.sample.ui.sharedComponents.EventTypeBadge
 import com.android.sample.ui.theme.Dimens
+import com.android.sample.ui.theme.ParticipantInitialTextStyle
+import com.android.sample.ui.theme.ParticipantOverflowTextStyle
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.color
+import com.android.sample.ui.theme.label
 import com.android.sample.ui.theme.onColor
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.launch
 
 object GroupSessionScreenTestTags {
   const val SCREEN = "groupSessionScreen"
   const val SEARCH = "groupSessionSearch"
+  const val FILTER_BUTTON = "groupSessionFilterButton"
   const val ALL_SESSIONS_FILTER = "groupSessionAllFilter"
   const val MY_SESSIONS_FILTER = "groupSessionMyFilter"
   const val ACTIVE_TITLE = "groupSessionActiveTitle"
@@ -106,10 +128,41 @@ object GroupSessionScreenTestTags {
 fun GroupSessionScreen(
     navigationActions: NavigationActions? = null,
     viewModel: GroupSessionsViewModel = groupSessionsViewModel(),
+    onAddSessionClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddGroupSession) },
+    onEditSessionClick: (String) -> Unit = { sessionId ->
+      navigationActions?.navigateTo(Screen.EditEvent(sessionId, EventKind.GROUP_SESSION))
+    },
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+  var pendingLocationRadius by rememberSaveable { mutableStateOf<Int?>(null) }
+  var showFilterSheet by rememberSaveable { mutableStateOf(false) }
+  val filterSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  val coroutineScope = rememberCoroutineScope()
+  val context = LocalContext.current
+  val hasLocationPermission =
+      ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+          PackageManager.PERMISSION_GRANTED ||
+          ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+              PackageManager.PERMISSION_GRANTED
+  val locationPermissionLauncher =
+      rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+          results ->
+        if (isLocationPermissionGranted(results)) {
+          viewModel.onRadiusFilterSelected(pendingLocationRadius)
+        } else {
+          viewModel.onRadiusFilterSelected(null)
+        }
+        pendingLocationRadius = null
+      }
+  fun closeFilterSheet() {
+    coroutineScope.launch {
+      if (filterSheetState.isVisible) filterSheetState.hide()
+      showFilterSheet = false
+    }
+  }
   val snackbarHostState = remember { SnackbarHostState() }
   val loadErrorMessage = stringResource(R.string.group_session_error_load)
+  val locationLoadErrorMessage = stringResource(R.string.group_session_error_location_load)
   val joinErrorMessage = stringResource(R.string.group_session_error_join)
   val leaveErrorMessage = stringResource(R.string.group_session_error_leave)
   LaunchedEffect(uiState.error) {
@@ -117,6 +170,7 @@ fun GroupSessionScreen(
       val msg =
           when (error) {
             GroupSessionsError.LOAD_FAILED -> loadErrorMessage
+            GroupSessionsError.LOCATION_LOAD_FAILED -> locationLoadErrorMessage
             GroupSessionsError.JOIN_FAILED -> joinErrorMessage
             GroupSessionsError.LEAVE_FAILED -> leaveErrorMessage
           }
@@ -168,7 +222,7 @@ fun GroupSessionScreen(
       },
       floatingActionButton = {
         AddButton(
-            onClick = { /* TODO ADD GROUPSESSION */ },
+            onClick = onAddSessionClick,
             contentDescription = stringResource(R.string.group_session_add_description),
             modifier = Modifier.testTag(GroupSessionScreenTestTags.ADD_BUTTON),
         )
@@ -181,9 +235,43 @@ fun GroupSessionScreen(
             onFilterChange = viewModel::onFilterChange,
             onJoin = viewModel::join,
             onLeave = viewModel::leave,
+            onEdit = onEditSessionClick,
+            onOpenFilters = { showFilterSheet = true },
         )
       },
   )
+  if (showFilterSheet) {
+    ModalBottomSheet(
+        sheetState = filterSheetState,
+        onDismissRequest = ::closeFilterSheet,
+    ) {
+      GroupSessionFilterSheetContent(
+          filters =
+              GroupSessionFilters(
+                  radiusMeters = uiState.selectedRadiusMeters,
+                  zones = uiState.selectedZones,
+                  showLabs = uiState.showLabRoomType,
+              ),
+          availableZones = uiState.availableZones,
+          matchingSessionCount = uiState.sessions.size,
+          hasLocationPermission = hasLocationPermission,
+          onRadiusSelected = viewModel::onRadiusFilterSelected,
+          onZonesSelected = viewModel::onZonesFilterSelected,
+          onShowLabsChanged = viewModel::onShowLabRoomTypeChange,
+          onLocationPermissionNeeded = { radius ->
+            pendingLocationRadius = radius
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                )
+            )
+          },
+          onResetAll = viewModel::resetAdvancedFilters,
+          onShowSessions = ::closeFilterSheet,
+      )
+    }
+  }
 }
 
 @Composable
@@ -194,6 +282,8 @@ private fun GroupSessionContent(
     onFilterChange: (GroupSessionFilter) -> Unit = {},
     onJoin: (String) -> Unit = {},
     onLeave: (String) -> Unit = {},
+    onEdit: (String) -> Unit = {},
+    onOpenFilters: () -> Unit = {},
 ) {
   Column(modifier = modifier.fillMaxSize().padding(horizontal = Spacing.large)) {
     OutlinedTextField(
@@ -209,7 +299,10 @@ private fun GroupSessionContent(
           )
         },
         trailingIcon = {
-          IconButton(onClick = { /* TODO ADVANCED FILTERS */ }) {
+          IconButton(
+              modifier = Modifier.testTag(GroupSessionScreenTestTags.FILTER_BUTTON),
+              onClick = onOpenFilters,
+          ) {
             Icon(
                 Icons.Outlined.Tune,
                 contentDescription = stringResource(R.string.group_session_filter_icon_description),
@@ -299,8 +392,10 @@ private fun GroupSessionContent(
             ) { index, item ->
               GroupSessionCard(
                   item = item,
+                  now = state.now,
                   onJoin = onJoin,
                   onLeave = onLeave,
+                  onEdit = onEdit,
                   modifier = Modifier.testTag(GroupSessionScreenTestTags.sessionItem(index)),
               )
             }
@@ -310,21 +405,19 @@ private fun GroupSessionContent(
 }
 
 @Composable
-private fun GroupSessionCard(
+internal fun GroupSessionCard(
     item: GroupSessionItem,
+    now: Instant,
     onJoin: (String) -> Unit,
     onLeave: (String) -> Unit,
+    onEdit: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
   val session = item.session
-  // TODO: The ViewModel should supply the reference time in GroupSessionsUiState so all cards
-  //  evaluate relative status labels consistently, unit tests remain deterministic, and composables
-  // stay pure.
-  val now = Instant.now()
-  val statusLabel = sessionStatusLabel(session.startsAt, now)
-  val startLabel = sessionTimeLabel(session.startsAt)
-  val endLabel = sessionTimeLabel(session.endsAt)
-  val dateLabel = sessionDateLabel(session.startsAt, now)
+  val statusLabel = sessionStatusLabel(session.details.startsAt, now)
+  val startLabel = sessionTimeLabel(session.details.startsAt)
+  val endLabel = sessionTimeLabel(session.details.endsAt)
+  val dateLabel = sessionDateLabel(session.details.startsAt, now)
   val shouldShowHost = item.isCreator
 
   val subjectFallback = stringResource(R.string.group_session_subject_fallback)
@@ -353,14 +446,14 @@ private fun GroupSessionCard(
             modifier =
                 Modifier.size(Dimens.avatarSizeLarge)
                     .clip(CircleShape)
-                    .background(session.type.color),
+                    .background(session.details.type.color),
             contentAlignment = Alignment.Center,
         ) {
           Text(
-              text = (session.subject ?: subjectFallback).take(1).uppercase(),
+              text = (session.details.subject ?: subjectFallback).take(1).uppercase(),
               fontWeight = FontWeight.Bold,
               style = MaterialTheme.typography.titleLarge,
-              color = session.type.onColor,
+              color = session.details.type.onColor,
           )
         }
 
@@ -368,7 +461,7 @@ private fun GroupSessionCard(
 
         Column(modifier = Modifier.weight(1f)) {
           Text(
-              text = session.subject ?: session.type.displayName(),
+              text = session.details.subject ?: session.details.type.label(),
               fontWeight = FontWeight.Bold,
               maxLines = 2, // Allows title to expand vertically before truncating
               overflow = TextOverflow.Ellipsis,
@@ -376,11 +469,11 @@ private fun GroupSessionCard(
           )
           Spacer(Modifier.height(Spacing.extraExtraSmall))
           Text(
-              // TODO: currently shows ID, but should show name. Need the viewmodel to translate
-              // from ID instead
               text =
                   if (shouldShowHost) stringResource(R.string.group_session_host_self)
-                  else stringResource(R.string.group_session_hosted_by, session.createdBy),
+                  else
+                      item.hostName?.let { stringResource(R.string.group_session_hosted_by, it) }
+                          ?: stringResource(R.string.group_session_host_unknown),
               style = MaterialTheme.typography.bodyMedium,
               color =
                   if (shouldShowHost) MaterialTheme.colorScheme.primary
@@ -409,24 +502,15 @@ private fun GroupSessionCard(
       Spacer(Modifier.height(Spacing.mediumLarge))
 
       // Type Badge
-      Surface(
-          shape = RoundedCornerShape(Dimens.cornerMedium),
-          color = session.type.color,
-      ) {
-        Text(
-            text = session.type.displayName(),
-            modifier = Modifier.padding(horizontal = Spacing.medium, vertical = Spacing.extraSmall),
-            color = session.type.onColor,
-            fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.labelLarge,
-        )
-      }
+      EventTypeBadge(type = session.details.type)
 
       Spacer(Modifier.height(Spacing.mediumSmall))
 
       // Description
       Text(
-          text = session.description ?: stringResource(R.string.group_session_description_fallback),
+          text =
+              session.details.description
+                  ?: stringResource(R.string.group_session_description_fallback),
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurface,
       )
@@ -447,7 +531,9 @@ private fun GroupSessionCard(
                   modifier = Modifier.size(Dimens.iconSizeSmall),
               )
             },
-            text = session.location ?: stringResource(R.string.group_session_location_fallback),
+            text =
+                session.details.location
+                    ?: stringResource(R.string.group_session_location_fallback),
         )
         MetaInfoPill(
             modifier = Modifier.fillMaxWidth(),
@@ -458,7 +544,13 @@ private fun GroupSessionCard(
                   modifier = Modifier.size(Dimens.iconSizeSmall),
               )
             },
-            text = "$dateLabel · $startLabel – $endLabel",
+            text =
+                stringResource(
+                    R.string.group_session_date_time_range,
+                    dateLabel,
+                    startLabel,
+                    endLabel,
+                ),
         )
       }
 
@@ -501,7 +593,7 @@ private fun GroupSessionCard(
               Text(
                   "M",
                   fontWeight = FontWeight.Bold,
-                  fontSize = 10.sp,
+                  fontSize = ParticipantInitialTextStyle.fontSize,
                   color = MaterialTheme.colorScheme.onPrimaryContainer,
               )
             }
@@ -515,7 +607,7 @@ private fun GroupSessionCard(
               Text(
                   "A",
                   fontWeight = FontWeight.Bold,
-                  fontSize = 10.sp,
+                  fontSize = ParticipantInitialTextStyle.fontSize,
                   color = MaterialTheme.colorScheme.onSecondaryContainer,
               )
             }
@@ -528,8 +620,8 @@ private fun GroupSessionCard(
               ) {
                 Box(contentAlignment = Alignment.Center) {
                   Text(
-                      "+$extraCount",
-                      fontSize = 9.sp,
+                      stringResource(R.string.group_session_extra_members, extraCount),
+                      fontSize = ParticipantOverflowTextStyle.fontSize,
                       fontWeight = FontWeight.Bold,
                       color = MaterialTheme.colorScheme.onTertiaryContainer,
                   )
@@ -549,7 +641,7 @@ private fun GroupSessionCard(
         // Action Buttons (Host Edit vs Member Leave/Joined vs Join)
         if (shouldShowHost) {
           Button(
-              onClick = { /* TODO EDIT GROUP SESSION */ },
+              onClick = { onEdit(session.id) },
               shape = RoundedCornerShape(Dimens.cornerLarge),
               colors =
                   ButtonDefaults.buttonColors(
@@ -644,22 +736,27 @@ private fun MetaInfoPill(
   }
 }
 
+/**
+ * Returns a short label telling how long until a session starts ("Started", "In 5 min", "In 1
+ * hour", "In 3 days"). The plural form is picked by the current locale's plural rules, so
+ * translations can provide every form their language needs.
+ */
 @Composable
 internal fun sessionStatusLabel(start: Instant, now: Instant): String {
   val duration = Duration.between(now, start)
   return when {
     duration.isNegative || duration.isZero -> stringResource(R.string.group_session_status_started)
-    duration.toMinutes() < 60 ->
-        stringResource(R.string.group_session_status_in_minutes, duration.toMinutes())
+    duration.toMinutes() < 60 -> {
+      val minutes = duration.toMinutes().toInt()
+      pluralStringResource(R.plurals.group_session_status_in_minutes, minutes, minutes)
+    }
     duration.toHours() < 24 -> {
-      val hours = duration.toHours()
-      if (hours == 1L) stringResource(R.string.group_session_status_in_hours_one, hours)
-      else stringResource(R.string.group_session_status_in_hours_other, hours)
+      val hours = duration.toHours().toInt()
+      pluralStringResource(R.plurals.group_session_status_in_hours, hours, hours)
     }
     else -> {
-      val days = duration.toDays()
-      if (days == 1L) stringResource(R.string.group_session_status_in_days_one, days)
-      else stringResource(R.string.group_session_status_in_days_other, days)
+      val days = duration.toDays().toInt()
+      pluralStringResource(R.plurals.group_session_status_in_days, days, days)
     }
   }
 }
@@ -675,9 +772,6 @@ private fun sessionDateLabel(start: Instant, now: Instant): String {
 
 private fun sessionTimeLabel(instant: Instant): String =
     DateTimeFormatter.ofPattern("h:mm a").withZone(ZoneId.systemDefault()).format(instant)
-
-private fun EventType.displayName(): String =
-    name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
 
 @Preview(showBackground = true)
 @Composable

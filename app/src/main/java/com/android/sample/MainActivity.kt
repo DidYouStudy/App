@@ -2,6 +2,8 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Gemini AI Agent
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample
 
 import android.os.Bundle
@@ -12,20 +14,31 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.ui.app.AppUiState
 import com.android.sample.ui.app.appViewModel
 import com.android.sample.ui.auth.SignInRoute
-import com.android.sample.ui.calendar.CalendarScreen
+import com.android.sample.ui.calendar.CalendarRoute
 import com.android.sample.ui.dashboard.DashboardScreen
+import com.android.sample.ui.eventplanning.AddEventScreen
+import com.android.sample.ui.eventplanning.EditEventScreen
+import com.android.sample.ui.eventplanning.EventDetailsScreen
+import com.android.sample.ui.eventplanning.EventKind
+import com.android.sample.ui.eventplanning.eventDetailsViewModel
 import com.android.sample.ui.groupsession.GroupSessionScreen
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.Screen
@@ -33,6 +46,8 @@ import com.android.sample.ui.preferences.PreferencesScreen
 import com.android.sample.ui.preferences.rememberScheduleImportLauncher
 import com.android.sample.ui.settings.SettingsScreen
 import com.android.sample.ui.theme.DidYouStudyTheme
+
+private const val EVENT_EDITED_RESULT = "eventEdited"
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -95,9 +110,8 @@ fun DidYouStudyApp() {
             onAddLocationClick = {},
             onSaved = {
               if (isEditing) {
-                // Already in Dashboard state: just return to Settings instead of stacking the
-                // Dashboard on top of it. The route check keeps a late callback from popping past
-                // Settings and emptying the back stack.
+                // Only handle the save while its Preferences entry is current. goBack() separately
+                // protects Dashboard from being removed.
                 if (navigationActions.currentRoute() == Screen.Preferences.route) {
                   navigationActions.goBack()
                 }
@@ -122,6 +136,18 @@ fun DidYouStudyApp() {
       composable(Screen.Dashboard.route) {
         DashboardScreen(
             navigationActions = navigationActions,
+            onEventClick = {
+              navigationActions.navigateIfAllowed(
+                  Screen.AddEvent,
+                  applicationViewModel::canNavigateTo,
+              )
+            },
+            onGroupSessionClick = {
+              navigationActions.navigateIfAllowed(
+                  Screen.AddGroupSession,
+                  applicationViewModel::canNavigateTo,
+              )
+            },
         )
       }
     }
@@ -130,11 +156,87 @@ fun DidYouStudyApp() {
         startDestination = Screen.Calendar.route,
         route = Screen.Calendar.name,
     ) {
-      composable(Screen.Calendar.route) {
-        CalendarScreen(
+      composable(Screen.Calendar.route) { entry ->
+        CalendarRoute(
             navigationActions = navigationActions,
+            onAddClick = {
+              navigationActions.navigateIfAllowed(
+                  Screen.AddEvent,
+                  applicationViewModel::canNavigateTo,
+              )
+            },
+            onEventClick = { eventId ->
+              navController.runIfCurrentEntry(entry) {
+                navigationActions.navigateIfAllowed(
+                    Screen.EventDetails(eventId),
+                    applicationViewModel::canNavigateTo,
+                )
+              }
+            },
         )
       }
+    }
+
+    navigation(
+        startDestination = Screen.AddEvent.route,
+        route = Screen.AddEvent.name,
+    ) {
+      val renderAddEvent: @Composable (EventKind, String) -> Unit = { initialKind, routePrefix ->
+        AddEventScreen(
+            initialKind = initialKind,
+            onBackClick = {
+              if (navigationActions.currentRoute().startsWith(routePrefix)) {
+                navigationActions.goBack()
+              }
+            },
+            onEventSaved = {
+              if (navigationActions.currentRoute().startsWith(routePrefix)) {
+                navigationActions.goBack()
+              }
+            },
+        )
+      }
+
+      composable(Screen.AddEvent.route) {
+        renderAddEvent(EventKind.PERSONAL, Screen.AddEvent.route)
+      }
+
+      composable(Screen.AddGroupSession.route) {
+        renderAddEvent(EventKind.GROUP_SESSION, Screen.AddGroupSession.route)
+      }
+
+      editEventDestination(navController, navigationActions)
+    }
+
+    composable(
+        Screen.EventDetails.ROUTE,
+        arguments = listOf(navArgument(Screen.EVENT_ID_ARGUMENT) { type = NavType.StringType }),
+    ) { entry ->
+      val eventId = entry.arguments?.getString(Screen.EVENT_ID_ARGUMENT) ?: return@composable
+      val viewModel = eventDetailsViewModel()
+      val eventEdited by
+          entry.savedStateHandle
+              .getStateFlow(EVENT_EDITED_RESULT, false)
+              .collectAsStateWithLifecycle()
+      LaunchedEffect(eventEdited) {
+        if (eventEdited) {
+          viewModel.loadEvent(eventId, refresh = true)
+          entry.savedStateHandle[EVENT_EDITED_RESULT] = false
+        }
+      }
+      EventDetailsScreen(
+          eventId = eventId,
+          viewModel = viewModel,
+          onNavigateBack = { navController.runIfCurrentEntry(entry, navigationActions::goBack) },
+          onEdit = { selectedEventId ->
+            navController.runIfCurrentEntry(entry) {
+              navigationActions.navigateIfAllowed(
+                  Screen.EditEvent(selectedEventId),
+                  applicationViewModel::canNavigateTo,
+              )
+            }
+          },
+      )
     }
 
     navigation(
@@ -144,6 +246,18 @@ fun DidYouStudyApp() {
       composable(Screen.GroupSession.route) {
         GroupSessionScreen(
             navigationActions = navigationActions,
+            onAddSessionClick = {
+              navigationActions.navigateIfAllowed(
+                  Screen.AddGroupSession,
+                  applicationViewModel::canNavigateTo,
+              )
+            },
+            onEditSessionClick = { sessionId ->
+              navigationActions.navigateIfAllowed(
+                  Screen.EditEvent(sessionId, EventKind.GROUP_SESSION),
+                  applicationViewModel::canNavigateTo,
+              )
+            },
         )
       }
     }
@@ -171,4 +285,72 @@ fun DidYouStudyApp() {
       }
     }
   }
+}
+
+/** Registers the editor shared by personal event details and the group session list. */
+private fun NavGraphBuilder.editEventDestination(
+    navController: NavHostController,
+    navigationActions: NavigationActions,
+) {
+  composable(
+      route = Screen.EditEvent.ROUTE,
+      arguments =
+          listOf(
+              navArgument(Screen.EVENT_ID_ARGUMENT) { type = NavType.StringType },
+              navArgument("kind") {
+                type = NavType.StringType
+                defaultValue = EventKind.PERSONAL.name
+              },
+          ),
+  ) { entry ->
+    val eventId = entry.arguments?.getString(Screen.EVENT_ID_ARGUMENT).orEmpty()
+    if (eventId.isBlank()) {
+      LaunchedEffect(Unit) { navController.runIfCurrentEntry(entry, navigationActions::goBack) }
+      return@composable
+    }
+    val kind =
+        entry.arguments?.getString("kind")?.let {
+          runCatching { EventKind.valueOf(it) }.getOrNull()
+        } ?: EventKind.PERSONAL
+    EditEventScreen(
+        eventId = eventId,
+        eventKind = kind,
+        onBackClick = { navController.runIfCurrentEntry(entry, navigationActions::goBack) },
+        onEventSaved = {
+          navController.runIfCurrentEntry(entry) {
+            navController
+                .previousEventDetails(eventId, kind)
+                ?.savedStateHandle
+                ?.set(EVENT_EDITED_RESULT, true)
+            navigationActions.goBack()
+          }
+        },
+        onEventDelete = {
+          navController.runIfCurrentEntry(entry) {
+            if (navController.previousEventDetails(eventId, kind) != null) {
+              navigationActions.goBackPast(Screen.EventDetails(eventId))
+            } else {
+              navigationActions.goBack()
+            }
+          }
+        },
+    )
+  }
+}
+
+/** Finds the matching personal event details entry that opened the editor. */
+private fun NavHostController.previousEventDetails(
+    eventId: String,
+    kind: EventKind,
+): NavBackStackEntry? {
+  if (kind != EventKind.PERSONAL) return null
+  return previousBackStackEntry?.takeIf {
+    it.destination.route == Screen.EventDetails.ROUTE &&
+        it.arguments?.getString(Screen.EVENT_ID_ARGUMENT) == eventId
+  }
+}
+
+/** Runs a navigation callback only while its originating back-stack entry is current. */
+private fun NavHostController.runIfCurrentEntry(entry: NavBackStackEntry, action: () -> Unit) {
+  if (currentBackStackEntry == entry) action()
 }

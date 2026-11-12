@@ -1,4 +1,5 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.event
 
 import com.google.firebase.auth.FirebaseAuth
@@ -31,7 +32,7 @@ class EventsRepositoryFirestore(
       ownerId: String,
       from: Instant,
       to: Instant,
-  ): Flow<Result<List<Event>>> =
+  ): Flow<Result<List<PersonalEvent>>> =
       observe(ownerId) { emit ->
         requireArgument(to.isAfter(from))
         events(ownerId)
@@ -49,7 +50,13 @@ class EventsRepositoryFirestore(
                         .map {
                           EventFirestoreMapper.decode(it.id, ownerId, requireNotNull(it.data))
                         }
-                        .sortedWith(compareBy<Event>({ it.startsAt }, { it.endsAt }, { it.id }))
+                        .sortedWith(
+                            compareBy<PersonalEvent>(
+                                { it.details.startsAt },
+                                { it.details.endsAt },
+                                { it.id },
+                            )
+                        )
                   },
                   error != null,
               )
@@ -75,7 +82,7 @@ class EventsRepositoryFirestore(
   override fun newEventId(): String = UUID.randomUUID().toString()
 
   /** Reads from the server when available, falling back to the SDK cache offline. */
-  override suspend fun getEvent(ownerId: String, eventId: String): Result<Event> = execute {
+  override suspend fun getEvent(ownerId: String, eventId: String): Result<PersonalEvent> = execute {
     validate(ownerId, eventId)
     val document = events(ownerId).document(eventId).get().await()
     checkOwner(ownerId)
@@ -87,20 +94,22 @@ class EventsRepositoryFirestore(
    * Reads every event that came from a schedule import (it has an `importKey`), whatever its date.
    * `!= null` matches only documents where the field exists, so hand-made events are excluded.
    */
-  override suspend fun getImportedEvents(ownerId: String): Result<List<Event>> = execute {
+  override suspend fun getImportedEvents(ownerId: String): Result<List<PersonalEvent>> = execute {
     validate(ownerId)
     val snapshot = events(ownerId).whereNotEqualTo("importKey", null).get().await()
     checkOwner(ownerId)
     snapshot.documents
         .map { EventFirestoreMapper.decode(it.id, ownerId, requireNotNull(it.data)) }
-        .sortedWith(compareBy<Event>({ it.startsAt }, { it.endsAt }, { it.id }))
+        .sortedWith(
+            compareBy<PersonalEvent>({ it.details.startsAt }, { it.details.endsAt }, { it.id })
+        )
   }
 
   /** Atomically queues the event replacement and the subject's latest spelling/recency. */
-  override suspend fun saveEvent(event: Event): Result<Unit> = saveEvents(listOf(event))
+  override suspend fun saveEvent(event: PersonalEvent): Result<Unit> = saveEvents(listOf(event))
 
   /** Validates all events before queuing their writes in one batch. */
-  override suspend fun saveEvents(events: List<Event>): Result<Unit> = execute {
+  override suspend fun saveEvents(events: List<PersonalEvent>): Result<Unit> = execute {
     if (events.isNotEmpty()) {
       val owner = events.first().ownerId
       requireArgument(events.all { it.ownerId == owner })
@@ -122,6 +131,28 @@ class EventsRepositoryFirestore(
     }
   }
 
+  /** Patches an existing event's checklist through the same local write queue as other edits. */
+  override suspend fun updateEventTasks(
+      ownerId: String,
+      eventId: String,
+      tasks: List<EventTask>,
+      updatedAt: Instant,
+  ): Result<Unit> = execute {
+    validate(ownerId, eventId)
+    if (eventQuery(ownerId, eventId).get(Source.CACHE).await().isEmpty) {
+      throw EventsException(EventsError.NOT_FOUND)
+    }
+    checkOwner(ownerId)
+    val batch =
+        firestore
+            .batch()
+            .update(
+                events(ownerId).document(eventId),
+                EventFirestoreMapper.encodeTaskUpdate(tasks, updatedAt),
+            )
+    commitLocally(batch, ownerId, eventId, requireEvent = true)
+  }
+
   /** Queues an idempotent deletion without removing historical subject suggestions. */
   override suspend fun deleteEvent(ownerId: String, eventId: String): Result<Unit> = execute {
     validate(ownerId, eventId)
@@ -134,14 +165,24 @@ class EventsRepositoryFirestore(
    * deleting a missing document. Real-SDK offline/restart tests guard this SDK ordering assumption.
    * Cancelling the caller does not undo an already queued write.
    */
-  private suspend fun commitLocally(batch: WriteBatch, owner: String, id: String) {
+  private suspend fun commitLocally(
+      batch: WriteBatch,
+      owner: String,
+      id: String,
+      requireEvent: Boolean = false,
+  ) {
     val acknowledgement = batch.commit()
-    events(owner).whereEqualTo(FieldPath.documentId(), id).get(Source.CACHE).await()
+    val snapshot = eventQuery(owner, id).get(Source.CACHE).await()
     if (acknowledgement.isComplete && !acknowledgement.isSuccessful) {
       throw acknowledgement.exception ?: EventsException(EventsError.STORAGE_FAILURE)
     }
     checkOwner(owner)
+    if (requireEvent && snapshot.isEmpty) throw EventsException(EventsError.NOT_FOUND)
   }
+
+  /** Selects a document by ID for cache reads that also handle missing documents. */
+  private fun eventQuery(owner: String, id: String) =
+      events(owner).whereEqualTo(FieldPath.documentId(), id)
 
   /** Registers both listeners per collector and closes them when cancelled or signed out. */
   private fun <T> observe(

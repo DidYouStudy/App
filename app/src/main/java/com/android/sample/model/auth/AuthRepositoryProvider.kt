@@ -4,6 +4,7 @@ package com.android.sample.model.auth
 
 import android.app.Activity
 import android.content.Context
+import androidx.annotation.VisibleForTesting
 import androidx.credentials.CredentialManager
 import com.android.sample.R
 import com.google.firebase.auth.FirebaseAuth
@@ -20,8 +21,8 @@ object AuthRepositoryProvider {
 
   /**
    * Returns the shared repository, creating it on first use after Firebase's normal initialization.
-   * Only the application context is used; Activities are never retained. Tests should inject fake
-   * repositories directly into ViewModels instead of mutating this process-wide provider.
+   * Only the application context is used; Activities are never retained. ViewModel tests should
+   * inject fakes into the ViewModel directly; tests that start the whole app use [setRepository].
    */
   @Synchronized
   fun getRepository(context: Context): AuthRepository {
@@ -33,6 +34,32 @@ object AuthRepositoryProvider {
             getHelper(context)::clearCredentialState,
         )
         .also { instance = it }
+  }
+
+  /**
+   * Replaces the shared repository, so tests that start the whole app can supply a fake or an
+   * emulator-backed one without initializing Firebase or Credential Manager. `null` removes the
+   * replacement: the next [getRepository] call creates a fresh Firebase repository.
+   */
+  @VisibleForTesting
+  @Synchronized
+  fun setRepository(repository: AuthRepository?) {
+    instance = repository
+  }
+
+  /**
+   * Replaces the Credential Manager behind the account picker, so tests can return a fake Google ID
+   * token (for example to sign in against the Firebase Auth emulator). `null` restores the platform
+   * Credential Manager on next use.
+   *
+   * [requestGoogleIdToken] uses the new manager immediately. A Firebase repository that
+   * [getRepository] already created keeps clearing credentials through the previous one, so set the
+   * manager before the repository is first created to keep sign-in and sign-out on one manager.
+   */
+  @VisibleForTesting
+  @Synchronized
+  fun setCredentialManager(credentialManager: CredentialManager?) {
+    helper = credentialManager?.let(::GoogleSignInHelper)
   }
 
   /**

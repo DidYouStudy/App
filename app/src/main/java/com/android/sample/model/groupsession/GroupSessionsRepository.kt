@@ -1,7 +1,9 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: GitHub Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.sample.model.groupsession
 
+import com.android.sample.model.event.GroupSession
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 
@@ -21,7 +23,8 @@ interface GroupSessionsRepository {
    * A session that ends exactly at [endingAfter] is excluded. The flow emits its current list and
    * emits again when a save, join, leave, or delete changes the list. [endingAfter] is fixed for
    * the flow's lifetime: a session is not removed when its end time passes, so callers that need
-   * that observe again with a later instant or filter the list themselves.
+   * that observe again with a later instant or filter the list themselves. Sessions that cannot be
+   * decoded are left out of the list.
    */
   fun observeSessions(endingAfter: Instant): Flow<Result<List<GroupSession>>>
 
@@ -31,7 +34,8 @@ interface GroupSessionsRepository {
   /**
    * Returns the session with [sessionId], or NOT_FOUND if it does not exist.
    *
-   * A blank [sessionId] fails with INVALID_ARGUMENT.
+   * A blank [sessionId] fails with INVALID_ARGUMENT. An undecodable stored session fails with
+   * INVALID_EVENT_DATA.
    */
   suspend fun getSession(sessionId: String): Result<GroupSession>
 
@@ -41,7 +45,9 @@ interface GroupSessionsRepository {
    * Creation requires [userId] to equal [GroupSession.createdBy]. Updates require [userId] to be
    * that stored session's creator and cannot change its creator. Updating never changes the stored
    * members or [GroupSession.createdAt]; incoming values for them are ignored. Blank user IDs fail
-   * with INVALID_ARGUMENT, and permission violations fail with PERMISSION_DENIED.
+   * with INVALID_ARGUMENT, and permission violations fail with PERMISSION_DENIED. Firestore
+   * security rules also refuse a new session whose members include anyone besides its creator, with
+   * PERMISSION_DENIED. Updating an undecodable stored session fails with INVALID_EVENT_DATA.
    *
    * Timestamps are the caller's responsibility: set [GroupSession.updatedAt] to the edit time
    * before saving an update; the repository stores it as given and never reads a clock. Joining and
@@ -59,8 +65,11 @@ interface GroupSessionsRepository {
 
   /**
    * Adds [userId] to the session's membership once; joining an already joined session succeeds.
+   * Joining a full or ended session fails with PERMISSION_DENIED. The repository reads no clock, so
+   * Firestore security rules enforce the ended-session case.
    *
-   * Blank arguments fail with INVALID_ARGUMENT and a missing session fails with NOT_FOUND.
+   * Blank arguments fail with INVALID_ARGUMENT, a missing session fails with NOT_FOUND, and an
+   * undecodable session fails with INVALID_EVENT_DATA.
    */
   suspend fun joinSession(userId: String, sessionId: String): Result<Unit>
 
@@ -68,7 +77,8 @@ interface GroupSessionsRepository {
    * Removes [userId] from membership; leaving when not a member succeeds without a change.
    *
    * The creator cannot leave and receives INVALID_ARGUMENT. Blank arguments fail with
-   * INVALID_ARGUMENT, and a missing session fails with NOT_FOUND.
+   * INVALID_ARGUMENT, a missing session fails with NOT_FOUND, and an undecodable session fails with
+   * INVALID_EVENT_DATA.
    */
   suspend fun leaveSession(userId: String, sessionId: String): Result<Unit>
 }

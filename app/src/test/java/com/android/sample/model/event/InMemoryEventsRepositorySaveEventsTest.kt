@@ -1,5 +1,6 @@
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.event
 
 import java.time.Duration
@@ -30,16 +31,19 @@ class InMemoryEventsRepositorySaveEventsTest {
       subject: String,
       offsetHours: Long = 0,
       durationMinutes: Long = 60,
-  ): Event {
+  ): PersonalEvent {
     val start = baseInstant.plus(Duration.ofHours(offsetHours))
     val end = start.plus(Duration.ofMinutes(durationMinutes))
-    return Event(
+    return PersonalEvent(
         id = id,
         ownerId = ownerId,
-        type = EventType.COURSE,
-        subject = subject,
-        startsAt = start,
-        endsAt = end,
+        details =
+            EventDetails(
+                type = EventType.COURSE,
+                subject = subject,
+                startsAt = start,
+                endsAt = end,
+            ),
         createdAt = baseInstant,
         updatedAt = baseInstant,
     )
@@ -73,15 +77,16 @@ class InMemoryEventsRepositorySaveEventsTest {
     // Verify both events are present and queryable
     val fetched1 = repository.getEvent(ownerId1, "event_1").getOrThrow()
     val fetched2 = repository.getEvent(ownerId1, "event_2").getOrThrow()
-    assertEquals("Analysis I", fetched1.subject)
-    assertEquals("Algebra", fetched2.subject)
+    assertEquals("Analysis I", fetched1.details.subject)
+    assertEquals("Algebra", fetched2.details.subject)
 
     // Overwrite event_1 with updated subject via saveEvents
-    val updatedEvent1 = event1.copy(subject = "Analysis I - Advanced")
+    val updatedEvent1 =
+        event1.copy(details = event1.details.copy(subject = "Analysis I - Advanced"))
     repository.saveEvents(listOf(updatedEvent1))
 
     val refetched1 = repository.getEvent(ownerId1, "event_1").getOrThrow()
-    assertEquals("Analysis I - Advanced", refetched1.subject)
+    assertEquals("Analysis I - Advanced", refetched1.details.subject)
 
     // Verify list size remains 2, not 3
     val allEvents =

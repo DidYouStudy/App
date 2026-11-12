@@ -1,5 +1,8 @@
+// Co-authored-by: Codex AI Agent
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.theme
 
 import androidx.compose.ui.unit.dp
@@ -14,6 +17,7 @@ object Spacing {
   val mediumLarge = 14.dp
   val large = 16.dp
   val extraLarge = 20.dp
+  val extraExtraLarge = 24.dp
 }
 
 /** Shared design tokens; use these instead of dp literals in screens. */
@@ -43,19 +47,55 @@ object Dimens {
   val googleButtonHorizontalPadding = 12.dp
   val googleLogoSize = 20.dp
   val profileButtonPadding = 12.dp
+  /** Matches the "Generic avatar" of the Figma app bar. */
+  val profileButtonSize = 49.dp
+  val profileButtonIconSize = 28.dp
+  val cornerExtraSmall = 4.dp
+  val iconSizeMedium = 20.dp
 
+  // Settings screen
+  val settingsHorizontalPadding = 7.dp
+  val settingsAvatarSize = 76.dp
+  val settingsAvatarIconSize = 52.dp
+  val settingsLoadingIndicatorSize = 24.dp
+  val settingsEditButtonVerticalPadding = 6.dp
+  val settingsPillButtonHeight = 50.dp
+  val settingsPillIconSize = 22.dp
+  val settingsLogoutButtonHeight = 52.dp
+
+  // Preferences screen
+  val preferencesWideButtonHeight = 56.dp
+  val preferencesChoiceHeight = 40.dp
+
+  // Height for group-session filter choices.
+  val filterChoiceButtonHeight = 48.dp
+  // Height for the group-session filter action.
+  val filterActionButtonHeight = 56.dp
+  val groupSessionZoneMenuMaxHeight = 392.dp
+  val groupSessionZoneMenuItemHeight = 56.dp
+  val groupSessionZoneMenuShadowElevation = 8.dp
+
+  // Calendar screen
   val calendarWeekSwitchHeaderHeight = 52.dp
+  val calendarWeekSwitchHeaderHeightLandscape = 40.dp
   val calendarWeekNavigationButtonSize = 36.dp
   val calendarDayHeaderHeight = 54.dp
+  val calendarDayHeaderHeightLandscape = 42.dp
   val calendarDayHeaderBorderWidth = 0.5.dp
   val calendarDayNumberSlotSize = 20.dp
   val calendarTodayCircleSize = 22.dp
   val calendarDayLabelVerticalOffset = (-5).dp
   val calendarHourLabelVerticalOffset = (-8).dp
   val calendarTimeAxisWidth = 48.dp
-  val calendarInitialLabelClearance = 6.dp
+  val calendarInitialLabelClearance = 14.dp
   val calendarTodayChipHorizontalPadding = 8.dp
   val calendarTodayChipVerticalPadding = 4.dp
+  val calendarLoadingSignSize = 24.dp
+  val calendarRetryButtonWidth = 90.dp
+  val calendarRetryButtonHeight = 48.dp
+  val calendarEventCardCorner = 6.dp
+  val calendarEventCardMinHeight = 34.dp
+  val calendarMinHourRowHeight = 48.dp
   // Event planning & form dimensions
   val borderMedium = 1.5.dp
   val cornerPill = 30.dp
@@ -66,7 +106,7 @@ object Dimens {
   val formVerticalPadding = 8.dp
   val formSpacing = 8.dp
   val saveButtonHorizontalPadding = 24.dp
-  val saveButtonVerticalPadding = 16.dp
+  val saveButtonVerticalPadding = 8.dp
   val saveButtonHeight = 54.dp
   val saveButtonProgressSize = 24.dp
   val progressIndicatorStrokeWidth = 2.dp
@@ -74,4 +114,28 @@ object Dimens {
   val taskRowVerticalPadding = 4.dp
   val taskTextStartPadding = 4.dp
   val errorVerticalPadding = 4.dp
+  val dialogCornerRadius = 28.dp
+  val subjectPickerMaxHeight = 350.dp
+  val screenHorizontalPadding = 16.dp
+  val contentTopSpacing = 12.dp
+  val titleToMetaSpacing = 4.dp
+  val metaRowSpacing = 4.dp
+  val sectionSpacing = 12.dp
+  val sectionLabelToContentSpacing = 4.dp
+  val taskListSpacing = 8.dp
+  val actionButtonSpacing = 8.dp
+  val actionsTopPadding = 16.dp
+  val actionsBottomPadding = 24.dp
+  val locationPickerMaxHeight = 350.dp
+  val noPadding = 0.dp
+
+  // Group session map
+  /** Pin: a droplet with its tip down and a white dot in the middle. */
+  val mapMarkerWidth = 32.dp
+  val mapMarkerHeight = 40.dp
+  val mapMarkerDotDiameter = 12.dp
+  val datePickerInputHeight = 260.dp
+  val datePickerCalendarHeight = 512.dp
+  val datePickerMaxLandscapeHeight = 120.dp
+  val datePickerMinimumHeight = 200.dp
 }

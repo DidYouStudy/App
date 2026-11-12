@@ -1,6 +1,7 @@
 # Co-authored-by: Claude Opus 5.5
 # Co-authored-by: Codex AI Agent
 # Co-authored-by: OpenAI Codex
+# Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
 [versions]
 agp = "9.3.2"
 kotlin = "2.3.0"
@@ -26,6 +27,10 @@ mockito = "5.12.0"
 mockitoKotlin = "5.4.0"
 credentials = "1.6.0"
 googleid = "1.2.1"
+serialization = "1.12.0"
+mapsCompose = "9.0.1"
+playServicesMaps = "20.1.0"
+playServicesLocation = "21.4.0"
 #coil = "3.6.3"
 
 [libraries]
@@ -69,7 +74,12 @@ junit = { group = "junit", name = "junit", version.ref = "junit" }
 kaspresso = { group = "com.kaspersky.android-components", name = "kaspresso", version.ref = "kaspresso" }
 kaspresso-compose = { group = "com.kaspersky.android-components", name = "kaspresso-compose-support", version.ref = "kaspresso" }
 
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "coroutines" }
+
+maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
+play-services-maps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "playServicesMaps" }
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 
@@ -81,6 +91,7 @@ robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectr
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 jetbrainsKotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlinCompose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ktfmt = { id = "com.ncorti.ktfmt.gradle", version.ref = "ktfmt" }
 sonar = { id = "org.sonarqube", version.ref = "sonar" }

@@ -4,8 +4,14 @@ package com.android.sample.model.auth
 
 import android.app.Activity
 import android.content.Context
+import androidx.credentials.ClearCredentialStateRequest
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.GetCredentialResponse
 import androidx.test.core.app.ApplicationProvider
 import com.android.sample.R
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
@@ -17,8 +23,16 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Mockito.*
+import org.mockito.kotlin.any
 import org.mockito.stubbing.Answer
 import org.robolectric.RobolectricTestRunner
+
+/**
+ * A fake, unsigned token in JWT shape (header.payload.signature): Google's credential parser reads
+ * the payload of every ID token, so arbitrary strings are rejected.
+ */
+private const val FAKE_ID_TOKEN =
+    "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZW1haWwiOiJzdHVkZW50QGV4YW1wbGUuY29tIn0.c2ln"
 
 /**
  * Tests the provider lifecycle without initializing Firebase. The private singletons are cleared
@@ -168,6 +182,127 @@ class AuthRepositoryProviderTest {
         verify(helper).clearCredentialState()
       }
     }
+  }
+
+  /** An injected repository is returned without creating FirebaseAuth or a Credential Manager. */
+  @Test
+  fun injectedRepositoryIsReturnedWithoutTouchingFirebaseOrCredentialManager() {
+    val injected = mock(AuthRepository::class.java)
+    val caller = mock(Context::class.java)
+
+    mockConstruction(GoogleSignInHelper::class.java).use { helpers ->
+      mockStatic(FirebaseAuth::class.java).use { firebase ->
+        AuthRepositoryProvider.setRepository(injected)
+
+        assertSame(injected, AuthRepositoryProvider.getRepository(caller))
+        assertSame(injected, AuthRepositoryProvider.getRepository(caller))
+        firebase.verifyNoInteractions()
+        assertTrue(helpers.constructed().isEmpty())
+        verifyNoInteractions(caller)
+      }
+    }
+  }
+
+  /** An injected repository also replaces a Firebase repository that was already created. */
+  @Test
+  fun injectedRepositoryReplacesAnAlreadyCreatedDefault() {
+    val application = ApplicationProvider.getApplicationContext<Context>()
+    val injected = mock(AuthRepository::class.java)
+
+    mockConstruction(GoogleSignInHelper::class.java).use {
+      mockStatic(FirebaseAuth::class.java).use { firebase ->
+        firebase
+            .`when`<FirebaseAuth> { FirebaseAuth.getInstance() }
+            .thenReturn(mock(FirebaseAuth::class.java))
+        AuthRepositoryProvider.getRepository(application)
+
+        AuthRepositoryProvider.setRepository(injected)
+
+        assertSame(injected, AuthRepositoryProvider.getRepository(application))
+      }
+    }
+  }
+
+  /** Clearing the injected repository makes the next call build a fresh Firebase repository. */
+  @Test
+  fun clearingTheInjectedRepositoryRestoresAFreshFirebaseRepository() {
+    val application = ApplicationProvider.getApplicationContext<Context>()
+    val injected = mock(AuthRepository::class.java)
+
+    mockConstruction(GoogleSignInHelper::class.java).use {
+      mockStatic(FirebaseAuth::class.java).use { firebase ->
+        firebase
+            .`when`<FirebaseAuth> { FirebaseAuth.getInstance() }
+            .thenReturn(mock(FirebaseAuth::class.java))
+        val cachedDefault = AuthRepositoryProvider.getRepository(application)
+        AuthRepositoryProvider.setRepository(injected)
+
+        AuthRepositoryProvider.setRepository(null)
+
+        val restored = AuthRepositoryProvider.getRepository(application)
+        assertTrue(restored is AuthRepositoryFirebase)
+        assertNotSame(injected, restored)
+        assertNotSame(cachedDefault, restored)
+      }
+    }
+  }
+
+  /**
+   * An injected Credential Manager answers the account picker, and a repository created afterwards
+   * clears credentials through it on sign-out, so sign-in and sign-out stay on one manager.
+   */
+  @Test
+  fun injectedCredentialManagerSuppliesTheTokenAndIsClearedOnSignOut() = runTest {
+    val activity = activityWithWebClientId()
+    val manager = mock(CredentialManager::class.java)
+    val credential =
+        GoogleIdTokenCredential.Builder()
+            .setId("student@example.com")
+            .setIdToken(FAKE_ID_TOKEN)
+            .build()
+    doAnswer { GetCredentialResponse(CustomCredential(credential.type, credential.data)) }
+        .`when`(manager)
+        .getCredential(any<Context>(), any<GetCredentialRequest>())
+
+    mockStatic(FirebaseAuth::class.java).use { firebase ->
+      val auth = mock(FirebaseAuth::class.java)
+      firebase.`when`<FirebaseAuth> { FirebaseAuth.getInstance() }.thenReturn(auth)
+
+      AuthRepositoryProvider.setCredentialManager(manager)
+
+      assertEquals(FAKE_ID_TOKEN, AuthRepositoryProvider.requestGoogleIdToken(activity))
+      AuthRepositoryProvider.getRepository(activity).signOut()
+      verify(auth).signOut()
+      verify(manager).clearCredentialState(any<ClearCredentialStateRequest>())
+    }
+  }
+
+  /** Clearing the injected manager puts the platform Credential Manager back on next use. */
+  @Test
+  fun clearingTheInjectedCredentialManagerRestoresThePlatformOne() = runTest {
+    val activity = activityWithWebClientId()
+    val injected = mock(CredentialManager::class.java)
+    AuthRepositoryProvider.setCredentialManager(injected)
+
+    AuthRepositoryProvider.setCredentialManager(null)
+
+    mockConstructionWithAnswer(GoogleSignInHelper::class.java, Answer { "platform-token" }).use {
+        helpers ->
+      assertEquals("platform-token", AuthRepositoryProvider.requestGoogleIdToken(activity))
+      // A new helper was built on the platform manager, created from the application context.
+      assertEquals(1, helpers.constructed().size)
+    }
+    verify(activity).applicationContext
+    verifyNoInteractions(injected)
+  }
+
+  /** An activity whose application context is Robolectric's and whose web client ID is set. */
+  private fun activityWithWebClientId(): Activity {
+    val activity = mock(Activity::class.java)
+    `when`(activity.applicationContext)
+        .thenReturn(ApplicationProvider.getApplicationContext<Context>())
+    `when`(activity.getString(R.string.default_web_client_id)).thenReturn("web-client")
+    return activity
   }
 
   private fun awaitBlocked(workers: List<Thread>, count: Int) {

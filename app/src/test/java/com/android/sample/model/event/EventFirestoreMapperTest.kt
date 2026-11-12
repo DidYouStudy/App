@@ -1,4 +1,5 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.event
 
 import java.time.Instant
@@ -9,16 +10,19 @@ import org.junit.Test
 class EventFirestoreMapperTest {
   private val time = Instant.parse("2026-10-20T12:00:00.123456Z")
   private val event =
-      Event(
-          "id",
-          "owner",
-          EventType.COURSE,
-          "Analysis",
-          time,
-          time.plusSeconds(3600),
-          time,
-          location = "BC 410",
-          description = "Details",
+      PersonalEvent(
+          id = "id",
+          ownerId = "owner",
+          details =
+              EventDetails(
+                  type = EventType.COURSE,
+                  subject = "Analysis",
+                  startsAt = time,
+                  endsAt = time.plusSeconds(3600),
+                  location = "BC 410",
+                  description = "Details",
+              ),
+          createdAt = time,
           tasks = listOf(EventTask("First"), EventTask("Second", time)),
           importKey = "uid-1@is-academia",
       )
@@ -27,7 +31,7 @@ class EventFirestoreMapperTest {
   @Test
   fun roundTrip() {
     EventType.entries.forEach { type ->
-      val expected = event.copy(type = type)
+      val expected = event.copy(details = event.details.copy(type = type))
       assertEquals(
           expected,
           EventFirestoreMapper.decode("id", "owner", EventFirestoreMapper.encode(expected)),
@@ -41,16 +45,14 @@ class EventFirestoreMapperTest {
     val precise = time.plusNanos(789)
     val input =
         event.copy(
-            startsAt = precise,
-            endsAt = precise.plusSeconds(3600),
+            details = event.details.copy(startsAt = precise, endsAt = precise.plusSeconds(3600)),
             createdAt = precise,
             updatedAt = precise,
             tasks = listOf(EventTask("Task", precise)),
         )
     val expected =
         input.copy(
-            startsAt = time,
-            endsAt = time.plusSeconds(3600),
+            details = input.details.copy(startsAt = time, endsAt = time.plusSeconds(3600)),
             createdAt = time,
             updatedAt = time,
             tasks = listOf(EventTask("Task", time)),
@@ -69,17 +71,51 @@ class EventFirestoreMapperTest {
     )
   }
 
+  /**
+   * The 24-hour limit holds across the microsecond normalization: a stored duration one microsecond
+   * over is rejected, and a valid duration with sub-microsecond parts never becomes too long.
+   */
+  @Test
+  fun durationLimit_holdsAcrossMicrosecondNormalization() {
+    val limit = EventDetails.MAX_DURATION
+    val overLimit =
+        EventFirestoreMapper.encode(event) +
+            ("endsAt" to EventFirestoreMapper.timestamp(time.plus(limit).plusNanos(1000)))
+    val error =
+        assertThrows(EventsException::class.java) {
+          EventFirestoreMapper.decode("id", "owner", overLimit)
+        }
+    assertEquals(EventsError.INVALID_EVENT_DATA, error.error)
+
+    val precise = time.plusNanos(789)
+    val justUnder =
+        event.copy(
+            details =
+                event.details.copy(startsAt = precise, endsAt = precise.plus(limit).minusNanos(1))
+        )
+    val decoded = EventFirestoreMapper.decode("id", "owner", EventFirestoreMapper.encode(justUnder))
+    assertEquals(time, decoded.details.startsAt)
+    assertEquals(time.plus(limit), decoded.details.endsAt)
+  }
+
   /** Absent optional fields follow the model defaults. */
   @Test
   fun missingOptionals() {
-    val data = EventFirestoreMapper.encode(event.copy(type = EventType.OTHER)).toMutableMap()
+    val data =
+        EventFirestoreMapper.encode(
+                event.copy(details = event.details.copy(type = EventType.OTHER))
+            )
+            .toMutableMap()
     listOf("subject", "location", "description", "tasks", "importKey").forEach { data.remove(it) }
     assertEquals(
         event.copy(
-            type = EventType.OTHER,
-            subject = null,
-            location = null,
-            description = null,
+            details =
+                event.details.copy(
+                    type = EventType.OTHER,
+                    subject = null,
+                    location = null,
+                    description = null,
+                ),
             tasks = emptyList(),
             importKey = null,
         ),
@@ -130,22 +166,31 @@ class EventFirestoreMapperTest {
         SubjectCatalogFirestoreMapper.key("a/b"),
     )
     val a =
-        SubjectCatalogFirestoreMapper.encode(event.copy(subject = " Analysis "))!!["subjects"]
+        SubjectCatalogFirestoreMapper.encode(
+            event.copy(details = event.details.copy(subject = " Analysis "))
+        )!!["subjects"]
             as Map<*, *>
     val b =
         SubjectCatalogFirestoreMapper.encode(
-            event.copy(subject = "Physics", updatedAt = time.plusSeconds(1))
+            event.copy(
+                details = event.details.copy(subject = "Physics"),
+                updatedAt = time.plusSeconds(1),
+            )
         )!!["subjects"]
             as Map<*, *>
     val c =
-        SubjectCatalogFirestoreMapper.encode(event.copy(subject = "Chemistry"))!!["subjects"]
+        SubjectCatalogFirestoreMapper.encode(
+            event.copy(details = event.details.copy(subject = "Chemistry"))
+        )!!["subjects"]
             as Map<*, *>
     assertEquals(
         listOf("Physics", "Analysis", "Chemistry"),
         SubjectCatalogFirestoreMapper.decode(mapOf("subjects" to (a + b + c))),
     )
     assertNull(
-        SubjectCatalogFirestoreMapper.encode(event.copy(type = EventType.OTHER, subject = null))
+        SubjectCatalogFirestoreMapper.encode(
+            event.copy(details = event.details.copy(type = EventType.OTHER, subject = null))
+        )
     )
     assertEquals(emptyList<String>(), SubjectCatalogFirestoreMapper.decode(null))
     assertThrows(EventsException::class.java) {
