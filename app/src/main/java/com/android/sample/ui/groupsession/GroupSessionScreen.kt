@@ -3,6 +3,7 @@
 // Co-authored-by: Copilot
 // Co-authored-by: Gemini
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
 import androidx.compose.foundation.BorderStroke
@@ -70,6 +71,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
+import com.android.sample.ui.eventplanning.EventKind
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -111,6 +113,10 @@ object GroupSessionScreenTestTags {
 fun GroupSessionScreen(
     navigationActions: NavigationActions? = null,
     viewModel: GroupSessionsViewModel = groupSessionsViewModel(),
+    onAddSessionClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddGroupSession) },
+    onEditSessionClick: (String) -> Unit = { sessionId ->
+      navigationActions?.navigateTo(Screen.EditEvent(sessionId, EventKind.GROUP_SESSION))
+    },
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val snackbarHostState = remember { SnackbarHostState() }
@@ -173,7 +179,7 @@ fun GroupSessionScreen(
       },
       floatingActionButton = {
         AddButton(
-            onClick = { /* TODO ADD GROUPSESSION */ },
+            onClick = onAddSessionClick,
             contentDescription = stringResource(R.string.group_session_add_description),
             modifier = Modifier.testTag(GroupSessionScreenTestTags.ADD_BUTTON),
         )
@@ -186,6 +192,7 @@ fun GroupSessionScreen(
             onFilterChange = viewModel::onFilterChange,
             onJoin = viewModel::join,
             onLeave = viewModel::leave,
+            onEdit = onEditSessionClick,
         )
       },
   )
@@ -199,6 +206,7 @@ private fun GroupSessionContent(
     onFilterChange: (GroupSessionFilter) -> Unit = {},
     onJoin: (String) -> Unit = {},
     onLeave: (String) -> Unit = {},
+    onEdit: (String) -> Unit = {},
 ) {
   Column(modifier = modifier.fillMaxSize().padding(horizontal = Spacing.large)) {
     OutlinedTextField(
@@ -307,6 +315,7 @@ private fun GroupSessionContent(
                   now = state.now,
                   onJoin = onJoin,
                   onLeave = onLeave,
+                  onEdit = onEdit,
                   modifier = Modifier.testTag(GroupSessionScreenTestTags.sessionItem(index)),
               )
             }
@@ -321,6 +330,7 @@ private fun GroupSessionCard(
     now: Instant,
     onJoin: (String) -> Unit,
     onLeave: (String) -> Unit,
+    onEdit: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
   val session = item.session
@@ -551,7 +561,7 @@ private fun GroupSessionCard(
         // Action Buttons (Host Edit vs Member Leave/Joined vs Join)
         if (shouldShowHost) {
           Button(
-              onClick = { /* TODO EDIT GROUP SESSION */ },
+              onClick = { onEdit(session.id) },
               shape = RoundedCornerShape(Dimens.cornerLarge),
               colors =
                   ButtonDefaults.buttonColors(
