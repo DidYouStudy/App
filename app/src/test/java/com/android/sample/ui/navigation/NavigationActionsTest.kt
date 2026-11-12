@@ -1,6 +1,7 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Gemini <noreply@google.com>
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.navigation
 
 import androidx.navigation.NavDestination
@@ -251,6 +252,18 @@ class NavigationActionsTest {
     actions.navigateTo(Screen.Dashboard)
     actions.navigateToAndClear(Screen.Dashboard, Screen.Auth)
     actions.goBack()
+  }
+
+  /** Pops the given screen and everything above it, and is a no-op without a controller. */
+  @Test
+  fun goBackPastPopsTheScreenInclusivelyAndIsSafeWithoutController() {
+    val navController = mock(NavHostController::class.java)
+    val details = Screen.EventDetails("event/1")
+
+    NavigationActions(navController).goBackPast(details)
+    NavigationActions().goBackPast(details)
+
+    verify(navController).popBackStack(details.route, true)
   }
 
   private class RecordingNavigationActions(currentRoute: String) : NavigationActions(mock()) {

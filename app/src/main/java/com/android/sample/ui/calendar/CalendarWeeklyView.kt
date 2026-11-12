@@ -1,4 +1,5 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.calendar
 
 import androidx.compose.foundation.ScrollState
@@ -448,7 +449,7 @@ internal data class CalendarEventPlacement(
 )
 
 /** Divides each group of overlapping cards into lanes, using the rendered minimum card height. */
-private fun placeOverlappingEventsSideBySide(
+internal fun placeOverlappingEventsSideBySide(
     placements: List<CalendarEventPlacement>
 ): List<CalendarEventPlacement> = buildList {
   val laneEnds = mutableListOf<Dp>()
