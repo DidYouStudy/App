@@ -1,3 +1,4 @@
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.event
 
@@ -94,7 +95,59 @@ abstract class EventsRepositoryContractTest {
     assertEquals(listOf(edited), current())
   }
 
-  /** Deleting removes the event; deleting again or a missing event still succeeds. */
+  /** A checklist patch preserves the current event details and cannot create an event. */
+  @Test
+  fun checklistUpdatesPreserveDetailsAndRequireAnExistingEvent() = runTest {
+    val event = event("a", 9, 10)
+    val tasks = listOf(EventTask("Review", created))
+    val updatedAt = created.plusSeconds(60)
+    repository.saveEvent(event).getOrThrow()
+    val edited = event.copy(details = event.details.copy(description = "New description"))
+    repository.saveEvent(edited).getOrThrow()
+
+    repository.updateEventTasks(owner, event.id, tasks, updatedAt).getOrThrow()
+    assertEquals(
+        edited.copy(tasks = tasks, updatedAt = updatedAt),
+        repository.getEvent(owner, event.id).getOrThrow(),
+    )
+
+    repository.deleteEvent(owner, event.id).getOrThrow()
+    assertEquals(
+        EventsError.NOT_FOUND,
+        repository.updateEventTasks(owner, event.id, tasks, updatedAt).error(),
+    )
+    assertEquals(EventsError.NOT_FOUND, repository.getEvent(owner, event.id).error())
+  }
+
+  /** Rejects an update when either the owner or the event ID is blank. */
+  @Test
+  fun checklistUpdateRejectsBlankOwnerAndEventId() = runTest {
+    val tasks = listOf(EventTask("Review"))
+
+    assertEquals(
+        EventsError.INVALID_ARGUMENT,
+        repository.updateEventTasks(" ", "a", tasks, created).error(),
+    )
+    assertEquals(
+        EventsError.INVALID_ARGUMENT,
+        repository.updateEventTasks(owner, " ", tasks, created).error(),
+    )
+  }
+
+  /** An owner without any events cannot update a different owner's checklist. */
+  @Test
+  fun checklistUpdateRequiresAnEventForTheRequestedOwner() = runTest {
+    val original = event("a", 9, 10)
+    repository.saveEvent(original).getOrThrow()
+
+    val result =
+        repository.updateEventTasks(otherOwner, original.id, listOf(EventTask("Review")), created)
+
+    assertEquals(EventsError.NOT_FOUND, result.error())
+    assertEquals(original, repository.getEvent(owner, original.id).getOrThrow())
+  }
+
+  /** Lists imported events only for the requested owner, regardless of their dates. */
   @Test
   fun getImportedEvents_returnsOnlyTheOwnersImportedEventsOfAnyDate() = runTest {
     val imported = event("a", 9, 10).copy(importKey = "uid-a")
