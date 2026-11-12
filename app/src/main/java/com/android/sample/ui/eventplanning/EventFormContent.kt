@@ -78,7 +78,7 @@ data class TaskActions(
  * @param onStartTimeClick Invoked when the start-time selector is pressed.
  * @param onEndTimeClick Invoked when the end-time selector is pressed.
  * @param onSubjectClick Invoked when the subject selector is pressed.
- * @param onLocationChange Called when the location field changes.
+ * @param onLocationClick Invoked when the location selector is pressed.
  * @param onDescriptionChange Called when the description field changes.
  * @param taskActions Callbacks for managing tasks in personal events; null for group sessions.
  * @param onTypeClick Optional external event-type picker action; when null, uses built-in dropdown.
@@ -95,7 +95,8 @@ fun EventFormContent(
     onStartTimeClick: () -> Unit,
     onEndTimeClick: () -> Unit,
     onSubjectClick: () -> Unit,
-    onLocationChange: (String) -> Unit,
+    onLocationClick: () -> Unit,
+    onLocationClear: (() -> Unit)? = null,
     onDescriptionChange: (String) -> Unit,
     taskActions: TaskActions? = null,
     onTypeClick: (() -> Unit)? = null,
@@ -259,16 +260,21 @@ fun EventFormContent(
         isError = isSubjectMissing,
     )
 
-    // Location (optional)
+    /// Location (optional)
     SectionLabel(
         text = stringResource(R.string.event_planning_location_optional_label),
         testTag = FormContentTestTags.LOCATION_LABEL,
     )
-    OutlinedInputField(
-        value = uiState.location,
-        onValueChange = onLocationChange,
-        placeholder = stringResource(R.string.event_planning_select_or_enter_placeholder),
-        testTag = FormContentTestTags.LOCATION_INPUT,
+    SelectorFieldPill(
+        valueText = uiState.location,
+        placeholderText = stringResource(R.string.event_planning_location_placeholder),
+        onClick = {
+          focusManager.clearFocus()
+          onLocationClick()
+        },
+        testTag = FormContentTestTags.LOCATION_SELECTOR,
+        onClear = onLocationClear,
+        clearButtonTestTag = FormContentTestTags.LOCATION_CLEAR_BUTTON,
     )
 
     // Description (optional)

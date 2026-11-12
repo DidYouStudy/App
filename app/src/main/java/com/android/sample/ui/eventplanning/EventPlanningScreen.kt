@@ -1,6 +1,8 @@
 // Co-authored-by: Copilot
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -38,6 +40,7 @@ import com.android.sample.model.event.EventType
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
 import com.android.sample.ui.sharedComponents.EventDatePickerDialog
 import com.android.sample.ui.sharedComponents.EventTimePickerDialog
+import com.android.sample.ui.sharedComponents.LocationPickerDialog
 import com.android.sample.ui.sharedComponents.PillActionButton
 import com.android.sample.ui.sharedComponents.SubjectPickerDialog
 import com.android.sample.ui.theme.Dimens
@@ -48,9 +51,9 @@ import java.time.LocalTime
 /**
  * Stateful shared event-planning UI used by the Add and Edit destinations.
  *
- * Owns the built-in date, time and subject picker state, while allowing destinations to provide
- * optional external picker actions. The [isEditing] and [isLoading] flags control the shared
- * screen's mode-specific title, actions and form loading display.
+ * Owns the built-in date, time, subject and location picker state, while allowing destinations to
+ * provide optional external picker actions. The [isEditing] and [isLoading] flags control the
+ * shared screen's mode-specific title, actions and form loading display.
  *
  * @param modifier Modifier applied to the shared screen.
  * @param uiState Current form values, loading/saving state and any validation or persistence error.
@@ -60,7 +63,9 @@ import java.time.LocalTime
  * @param onStartTimeSelected Called with the selected start time.
  * @param onEndTimeSelected Called with the selected end time.
  * @param onSubjectSelected Called with the selected subject.
- * @param onLocationChange Called when the location field changes.
+ * @param onLocationChange Called with the location picked from the location picker dialog.
+ * @param onLocationSearchQueryChange Called with the location picker's search text as the user
+ *   types.
  * @param onDescriptionChange Called when the description field changes.
  * @param onAddTask Called when a non-blank task is submitted.
  * @param onToggleTask Called with the index of the task to toggle.
@@ -77,6 +82,8 @@ import java.time.LocalTime
  *   time picker.
  * @param onPickEndTimeClick Optional external end-time picker action; null uses the built-in time
  *   picker.
+ * @param titleRes Optional custom string resource for the top-bar title; when null, the title is
+ *   selected based on [isEditing] and [uiState.eventKind].
  * @param onPickSubjectClick Optional external subject picker action; null uses the built-in subject
  *   picker.
  */
@@ -84,6 +91,7 @@ import java.time.LocalTime
 internal fun EventPlanningScreen(
     modifier: Modifier = Modifier,
     uiState: EventPlanningUiState,
+    @StringRes titleRes: Int? = null,
     onBackClick: () -> Unit,
     onTypeChange: (EventType) -> Unit,
     onDateSelected: (LocalDate) -> Unit,
@@ -91,6 +99,7 @@ internal fun EventPlanningScreen(
     onEndTimeSelected: (LocalTime) -> Unit,
     onSubjectSelected: (String) -> Unit,
     onLocationChange: (String) -> Unit,
+    onLocationSearchQueryChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onAddTask: (String) -> Unit,
     onToggleTask: (Int) -> Unit,
@@ -109,9 +118,11 @@ internal fun EventPlanningScreen(
   var showStartTimePicker by rememberSaveable { mutableStateOf(false) }
   var showEndTimePicker by rememberSaveable { mutableStateOf(false) }
   var showSubjectPicker by rememberSaveable { mutableStateOf(false) }
+  var showLocationPicker by rememberSaveable { mutableStateOf(false) }
 
   EventPlanningScreenStateless(
       uiState = uiState,
+      titleRes = titleRes,
       onBackClick = onBackClick,
       onTypeChange = onTypeChange,
       onTypeClick = onTypeClick,
@@ -119,7 +130,8 @@ internal fun EventPlanningScreen(
       onStartTimeClick = { onPickStartTimeClick?.invoke() ?: run { showStartTimePicker = true } },
       onEndTimeClick = { onPickEndTimeClick?.invoke() ?: run { showEndTimePicker = true } },
       onSubjectClick = { onPickSubjectClick?.invoke() ?: run { showSubjectPicker = true } },
-      onLocationChange = onLocationChange,
+      onLocationClick = { showLocationPicker = true },
+      onLocationClear = { onLocationChange("") },
       onDescriptionChange = onDescriptionChange,
       onAddTask = onAddTask,
       onToggleTask = onToggleTask,
@@ -177,6 +189,22 @@ internal fun EventPlanningScreen(
         },
     )
   }
+
+  if (showLocationPicker) {
+    LocationPickerDialog(
+        searchResults = uiState.locationSearchResults,
+        onDismiss = {
+          showLocationPicker = false
+          onLocationSearchQueryChange("")
+        },
+        onSearchQueryChange = onLocationSearchQueryChange,
+        onConfirm = { location ->
+          onLocationChange(location)
+          showLocationPicker = false
+          onLocationSearchQueryChange("")
+        },
+    )
+  }
 }
 
 /**
@@ -193,7 +221,7 @@ internal fun EventPlanningScreen(
  * @param onStartTimeClick Invoked when the start-time selector is pressed.
  * @param onEndTimeClick Invoked when the end-time selector is pressed.
  * @param onSubjectClick Invoked when the subject selector is pressed.
- * @param onLocationChange Called when the location field changes.
+ * @param onLocationClick Invoked when the location selector is pressed.
  * @param onDescriptionChange Called when the description field changes.
  * @param onAddTask Called when a non-blank task is submitted.
  * @param onToggleTask Called with the index of the task to toggle.
@@ -202,6 +230,8 @@ internal fun EventPlanningScreen(
  * @param onDeleteClick Optional delete action; when null, no Delete button is shown.
  * @param isEditing Whether to render Edit mode; defaults to Add mode.
  * @param isLoading Whether to show a loading indicator instead of the form.
+ * @param titleRes Optional custom string resource for the top-bar title; when null, the title is
+ *   selected based on [isEditing] and [uiState.eventKind].
  * @param onTypeClick Optional event-type picker action passed to the form.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -209,13 +239,14 @@ internal fun EventPlanningScreen(
 fun EventPlanningScreenStateless(
     modifier: Modifier = Modifier,
     uiState: EventPlanningUiState,
+    @StringRes titleRes: Int? = null,
     onBackClick: () -> Unit,
     onTypeChange: (EventType) -> Unit,
     onDateClick: () -> Unit,
     onStartTimeClick: () -> Unit,
     onEndTimeClick: () -> Unit,
     onSubjectClick: () -> Unit,
-    onLocationChange: (String) -> Unit,
+    onLocationClick: () -> Unit,
     onDescriptionChange: (String) -> Unit,
     onAddTask: (String) -> Unit,
     onToggleTask: (Int) -> Unit,
@@ -225,21 +256,29 @@ fun EventPlanningScreenStateless(
     isEditing: Boolean = false,
     isLoading: Boolean = false,
     onTypeClick: (() -> Unit)? = null,
+    onLocationClear: (() -> Unit)? = null,
 ) {
   val isValidationError: Boolean =
       uiState.error == EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED ||
           uiState.error == EventPlanningError.INVALID_EVENT
+
+  val resolvedTitleRes =
+      titleRes
+          ?: when (uiState.eventKind) {
+            EventKind.GROUP_SESSION ->
+                if (isEditing) R.string.group_session_edit_title
+                else R.string.group_session_add_title
+            EventKind.PERSONAL ->
+                if (isEditing) R.string.event_planning_edit_title
+                else R.string.event_planning_add_title
+          }
 
   Scaffold(
       topBar = {
         MediumTopAppBar(
             title = {
               Text(
-                  text =
-                      stringResource(
-                          if (isEditing) R.string.event_planning_edit_title
-                          else R.string.event_planning_add_title
-                      ),
+                  text = stringResource(resolvedTitleRes),
                   style = MaterialTheme.typography.headlineLarge,
                   fontWeight = FontWeight.Bold,
                   modifier = Modifier.testTag(Tags.TOP_BAR_TITLE),
@@ -339,7 +378,8 @@ fun EventPlanningScreenStateless(
             onStartTimeClick = onStartTimeClick,
             onEndTimeClick = onEndTimeClick,
             onSubjectClick = onSubjectClick,
-            onLocationChange = onLocationChange,
+            onLocationClick = onLocationClick,
+            onLocationClear = onLocationClear,
             onDescriptionChange = onDescriptionChange,
             taskActions = TaskActions(onAddTask, onToggleTask, onDeleteTask),
             onTypeClick = onTypeClick,

@@ -1,4 +1,5 @@
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
 
 import androidx.activity.compose.BackHandler
@@ -10,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.android.sample.R
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 
@@ -21,6 +23,7 @@ import com.android.sample.model.event.EventType
  * persisted only when the user presses Save.
  *
  * @param modifier Modifier applied to the root screen layout.
+ * @param initialKind Category of event to create (defaults to [EventKind.PERSONAL]).
  * @param viewModel ViewModel backing the event creation workflow; defaults to the screen's
  *   repository-backed ViewModel.
  * @param onBackClick Invoked by the top-bar back button or system back action.
@@ -39,6 +42,7 @@ import com.android.sample.model.event.EventType
 @Composable
 fun AddEventScreen(
     modifier: Modifier = Modifier,
+    initialKind: EventKind = EventKind.PERSONAL,
     viewModel: EventPlanningViewModel = eventsPlanningViewModel(),
     onBackClick: () -> Unit,
     onEventSaved: () -> Unit,
@@ -61,20 +65,38 @@ fun AddEventScreen(
   // clear form if it was previously being edited
   LaunchedEffect(Unit) { if (uiState.isEditing) viewModel.resetForm() }
 
-  BackHandler {
+  LaunchedEffect(initialKind) { viewModel.setEventKind(initialKind) }
+
+  // Clears the form when exiting
+  val handleBack: () -> Unit = {
     focusManager.clearFocus()
+    viewModel.resetForm()
     onBackClick()
   }
 
+  BackHandler(onBack = handleBack)
+
+  val titleRes =
+      if (initialKind == EventKind.GROUP_SESSION) {
+        R.string.group_session_add_title
+      } else {
+        R.string.event_planning_add_title
+      }
+
   EventPlanningScreen(
-      uiState = uiState,
-      onBackClick = onBackClick,
+      // Ensure the form uses initialKind immediately, avoiding a flicker before LaunchedEffect
+      // syncs
+      uiState =
+          if (uiState.eventKind != initialKind) uiState.copy(eventKind = initialKind) else uiState,
+      titleRes = titleRes,
+      onBackClick = handleBack,
       onTypeChange = viewModel::setType,
       onDateSelected = viewModel::setDate,
       onStartTimeSelected = viewModel::setStartTime,
       onEndTimeSelected = viewModel::setEndTime,
       onSubjectSelected = viewModel::setSubject,
       onLocationChange = viewModel::setLocation,
+      onLocationSearchQueryChange = viewModel::searchLocations,
       onDescriptionChange = viewModel::setDescription,
       onAddTask = viewModel::addTask,
       onToggleTask = viewModel::toggleTask,
@@ -92,7 +114,7 @@ fun AddEventScreen(
 
 @Preview
 @Composable
-private fun AddEventScreenPreview() {
+internal fun AddEventScreenPreview() {
   MaterialTheme {
     EventPlanningScreenStateless(
         uiState =
@@ -109,7 +131,7 @@ private fun AddEventScreenPreview() {
         onStartTimeClick = {},
         onEndTimeClick = {},
         onSubjectClick = {},
-        onLocationChange = {},
+        onLocationClick = {},
         onDescriptionChange = {},
         onAddTask = {},
         onToggleTask = {},

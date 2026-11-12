@@ -9,27 +9,29 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
-import com.android.sample.model.event.EventsError
-import com.android.sample.model.event.EventsException
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.EventsRepositoryProvider
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.PersonalEvent
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
+import com.android.sample.model.location.CampusLocation
+import com.android.sample.model.location.CampusLocationFilter
+import com.android.sample.model.location.CampusLocationRepository
+import com.android.sample.model.location.CampusLocationRepositoryProvider
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -52,47 +54,6 @@ enum class EventKind {
   GROUP_SESSION,
 }
 
-/** Stable failure categories for event planning errors. */
-enum class EventPlanningError {
-  FAILED_TO_OBSERVE_USER,
-  NO_SIGNED_IN_USER,
-  EVENT_DATE_AND_TIMES_REQUIRED,
-  NO_EVENT_TO_EDIT,
-  FAILED_TO_ADD_EVENT,
-  FAILED_TO_EDIT_EVENT,
-  FAILED_TO_DELETE_EVENT,
-  FAILED_TO_LOAD_EVENT,
-  INVALID_EVENT,
-  EVENT_NOT_FOUND,
-  PERMISSION_DENIED,
-  INVALID_EVENT_DATA,
-  STORAGE_FAILURE,
-}
-
-/** Maps an [EventPlanningError] to its localized string resource. */
-val EventPlanningError.stringResource: Int
-  get() =
-      when (this) {
-        EventPlanningError.FAILED_TO_OBSERVE_USER ->
-            R.string.event_planning_error_failed_to_observe_user
-        EventPlanningError.NO_SIGNED_IN_USER -> R.string.event_planning_error_no_signed_in_user
-        EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED ->
-            R.string.event_planning_error_date_and_times_required
-        EventPlanningError.NO_EVENT_TO_EDIT -> R.string.event_planning_error_no_event_to_edit
-        EventPlanningError.FAILED_TO_ADD_EVENT -> R.string.event_planning_error_failed_to_add_event
-        EventPlanningError.FAILED_TO_EDIT_EVENT ->
-            R.string.event_planning_error_failed_to_edit_event
-        EventPlanningError.FAILED_TO_DELETE_EVENT ->
-            R.string.event_planning_error_failed_to_delete_event
-        EventPlanningError.FAILED_TO_LOAD_EVENT ->
-            R.string.event_planning_error_failed_to_load_event
-        EventPlanningError.INVALID_EVENT -> R.string.event_planning_error_invalid_event
-        EventPlanningError.EVENT_NOT_FOUND -> R.string.event_planning_error_event_not_found
-        EventPlanningError.PERMISSION_DENIED -> R.string.event_planning_error_permission_denied
-        EventPlanningError.INVALID_EVENT_DATA -> R.string.event_planning_error_invalid_event_data
-        EventPlanningError.STORAGE_FAILURE -> R.string.event_planning_error_storage_failure
-      }
-
 /**
  * Form values, subject suggestions and the result of the latest add request.
  *
@@ -103,6 +64,8 @@ val EventPlanningError.stringResource: Int
  * @property eventKind whether the event is personal or a group session.
  * @property recommendedSubjects subjects the user has used before, most recent first, for the
  *   suggestions.
+ * @property locationSearchResults campus locations currently matching the location picker's search
+ *   text.
  * @property isEditing whether the form was filled from an existing event by
  *   [EventPlanningViewModel.loadEvent].
  * @property isLoading whether an existing event is being loaded into the form.
@@ -125,6 +88,7 @@ data class EventPlanningUiState(
     val description: String = "",
     val tasks: List<EventTask> = emptyList(),
     val recommendedSubjects: List<String> = emptyList(),
+    val locationSearchResults: List<CampusLocation> = emptyList(),
     val isEditing: Boolean = false,
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
@@ -155,6 +119,7 @@ data class EventPlanningUiState(
  * Builds, adds, edits and deletes events for the currently authenticated user through repository
  * contracts.
  *
+ * @param campusLocationRepository source of the campus locations shown by the location picker.
  * @param clock source of the current time (task completion, creation and update times) and of the
  *   time zone used to turn the picked date and times into instants.
  */
@@ -162,6 +127,7 @@ data class EventPlanningUiState(
 class EventPlanningViewModel(
     private val authRepository: AuthRepository,
     private val eventsRepository: EventsRepository,
+    private val campusLocationRepository: CampusLocationRepository,
     private val groupSessionsRepository: GroupSessionsRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
@@ -180,6 +146,12 @@ class EventPlanningViewModel(
    * The event loaded by [loadEvent]; [editEvent] replaces it and keeps its ID and creation time.
    */
   private var editingEvent: Event? = null
+
+  /**
+   * The latest [searchLocations] request; cancelled on every new call so a slow, stale response
+   * cannot overwrite a newer one's results.
+   */
+  private var locationSearchJob: Job? = null
 
   init {
     viewModelScope.launch {
@@ -206,8 +178,30 @@ class EventPlanningViewModel(
     }
   }
 
+  /**
+   * Resolves campus locations matching [query] via [campusLocationRepository] and exposes them as
+   * [EventPlanningUiState.locationSearchResults] for the location picker. A blank query clears the
+   * results directly, without calling the repository: the picker starts empty, not pre-loaded with
+   * every location. Like [recommendedSubjects][EventPlanningUiState.recommendedSubjects], a lookup
+   * failure is not shown as an error: the results are simply left empty.
+   */
+  fun searchLocations(query: String) {
+    locationSearchJob?.cancel()
+    if (query.isBlank()) {
+      _uiState.update { it.copy(locationSearchResults = emptyList()) }
+      return
+    }
+    locationSearchJob = viewModelScope.launch {
+      val result = campusLocationRepository.search(CampusLocationFilter(query = query))
+      _uiState.update { it.copy(locationSearchResults = result.getOrDefault(emptyList())) }
+    }
+  }
+
   /** Updates the category of the event being planned (personal vs group session). */
-  fun setEventKind(kind: EventKind) = updateForm { copy(eventKind = kind) }
+  fun setEventKind(kind: EventKind) {
+    if (_uiState.value.eventKind == kind && !_uiState.value.isEditing) return
+    resetForm(kind)
+  }
 
   /** Updates the event activity kind. */
   fun setType(type: EventType) = updateForm { copy(type = type) }
@@ -239,9 +233,8 @@ class EventPlanningViewModel(
   /** Appends an open task; blank text is ignored. Forbidden for group sessions. */
   fun addTask(text: String) {
     requirePersonalEvent()
-    val trimmed = text.trim()
-    if (trimmed.isEmpty()) return
-    updateForm { copy(tasks = tasks + EventTask(trimmed)) }
+    if (text.trim().isEmpty()) return
+    updateForm { copy(tasks = addTaskItem(tasks, text)) }
   }
 
   /**
@@ -250,10 +243,8 @@ class EventPlanningViewModel(
    */
   fun removeTask(index: Int) {
     requirePersonalEvent()
-    updateForm {
-      if (index !in tasks.indices) this
-      else copy(tasks = tasks.filterIndexed { i, _ -> i != index })
-    }
+    if (index !in _uiState.value.tasks.indices) return
+    updateForm { copy(tasks = removeTaskItem(tasks, index)) }
   }
 
   /**
@@ -262,17 +253,8 @@ class EventPlanningViewModel(
    */
   fun toggleTask(index: Int) {
     requirePersonalEvent()
-    updateForm {
-      if (index !in tasks.indices) this
-      else
-          copy(
-              tasks =
-                  tasks.mapIndexed { i, task ->
-                    if (i != index) task
-                    else task.copy(completedAt = if (task.isCompleted) null else clock.instant())
-                  }
-          )
-    }
+    if (index !in _uiState.value.tasks.indices) return
+    updateForm { copy(tasks = toggleTaskItem(tasks, index, clock)) }
   }
 
   /** Clears a displayed save error. */
@@ -289,7 +271,15 @@ class EventPlanningViewModel(
     // Already loaded (e.g. after rotation) or loading right now: keep the user's edits.
     if (editingEvent?.id == eventId || _uiState.value.isLoading) return
 
-    _uiState.update { it.withoutResults().copy(isLoading = true, eventKind = kind) }
+    pendingEventId = null
+    editingEvent = null
+    _uiState.update {
+      EventPlanningUiState(
+          eventKind = kind,
+          isLoading = true,
+          recommendedSubjects = it.recommendedSubjects,
+      )
+    }
     viewModelScope.launch {
       try {
         // Suspends until the auth flow has delivered its first value.
@@ -423,13 +413,13 @@ class EventPlanningViewModel(
     _uiState.update { it.copy(isEventDeleted = false) }
   }
 
-  /** Discards the form, e.g. when the user leaves the screen without adding. */
-  fun resetForm() {
+  /** Discards the form, e.g. when the user leaves the screen without adding or changes kind. */
+  fun resetForm(kind: EventKind? = null) {
     pendingEventId = null
     editingEvent = null
     _uiState.update {
       EventPlanningUiState(
-          eventKind = it.eventKind,
+          eventKind = kind ?: it.eventKind,
           recommendedSubjects = it.recommendedSubjects,
       )
     }
@@ -446,15 +436,14 @@ class EventPlanningViewModel(
       return null
     }
 
-    // An end time before the start time can only mean the next day (e.g. 22:00 to 01:00).
-    val endDate = if (endTime.isBefore(startTime)) date.plusDays(1) else date
+    val (startsAt, endsAt) = calculateStartAndEndInstants(date, startTime, endTime, clock)
 
     return try {
       EventDetails(
           type = state.type,
           subject = state.subject.trim().takeIf(String::isNotEmpty),
-          startsAt = date.atTime(startTime).atZone(clock.zone).toInstant(),
-          endsAt = endDate.atTime(endTime).atZone(clock.zone).toInstant(),
+          startsAt = startsAt,
+          endsAt = endsAt,
           location = state.location.trim().takeIf(String::isNotEmpty),
           description = state.description.trim().takeIf(String::isNotEmpty),
       )
@@ -618,24 +607,14 @@ class EventPlanningViewModel(
 
   /** Turns a repository failure into a stable [EventPlanningError] category for the UI. */
   private fun Throwable.toUserError(default: EventPlanningError): EventPlanningError =
-      if (this is EventsException) {
-        when (error) {
-          EventsError.INVALID_ARGUMENT -> EventPlanningError.INVALID_EVENT
-          EventsError.NOT_FOUND -> EventPlanningError.EVENT_NOT_FOUND
-          EventsError.PERMISSION_DENIED -> EventPlanningError.PERMISSION_DENIED
-          EventsError.INVALID_EVENT_DATA -> EventPlanningError.INVALID_EVENT_DATA
-          EventsError.STORAGE_FAILURE -> EventPlanningError.STORAGE_FAILURE
-          EventsError.UNKNOWN -> default
-        }
-      } else {
-        default
-      }
+      toEventPlanningError(default)
 }
 
 /** Supplies an injected repository when Android creates the settings ViewModel. */
 class EventPlanningViewModelFactory(
     private val authRepository: AuthRepository,
     private val eventsRepository: EventsRepository,
+    private val campusLocationRepository: CampusLocationRepository,
     private val groupSessionsRepository: GroupSessionsRepository,
 ) : ViewModelProvider.Factory {
   /**
@@ -647,7 +626,13 @@ class EventPlanningViewModelFactory(
       "Unsupported ViewModel: ${modelClass.name}"
     }
     @Suppress("UNCHECKED_CAST")
-    return EventPlanningViewModel(authRepository, eventsRepository, groupSessionsRepository) as T
+    return EventPlanningViewModel(
+        authRepository,
+        eventsRepository,
+        campusLocationRepository,
+        groupSessionsRepository,
+    )
+        as T
   }
 }
 
@@ -663,6 +648,8 @@ fun eventsPlanningViewModel(): EventPlanningViewModel =
             EventPlanningViewModelFactory(
                 authRepository = AuthRepositoryProvider.getRepository(LocalContext.current),
                 eventsRepository = EventsRepositoryProvider.getRepository(),
+                campusLocationRepository =
+                    CampusLocationRepositoryProvider.getRepository(LocalContext.current),
                 groupSessionsRepository = GroupSessionsRepositoryProvider.getRepository(),
             )
     )

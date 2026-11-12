@@ -14,6 +14,10 @@ import com.android.sample.model.event.EventsException
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.model.location.CampusLocation
+import com.android.sample.model.location.CampusLocationFilter
+import com.android.sample.model.location.CampusLocationType
+import com.android.sample.model.location.Location
 import java.time.Instant
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -155,6 +159,110 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertNull(viewModel.uiState.value.error)
   }
 
+  // ---------------------------------------------------------------- location search
+
+  /** Builds a minimal campus location for tests; only the name is usually relevant. */
+  private fun sampleLocation(name: String): CampusLocation =
+      CampusLocation(
+          name = name,
+          zone = "AAB",
+          type = CampusLocationType.LECTURE_ROOM,
+          floor = null,
+          location = Location(latitude = 46.52, longitude = 6.56),
+      )
+
+  /** A successful search result is exposed as the location picker's search results. */
+  @Test
+  fun searchLocations_success_updatesLocationSearchResults() = runTest {
+    val results = listOf(sampleLocation("BC 01"), sampleLocation("BC 02"))
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+        .thenReturn(Result.success(results))
+    val viewModel = createViewModel()
+
+    viewModel.searchLocations("BC")
+    advanceUntilIdle()
+
+    assertEquals(results, viewModel.uiState.value.locationSearchResults)
+  }
+
+  /** A failed search leaves the results empty without surfacing an error. */
+  @Test
+  fun searchLocations_failure_leavesResultsEmptyWithoutError() = runTest {
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+        .thenReturn(Result.failure(RuntimeException("search failed")))
+    val viewModel = createViewModel()
+
+    viewModel.searchLocations("BC")
+    advanceUntilIdle()
+
+    assertEquals(emptyList<CampusLocation>(), viewModel.uiState.value.locationSearchResults)
+    assertNull(viewModel.uiState.value.error)
+  }
+
+  /** A failed search after a successful one clears the stale results instead of keeping them. */
+  @Test
+  fun searchLocations_failureAfterSuccess_clearsStaleResults() = runTest {
+    val results = listOf(sampleLocation("BC 01"))
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+        .thenReturn(Result.success(results))
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "ZZ")))
+        .thenReturn(Result.failure(RuntimeException("search failed")))
+    val viewModel = createViewModel()
+
+    viewModel.searchLocations("BC")
+    advanceUntilIdle()
+    assertEquals(results, viewModel.uiState.value.locationSearchResults)
+
+    viewModel.searchLocations("ZZ")
+    advanceUntilIdle()
+
+    assertEquals(emptyList<CampusLocation>(), viewModel.uiState.value.locationSearchResults)
+    assertNull(viewModel.uiState.value.error)
+  }
+
+  /**
+   * A blank query clears the results directly, without calling the repository: reopening the picker
+   * after a previous search must not show stale results for a search box that is empty again.
+   */
+  @Test
+  fun searchLocations_blankQuery_clearsResultsWithoutQueryingRepository() = runTest {
+    val results = listOf(sampleLocation("BC 01"))
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+        .thenReturn(Result.success(results))
+    val viewModel = createViewModel()
+    viewModel.searchLocations("BC")
+    advanceUntilIdle()
+    assertEquals(results, viewModel.uiState.value.locationSearchResults)
+
+    viewModel.searchLocations("")
+
+    assertEquals(emptyList<CampusLocation>(), viewModel.uiState.value.locationSearchResults)
+    verify(campusLocationRepository, never()).search(CampusLocationFilter(query = ""))
+  }
+
+  /** A new search cancels a slower, still-running one, so its stale result is dropped. */
+  @Test
+  fun searchLocations_newQueryCancelsPreviousSlowQuery() = runTest {
+    val staleGate = CompletableDeferred<Unit>()
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "stale")))
+        .doSuspendableAnswer {
+          staleGate.await()
+          Result.success(listOf(sampleLocation("STALE 01")))
+        }
+    val freshResults = listOf(sampleLocation("BC 01"))
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "fresh")))
+        .thenReturn(Result.success(freshResults))
+    val viewModel = createViewModel()
+
+    viewModel.searchLocations("stale")
+    viewModel.searchLocations("fresh")
+    advanceUntilIdle()
+    staleGate.complete(Unit)
+    advanceUntilIdle()
+
+    assertEquals(freshResults, viewModel.uiState.value.locationSearchResults)
+  }
+
   // ---------------------------------------------------------------- form
 
   /** The ViewModel starts with default form values and no pending operation or error. */
@@ -227,6 +335,36 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     val state = viewModel.uiState.value
     assertEquals(EventKind.GROUP_SESSION, state.eventKind)
     assertFalse(state.showTasksSection)
+  }
+
+  /** Switching event kind resets form fields and clears tasks. */
+  @Test
+  fun setEventKind_switchingKind_resetsFormAndClearsTasks() = runTest {
+    val viewModel = createViewModel()
+    viewModel.setSubject("Personal Study")
+    viewModel.setLocation("BC 01")
+    viewModel.addTask("Task 1")
+    assertEquals(1, viewModel.uiState.value.tasks.size)
+
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+
+    val state = viewModel.uiState.value
+    assertEquals(EventKind.GROUP_SESSION, state.eventKind)
+    assertTrue(state.tasks.isEmpty())
+    assertTrue(state.subject.isEmpty())
+    assertTrue(state.location.isEmpty())
+    assertFalse(state.showTasksSection)
+  }
+
+  /** Calling setEventKind with the same kind preserves user edits. */
+  @Test
+  fun setEventKind_sameKind_preservesExistingInput() = runTest {
+    val viewModel = createViewModel()
+    viewModel.setSubject("Drafting proposal")
+
+    viewModel.setEventKind(EventKind.PERSONAL)
+
+    assertEquals("Drafting proposal", viewModel.uiState.value.subject)
   }
 
   /** Date and time setters accept null to clear previously selected values. */
@@ -533,13 +671,21 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertEquals(now, saved.updatedAt)
   }
 
-  /** Successful creation resets form fields, retains suggestions, and raises the added signal. */
+  /**
+   * Successful creation resets form fields, retains subject suggestions, clears location search
+   * results, and raises the added signal.
+   */
   @Test
   fun addEvent_success_resetsFormKeepsSubjectsAndSignalsAdded() = runTest {
     `when`(eventsRepository.observeSubjects("user123")).thenReturn(subjects("Algebra"))
+    val locations = listOf(sampleLocation("BC 01"))
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+        .thenReturn(Result.success(locations))
     val viewModel = createViewModel()
     viewModel.fillValidForm()
     viewModel.addTask("Read chapter 3")
+    viewModel.searchLocations("BC")
+    advanceUntilIdle()
 
     viewModel.addEvent()
 
@@ -553,6 +699,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertNull(state.endTime)
     assertTrue(state.tasks.isEmpty())
     assertEquals(listOf("Algebra"), state.recommendedSubjects)
+    assertEquals(emptyList<CampusLocation>(), state.locationSearchResults)
   }
 
   /** Acknowledging a handled creation clears the event-added signal. */
@@ -681,16 +828,26 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertEquals(listOf("id-1", "id-2"), savedEvents(count = 2).map { it.id })
   }
 
-  /** Resetting the form preserves repository-provided subject suggestions. */
+  /**
+   * Resetting the form preserves subject suggestions, since they come from a long-lived
+   * subscription rather than the form being reset. Location search results are not preserved: they
+   * are scoped to the picker dialog, which already clears them on close.
+   */
   @Test
-  fun resetForm_keepsSubjectSuggestions() = runTest {
+  fun resetForm_keepsSubjectSuggestionsButClearsLocationSearchResults() = runTest {
     `when`(eventsRepository.observeSubjects("user123")).thenReturn(subjects("Algebra"))
+    val locations = listOf(sampleLocation("BC 01"))
+    `when`(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+        .thenReturn(Result.success(locations))
     val viewModel = createViewModel()
     viewModel.setSubject("typed but abandoned")
+    viewModel.searchLocations("BC")
+    advanceUntilIdle()
 
     viewModel.resetForm()
 
     assertEquals(listOf("Algebra"), viewModel.uiState.value.recommendedSubjects)
+    assertEquals(emptyList<CampusLocation>(), viewModel.uiState.value.locationSearchResults)
   }
 
   /** A second add request is ignored until the first repository save completes. */
@@ -798,7 +955,12 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
   @Test
   fun factory_createsEventPlanningViewModel() {
     val factory =
-        EventPlanningViewModelFactory(authRepository, eventsRepository, groupSessionsRepository)
+        EventPlanningViewModelFactory(
+            authRepository,
+            eventsRepository,
+            campusLocationRepository,
+            groupSessionsRepository,
+        )
 
     val viewModel = factory.create(EventPlanningViewModel::class.java)
 
@@ -809,7 +971,12 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
   @Test
   fun factory_rejectsUnsupportedViewModelClass() {
     val factory =
-        EventPlanningViewModelFactory(authRepository, eventsRepository, groupSessionsRepository)
+        EventPlanningViewModelFactory(
+            authRepository,
+            eventsRepository,
+            campusLocationRepository,
+            groupSessionsRepository,
+        )
 
     val exception =
         assertThrows(IllegalArgumentException::class.java) {
@@ -916,6 +1083,35 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertFalse(state.isLoading)
     assertFalse(state.isEditing)
     assertEquals(EventPlanningError.EVENT_NOT_FOUND, state.error)
+  }
+
+  /** loadEvent immediately clears prior event fields and sets loading state. */
+  @Test
+  fun loadEvent_resetsPreviousFormFieldsWhileLoading() = runTest {
+    val fetchGate = CompletableDeferred<Unit>()
+    `when`(groupSessionsRepository.getSession("session-async")).doSuspendableAnswer {
+      fetchGate.await()
+      Result.failure(EventsException(EventsError.NOT_FOUND))
+    }
+
+    val viewModel = createViewModel()
+    viewModel.setSubject("Stale Event")
+    viewModel.setLocation("Old Room")
+
+    viewModel.loadEvent("session-async", EventKind.GROUP_SESSION)
+
+    val loadingState = viewModel.uiState.value
+    assertTrue(loadingState.isLoading)
+    assertEquals(EventKind.GROUP_SESSION, loadingState.eventKind)
+    assertTrue(loadingState.subject.isEmpty())
+    assertTrue(loadingState.location.isEmpty())
+
+    fetchGate.complete(Unit)
+    advanceUntilIdle()
+
+    val finishedState = viewModel.uiState.value
+    assertFalse(finishedState.isLoading)
+    assertEquals(EventPlanningError.EVENT_NOT_FOUND, finishedState.error)
   }
 
   /** Deleting a group session deletes from the group sessions repository. */
