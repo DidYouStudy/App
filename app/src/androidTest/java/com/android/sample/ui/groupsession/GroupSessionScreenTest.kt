@@ -1,11 +1,13 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
 import android.content.Context
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -27,7 +29,10 @@ import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.UserProfile
+import com.android.sample.ui.eventplanning.EventKind
+import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
+import com.android.sample.ui.navigation.Screen
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -39,6 +44,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -189,6 +195,96 @@ class GroupSessionScreenTest {
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ADD_BUTTON).assertIsDisplayed()
+  }
+
+  @Test
+  fun add_group_session_button_click_triggers_callback() {
+    var addClicked = false
+    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
+    composeTestRule.setContent {
+      GroupSessionScreen(
+          viewModel = viewModel,
+          onAddSessionClick = { addClicked = true },
+      )
+    }
+
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ADD_BUTTON).performClick()
+    assertTrue(addClicked)
+  }
+
+  private class TestNavigationActions : NavigationActions() {
+    var lastNavigatedScreen: Screen? = null
+
+    override fun navigateTo(screen: Screen) {
+      lastNavigatedScreen = screen
+    }
+  }
+
+  @Test
+  fun default_add_session_click_navigates_to_add_group_session() {
+    val navActions = TestNavigationActions()
+    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
+    composeTestRule.setContent {
+      GroupSessionScreen(
+          navigationActions = navActions,
+          viewModel = viewModel,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ADD_BUTTON).performClick()
+    assertEquals(
+        Screen.AddGroupSession,
+        navActions.lastNavigatedScreen,
+    )
+  }
+
+  @Test
+  fun edit_group_session_button_click_triggers_callback() {
+    var editedSessionId: String? = null
+    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
+    composeTestRule.setContent {
+      GroupSessionScreen(
+          viewModel = viewModel,
+          onEditSessionClick = { id -> editedSessionId = id },
+      )
+    }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
+
+    val editButtonMatcher =
+        hasText(context.getString(R.string.group_session_action_edit)) and
+            hasAnyAncestor(hasTestTag(GroupSessionScreenTestTags.sessionItem(0)))
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(editButtonMatcher)
+    composeTestRule.onNode(editButtonMatcher).performClick()
+
+    assertEquals("s1", editedSessionId)
+  }
+
+  @Test
+  fun default_edit_session_click_navigates_to_edit_group_session() {
+    val navActions = TestNavigationActions()
+    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
+    composeTestRule.setContent {
+      GroupSessionScreen(
+          navigationActions = navActions,
+          viewModel = viewModel,
+      )
+    }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
+
+    val editButtonMatcher =
+        hasText(context.getString(R.string.group_session_action_edit)) and
+            hasAnyAncestor(hasTestTag(GroupSessionScreenTestTags.sessionItem(0)))
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(editButtonMatcher)
+    composeTestRule.onNode(editButtonMatcher).performClick()
+
+    assertEquals(
+        Screen.EditEvent("s1", EventKind.GROUP_SESSION),
+        navActions.lastNavigatedScreen,
+    )
   }
 
   @Test

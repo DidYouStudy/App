@@ -1,5 +1,6 @@
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
 
 import android.content.Context
@@ -542,5 +543,142 @@ class AddEventScreenTest {
     // Trigger internal Subject Picker dialog
     composeTestRule.onNodeWithTag(Tags.SUBJECT_SELECTOR).performClick()
     composeTestRule.onNodeWithText(context.getString(R.string.cancel)).performClick()
+  }
+
+  @Test
+  fun addEventScreen_withGroupSessionKind_configuresGroupSessionAndHidesTasks() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      AddEventScreen(
+          viewModel = viewModel,
+          initialKind = EventKind.GROUP_SESSION,
+          onBackClick = {},
+          onEventSaved = {},
+      )
+    }
+
+    assertEquals(EventKind.GROUP_SESSION, viewModel.uiState.value.eventKind)
+    assertFalse(viewModel.uiState.value.showTasksSection)
+    composeTestRule.onNodeWithTag(Tags.ADD_TASK_BUTTON).assertDoesNotExist()
+  }
+
+  @Test
+  fun addEventScreen_withGroupSessionKind_savesToGroupSessionsRepository() {
+    runBlocking {
+      `when`(groupSessionsRepository.newSessionId()).thenReturn("session-1")
+      `when`(groupSessionsRepository.saveSession(any(), any())).thenReturn(Result.success(Unit))
+    }
+    val viewModel = createViewModel()
+    var savedCalled = false
+
+    composeTestRule.setContent {
+      AddEventScreen(
+          viewModel = viewModel,
+          initialKind = EventKind.GROUP_SESSION,
+          onBackClick = {},
+          onEventSaved = { savedCalled = true },
+      )
+    }
+
+    viewModel.setDate(LocalDate.of(2026, 11, 10))
+    viewModel.setStartTime(LocalTime.of(10, 0))
+    viewModel.setEndTime(LocalTime.of(11, 0))
+    viewModel.setSubject("Distributed Systems")
+
+    composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).performClick()
+    testDispatcher.scheduler.advanceUntilIdle()
+    composeTestRule.waitForIdle()
+
+    assertTrue(savedCalled)
+    val captor = org.mockito.kotlin.argumentCaptor<com.android.sample.model.event.GroupSession>()
+    runBlocking {
+      org.mockito.kotlin
+          .verify(groupSessionsRepository)
+          .saveSession(org.mockito.kotlin.eq("user123"), captor.capture())
+    }
+    val savedSession = captor.firstValue
+    assertEquals("session-1", savedSession.id)
+    assertEquals("user123", savedSession.createdBy)
+    assertEquals(listOf("user123"), savedSession.memberIds)
+    assertEquals("Distributed Systems", savedSession.details.subject)
+  }
+
+  @Test
+  fun addEventScreenPreview_rendersWithoutCrashing() {
+    composeTestRule.setContent { AddEventScreenPreview() }
+    composeTestRule.onNodeWithTag(Tags.SCREEN_CONTAINER).assertIsDisplayed()
+  }
+
+  @Test
+  fun addEventScreen_backHandler_triggersOnBackClick() {
+    var backClicked = false
+    val viewModel = createViewModel()
+    viewModel.setSubject("Draft Subject")
+    var backDispatcher: androidx.activity.OnBackPressedDispatcher? = null
+    composeTestRule.setContent {
+      backDispatcher =
+          androidx.activity.compose.LocalOnBackPressedDispatcherOwner.current
+              ?.onBackPressedDispatcher
+      AddEventScreen(
+          viewModel = viewModel,
+          onBackClick = { backClicked = true },
+          onEventSaved = {},
+      )
+    }
+
+    composeTestRule.runOnUiThread { backDispatcher?.onBackPressed() }
+    assertTrue(backClicked)
+    assertTrue(viewModel.uiState.value.subject.isEmpty())
+  }
+
+  @Test
+  fun addEventScreen_displaysGroupSessionTitle_whenInitialKindIsGroupSession() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      AddEventScreen(
+          viewModel = viewModel,
+          initialKind = EventKind.GROUP_SESSION,
+          onBackClick = {},
+          onEventSaved = {},
+      )
+    }
+
+    composeTestRule
+        .onNodeWithTag(Tags.TOP_BAR_TITLE)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.group_session_add_title))
+  }
+
+  /**
+   * Verifies that the task management section is displayed when planning a personal event, but
+   * hidden when planning a group session.
+   */
+  @Test
+  fun addEventScreen_displaysTaskSection_forPersonalEvent() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      AddEventScreen(
+          viewModel = viewModel,
+          initialKind = EventKind.PERSONAL,
+          onBackClick = {},
+          onEventSaved = {},
+      )
+    }
+    composeTestRule.onNodeWithTag(Tags.ADD_TASK_BUTTON).performScrollTo().assertIsDisplayed()
+  }
+
+  @Test
+  fun addEventScreen_hidesTaskSection_forGroupSession() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      AddEventScreen(
+          viewModel = viewModel,
+          initialKind = EventKind.GROUP_SESSION,
+          onBackClick = {},
+          onEventSaved = {},
+      )
+    }
+    composeTestRule.onNodeWithTag(Tags.ADD_TASK_BUTTON).assertDoesNotExist()
   }
 }

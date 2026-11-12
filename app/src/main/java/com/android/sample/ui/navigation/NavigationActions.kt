@@ -1,8 +1,10 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.navigation
 
 import androidx.navigation.NavHostController
+import com.android.sample.ui.eventplanning.EventKind
 
 sealed class Screen(
     val route: String,
@@ -23,10 +25,19 @@ sealed class Screen(
       Screen(route = "group_session", name = "GroupSession", isTopLevelDestination = true)
 
   object AddEvent : Screen(route = "add_event", name = "AddEvent")
+
+  object AddGroupSession : Screen(route = "add_group_session", name = "AddGroupSession")
+
+  data class EditEvent(val eventId: String, val kind: EventKind = EventKind.PERSONAL) :
+      Screen(route = "edit_event/$eventId?kind=${kind.name}", name = "EditEvent") {
+    companion object {
+      const val ROUTE = "edit_event/{eventId}?kind={kind}"
+    }
+  }
 }
 
 open class NavigationActions(
-    private val navController: NavHostController,
+    private val navController: NavHostController? = null,
 ) {
   /**
    * Navigate to the specified screen.
@@ -40,7 +51,7 @@ open class NavigationActions(
     }
 
     // Forward to another tab: fresh screen state (no restore)
-    navController.navigate(screen.route) {
+    navController?.navigate(screen.route) {
       if (screen.isTopLevelDestination) {
         // If the destination is already on top of stack, don’t push another copy to stack
         launchSingleTop = true
@@ -70,12 +81,12 @@ open class NavigationActions(
       clearAll: Boolean = false,
   ) {
     if (clearAll) {
-      while (navController.popBackStack()) {}
-      navController.navigate(screen.route) { launchSingleTop = true }
+      while (navController?.popBackStack() == true) {}
+      navController?.navigate(screen.route) { launchSingleTop = true }
       return
     }
 
-    navController.navigate(screen.route) {
+    navController?.navigate(screen.route) {
       popUpTo(completedFlow.name) {
         inclusive = true
         saveState = false
@@ -102,9 +113,9 @@ open class NavigationActions(
    */
   open fun goBack() {
     if (currentRoute() == Screen.Dashboard.route) return
-    navController.popBackStack()
+    navController?.popBackStack()
     if (currentRoute().isEmpty()) {
-      navController.navigate(Screen.Dashboard.route) { launchSingleTop = true }
+      navController?.navigate(Screen.Dashboard.route) { launchSingleTop = true }
     }
   }
 
@@ -114,6 +125,6 @@ open class NavigationActions(
    * @return The current route
    */
   open fun currentRoute(): String {
-    return navController.currentDestination?.route ?: ""
+    return navController?.currentDestination?.route ?: ""
   }
 }
