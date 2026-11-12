@@ -2,6 +2,7 @@
 package com.android.sample.ui.groupsession
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalInspectionMode
@@ -96,13 +97,14 @@ class GroupSessionMapContentTest {
       onLeave: (String) -> Unit = {},
       onEdit: (String) -> Unit = {},
       initialSelectedRoom: String? = null,
+      shownRooms: List<RoomSessions> = rooms,
   ) {
     composeTestRule.setContent {
       // The real Google map cannot load in a unit test; in inspection mode the map view shows a
       // stand-in with the same tap behaviour.
       CompositionLocalProvider(LocalInspectionMode provides true) {
         GroupSessionMapContent(
-            rooms = rooms,
+            rooms = shownRooms,
             now = now,
             onJoin = onJoin,
             onLeave = onLeave,
@@ -131,6 +133,15 @@ class GroupSessionMapContentTest {
   fun content_withAnUnknownInitialRoom_showsNoList() {
     setContent(initialSelectedRoom = "Nowhere")
 
+    composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST).assertDoesNotExist()
+  }
+
+  /** With no rooms at all, the map still shows and no list opens, even for a selected name. */
+  @Test
+  fun content_withNoRooms_showsTheMapAndNoList() {
+    setContent(initialSelectedRoom = "AAB 0 26", shownRooms = emptyList())
+
+    composeTestRule.onNodeWithText(MAP_TITLE).assertIsDisplayed()
     composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST).assertDoesNotExist()
   }
 
@@ -188,6 +199,36 @@ class GroupSessionMapContentTest {
     composeTestRule.onNodeWithText(JOIN_LABEL).performClick()
 
     assertEquals("s3", joined)
+  }
+
+  /**
+   * A selected room that loses all its sessions is deselected for good: when sessions come back to
+   * it, the list stays closed instead of reopening on its own.
+   */
+  @Test
+  fun selectedRoomGettingSessionsBack_doesNotReopenTheList() {
+    val currentRooms = mutableStateOf(rooms)
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalInspectionMode provides true) {
+        GroupSessionMapContent(
+            rooms = currentRooms.value,
+            now = now,
+            onJoin = {},
+            onLeave = {},
+            onEdit = {},
+            initialSelectedRoom = "CM 1 121",
+        )
+      }
+    }
+    composeTestRule.onNodeWithText("Chemistry").assertIsDisplayed()
+
+    // The selected room loses its only session, so the list closes...
+    currentRooms.value = rooms.filter { it.room != cm }
+    composeTestRule.waitForIdle()
+    // ...and it must not reopen when the room has a session again.
+    currentRooms.value = rooms
+
+    composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST).assertDoesNotExist()
   }
 
   /** Leave on a joined session's card reports that session's ID, like Join and Edit do. */
