@@ -229,6 +229,8 @@ class PreferencesScreenEditModeTest {
     var saveCalls = 0
     val slowRepository =
         object : PreferencesRepository {
+          override fun hasPreferences(userId: String): Boolean = true
+
           override suspend fun getPreferences(userId: String): Result<UserPreferences?> =
               Result.success(UserPreferences(userId = userId))
 

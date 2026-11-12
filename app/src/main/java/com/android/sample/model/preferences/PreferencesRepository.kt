@@ -5,6 +5,14 @@ package com.android.sample.model.preferences
 interface PreferencesRepository {
 
   /**
+   * Checks synchronously whether preferences are stored locally on the device for the given user.
+   *
+   * @param userId The ID of the user to check.
+   * @return `true` if preferences exist locally on the device, `false` otherwise.
+   */
+  fun hasPreferences(userId: String): Boolean
+
+  /**
    * Fetches the preferences for a given user.
    *
    * @param userId The ID of the user whose preferences are requested. Must not be blank.

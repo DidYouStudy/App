@@ -551,6 +551,9 @@ private class FakeAuthRepository(private val user: UserAccount?) : AuthRepositor
 private class FakePreferencesRepository(
     private val preferences: UserPreferences?,
 ) : PreferencesRepository {
+  override fun hasPreferences(userId: String): Boolean =
+      preferences != null && preferences.userId == userId
+
   override suspend fun getPreferences(userId: String): Result<UserPreferences?> =
       Result.success(preferences?.takeIf { it.userId == userId })
 

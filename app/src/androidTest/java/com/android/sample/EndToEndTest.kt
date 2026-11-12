@@ -268,6 +268,8 @@ private class FakeSessionAuthRepository : AuthRepository {
 private class InMemoryPreferencesRepository : PreferencesRepository {
   val saved = mutableMapOf<String, UserPreferences>()
 
+  override fun hasPreferences(userId: String): Boolean = saved.containsKey(userId)
+
   override suspend fun getPreferences(userId: String): Result<UserPreferences?> =
       Result.success(saved[userId])
 

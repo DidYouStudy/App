@@ -35,6 +35,9 @@ private class FakePreferencesRepository(
   var getCalls = 0
   @Volatile var saved: UserPreferences? = null
 
+  override fun hasPreferences(userId: String): Boolean =
+      saved != null || getResult.getOrNull() != null
+
   override suspend fun getPreferences(userId: String): Result<UserPreferences?> {
     getCalls++
     getGate?.await()
