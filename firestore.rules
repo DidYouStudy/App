@@ -15,7 +15,9 @@ service cloud.firestore {
     }
 
     match /profiles/{userId} {
-      allow read, write: if isOwner(userId);
+      // Everything in a profile is readable by signed-in users; do not store private data here.
+      allow get: if request.auth != null;
+      allow write: if isOwner(userId);
     }
 
     match /preferences/{userId} {

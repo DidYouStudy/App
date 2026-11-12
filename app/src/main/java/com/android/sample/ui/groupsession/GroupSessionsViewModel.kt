@@ -21,6 +21,8 @@ import com.android.sample.model.location.CampusLocationType
 import com.android.sample.model.location.DistanceCalculator
 import com.android.sample.model.location.Location
 import com.android.sample.model.location.LocationProvider
+import com.android.sample.model.profile.ProfileRepository
+import com.android.sample.model.profile.ProfileRepositoryProvider
 import java.time.Clock
 import java.time.DayOfWeek
 import java.time.Instant
@@ -94,11 +96,16 @@ private fun GroupSessionsError?.withoutLoadFailure() = takeUnless {
   it == GroupSessionsError.LOAD_FAILED
 }
 
-/** One row of the list, including the current user's membership and creator relationship. */
+/**
+ * One row of the list, including membership, creator relationship, and the known host username.
+ *
+ * [hostName] is null until a nonblank username has been loaded for another user's profile.
+ */
 data class GroupSessionItem(
     val session: GroupSession,
     val isMember: Boolean,
     val isCreator: Boolean,
+    val hostName: String? = null,
     val proximity: SessionWithProximity = SessionWithProximity(session, null, null, null),
 )
 
@@ -139,17 +146,19 @@ data class GroupSessionsUiState(
  *
  * Sessions are sorted by the repository. Search checks subject, location, and description without
  * case sensitivity; joining and leaving use the current user's identity. Session type, start time,
- * proximity, zone, room type, and capacity criteria are applied together to that list. A refreshed
- * observation uses the current clock instant, because an existing repository flow retains its
- * original cutoff. Successful list emissions and refreshes clear only
- * [GroupSessionsError.LOAD_FAILED]; action errors remain until cleared or the observed user ID
- * changes. Action results from an earlier observed user ID are ignored. [GroupSessionsUiState.now]
+ * proximity, zone, room type, and capacity criteria are applied together to that list. A refreshed observation
+ * uses the current clock instant, because an existing repository flow retains its original cutoff.
+ * Successful list emissions and refreshes clear only [GroupSessionsError.LOAD_FAILED]; action
+ * errors remain until cleared or the observed user ID changes. Action results from an earlier
+ * observed user ID are ignored. Host usernames are loaded asynchronously through
+ * [profileRepository], so profile lookups never delay the session list. [GroupSessionsUiState.now]
  * is refreshed from [clock] while [uiState] has a collector, immediately when a collector returns,
  * and when the list is observed again.
  */
 class GroupSessionsViewModel(
     private val authRepository: AuthRepository,
     private val repository: GroupSessionsRepository,
+    private val profileRepository: ProfileRepository,
     private val clock: Clock = Clock.systemUTC(),
     private val locationProvider: LocationProvider = LocationProvider { flowOf(null) },
     private val campusLocationRepository: CampusLocationRepository? = null,
@@ -164,6 +173,8 @@ class GroupSessionsViewModel(
   private var authGeneration = 0L
   private var observedSessions: List<GroupSession> = emptyList()
   private var campusLocationsByName: Map<String, CampusLocation> = emptyMap()
+  private val hostNamesByUserId = mutableMapOf<String, String>()
+  private val hostLookupsInProgress = mutableSetOf<String>()
 
   init {
     refreshNowWhileObserved()
@@ -177,6 +188,8 @@ class GroupSessionsViewModel(
             if (userChanged) {
               currentUserId = userId
               authGeneration += 1
+              hostNamesByUserId.clear()
+              hostLookupsInProgress.clear()
             }
             if (user == null) {
               observedSessions = emptyList()
@@ -210,6 +223,7 @@ class GroupSessionsViewModel(
                             error = it.error.withoutLoadFailure(),
                         )
                       }
+                      lookupHostNames(sessions)
                     },
                     onFailure = {
                       _uiState.update {
@@ -356,7 +370,10 @@ class GroupSessionsViewModel(
    * clears only [GroupSessionsError.LOAD_FAILED], preserving action errors.
    */
   fun refresh() {
-    viewModelScope.launch { refreshVersion.update { it + 1 } }
+    viewModelScope.launch {
+      hostNamesByUserId.clear()
+      refreshVersion.update { it + 1 }
+    }
   }
 
   /** Clears the categorized error without changing the rest of the screen state. */
@@ -420,6 +437,45 @@ class GroupSessionsViewModel(
     }
   }
 
+  /** Starts non-blocking lookups for distinct session hosts whose names are not yet known. */
+  private fun lookupHostNames(sessions: List<GroupSession>) {
+    val currentUser = currentUserId ?: return
+    val requestGeneration = authGeneration
+    sessions
+        .asSequence()
+        .map { it.createdBy }
+        .distinct()
+        // Skip the current user, hosts whose names are known, and hosts already being looked up.
+        .filter { hostUserId ->
+          hostUserId != currentUser &&
+              hostUserId !in hostNamesByUserId &&
+              hostUserId !in hostLookupsInProgress
+        }
+        .forEach { hostUserId ->
+          hostLookupsInProgress += hostUserId
+          viewModelScope.launch {
+            try {
+              // Ignore results from earlier auth generations so a prior user's lookup can't apply.
+              val result = profileRepository.getProfile(hostUserId)
+              if (requestGeneration == authGeneration) {
+                // getProfile reports failures as Result; missing, blank, or failed profiles stay
+                // null, so the next list update can retry this host.
+                val hostName = result.getOrNull()?.username?.takeIf { it.isNotBlank() }
+                if (hostName != null) {
+                  hostNamesByUserId[hostUserId] = hostName
+                  updateVisibleSessions()
+                }
+              }
+            } finally {
+              if (requestGeneration == authGeneration) {
+                // Remove the in-progress mark so a later list update can retry this host.
+                hostLookupsInProgress.remove(hostUserId)
+              }
+            }
+          }
+        }
+  }
+
   private fun updateVisibleSessions() {
     val userId = currentUserId ?: return
     _uiState.update { state ->
@@ -432,6 +488,7 @@ class GroupSessionsViewModel(
                     isMember = userId in session.memberIds,
                     isCreator = userId == session.createdBy,
                     proximity = session.proximity(state.userLocation),
+                    hostName = hostNamesByUserId[session.createdBy],
                 )
               }
               .filter { item ->
@@ -513,6 +570,7 @@ class GroupSessionsViewModel(
 class GroupSessionsViewModelFactory(
     private val authRepository: AuthRepository,
     private val repository: GroupSessionsRepository,
+    private val profileRepository: ProfileRepository,
     private val locationProvider: LocationProvider = LocationProvider { flowOf(null) },
     private val campusLocationRepository: CampusLocationRepository? = null,
 ) : ViewModelProvider.Factory {
@@ -529,6 +587,7 @@ class GroupSessionsViewModelFactory(
     return GroupSessionsViewModel(
         authRepository,
         repository,
+        profileRepository = profileRepository,
         locationProvider = locationProvider,
         campusLocationRepository = campusLocationRepository,
     )
@@ -550,6 +609,7 @@ fun groupSessionsViewModel(): GroupSessionsViewModel {
               authRepository = AuthRepositoryProvider.getRepository(context),
               repository = GroupSessionsRepositoryProvider.getRepository(),
               campusLocationRepository = CampusLocationRepositoryProvider.getRepository(context),
+              profileRepository = ProfileRepositoryProvider.getRepository(),
           )
   )
 }
