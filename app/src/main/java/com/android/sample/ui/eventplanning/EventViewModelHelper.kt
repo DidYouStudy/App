@@ -1,7 +1,9 @@
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.eventplanning
 
 import com.android.sample.R
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
@@ -96,14 +98,27 @@ fun addTaskItem(tasks: List<EventTask>, text: String): List<EventTask> {
 
 /**
  * Converts local [date], [startTime], and [endTime] into start and end [Instant]s with clock time
- * zone support, handling next-day midnight crossing when end time is before start time.
+ * zone support, handling next-day midnight crossing when end time is before start time. If the
+ * schedule fields match [original], preserves the original instants.
  */
 fun calculateStartAndEndInstants(
     date: LocalDate,
     startTime: LocalTime,
     endTime: LocalTime,
     clock: Clock,
+    original: EventDetails? = null,
 ): Pair<Instant, Instant> {
+  if (original != null) {
+    val originalStart = original.startsAt.atZone(clock.zone)
+    val originalEnd = original.endsAt.atZone(clock.zone)
+    if (
+        date == originalStart.toLocalDate() &&
+            startTime == originalStart.toLocalTime() &&
+            endTime == originalEnd.toLocalTime()
+    ) {
+      return original.startsAt to original.endsAt
+    }
+  }
   val endDate = if (endTime.isBefore(startTime)) date.plusDays(1) else date
   val startsAt = date.atTime(startTime).atZone(clock.zone).toInstant()
   val endsAt = endDate.atTime(endTime).atZone(clock.zone).toInstant()
