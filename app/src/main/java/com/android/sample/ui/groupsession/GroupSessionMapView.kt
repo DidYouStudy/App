@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -36,6 +37,7 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
@@ -107,10 +109,14 @@ fun GroupSessionMapView(
 
   LaunchedEffect(cameraTarget) { cameraTarget?.let { focusOn(it) } }
 
+  // Disable on-screen zoom buttons so they do not overlap with bottom floating UI components.
+  val uiSettings = remember { MapUiSettings(zoomControlsEnabled = false) }
+
   Box(modifier = modifier.fillMaxSize()) {
     GoogleMap(
         modifier = Modifier.fillMaxSize(),
         cameraPositionState = cameraPositionState,
+        uiSettings = uiSettings,
         onMapClick = { onMapClick() },
     ) {
       rooms.forEach { room ->
