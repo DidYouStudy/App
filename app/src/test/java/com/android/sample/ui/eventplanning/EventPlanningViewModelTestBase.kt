@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
@@ -51,7 +52,7 @@ abstract class EventPlanningViewModelTestBase {
   }
 
   protected val zone = ZoneId.of("Europe/Berlin")
-  protected val now = Instant.parse("2026-10-27T12:00:00Z")
+  protected val now = Instant.parse("2026-10-27T06:00:00Z")
   protected val clock = Clock.fixed(now, zone)
   protected val date = LocalDate.of(2026, 10, 27)
   protected val startTime = LocalTime.of(9, 0)

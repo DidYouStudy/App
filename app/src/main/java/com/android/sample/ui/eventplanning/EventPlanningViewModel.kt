@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
@@ -26,6 +27,7 @@ import com.android.sample.model.location.CampusLocationFilter
 import com.android.sample.model.location.CampusLocationRepository
 import com.android.sample.model.location.CampusLocationRepositoryProvider
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -426,17 +428,34 @@ class EventPlanningViewModel(
   }
 
   /** Validates form inputs and builds [EventDetails], or sets the error and returns null. */
-  private fun validateAndBuildDetails(): EventDetails? {
+  private fun validateAndBuildDetails(isEditing: Boolean): EventDetails? {
     val state = _uiState.value
     val date = state.date
     val startTime = state.startTime
     val endTime = state.endTime
-    if (date == null || startTime == null || endTime == null) {
-      fail(EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED)
+    if (
+        date == null ||
+            startTime == null ||
+            endTime == null ||
+            (state.type != EventType.OTHER && state.subject.isBlank())
+    ) {
+      fail(EventPlanningError.REQUIRED_FIELDS_MISSING)
+      return null
+    }
+    if (startTime == endTime) {
+      fail(EventPlanningError.INVALID_TIME_RANGE)
       return null
     }
 
     val (startsAt, endsAt) = calculateStartAndEndInstants(date, startTime, endTime, clock)
+    if (!isEditing && startsAt.isBefore(clock.instant())) {
+      fail(EventPlanningError.EVENT_IN_PAST)
+      return null
+    }
+    if (Duration.between(startsAt, endsAt) > EventDetails.MAX_DURATION) {
+      fail(EventPlanningError.EVENT_TOO_LONG)
+      return null
+    }
 
     return try {
       EventDetails(
@@ -467,7 +486,7 @@ class EventPlanningViewModel(
       return
     }
 
-    val details = validateAndBuildDetails() ?: return
+    val details = validateAndBuildDetails(isEditing) ?: return
     val now = clock.instant()
     val defaultError =
         if (isEditing) EventPlanningError.FAILED_TO_EDIT_EVENT

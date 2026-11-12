@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
@@ -8,6 +9,7 @@ import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
 import com.android.sample.model.event.PersonalEvent
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -342,13 +344,13 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
   }
 
   @Test
-  fun editEvent_invalidForm_setsInvalidEventError() = runTest {
+  fun editEvent_blankRequiredSubject_reportsRequiredFieldsError() = runTest {
     val viewModel = loadedViewModel()
     viewModel.setSubject("   ")
 
     viewModel.editEvent()
 
-    assertEquals(EventPlanningError.INVALID_EVENT, viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.REQUIRED_FIELDS_MISSING, viewModel.uiState.value.error)
     assertNothingSaved()
   }
 
@@ -672,7 +674,7 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
 
     viewModel.addEvent()
 
-    assertEquals(EventPlanningError.INVALID_EVENT, viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.INVALID_TIME_RANGE, viewModel.uiState.value.error)
     assertNothingSaved()
   }
 
@@ -690,7 +692,8 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
 
   @Test
   fun addEvent_overnightAcrossTheEndOfSummerTime_usesLocalClockTimes() = runTest {
-    val viewModel = createViewModel()
+    val fallBackClock = Clock.fixed(Instant.parse("2026-10-24T18:00:00Z"), zone)
+    val viewModel = createViewModel(clk = fallBackClock)
     // Clocks go back from 03:00 to 02:00 on 25 October 2026: 22:00 is UTC+2, 04:00 is UTC+1.
     viewModel.fillValidForm(
         date = LocalDate.of(2026, 10, 24),

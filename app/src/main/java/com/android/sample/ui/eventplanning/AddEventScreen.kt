@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
@@ -102,6 +103,7 @@ fun AddEventScreen(
       onToggleTask = viewModel::toggleTask,
       onDeleteTask = viewModel::removeTask,
       onSaveClick = viewModel::addEvent,
+      onErrorDismiss = viewModel::clearError,
       isEditing = false,
       modifier = modifier,
       onTypeClick = onPickTypeClick,

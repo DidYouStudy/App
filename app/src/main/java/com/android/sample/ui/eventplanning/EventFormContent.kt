@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot
 // Co-authored-by: Codex AI Agent
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Gemini <noreply@google.com>
@@ -87,9 +88,7 @@ data class TaskActions(
 fun EventFormContent(
     modifier: Modifier = Modifier,
     uiState: EventPlanningUiState,
-    isValidationError: Boolean =
-        uiState.error == EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED ||
-            uiState.error == EventPlanningError.INVALID_EVENT,
+    isValidationError: Boolean = uiState.error?.isInputValidationError == true,
     onTypeChange: (EventType) -> Unit,
     onDateClick: () -> Unit,
     onStartTimeClick: () -> Unit,

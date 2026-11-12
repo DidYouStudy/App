@@ -113,6 +113,7 @@ fun EditEventScreen(
       onToggleTask = viewModel::toggleTask,
       onDeleteTask = viewModel::removeTask,
       onSaveClick = viewModel::editEvent,
+      onErrorDismiss = viewModel::clearError,
       onDeleteClick = { viewModel.deleteEvent(eventId) },
       isEditing = true,
       isLoading = uiState.isLoading,
