@@ -49,7 +49,7 @@ import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.profile.ProfileButton
-import com.android.sample.ui.sharedComponents.DashboardAddFabMenu
+import com.android.sample.ui.sharedComponents.AddFabMenu
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
@@ -147,7 +147,7 @@ fun CalendarScreen(
       },
       floatingActionButton = {
         AnimatedVisibility(visible = isAddMenuVisible) {
-          DashboardAddFabMenu(
+          AddFabMenu(
               onEventClick = onAddEventClick,
               onGroupSessionClick = onAddGroupSessionClick,
               modifier = Modifier.testTag(CalendarTestTags.ADD_BUTTON),
