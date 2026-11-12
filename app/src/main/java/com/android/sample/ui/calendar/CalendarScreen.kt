@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,6 +79,8 @@ fun CalendarScreen(
 ) {
   // The menu leaves composition while hidden, so it returns in its collapsed state.
   var isAddMenuVisible by remember { mutableStateOf(true) }
+  // Restore the menu when an error replaces the grid, which can no longer scroll it back.
+  LaunchedEffect(uiState.error) { if (uiState.error != null) isAddMenuVisible = true }
   // Observe user-driven nested scroll from the time grid without consuming its movement.
   val scrollConnection = remember {
     object : NestedScrollConnection {
