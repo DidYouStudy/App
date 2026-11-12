@@ -1,3 +1,4 @@
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Copilot
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
@@ -285,7 +286,11 @@ fun EventPlanningScreenStateless(
               )
             },
             navigationIcon = {
-              IconButton(onClick = onBackClick, modifier = Modifier.testTag(Tags.BACK_BUTTON)) {
+              IconButton(
+                  onClick = onBackClick,
+                  enabled = !isEditing || uiState.canLeaveEdit,
+                  modifier = Modifier.testTag(Tags.BACK_BUTTON),
+              ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.button_go_back),

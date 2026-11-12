@@ -1,4 +1,5 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.calendar
 
 import androidx.compose.foundation.ScrollState
@@ -113,6 +114,7 @@ object CalendarTestTags {
  * @param onPreviousWeek Callback invoked when the previous-week control is clicked.
  * @param onNextWeek Callback invoked when the next-week control is clicked.
  * @param modifier The modifier applied to the weekly calendar's root column.
+ * @param onEventClick Callback receiving the selected event's ID.
  */
 @Composable
 internal fun CalendarWeeklyView(
@@ -120,6 +122,7 @@ internal fun CalendarWeeklyView(
     onPreviousWeek: () -> Unit,
     onNextWeek: () -> Unit,
     modifier: Modifier = Modifier,
+    onEventClick: (String) -> Unit = {},
 ) {
   BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     // Checks the dimensions of the screen and decide whether to make the headers compact
@@ -140,6 +143,7 @@ internal fun CalendarWeeklyView(
           events = uiState.events,
           weekDates = uiState.weekDates,
           modifier = Modifier.weight(1f),
+          onEventClick = onEventClick,
       )
     }
   }
@@ -330,17 +334,19 @@ private fun CalendarTodayCircle(modifier: Modifier = Modifier) {
 }
 
 /**
- * Renders the empty weekly timeline with hour labels and seven equally sized day columns. The
- * timeline scrolls vertically as one unit and initially positions the view around 8 AM when the
- * measured viewport has enough scroll range.
+ * Renders the weekly timeline with hour labels and seven equally sized day columns. The timeline
+ * scrolls vertically as one unit and initially positions the view around 8 AM when the measured
+ * viewport has enough scroll range.
  *
  * @param modifier The modifier applied to the timeline container.
+ * @param onEventClick Callback receiving the selected event's ID.
  */
 @Composable
 fun CalendarTimeGrid(
     modifier: Modifier = Modifier,
     events: List<Event> = emptyList(),
     weekDates: List<LocalDate> = emptyList(),
+    onEventClick: (String) -> Unit = {},
 ) {
   // Keep the grid vertically scrollable
   val scrollState = remember { ScrollState(0) }
@@ -397,12 +403,13 @@ fun CalendarTimeGrid(
             events
                 .flatMap { event -> calculateEventPlacements(event, weekDates, hourHeight) }
                 .groupBy { placement -> placement.dayIndex }
+                .mapValues { (_, placements) -> placeOverlappingEventsSideBySide(placements) }
           }
       Row(modifier = Modifier.weight(1f)) {
         repeat(DAYS_PER_WEEK) { dayIndex ->
           val placements = placementsByDay[dayIndex].orEmpty()
 
-          Box(modifier = Modifier.weight(1f)) {
+          BoxWithConstraints(modifier = Modifier.weight(1f)) {
             Column {
               repeat(HOURS_PER_DAY) { hour ->
                 CalendarEmptyHourCell(
@@ -413,13 +420,15 @@ fun CalendarTimeGrid(
               }
             }
             placements.forEach { placement ->
+              val cardWidth = maxWidth / placement.laneCount
               CalendarEventCard(
                   event = placement.event,
                   modifier =
-                      Modifier.fillMaxWidth()
-                          .offset(y = placement.top)
+                      Modifier.width(cardWidth)
+                          .offset(x = cardWidth * placement.laneIndex, y = placement.top)
                           .height(maxOf(Dimens.calendarEventCardMinHeight, placement.height))
                           .testTag(CalendarTestTags.eventCard(placement.event.id, dayIndex)),
+                  onClick = { onEventClick(placement.event.id) },
               )
             }
           }
@@ -435,7 +444,35 @@ internal data class CalendarEventPlacement(
     val dayIndex: Int,
     val top: Dp,
     val height: Dp,
+    val laneIndex: Int = 0,
+    val laneCount: Int = 1,
 )
+
+/** Divides each group of overlapping cards into lanes, using the rendered minimum card height. */
+internal fun placeOverlappingEventsSideBySide(
+    placements: List<CalendarEventPlacement>
+): List<CalendarEventPlacement> = buildList {
+  val laneEnds = mutableListOf<Dp>()
+  val group = mutableListOf<CalendarEventPlacement>()
+
+  // A completed group knows its total width in lanes, so its cards can share the day column.
+  fun finishGroup() {
+    group.forEach { add(it.copy(laneCount = laneEnds.size)) }
+    group.clear()
+    laneEnds.clear()
+  }
+
+  for (placement in placements.sortedBy { it.top }) {
+    if (laneEnds.all { it <= placement.top }) finishGroup()
+
+    val laneEnd = placement.top + maxOf(Dimens.calendarEventCardMinHeight, placement.height)
+    val availableLane = laneEnds.indexOfFirst { it <= placement.top }
+    val laneIndex = if (availableLane >= 0) availableLane else laneEnds.size
+    if (laneIndex == laneEnds.size) laneEnds.add(laneEnd) else laneEnds[laneIndex] = laneEnd
+    group.add(placement.copy(laneIndex = laneIndex))
+  }
+  finishGroup()
+}
 
 /**
  * Splits an event at local midnight and calculates each segment's grid position.
