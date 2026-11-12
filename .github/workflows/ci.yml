@@ -132,7 +132,7 @@ jobs:
     name: Emulator tests
     # Google Maps key injected into the manifest; without it the map in the APK stays blank.
     env:
-      MAPS_API_KEY: ${{ secrets.MAP_API_KEY }}
+      MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
     runs-on: ubuntu-latest
     steps:
       # First step : Checkout the repository on the runner
