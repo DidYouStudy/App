@@ -121,6 +121,7 @@ fun GroupSessionScreen(
       val msg =
           when (error) {
             GroupSessionsError.LOAD_FAILED -> loadErrorMessage
+            GroupSessionsError.LOCATION_LOAD_FAILED -> loadErrorMessage
             GroupSessionsError.JOIN_FAILED -> joinErrorMessage
             GroupSessionsError.LEAVE_FAILED -> leaveErrorMessage
           }
