@@ -108,7 +108,9 @@ class PreferencesScreenEditModeTest {
     composeTestRule
         .onNodeWithTag(PreferencesScreenTestTags.IMPORT_SCHEDULE_BUTTON)
         .assertIsDisplayed()
-    composeTestRule.onNodeWithText("Requires an .ics calendar file").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.preferences_import_schedule_file_type))
+        .assertIsDisplayed()
   }
 
   /** The Save button label comes from the string resource, so it can be translated. */
