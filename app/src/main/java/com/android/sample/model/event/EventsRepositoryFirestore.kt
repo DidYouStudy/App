@@ -131,6 +131,28 @@ class EventsRepositoryFirestore(
     }
   }
 
+  /** Patches an existing event's checklist through the same local write queue as other edits. */
+  override suspend fun updateEventTasks(
+      ownerId: String,
+      eventId: String,
+      tasks: List<EventTask>,
+      updatedAt: Instant,
+  ): Result<Unit> = execute {
+    validate(ownerId, eventId)
+    if (eventQuery(ownerId, eventId).get(Source.CACHE).await().isEmpty) {
+      throw EventsException(EventsError.NOT_FOUND)
+    }
+    checkOwner(ownerId)
+    val batch =
+        firestore
+            .batch()
+            .update(
+                events(ownerId).document(eventId),
+                EventFirestoreMapper.encodeTaskUpdate(tasks, updatedAt),
+            )
+    commitLocally(batch, ownerId, eventId, requireEvent = true)
+  }
+
   /** Queues an idempotent deletion without removing historical subject suggestions. */
   override suspend fun deleteEvent(ownerId: String, eventId: String): Result<Unit> = execute {
     validate(ownerId, eventId)
@@ -143,14 +165,24 @@ class EventsRepositoryFirestore(
    * deleting a missing document. Real-SDK offline/restart tests guard this SDK ordering assumption.
    * Cancelling the caller does not undo an already queued write.
    */
-  private suspend fun commitLocally(batch: WriteBatch, owner: String, id: String) {
+  private suspend fun commitLocally(
+      batch: WriteBatch,
+      owner: String,
+      id: String,
+      requireEvent: Boolean = false,
+  ) {
     val acknowledgement = batch.commit()
-    events(owner).whereEqualTo(FieldPath.documentId(), id).get(Source.CACHE).await()
+    val snapshot = eventQuery(owner, id).get(Source.CACHE).await()
     if (acknowledgement.isComplete && !acknowledgement.isSuccessful) {
       throw acknowledgement.exception ?: EventsException(EventsError.STORAGE_FAILURE)
     }
     checkOwner(owner)
+    if (requireEvent && snapshot.isEmpty) throw EventsException(EventsError.NOT_FOUND)
   }
+
+  /** Selects a document by ID for cache reads that also handle missing documents. */
+  private fun eventQuery(owner: String, id: String) =
+      events(owner).whereEqualTo(FieldPath.documentId(), id)
 
   /** Registers both listeners per collector and closes them when cancelled or signed out. */
   private fun <T> observe(

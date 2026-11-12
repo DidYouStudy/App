@@ -119,6 +119,12 @@ object Dimens {
   val actionsBottomPadding = 24.dp
   val locationPickerMaxHeight = 350.dp
   val noPadding = 0.dp
+
+  // Group session map
+  /** Pin: a droplet with its tip down and a white dot in the middle. */
+  val mapMarkerWidth = 32.dp
+  val mapMarkerHeight = 40.dp
+  val mapMarkerDotDiameter = 12.dp
   val datePickerInputHeight = 260.dp
   val datePickerCalendarHeight = 512.dp
   val datePickerMaxLandscapeHeight = 120.dp
