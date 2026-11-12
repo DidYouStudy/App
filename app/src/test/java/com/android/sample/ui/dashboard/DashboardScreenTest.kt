@@ -1,5 +1,6 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.dashboard
 
 import android.content.Context
@@ -15,11 +16,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
+import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
+import com.android.sample.ui.navigation.Screen
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.mockito.Mockito.mock
+import org.mockito.kotlin.verify
 
 @RunWith(AndroidJUnit4::class)
 class DashboardScreenTest {
@@ -114,5 +119,55 @@ class DashboardScreenTest {
         .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(results) }
 
     assertEquals(FontWeight.Bold, results.single().layoutInput.style.fontWeight)
+  }
+
+  @Test
+  fun defaultEventClickNavigatesToAddEvent() {
+    val navActions = mock(NavigationActions::class.java)
+    composeTestRule.setContent { DashboardScreen(navigationActions = navActions) }
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON).performClick()
+
+    verify(navActions).navigateTo(Screen.AddEvent)
+  }
+
+  @Test
+  fun defaultGroupSessionClickNavigatesToAddGroupSession() {
+    val navActions = mock(NavigationActions::class.java)
+    composeTestRule.setContent { DashboardScreen(navigationActions = navActions) }
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.FAB_MENU_GROUP_SESSION_BUTTON)
+        .performClick()
+
+    verify(navActions).navigateTo(Screen.AddGroupSession)
+  }
+
+  /**
+   * Verifies that clicking on the FAB items when no navigation actions instance is provided
+   * executes safely as a no-op without throwing an exception.
+   */
+  @Test
+  fun fabMenuClickWithNullNavigationActionsDoesNotCrash() {
+    composeTestRule.setContent { DashboardScreen(navigationActions = null) }
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.FAB_MENU_GROUP_SESSION_BUTTON)
+        .performClick()
+  }
+
+  /** Verifies that the preview composable renders cleanly without crashing. */
+  @Test
+  fun dashboardScreenPreviewRendersWithoutCrash() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    composeTestRule.setContent { DashBoardScreenPreview() }
+    composeTestRule
+        .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
+        .assertTextEquals(context.getString(R.string.dashboard_title))
   }
 }

@@ -2,6 +2,7 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.dashboard
 
 import androidx.compose.foundation.layout.padding
@@ -37,7 +38,7 @@ fun DashboardScreen(
     // onSignedOut: () -> Unit = {},
     navigationActions: NavigationActions? = null,
     onEventClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
-    onGroupSessionClick: () -> Unit = {},
+    onGroupSessionClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddGroupSession) },
 ) {
   Scaffold(
       topBar = {
