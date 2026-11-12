@@ -25,6 +25,10 @@ import com.android.sample.model.location.CampusLocation
 import com.android.sample.model.location.CampusLocationFilter
 import com.android.sample.model.location.CampusLocationRepository
 import com.android.sample.model.location.CampusLocationRepositoryProvider
+import com.android.sample.model.preferences.PreferenceDefaults
+import com.android.sample.model.preferences.PreferencesRepository
+import com.android.sample.model.preferences.PreferencesRepositoryProvider
+import com.android.sample.model.preferences.UserPreferences
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -130,11 +134,20 @@ class EventPlanningViewModel(
     private val campusLocationRepository: CampusLocationRepository,
     private val groupSessionsRepository: GroupSessionsRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
+    private val preferencesRepository: PreferencesRepository =
+        object : PreferencesRepository {
+          override suspend fun getPreferences(userId: String): Result<UserPreferences?> =
+              Result.success(null)
+
+          override suspend fun savePreferences(preferences: UserPreferences): Result<Unit> =
+              Result.success(Unit)
+        },
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(EventPlanningUiState())
   val uiState: StateFlow<EventPlanningUiState> = _uiState.asStateFlow()
 
   private var currentUserId: String? = null
+  private var sessionLengthMinutes: Int = PreferenceDefaults.DEFAULT_SESSION_MINUTES
 
   /**
    * ID of the event being added. Generated on the first attempt and reused by retries, so that a
@@ -157,7 +170,16 @@ class EventPlanningViewModel(
     viewModelScope.launch {
       try {
         authRepository.currentUser
-            .onEach { user -> currentUserId = user?.uid }
+            .onEach { user ->
+              currentUserId = user?.uid
+              if (user != null) {
+                preferencesRepository.getPreferences(user.uid).onSuccess { prefs ->
+                  if (prefs != null) {
+                    sessionLengthMinutes = prefs.sessionLengthMinutes
+                  }
+                }
+              }
+            }
             .flatMapLatest { user ->
               if (user == null) flowOf(Result.success(emptyList()))
               else eventsRepository.observeSubjects(user.uid)
@@ -212,8 +234,16 @@ class EventPlanningViewModel(
   /** Updates the event date. */
   fun setDate(date: LocalDate?) = updateForm { copy(date = date) }
 
-  /** Updates the start time of day. */
-  fun setStartTime(startTime: LocalTime?) = updateForm { copy(startTime = startTime) }
+  /**
+   * Updates the start time of day and automatically sets the end time to start time plus
+   * sessionLengthMinutes from user preferences.
+   */
+  fun setStartTime(startTime: LocalTime?) {
+    updateForm {
+      val endTime = startTime?.plusMinutes(sessionLengthMinutes.toLong()) ?: this.endTime
+      copy(startTime = startTime, endTime = endTime)
+    }
+  }
 
   /** Updates the end time of day. */
   fun setEndTime(endTime: LocalTime?) = updateForm { copy(endTime = endTime) }
@@ -616,6 +646,8 @@ class EventPlanningViewModelFactory(
     private val eventsRepository: EventsRepository,
     private val campusLocationRepository: CampusLocationRepository,
     private val groupSessionsRepository: GroupSessionsRepository,
+    private val preferencesRepository: PreferencesRepository =
+        PreferencesRepositoryProvider.getRepository(),
 ) : ViewModelProvider.Factory {
   /**
    * Creates an EventsPlanningViewModel and rejects unrelated ViewModel types rather than casting
@@ -631,6 +663,8 @@ class EventPlanningViewModelFactory(
         eventsRepository,
         campusLocationRepository,
         groupSessionsRepository,
+        Clock.systemDefaultZone(),
+        preferencesRepository,
     )
         as T
   }
@@ -651,5 +685,6 @@ fun eventsPlanningViewModel(): EventPlanningViewModel =
                 campusLocationRepository =
                     CampusLocationRepositoryProvider.getRepository(LocalContext.current),
                 groupSessionsRepository = GroupSessionsRepositoryProvider.getRepository(),
+                preferencesRepository = PreferencesRepositoryProvider.getRepository(),
             )
     )
