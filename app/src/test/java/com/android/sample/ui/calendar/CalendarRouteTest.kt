@@ -98,6 +98,30 @@ class CalendarRouteTest {
     verify(navigationActions).navigateTo(Screen.AddEvent)
   }
 
+  /** Uses the route's default Group session action to navigate to AddGroupSession. */
+  @Test
+  fun routeDefaultGroupSessionOptionNavigatesToAddGroupSession() {
+    val navigationActions = mock<NavigationActions>()
+    val authRepository = mock<AuthRepository>()
+    whenever(authRepository.currentUser).thenReturn(MutableStateFlow<UserAccount?>(null))
+    val viewModel = CalendarViewModel(authRepository, mock<EventsRepository>(), Clock.systemUTC())
+    val lifecycleOwner = TestLifecycleOwner()
+    composeTestRule.runOnUiThread { lifecycleOwner.registry.currentState = Lifecycle.State.RESUMED }
+
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalLifecycleOwner provides lifecycleOwner) {
+        CalendarRoute(navigationActions = navigationActions, viewModel = viewModel)
+      }
+    }
+
+    composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.FAB_MENU_GROUP_SESSION_BUTTON)
+        .performClick()
+
+    verify(navigationActions).navigateTo(Screen.AddGroupSession)
+  }
+
   /** Closes the Event menu option safely when the route has no navigation action. */
   @Test
   fun routeDefaultEventOptionWithoutNavigationDoesNothing() {

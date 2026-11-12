@@ -275,6 +275,29 @@ class CalendarScreenTest {
     verify(navigationActions).navigateTo(Screen.AddEvent)
   }
 
+  /** Uses the default group-session callback to navigate to AddGroupSession. */
+  @Test
+  fun groupSessionMenuOptionNavigatesByDefault() {
+    val navigationActions = mock<NavigationActions>()
+    composeTestRule.setContent {
+      CalendarScreen(
+          uiState = calendarUiState(LocalDate.of(2026, 10, 28)),
+          onToday = {},
+          onPreviousWeek = {},
+          onNextWeek = {},
+          onRetry = {},
+          navigationActions = navigationActions,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.FAB_MENU_GROUP_SESSION_BUTTON)
+        .performClick()
+
+    verify(navigationActions).navigateTo(Screen.AddGroupSession)
+  }
+
   /** Closes the Event menu option safely when navigation is unavailable. */
   @Test
   fun defaultEventOptionWithoutNavigationDoesNothing() {
