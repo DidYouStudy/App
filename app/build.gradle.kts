@@ -14,15 +14,15 @@ plugins {
   id("jacoco")
 }
 
-// Google Maps API key: never committed. It comes from local.properties (MAPS_API_KEY=...) or, on
-// CI, from the MAPS_API_KEY environment variable. Without it the app builds but the map is blank.
+// Google Maps API key: never committed. It comes from local.properties (MAP_API_KEY=...) or, on
+// CI, from the MAP_API_KEY environment variable. Without it the app builds but the map is blank.
 val mapsApiKey: String =
     rootProject
         .file("local.properties")
         .takeIf { it.exists() }
         ?.inputStream()
-        ?.use { Properties().apply { load(it) }.getProperty("MAPS_API_KEY") }
-        ?: System.getenv("MAPS_API_KEY")
+        ?.use { Properties().apply { load(it) }.getProperty("MAP_API_KEY") }
+        ?: System.getenv("MAP_API_KEY")
         ?: ""
 
 android {
@@ -38,7 +38,7 @@ android {
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     vectorDrawables { useSupportLibrary = true }
-    manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+    manifestPlaceholders["MAP_API_KEY"] = mapsApiKey
   }
 
   signingConfigs {
