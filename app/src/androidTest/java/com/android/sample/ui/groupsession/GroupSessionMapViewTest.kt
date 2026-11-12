@@ -48,8 +48,8 @@ class GroupSessionMapViewTest {
   private fun resourceFloat(id: Int): Float = ResourcesCompat.getFloat(resources, id)
 
   /**
-   * Shows the map with the camera at [startAt], at a zoom between the two used. By default that is
-   * far from the campus centre and from the pins, so the tests of camera moves have a move to make.
+   * Shows the map with the camera at [startAt], at [START_ZOOM]. By default that is far from the
+   * campus centre and from the pins, so the tests of camera moves have a move to make.
    */
   private fun showMap(cameraTarget: Location? = null, startAt: LatLng = FAR_AWAY) {
     composeTestRule.setContent {
@@ -120,6 +120,8 @@ class GroupSessionMapViewTest {
   }
 
   private companion object {
+    // Test geometry, not the app's zoom: below the app's default and focus zooms, so that a move
+    // onto a pin has a zoom-in to make, and far enough out to hold both pins on a small screen.
     const val START_ZOOM = 15f
     val FAR_AWAY = LatLng(46.5191, 6.5600)
     const val POSITION_TOLERANCE = 0.0002

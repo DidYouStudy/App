@@ -194,9 +194,12 @@ class GroupSessionMapContentRealMapTest {
   }
 
   private companion object {
+    // Test geometry, not the app's zoom: close enough in to tell the test rooms apart, which are
+    // about 150 dp apart at this zoom, so both are on screen even on a small one.
     const val START_ZOOM = 17f
-    // Far enough in to tell the preview's pins apart, far enough out to hold both on a small
-    // screen.
+
+    // Test geometry, not the app's zoom: far enough in to tell the preview's pins apart, far enough
+    // out to hold both on a small screen.
     const val PREVIEW_ZOOM = 16f
   }
 }

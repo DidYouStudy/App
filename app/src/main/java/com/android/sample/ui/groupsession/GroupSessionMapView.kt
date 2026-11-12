@@ -49,8 +49,6 @@ import kotlinx.coroutines.launch
  * real map. It holds no selection: tapping a pin moves the camera onto it and reports the room to
  * the caller, which decides what to show.
  *
- * A button in the top-right corner moves the camera back to the campus centre at the default zoom.
- *
  * Needs a Maps API key in the app manifest; without one the map stays blank.
  *
  * @param rooms Rooms to draw a pin for, at their coordinates.
@@ -96,13 +94,6 @@ fun GroupSessionMapView(
     val zoom = maxOf(cameraPositionState.position.zoom, focusZoom)
     cameraPositionState.animate(
         CameraUpdateFactory.newLatLngZoom(target.toLatLng(), zoom),
-        cameraAnimationMs,
-    )
-  }
-  // Moves the camera back to the campus centre at the default zoom.
-  val recenter: suspend () -> Unit = {
-    cameraPositionState.animate(
-        CameraUpdateFactory.newLatLngZoom(campusCenter, defaultZoom),
         cameraAnimationMs,
     )
   }

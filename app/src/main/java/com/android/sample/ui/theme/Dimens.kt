@@ -121,8 +121,6 @@ object Dimens {
   val noPadding = 0.dp
 
   // Group session map
-  /** Icon of the recentre button; as wide as the pin. */
-  val mapRecenterIconSize = 32.dp
   /** Pin: a droplet with its tip down and a white dot in the middle. */
   val mapMarkerWidth = 32.dp
   val mapMarkerHeight = 40.dp

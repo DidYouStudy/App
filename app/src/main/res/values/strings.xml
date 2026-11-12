@@ -147,7 +147,6 @@
     <string name="group_session_error_dismiss">Dismiss</string>
     <string name="group_session_add_description">Add group session</string>
     <string name="group_session_map_preview_placeholder">Map (shown on a device only)</string>
-    <string name="group_session_map_recenter">Back to campus centre</string>
     <string name="group_session_error_load">Could not load sessions. Please try again.</string>
     <string name="group_session_error_join">Could not join session. Please try again.</string>
     <string name="group_session_error_leave">Could not leave session. Please try again.</string>

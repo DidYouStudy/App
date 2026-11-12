@@ -48,7 +48,7 @@ class GroupSessionMapContentTest {
           Location(46.52, 6.56),
       )
 
-  private fun item(id: String, subject: String) =
+  private fun item(id: String, subject: String, isCreator: Boolean = false) =
       GroupSessionItem(
           session =
               GroupSession(
@@ -65,18 +65,28 @@ class GroupSessionMapContentTest {
                   createdAt = now,
               ),
           isMember = false,
-          isCreator = false,
+          isCreator = isCreator,
       )
 
   private val aab = room("AAB 0 26")
   private val cm = room("CM 1 121")
+  private val bc = room("BC 410")
   private val maths = item("s1", "Maths")
   private val physics = item("s2", "Physics")
   private val chemistry = item("s3", "Chemistry")
+  private val ownSession = item("s4", "Algebra", isCreator = true)
   private val rooms =
-      listOf(RoomSessions(aab, listOf(maths, physics)), RoomSessions(cm, listOf(chemistry)))
+      listOf(
+          RoomSessions(aab, listOf(maths, physics)),
+          RoomSessions(cm, listOf(chemistry)),
+          RoomSessions(bc, listOf(ownSession)),
+      )
 
-  private fun setContent(onJoin: (String) -> Unit = {}, initialSelectedRoom: String? = null) {
+  private fun setContent(
+      onJoin: (String) -> Unit = {},
+      onEdit: (String) -> Unit = {},
+      initialSelectedRoom: String? = null,
+  ) {
     composeTestRule.setContent {
       // The real Google map cannot load in a unit test; in inspection mode the map view shows a
       // stand-in with the same tap behaviour.
@@ -86,7 +96,7 @@ class GroupSessionMapContentTest {
             now = now,
             onJoin = onJoin,
             onLeave = {},
-            onEdit = {},
+            onEdit = onEdit,
             initialSelectedRoom = initialSelectedRoom,
         )
       }
@@ -170,6 +180,16 @@ class GroupSessionMapContentTest {
     assertEquals("s3", joined)
   }
 
+  @Test
+  fun editOnTheCreatorsCard_reportsTheSessionId() {
+    var edited: String? = null
+    setContent(onEdit = { edited = it }, initialSelectedRoom = "BC 410")
+
+    composeTestRule.onNodeWithText(EDIT_LABEL).performClick()
+
+    assertEquals("s4", edited)
+  }
+
   /** The bounds of the [dropletPath] of [size], with the turns in degrees. */
   private fun dropletBounds(size: Size): Rect = dropletPath(size, 90f, 360f).getBounds()
 
@@ -204,6 +224,7 @@ class GroupSessionMapContentTest {
   private companion object {
     const val MAP_TITLE = "Map (shown on a device only)"
     const val JOIN_LABEL = "Join"
+    const val EDIT_LABEL = "Edit"
     const val DROPLET_EXACT = 0.01f
     const val DROPLET_ARC_TOLERANCE = 3f
   }

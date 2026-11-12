@@ -54,6 +54,7 @@ object GroupSessionMapTestTags {
  * @param now Reference time of the cards' relative labels.
  * @param onJoin Called with the session ID when a card's join button is pressed.
  * @param onLeave Called with the session ID when a card's leave button is pressed.
+ * @param onEdit Called with the session ID when the creator of a session presses its edit button.
  * @param initialSelectedRoom Name of the room selected when the map first appears, or null for
  *   none. Mainly for tests of the cards, which cannot tap a pin on the stand-in map.
  * @param cameraPositionState Camera of the map, passed on to [GroupSessionMapView] for a caller
