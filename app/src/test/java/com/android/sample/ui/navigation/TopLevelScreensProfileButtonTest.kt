@@ -14,6 +14,7 @@ import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.model.location.FakeLocationProvider
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.UserProfile
 import com.android.sample.ui.calendar.CalendarDateHelper
@@ -106,6 +107,7 @@ class TopLevelScreensProfileButtonTest {
             fakeAuthRepository,
             EmptyGroupSessionsRepository(),
             EmptyProfileRepository(),
+            locationProvider = FakeLocationProvider(),
         )
     assertProfileButtonOpensSettings(groupSessionsViewModel) { navigationActions, viewModel ->
       GroupSessionScreen(
