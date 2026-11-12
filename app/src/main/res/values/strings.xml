@@ -126,6 +126,19 @@
     <string name="confirm">OK</string>
     <string name="cancel">Cancel</string>
 
+    <!-- Event Details Screen -->
+    <string name="event_details_title">Event details</string>
+    <string name="event_details_back_description">Back</string>
+    <string name="event_details_date_time_range">%1$s • %2$s - %3$s</string>
+    <string name="event_details_description_label">Description</string>
+    <string name="event_details_tasks_label">Tasks</string>
+    <string name="event_details_subject_fallback">Untitled event</string>
+    <string name="event_details_location_fallback">No location</string>
+    <string name="event_details_description_fallback">No description</string>
+    <string name="event_details_edit">Edit details</string>
+    <string name="event_details_delete">Delete event</string>
+    <string name="event_details_not_found">This event could not be displayed</string>
+
     <!-- Group Sessions Screen -->
     <string name="group_session_title">Group sessions</string>
     <string name="group_session_add_title">Add new group session</string>
