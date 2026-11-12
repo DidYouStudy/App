@@ -22,6 +22,7 @@ fun CalendarRoute(
     navigationActions: NavigationActions? = null,
     viewModel: CalendarViewModel = calendarViewModel(),
     onAddClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
+    onEventClick: (String) -> Unit = {},
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val lifecycleOwner = LocalLifecycleOwner.current
@@ -49,5 +50,6 @@ fun CalendarRoute(
       onNextWeek = viewModel::nextWeek,
       onRetry = viewModel::retryEvents,
       onAddClick = onAddClick,
+      onEventClick = onEventClick,
   )
 }

@@ -1,7 +1,10 @@
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.eventplanning
 
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
+import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
 import java.time.Clock
@@ -118,5 +121,26 @@ class EventViewModelHelperTest {
     val (start2, end2) = calculateStartAndEndInstants(date, startTime, endTimeNextDay, clock)
     assertEquals(Instant.parse("2026-11-02T09:00:00Z"), start2)
     assertEquals(Instant.parse("2026-11-03T01:00:00Z"), end2)
+  }
+
+  /** Keeps a 24-hour event's stored end while the schedule is unchanged; a new date recomputes. */
+  @Test
+  fun calculateStartAndEndInstants_keepsOriginalOnlyWhileScheduleIsUnchanged() {
+    val original =
+        EventDetails(
+            type = EventType.STUDY_SESSION,
+            subject = "Algebra",
+            startsAt = Instant.parse("2026-11-02T09:00:00Z"),
+            endsAt = Instant.parse("2026-11-03T09:00:00Z"),
+        )
+    val date = LocalDate.of(2026, 11, 2)
+    val time = LocalTime.of(10, 0)
+
+    val unchanged = calculateStartAndEndInstants(date, time, time, clock, original)
+    val (movedStart, _) =
+        calculateStartAndEndInstants(date.plusDays(1), time, time, clock, original)
+
+    assertEquals(original.startsAt to original.endsAt, unchanged)
+    assertEquals(Instant.parse("2026-11-03T09:00:00Z"), movedStart)
   }
 }

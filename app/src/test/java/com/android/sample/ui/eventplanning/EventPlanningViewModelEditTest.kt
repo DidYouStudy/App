@@ -1,3 +1,4 @@
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Copilot
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
@@ -307,6 +308,20 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     assertEquals(createdAt, saved.createdAt)
     assertEquals(now, saved.updatedAt)
     verify(eventsRepository, never()).newEventId()
+  }
+
+  /** A description-only edit preserves the exact schedule of a full-day event. */
+  @Test
+  fun editEvent_preservesUnchanged24HourSchedule() = runTest {
+    val event = storedEvent(endsAt = startsAt.plus(EventDetails.MAX_DURATION))
+    val viewModel = loadedViewModel(event)
+    viewModel.setDescription("Updated description")
+
+    viewModel.editEvent()
+
+    val saved = savedEvents().single()
+    assertEquals(event.details.copy(description = "Updated description"), saved.details)
+    assertTrue(viewModel.uiState.value.isEventEdited)
   }
 
   @Test

@@ -1,4 +1,6 @@
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.eventplanning
 
 import androidx.lifecycle.ViewModel
@@ -15,6 +17,7 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,7 +37,7 @@ import org.junit.Before
 import org.junit.Test
 import org.mockito.Mockito.mock
 import org.mockito.kotlin.any
-import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.doSuspendableAnswer
 import org.mockito.kotlin.never
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
@@ -294,7 +297,8 @@ class EventDetailsViewModelTest {
   fun toggleTask_validIndex_togglesCompletionAndSaves() = runTest {
     whenever(eventsRepository.getEvent("user123", "event-123"))
         .thenReturn(Result.success(sampleEvent))
-    whenever(eventsRepository.saveEvent(any())).thenReturn(Result.success(Unit))
+    whenever(eventsRepository.updateEventTasks(any(), any(), any(), any()))
+        .thenReturn(Result.success(Unit))
 
     val viewModel = createViewModel()
     viewModel.loadEvent("event-123")
@@ -306,9 +310,8 @@ class EventDetailsViewModelTest {
     assertTrue(updatedEvent!!.tasks[0].isCompleted)
     assertEquals(now, updatedEvent.tasks[0].completedAt)
 
-    val captor = argumentCaptor<PersonalEvent>()
-    verify(eventsRepository).saveEvent(captor.capture())
-    assertEquals(updatedEvent, captor.firstValue)
+    verify(eventsRepository).updateEventTasks("user123", "event-123", updatedEvent.tasks, now)
+    verify(eventsRepository, never()).saveEvent(any())
 
     // Toggle back
     viewModel.toggleTask(0)
@@ -329,14 +332,83 @@ class EventDetailsViewModelTest {
     viewModel.toggleTask(-1)
     viewModel.toggleTask(100)
 
+    verify(eventsRepository, never()).updateEventTasks(any(), any(), any(), any())
+  }
+
+  /** A displayed checklist cannot be saved over a pending refresh or delete. */
+  @Test
+  fun toggleTask_whileRefreshingOrDeleting_ignoresTaps() = runTest {
+    val refresh = CompletableDeferred<PersonalEvent>()
+    val delete = CompletableDeferred<Unit>()
+    whenever(eventsRepository.getEvent("user123", "event-123"))
+        .thenReturn(Result.success(sampleEvent))
+    whenever(eventsRepository.deleteEvent("user123", "event-123")).doSuspendableAnswer {
+      Result.success(delete.await())
+    }
+    val viewModel = createViewModel()
+    viewModel.loadEvent("event-123")
+    whenever(eventsRepository.getEvent("user123", "event-123")).doSuspendableAnswer {
+      Result.success(refresh.await())
+    }
+
+    viewModel.loadEvent("event-123", refresh = true)
+    assertTrue(viewModel.uiState.value.isLoading)
+    viewModel.toggleTask(0)
+    assertEquals(sampleEvent, viewModel.uiState.value.event)
+    val edited = sampleEvent.copy(details = sampleDetails.copy(description = "Saved edit"))
+    refresh.complete(edited)
+
+    viewModel.deleteEvent()
+    assertTrue(viewModel.uiState.value.isDeleting)
+    viewModel.toggleTask(0)
+    assertEquals(edited, viewModel.uiState.value.event)
+    delete.complete(Unit)
+
+    verify(eventsRepository, never()).updateEventTasks(any(), any(), any(), any())
     verify(eventsRepository, never()).saveEvent(any())
+    assertNull(viewModel.uiState.value.event)
+  }
+
+  /** Without a loaded event there is no checklist to save. */
+  @Test
+  fun toggleTask_noEventLoaded_isIgnored() = runTest {
+    val viewModel = createViewModel()
+
+    viewModel.toggleTask(0)
+
+    assertNull(viewModel.uiState.value.event)
+    verify(eventsRepository, never()).updateEventTasks(any(), any(), any(), any())
+  }
+
+  /** A refresh waits for a pending checklist save, so it cannot overwrite the toggled task. */
+  @Test
+  fun loadEvent_whileChecklistUpdatePending_isIgnoredUntilSaved() = runTest {
+    val update = CompletableDeferred<Unit>()
+    whenever(eventsRepository.getEvent("user123", "event-123"))
+        .thenReturn(Result.success(sampleEvent))
+    whenever(eventsRepository.updateEventTasks(any(), any(), any(), any())).doSuspendableAnswer {
+      Result.success(update.await())
+    }
+    val viewModel = createViewModel()
+    viewModel.loadEvent("event-123")
+
+    viewModel.toggleTask(0)
+    assertTrue(viewModel.uiState.value.isUpdatingTasks)
+    assertTrue(viewModel.uiState.value.isBusy)
+    viewModel.loadEvent("event-123", refresh = true)
+    verify(eventsRepository, times(1)).getEvent("user123", "event-123")
+
+    update.complete(Unit)
+    assertFalse(viewModel.uiState.value.isUpdatingTasks)
+    viewModel.loadEvent("event-123", refresh = true)
+    verify(eventsRepository, times(2)).getEvent("user123", "event-123")
   }
 
   @Test
   fun toggleTask_saveFails_revertsEventAndSetsError() = runTest {
     whenever(eventsRepository.getEvent("user123", "event-123"))
         .thenReturn(Result.success(sampleEvent))
-    whenever(eventsRepository.saveEvent(any()))
+    whenever(eventsRepository.updateEventTasks(any(), any(), any(), any()))
         .thenReturn(Result.failure(EventsException(EventsError.STORAGE_FAILURE)))
 
     val viewModel = createViewModel()
@@ -353,7 +425,8 @@ class EventDetailsViewModelTest {
   fun toggleTask_cancellationException_cancelsCoroutineWithoutSettingError() = runTest {
     whenever(eventsRepository.getEvent("user123", "event-123"))
         .thenReturn(Result.success(sampleEvent))
-    whenever(eventsRepository.saveEvent(any())).thenThrow(CancellationException("cancelled"))
+    whenever(eventsRepository.updateEventTasks(any(), any(), any(), any()))
+        .thenThrow(CancellationException("cancelled"))
 
     val viewModel = createViewModel()
     viewModel.loadEvent("event-123")
@@ -367,7 +440,8 @@ class EventDetailsViewModelTest {
   fun toggleTask_unexpectedException_revertsEventAndSetsError() = runTest {
     whenever(eventsRepository.getEvent("user123", "event-123"))
         .thenReturn(Result.success(sampleEvent))
-    whenever(eventsRepository.saveEvent(any())).thenThrow(RuntimeException("Unexpected save error"))
+    whenever(eventsRepository.updateEventTasks(any(), any(), any(), any()))
+        .thenThrow(RuntimeException("Unexpected save error"))
 
     val viewModel = createViewModel()
     viewModel.loadEvent("event-123")
