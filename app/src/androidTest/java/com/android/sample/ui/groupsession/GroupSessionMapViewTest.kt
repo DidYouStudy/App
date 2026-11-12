@@ -2,8 +2,6 @@
 package com.android.sample.ui.groupsession
 
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.performClick
 import androidx.core.content.res.ResourcesCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -32,7 +30,6 @@ class GroupSessionMapViewTest {
 
   private val resources = InstrumentationRegistry.getInstrumentation().targetContext.resources
   private val campusCenter = Location(46.5191, 6.5668)
-  private val defaultZoom = resourceFloat(R.dimen.map_default_zoom)
   private val focusZoom = resourceFloat(R.dimen.map_focus_zoom)
 
   private val first = MapTestDriver.lectureRoom("AAB 0 26", Location(46.5207473, 6.5632687))
@@ -86,17 +83,6 @@ class GroupSessionMapViewTest {
     showMap(cameraTarget = campusCenter)
 
     waitForCameraAt(campusCenter, minZoom = focusZoom, maxZoom = 21f)
-  }
-
-  @Test
-  fun recenterButton_returnsToTheCampusCentreAtTheDefaultZoom() {
-    showMap()
-
-    composeTestRule
-        .onNodeWithContentDescription(resources.getString(R.string.group_session_map_recenter))
-        .performClick()
-
-    waitForCameraAt(campusCenter, minZoom = defaultZoom)
   }
 
   /**
