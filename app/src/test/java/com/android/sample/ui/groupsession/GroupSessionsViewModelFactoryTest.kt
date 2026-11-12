@@ -15,6 +15,10 @@ import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
 import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
+import com.android.sample.model.location.FakeLocationProvider
+import com.android.sample.model.profile.ProfileRepository
+import com.android.sample.model.profile.ProfileRepositoryProvider
+import com.android.sample.model.profile.UserProfile
 import com.android.sample.ui.auth.TestAuthRepository
 import java.time.Instant
 import kotlinx.coroutines.runBlocking
@@ -33,12 +37,20 @@ class GroupSessionsViewModelFactoryTest {
 
   private val authRepository = TestAuthRepository()
   private val repository = InMemoryGroupSessionsRepository()
-  private val factory = GroupSessionsViewModelFactory(authRepository, repository)
+  private val profileRepository = FakeProfileRepository(mapOf(BOB to UserProfile(BOB, "Bob")))
+  private val factory =
+      GroupSessionsViewModelFactory(
+          authRepository,
+          repository,
+          profileRepository,
+          FakeLocationProvider(),
+      )
 
   @After
   fun clearProviders() {
     setAuthProviderRepository(null)
     setGroupSessionsProviderRepository(null)
+    setProfileProviderRepository(null)
   }
 
   /** Factory-created ViewModels observe the supplied repositories and current user. */
@@ -64,6 +76,28 @@ class GroupSessionsViewModelFactoryTest {
         listOf(GroupSessionItem(session, isMember = true, isCreator = true)),
         viewModel.uiState.value.sessions,
     )
+  }
+
+  /** Factory-created ViewModels resolve a host through the exact injected profile repository. */
+  @Test
+  fun createUsesInjectedProfileRepository() {
+    useEmptyComposition()
+    authRepository.currentUser.value = account(ALICE)
+    val hosted =
+        session(
+            "profile-injected",
+            BOB,
+            Instant.now().plusSeconds(60),
+            Instant.now().plusSeconds(600),
+        )
+    runBlocking { repository.saveSession(BOB, hosted) }
+
+    val viewModel = factory.create(GroupSessionsViewModel::class.java)
+
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      viewModel.uiState.value.sessions.firstOrNull()?.hostName == "Bob"
+    }
+    assertEquals(listOf(BOB), profileRepository.getProfileUserIds)
   }
 
   /** Unsupported ViewModel types are rejected with the offending class name in the message. */
@@ -95,6 +129,7 @@ class GroupSessionsViewModelFactoryTest {
     runBlocking { providedRepository.saveSession(ALICE, providedSession) }
     setAuthProviderRepository(authRepository)
     setGroupSessionsProviderRepository(providedRepository)
+    setProfileProviderRepository(profileRepository)
     val trigger = mutableStateOf(0)
     val received = mutableListOf<GroupSessionsViewModel>()
 
@@ -108,13 +143,39 @@ class GroupSessionsViewModelFactoryTest {
       received.firstOrNull()?.uiState?.value?.sessions?.map { it.session } ==
           listOf(providedSession)
     }
-
     assertTrue(received.size >= 2)
     assertTrue(received.all { it === received.first() })
     assertEquals(
         listOf(providedSession),
         received.first().uiState.value.sessions.map { it.session },
     )
+  }
+
+  /** The composable obtains the profile repository registered in ProfileRepositoryProvider. */
+  @Test
+  fun groupSessionsViewModelUsesProfileProvider() {
+    authRepository.currentUser.value = account(ALICE)
+    val providedRepository = InMemoryGroupSessionsRepository()
+    val hosted =
+        session(
+            "provider-profile",
+            BOB,
+            Instant.now().plusSeconds(60),
+            Instant.now().plusSeconds(600),
+        )
+    runBlocking { providedRepository.saveSession(BOB, hosted) }
+    val providedProfiles = FakeProfileRepository(mapOf(BOB to UserProfile(BOB, "Bob")))
+    setAuthProviderRepository(authRepository)
+    setGroupSessionsProviderRepository(providedRepository)
+    setProfileProviderRepository(providedProfiles)
+
+    var received: GroupSessionsViewModel? = null
+    composeTestRule.setContent { received = groupSessionsViewModel() }
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      received?.uiState?.value?.sessions?.firstOrNull()?.hostName == "Bob"
+    }
+
+    assertEquals(listOf(BOB), providedProfiles.getProfileUserIds)
   }
 
   private fun useEmptyComposition() {
@@ -132,6 +193,13 @@ class GroupSessionsViewModelFactoryTest {
     GroupSessionsRepositoryProvider::class.java.getDeclaredField("instance").apply {
       isAccessible = true
       set(GroupSessionsRepositoryProvider, repository)
+    }
+  }
+
+  private fun setProfileProviderRepository(repository: ProfileRepository?) {
+    ProfileRepositoryProvider::class.java.getDeclaredField("instance").apply {
+      isAccessible = true
+      set(ProfileRepositoryProvider, repository)
     }
   }
 
@@ -154,7 +222,22 @@ class GroupSessionsViewModelFactoryTest {
 
   private class OtherViewModel : ViewModel()
 
+  private class FakeProfileRepository(
+      private val profiles: Map<String, UserProfile>,
+  ) : ProfileRepository {
+    val getProfileUserIds = mutableListOf<String>()
+
+    override suspend fun getProfile(userId: String): Result<UserProfile?> {
+      getProfileUserIds += userId
+      return Result.success(profiles[userId])
+    }
+
+    override suspend fun createProfile(userId: String): Result<UserProfile> =
+        Result.success(UserProfile(uid = userId))
+  }
+
   private companion object {
     const val ALICE = "alice"
+    const val BOB = "bob"
   }
 }

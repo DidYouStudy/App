@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.groupsession
 
 import android.Manifest
@@ -24,6 +25,9 @@ import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.model.location.LocationProvider
+import com.android.sample.model.profile.ProfileRepository
+import com.android.sample.model.profile.UserProfile
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -186,7 +190,18 @@ class GroupSessionScreenFiltersTest {
 
   /** Creates a screen ViewModel backed only by local fakes. */
   private fun newViewModel() =
-      GroupSessionsViewModel(FakeAuthRepository(), EmptySessionsRepository())
+      GroupSessionsViewModel(
+          FakeAuthRepository(),
+          EmptySessionsRepository(),
+          profileRepository =
+              object : ProfileRepository {
+                override suspend fun getProfile(userId: String) = Result.success<UserProfile?>(null)
+
+                override suspend fun createProfile(userId: String) =
+                    Result.failure<UserProfile>(UnsupportedOperationException())
+              },
+          locationProvider = LocationProvider { flowOf(null) },
+      )
 
   private class FakeAuthRepository : AuthRepository {
     override val currentUser =

@@ -1,11 +1,13 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
 import android.content.Context
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -26,9 +28,17 @@ import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.model.location.LocationProvider
+import com.android.sample.model.profile.ProfileRepository
+import com.android.sample.model.profile.UserProfile
+import com.android.sample.ui.eventplanning.EventKind
+import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
+import com.android.sample.ui.navigation.Screen
+import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneOffset
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +46,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -113,6 +124,8 @@ class GroupSessionScreenTest {
       )
 
   private val authRepository = FakeAuthRepository("user-1")
+  private val profileRepository =
+      FakeProfileRepository(mapOf("user-3" to UserProfile(uid = "user-3", username = "Bob")))
 
   @Before
   fun resetRepo() {
@@ -122,7 +135,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun screen_renders_title_and_filters_joined_sessions() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    val viewModel = createViewModel()
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -149,10 +162,39 @@ class GroupSessionScreenTest {
     composeTestRule.onNodeWithText("Capstone planning").assertDoesNotExist()
   }
 
+  /** Cards show host names or a safe fallback, never another user's raw ID. */
+  @Test
+  fun cards_show_names_fallbacks_and_keep_the_own_host_label() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
+    composeTestRule.waitForIdle()
+
+    val list = composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+    list.performScrollToNode(hasTestTag(GroupSessionScreenTestTags.sessionItem(0)))
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.sessionItem(0))
+        .assert(hasAnyDescendant(hasText(context.getString(R.string.group_session_host_self))))
+
+    list.performScrollToNode(hasTestTag(GroupSessionScreenTestTags.sessionItem(1)))
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.sessionItem(1))
+        .assert(
+            hasAnyDescendant(hasText(context.getString(R.string.group_session_hosted_by, "Bob")))
+        )
+        .assert(!hasAnyDescendant(hasText("user-3", substring = true)))
+
+    list.performScrollToNode(hasTestTag(GroupSessionScreenTestTags.sessionItem(3)))
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.sessionItem(3))
+        .assert(hasAnyDescendant(hasText(context.getString(R.string.group_session_host_unknown))))
+        .assert(!hasAnyDescendant(hasText("user-4", substring = true)))
+  }
+
   /** Opens the filter sheet from the search field's filter button. */
   @Test
   fun filterButtonOpensFilterSessionsSheet() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    val viewModel = createViewModel()
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -165,15 +207,105 @@ class GroupSessionScreenTest {
 
   @Test
   fun add_group_session_button_is_displayed() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    val viewModel = createViewModel()
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ADD_BUTTON).assertIsDisplayed()
   }
 
   @Test
+  fun add_group_session_button_click_triggers_callback() {
+    var addClicked = false
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      GroupSessionScreen(
+          viewModel = viewModel,
+          onAddSessionClick = { addClicked = true },
+      )
+    }
+
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ADD_BUTTON).performClick()
+    assertTrue(addClicked)
+  }
+
+  private class TestNavigationActions : NavigationActions() {
+    var lastNavigatedScreen: Screen? = null
+
+    override fun navigateTo(screen: Screen) {
+      lastNavigatedScreen = screen
+    }
+  }
+
+  @Test
+  fun default_add_session_click_navigates_to_add_group_session() {
+    val navActions = TestNavigationActions()
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      GroupSessionScreen(
+          navigationActions = navActions,
+          viewModel = viewModel,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ADD_BUTTON).performClick()
+    assertEquals(
+        Screen.AddGroupSession,
+        navActions.lastNavigatedScreen,
+    )
+  }
+
+  @Test
+  fun edit_group_session_button_click_triggers_callback() {
+    var editedSessionId: String? = null
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      GroupSessionScreen(
+          viewModel = viewModel,
+          onEditSessionClick = { id -> editedSessionId = id },
+      )
+    }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
+
+    val editButtonMatcher =
+        hasText(context.getString(R.string.group_session_action_edit)) and
+            hasAnyAncestor(hasTestTag(GroupSessionScreenTestTags.sessionItem(0)))
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(editButtonMatcher)
+    composeTestRule.onNode(editButtonMatcher).performClick()
+
+    assertEquals("s1", editedSessionId)
+  }
+
+  @Test
+  fun default_edit_session_click_navigates_to_edit_group_session() {
+    val navActions = TestNavigationActions()
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      GroupSessionScreen(
+          navigationActions = navActions,
+          viewModel = viewModel,
+      )
+    }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
+
+    val editButtonMatcher =
+        hasText(context.getString(R.string.group_session_action_edit)) and
+            hasAnyAncestor(hasTestTag(GroupSessionScreenTestTags.sessionItem(0)))
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(editButtonMatcher)
+    composeTestRule.onNode(editButtonMatcher).performClick()
+
+    assertEquals(
+        Screen.EditEvent("s1", EventKind.GROUP_SESSION),
+        navActions.lastNavigatedScreen,
+    )
+  }
+
+  @Test
   fun host_sees_edit_action_without_join_or_leave_actions() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    val viewModel = createViewModel()
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -190,7 +322,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun joined_filter_keeps_hosted_and_joined_sessions_only() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    val viewModel = createViewModel()
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -211,7 +343,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun nullable_session_fields_use_readable_fallbacks() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    val viewModel = createViewModel()
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -237,7 +369,7 @@ class GroupSessionScreenTest {
   @Test
   fun empty_repository_shows_empty_state() {
     val emptyRepository = FakeGroupSessionsRepository(emptyList())
-    val viewModel = GroupSessionsViewModel(authRepository, emptyRepository)
+    val viewModel = createViewModel(emptyRepository)
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
 
     composeTestRule
@@ -271,7 +403,7 @@ class GroupSessionScreenTest {
           override suspend fun leaveSession(userId: String, sessionId: String): Result<Unit> =
               Result.failure(RuntimeException())
         }
-    val viewModel = GroupSessionsViewModel(authRepository, neverEndingRepo)
+    val viewModel = createViewModel(neverEndingRepo)
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.LOADING).assertIsDisplayed()
@@ -282,7 +414,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun search_and_join_leave_actions_work() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    val viewModel = createViewModel()
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -317,7 +449,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun failed_join_shows_dismissible_error_message() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    val viewModel = createViewModel()
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -344,7 +476,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun failed_leave_shows_dismissible_error_message() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    val viewModel = createViewModel()
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -391,7 +523,7 @@ class GroupSessionScreenTest {
           override suspend fun leaveSession(userId: String, sessionId: String): Result<Unit> =
               Result.failure(RuntimeException())
         }
-    val viewModel = GroupSessionsViewModel(authRepository, failingRepo)
+    val viewModel = createViewModel(failingRepo)
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
 
     val loadErrorText = context.getString(R.string.group_session_error_load)
@@ -432,6 +564,29 @@ class GroupSessionScreenTest {
     assertEquals("In 3 days", daysOtherLabel)
   }
 
+  /** The badge follows the ViewModel's clock: the device's clock would give "In 1 hour" here. */
+  @Test
+  fun card_status_uses_the_time_from_the_viewmodel() {
+    val clock = Clock.fixed(testInstant.plus(Duration.ofMinutes(55)), ZoneOffset.UTC)
+    val viewModel = createViewModel(clock = clock)
+
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+
+    composeTestRule.onNodeWithText("In 5 min").assertIsDisplayed()
+  }
+
+  private fun createViewModel(
+      repository: GroupSessionsRepository = repo,
+      clock: Clock = Clock.systemUTC(),
+  ): GroupSessionsViewModel =
+      GroupSessionsViewModel(
+          authRepository = authRepository,
+          repository = repository,
+          profileRepository = profileRepository,
+          clock = clock,
+          locationProvider = LocationProvider { flowOf(null) },
+      )
+
   private class FakeAuthRepository(private val currentUserId: String) : AuthRepository {
     override val currentUser = MutableStateFlow(UserAccount(currentUserId, null, "Alice", null))
 
@@ -439,6 +594,15 @@ class GroupSessionScreenTest {
         UserAccount(currentUserId, null, "Alice", null)
 
     override suspend fun signOut() = Unit
+  }
+
+  private class FakeProfileRepository(private val profiles: Map<String, UserProfile>) :
+      ProfileRepository {
+    override suspend fun getProfile(userId: String): Result<UserProfile?> =
+        Result.success(profiles[userId])
+
+    override suspend fun createProfile(userId: String): Result<UserProfile> =
+        Result.success(UserProfile(uid = userId))
   }
 
   private class FakeGroupSessionsRepository(

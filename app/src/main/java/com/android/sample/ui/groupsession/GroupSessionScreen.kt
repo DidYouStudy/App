@@ -3,6 +3,7 @@
 // Co-authored-by: Copilot
 // Co-authored-by: Gemini
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
 import android.Manifest
@@ -74,6 +75,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -82,6 +84,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
+import com.android.sample.ui.eventplanning.EventKind
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -89,6 +92,7 @@ import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.profile.ProfileButton
 import com.android.sample.ui.sharedComponents.AddButton
+import com.android.sample.ui.sharedComponents.EventTypeBadge
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.ParticipantInitialTextStyle
 import com.android.sample.ui.theme.ParticipantOverflowTextStyle
@@ -142,6 +146,10 @@ object GroupSessionScreenTestTags {
 fun GroupSessionScreen(
     navigationActions: NavigationActions? = null,
     viewModel: GroupSessionsViewModel = groupSessionsViewModel(),
+    onAddSessionClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddGroupSession) },
+    onEditSessionClick: (String) -> Unit = { sessionId ->
+      navigationActions?.navigateTo(Screen.EditEvent(sessionId, EventKind.GROUP_SESSION))
+    },
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   var groupSessionFilters by
@@ -177,6 +185,7 @@ fun GroupSessionScreen(
   }
   val snackbarHostState = remember { SnackbarHostState() }
   val loadErrorMessage = stringResource(R.string.group_session_error_load)
+  val locationLoadErrorMessage = stringResource(R.string.group_session_error_location_load)
   val joinErrorMessage = stringResource(R.string.group_session_error_join)
   val leaveErrorMessage = stringResource(R.string.group_session_error_leave)
   LaunchedEffect(uiState.error) {
@@ -184,6 +193,7 @@ fun GroupSessionScreen(
       val msg =
           when (error) {
             GroupSessionsError.LOAD_FAILED -> loadErrorMessage
+            GroupSessionsError.LOCATION_LOAD_FAILED -> locationLoadErrorMessage
             GroupSessionsError.JOIN_FAILED -> joinErrorMessage
             GroupSessionsError.LEAVE_FAILED -> leaveErrorMessage
           }
@@ -235,7 +245,7 @@ fun GroupSessionScreen(
       },
       floatingActionButton = {
         AddButton(
-            onClick = { /* TODO ADD GROUPSESSION */ },
+            onClick = onAddSessionClick,
             contentDescription = stringResource(R.string.group_session_add_description),
             modifier = Modifier.testTag(GroupSessionScreenTestTags.ADD_BUTTON),
         )
@@ -248,6 +258,7 @@ fun GroupSessionScreen(
             onFilterChange = viewModel::onFilterChange,
             onJoin = viewModel::join,
             onLeave = viewModel::leave,
+            onEdit = onEditSessionClick,
             onOpenFilters = { showFilterSheet = true },
         )
       },
@@ -296,6 +307,7 @@ private fun GroupSessionContent(
     onFilterChange: (GroupSessionFilter) -> Unit = {},
     onJoin: (String) -> Unit = {},
     onLeave: (String) -> Unit = {},
+    onEdit: (String) -> Unit = {},
     onOpenFilters: () -> Unit = {},
 ) {
   Column(modifier = modifier.fillMaxSize().padding(horizontal = Spacing.large)) {
@@ -405,8 +417,10 @@ private fun GroupSessionContent(
             ) { index, item ->
               GroupSessionCard(
                   item = item,
+                  now = state.now,
                   onJoin = onJoin,
                   onLeave = onLeave,
+                  onEdit = onEdit,
                   modifier = Modifier.testTag(GroupSessionScreenTestTags.sessionItem(index)),
               )
             }
@@ -418,15 +432,13 @@ private fun GroupSessionContent(
 @Composable
 private fun GroupSessionCard(
     item: GroupSessionItem,
+    now: Instant,
     onJoin: (String) -> Unit,
     onLeave: (String) -> Unit,
+    onEdit: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
   val session = item.session
-  // TODO: The ViewModel should supply the reference time in GroupSessionsUiState so all cards
-  //  evaluate relative status labels consistently, unit tests remain deterministic, and composables
-  // stay pure.
-  val now = Instant.now()
   val statusLabel = sessionStatusLabel(session.details.startsAt, now)
   val startLabel = sessionTimeLabel(session.details.startsAt)
   val endLabel = sessionTimeLabel(session.details.endsAt)
@@ -482,11 +494,11 @@ private fun GroupSessionCard(
           )
           Spacer(Modifier.height(Spacing.extraExtraSmall))
           Text(
-              // TODO: currently shows ID, but should show name. Need the viewmodel to translate
-              // from ID instead
               text =
                   if (shouldShowHost) stringResource(R.string.group_session_host_self)
-                  else stringResource(R.string.group_session_hosted_by, session.createdBy),
+                  else
+                      item.hostName?.let { stringResource(R.string.group_session_hosted_by, it) }
+                          ?: stringResource(R.string.group_session_host_unknown),
               style = MaterialTheme.typography.bodyMedium,
               color =
                   if (shouldShowHost) MaterialTheme.colorScheme.primary
@@ -515,18 +527,7 @@ private fun GroupSessionCard(
       Spacer(Modifier.height(Spacing.mediumLarge))
 
       // Type Badge
-      Surface(
-          shape = RoundedCornerShape(Dimens.cornerMedium),
-          color = session.details.type.color,
-      ) {
-        Text(
-            text = session.details.type.label(),
-            modifier = Modifier.padding(horizontal = Spacing.medium, vertical = Spacing.extraSmall),
-            color = session.details.type.onColor,
-            fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.labelLarge,
-        )
-      }
+      EventTypeBadge(type = session.details.type)
 
       Spacer(Modifier.height(Spacing.mediumSmall))
 
@@ -665,7 +666,7 @@ private fun GroupSessionCard(
         // Action Buttons (Host Edit vs Member Leave/Joined vs Join)
         if (shouldShowHost) {
           Button(
-              onClick = { /* TODO EDIT GROUP SESSION */ },
+              onClick = { onEdit(session.id) },
               shape = RoundedCornerShape(Dimens.cornerLarge),
               colors =
                   ButtonDefaults.buttonColors(
@@ -760,22 +761,27 @@ private fun MetaInfoPill(
   }
 }
 
+/**
+ * Returns a short label telling how long until a session starts ("Started", "In 5 min", "In 1
+ * hour", "In 3 days"). The plural form is picked by the current locale's plural rules, so
+ * translations can provide every form their language needs.
+ */
 @Composable
 internal fun sessionStatusLabel(start: Instant, now: Instant): String {
   val duration = Duration.between(now, start)
   return when {
     duration.isNegative || duration.isZero -> stringResource(R.string.group_session_status_started)
-    duration.toMinutes() < 60 ->
-        stringResource(R.string.group_session_status_in_minutes, duration.toMinutes())
+    duration.toMinutes() < 60 -> {
+      val minutes = duration.toMinutes().toInt()
+      pluralStringResource(R.plurals.group_session_status_in_minutes, minutes, minutes)
+    }
     duration.toHours() < 24 -> {
-      val hours = duration.toHours()
-      if (hours == 1L) stringResource(R.string.group_session_status_in_hours_one, hours)
-      else stringResource(R.string.group_session_status_in_hours_other, hours)
+      val hours = duration.toHours().toInt()
+      pluralStringResource(R.plurals.group_session_status_in_hours, hours, hours)
     }
     else -> {
-      val days = duration.toDays()
-      if (days == 1L) stringResource(R.string.group_session_status_in_days_one, days)
-      else stringResource(R.string.group_session_status_in_days_other, days)
+      val days = duration.toDays().toInt()
+      pluralStringResource(R.plurals.group_session_status_in_days, days, days)
     }
   }
 }

@@ -1,9 +1,12 @@
 // Co-authored-by: GitHub Copilot
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.navigation
 
 import androidx.navigation.NavDestination
 import androidx.navigation.NavHostController
+import com.android.sample.ui.eventplanning.EventKind
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mockito.Mockito.mock
@@ -52,6 +55,17 @@ class NavigationActionsTest {
     `when`(settings.route).thenReturn(Screen.Settings.route)
     `when`(navController.currentDestination).thenReturn(settings, null)
     `when`(navController.popBackStack()).thenReturn(true)
+    `when`(
+            navController.navigate(
+                org.mockito.kotlin.any<String>(),
+                org.mockito.kotlin.any<androidx.navigation.NavOptionsBuilder.() -> Unit>(),
+            )
+        )
+        .thenAnswer { invocation ->
+          val builder = invocation.getArgument<androidx.navigation.NavOptionsBuilder.() -> Unit>(1)
+          androidx.navigation.NavOptionsBuilder().apply(builder)
+          null
+        }
 
     NavigationActions(navController).goBack()
 
@@ -90,6 +104,141 @@ class NavigationActionsTest {
 
     assertTrue(actions.navigatedTo.isEmpty())
     assertTrue(actions.clearedFlows.isEmpty())
+  }
+
+  @Test
+  fun screenRoutesAreConstructedCorrectly() {
+    assertEquals("add_event", Screen.AddEvent.route)
+    assertEquals("add_group_session", Screen.AddGroupSession.route)
+    assertEquals("edit_event/e1?kind=PERSONAL", Screen.EditEvent("e1").route)
+    assertEquals(
+        "edit_event/e1?kind=GROUP_SESSION",
+        Screen.EditEvent("e1", EventKind.GROUP_SESSION).route,
+    )
+    assertEquals("edit_event/{eventId}?kind={kind}", Screen.EditEvent.ROUTE)
+  }
+
+  /** Verifies that [Screen.EditEvent] defaults to [EventKind.PERSONAL] when kind is omitted. */
+  @Test
+  fun editEventDefaultsToPersonalKind() {
+    val editEvent = Screen.EditEvent("session-42")
+    assertEquals(EventKind.PERSONAL, editEvent.kind)
+    assertEquals("edit_event/session-42?kind=PERSONAL", editEvent.route)
+  }
+
+  /**
+   * Verifies that [Screen.AddEvent] and [Screen.AddGroupSession] are configured as non-top-level
+   * destinations.
+   */
+  @Test
+  fun addRoutesAreDistinctNonTopLevel() {
+    assertFalse(Screen.AddEvent.isTopLevelDestination)
+    assertFalse(Screen.AddGroupSession.isTopLevelDestination)
+    assertEquals("AddEvent", Screen.AddEvent.name)
+    assertEquals("AddGroupSession", Screen.AddGroupSession.name)
+  }
+
+  @Test
+  fun navigateToTopLevelDestinationWhenAlreadyThereDoesNothing() {
+    val navController = mock(NavHostController::class.java)
+    val dest = mock(NavDestination::class.java)
+    `when`(dest.route).thenReturn(Screen.Dashboard.route)
+    `when`(navController.currentDestination).thenReturn(dest)
+
+    val actions = NavigationActions(navController)
+    actions.navigateTo(Screen.Dashboard)
+
+    assertTrue(
+        org.mockito.Mockito.mockingDetails(navController).invocations.none {
+          it.method.name == "navigate"
+        }
+    )
+  }
+
+  @Test
+  fun navigateToDestinationsCallsNavControllerNavigate() {
+    val navController = mock(NavHostController::class.java)
+    val dest = mock(NavDestination::class.java)
+    `when`(dest.route).thenReturn(Screen.Settings.route)
+    `when`(navController.currentDestination).thenReturn(dest)
+    `when`(
+            navController.navigate(
+                org.mockito.kotlin.any<String>(),
+                org.mockito.kotlin.any<androidx.navigation.NavOptionsBuilder.() -> Unit>(),
+            )
+        )
+        .thenAnswer { invocation ->
+          val builder = invocation.getArgument<androidx.navigation.NavOptionsBuilder.() -> Unit>(1)
+          androidx.navigation.NavOptionsBuilder().apply(builder)
+          null
+        }
+
+    val actions = NavigationActions(navController)
+    // Top-level destination
+    actions.navigateTo(Screen.Dashboard)
+    // Non-top-level destination
+    actions.navigateTo(Screen.Auth)
+    actions.navigateTo(Screen.AddEvent)
+
+    assertTrue(
+        org.mockito.Mockito.mockingDetails(navController).invocations.any {
+          it.method.name == "navigate" && it.arguments.firstOrNull() == Screen.Dashboard.route
+        }
+    )
+  }
+
+  @Test
+  fun navigateToAndClearCallsNavController() {
+    val navController = mock(NavHostController::class.java)
+    `when`(navController.popBackStack()).thenReturn(true, false)
+    `when`(
+            navController.navigate(
+                org.mockito.kotlin.any<String>(),
+                org.mockito.kotlin.any<androidx.navigation.NavOptionsBuilder.() -> Unit>(),
+            )
+        )
+        .thenAnswer { invocation ->
+          val builder = invocation.getArgument<androidx.navigation.NavOptionsBuilder.() -> Unit>(1)
+          androidx.navigation.NavOptionsBuilder().apply(builder)
+          null
+        }
+
+    val actions = NavigationActions(navController)
+    actions.navigateToAndClear(Screen.Dashboard, Screen.Auth, clearAll = true)
+    actions.navigateToAndClear(Screen.Dashboard, Screen.Auth, clearAll = false)
+
+    assertTrue(
+        org.mockito.Mockito.mockingDetails(navController).invocations.any {
+          it.method.name == "navigate" && it.arguments.firstOrNull() == Screen.Dashboard.route
+        }
+    )
+  }
+
+  @Test
+  fun navigateIfAllowedWithoutCompletedFlowNavigatesNormally() {
+    val navController = mock(NavHostController::class.java)
+    val dest = mock(NavDestination::class.java)
+    `when`(dest.route).thenReturn(Screen.Auth.route)
+    `when`(navController.currentDestination).thenReturn(dest)
+
+    val actions = NavigationActions(navController)
+    actions.navigateIfAllowed(Screen.Dashboard, { true })
+
+    assertTrue(
+        org.mockito.Mockito.mockingDetails(navController).invocations.any {
+          it.method.name == "navigate" && it.arguments.firstOrNull() == Screen.Dashboard.route
+        }
+    )
+  }
+
+  @Test
+  fun navigationActionsWithNullNavControllerDoesNotCrash() {
+    val actions = NavigationActions()
+    assertEquals("", actions.currentRoute())
+    // Should be safe no-ops without throwing NullPointerException
+    actions.navigateTo(Screen.Dashboard)
+    actions.navigateToAndClear(Screen.Dashboard, Screen.Auth)
+    actions.goBack()
   }
 
   private class RecordingNavigationActions(currentRoute: String) : NavigationActions(mock()) {
