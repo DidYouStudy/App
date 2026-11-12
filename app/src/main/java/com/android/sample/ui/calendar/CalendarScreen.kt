@@ -62,6 +62,7 @@ fun CalendarScreen(
     onRetry: () -> Unit,
     navigationActions: NavigationActions? = null,
     onAddClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
+    onEventClick: (String) -> Unit = {},
 ) {
   Scaffold(
       topBar = {
@@ -166,6 +167,7 @@ fun CalendarScreen(
               onPreviousWeek = onPreviousWeek,
               onNextWeek = onNextWeek,
               modifier = Modifier.padding(paddingValues),
+              onEventClick = onEventClick,
           )
         }
       },

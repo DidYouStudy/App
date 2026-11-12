@@ -1,8 +1,10 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.navigation
 
+import android.net.Uri
 import androidx.navigation.NavHostController
 import com.android.sample.ui.eventplanning.EventKind
 
@@ -28,11 +30,26 @@ sealed class Screen(
 
   object AddGroupSession : Screen(route = "add_group_session", name = "AddGroupSession")
 
-  data class EditEvent(val eventId: String, val kind: EventKind = EventKind.PERSONAL) :
-      Screen(route = "edit_event/$eventId?kind=${kind.name}", name = "EditEvent") {
+  /** Details destination for a personal event. */
+  class EventDetails(eventId: String) :
+      Screen(route = "$PATH/${Uri.encode(eventId)}", name = "EventDetails") {
     companion object {
-      const val ROUTE = "edit_event/{eventId}?kind={kind}"
+      private const val PATH = "event_details"
+      const val ROUTE = "$PATH/{$EVENT_ID_ARGUMENT}"
     }
+  }
+
+  /** Shared editor destination for a personal event or a group session. */
+  data class EditEvent(val eventId: String, val kind: EventKind = EventKind.PERSONAL) :
+      Screen(route = "$PATH/${Uri.encode(eventId)}?kind=${kind.name}", name = "EditEvent") {
+    companion object {
+      private const val PATH = "edit_event"
+      const val ROUTE = "$PATH/{$EVENT_ID_ARGUMENT}?kind={kind}"
+    }
+  }
+
+  companion object {
+    const val EVENT_ID_ARGUMENT = "eventId"
   }
 }
 
@@ -117,6 +134,11 @@ open class NavigationActions(
     if (currentRoute().isEmpty()) {
       navController?.navigate(Screen.Dashboard.route) { launchSingleTop = true }
     }
+  }
+
+  /** Returns to the entry immediately before [screen], removing it and any entries above it. */
+  fun goBackPast(screen: Screen) {
+    navController?.popBackStack(screen.route, inclusive = true)
   }
 
   /**
