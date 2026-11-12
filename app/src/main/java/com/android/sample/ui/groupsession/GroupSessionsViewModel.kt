@@ -132,11 +132,7 @@ data class GroupSessionsUiState(
     val hideFullSessions: Boolean = false,
     val userLocation: Location? = null,
     val error: GroupSessionsError? = null,
-) {
-  /** Alias that makes clear the list already reflects all active criteria. */
-  val filteredSessions: List<GroupSessionItem>
-    get() = sessions
-}
+)
 
 /**
  * Observes public upcoming sessions for the signed-in user and exposes searched, filtered UI state.
@@ -194,7 +190,9 @@ class GroupSessionsViewModel(
                     isLoading = true,
                     error =
                         if (userChanged) {
-                          null
+                          it.error.takeIf { error ->
+                            error == GroupSessionsError.LOCATION_LOAD_FAILED
+                          }
                         } else {
                           it.error.withoutLoadFailure()
                         },
