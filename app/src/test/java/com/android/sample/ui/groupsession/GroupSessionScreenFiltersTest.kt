@@ -25,6 +25,11 @@ import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.model.location.CampusLocation
+import com.android.sample.model.location.CampusLocationFilter
+import com.android.sample.model.location.CampusLocationRepository
+import com.android.sample.model.location.CampusLocationType
+import com.android.sample.model.location.Location
 import com.android.sample.model.location.LocationProvider
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.UserProfile
@@ -64,12 +69,18 @@ class GroupSessionScreenFiltersTest {
   @Test
   fun grantedPermissionFiltersCanBeSelectedResetAndDismissed() {
     grantFineLocationPermission()
-    composeTestRule.setContent { GroupSessionScreen(viewModel = newViewModel()) }
+    val viewModel = newViewModel()
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
 
     openFilterSheet()
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(500)).performClick()
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.zoneChip("CM")).performClick()
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.LAB_SWITCH).performClick()
+    composeTestRule.waitForIdle()
+
+    assertEquals(500, viewModel.uiState.value.selectedRadiusMeters)
+    assertEquals(setOf("CM"), viewModel.uiState.value.selectedZones)
+    assertEquals(true, viewModel.uiState.value.showLabRoomType)
 
     composeTestRule
         .onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(500))
@@ -78,6 +89,11 @@ class GroupSessionScreenFiltersTest {
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.LAB_SWITCH).assertIsOn()
 
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.RESET_ALL).performClick()
+    composeTestRule.waitForIdle()
+
+    assertEquals(null, viewModel.uiState.value.selectedRadiusMeters)
+    assertEquals(emptySet<String>(), viewModel.uiState.value.selectedZones)
+    assertEquals(false, viewModel.uiState.value.showLabRoomType)
 
     composeTestRule
         .onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(null))
@@ -89,15 +105,101 @@ class GroupSessionScreenFiltersTest {
     composeTestRule.onNodeWithText("Filter sessions").assertDoesNotExist()
   }
 
+  /** Lists the campus zones supplied by the ViewModel among the sheet's selectable zones. */
+  @Test
+  fun sheetDisplaysCampusZoneChips() {
+    composeTestRule.setContent { GroupSessionScreen(viewModel = newViewModel()) }
+
+    openFilterSheet()
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.zoneChip("BC"))
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.zoneChip("CM"))
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.zoneChip("CO"))
+        .assertIsDisplayed()
+  }
+
+  /** Retains a ViewModel-selected radius when the filter sheet is closed and reopened. */
+  @Test
+  fun selectedViewModelRadiusRemainsVisibleAfterReopeningSheet() {
+    grantFineLocationPermission()
+    val viewModel = newViewModel()
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+
+    openFilterSheet()
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(500)).performClick()
+    composeTestRule.waitForIdle()
+    assertEquals(500, viewModel.uiState.value.selectedRadiusMeters)
+
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.SHOW_SESSIONS).performClick()
+    composeTestRule.onNodeWithText("Filter sessions").assertDoesNotExist()
+    openFilterSheet()
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(500))
+        .assertIsSelected()
+    assertEquals(500, viewModel.uiState.value.selectedRadiusMeters)
+  }
+
+  /** Applies a selected zone to the ViewModel rather than keeping it only in the sheet. */
+  @Test
+  fun selectingZoneUpdatesViewModel() {
+    val viewModel = newViewModel()
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+
+    openFilterSheet()
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.zoneChip("CM")).performClick()
+    composeTestRule.waitForIdle()
+
+    assertEquals(setOf("CM"), viewModel.uiState.value.selectedZones)
+  }
+
+  /** Applies a lab-switch change to the ViewModel rather than keeping it only in the sheet. */
+  @Test
+  fun enablingLabRoomsUpdatesViewModel() {
+    val viewModel = newViewModel()
+    viewModel.onShowLabRoomTypeChange(false)
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+
+    openFilterSheet()
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.LAB_SWITCH).performClick()
+    composeTestRule.waitForIdle()
+
+    assertEquals(true, viewModel.uiState.value.showLabRoomType)
+  }
+
+  /** Resets radius, zone, and lab selections through the ViewModel. */
+  @Test
+  fun resetAllResetsViewModelFilters() {
+    grantFineLocationPermission()
+    val viewModel = newViewModel()
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+
+    openFilterSheet()
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(500)).performClick()
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.zoneChip("CM")).performClick()
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.LAB_SWITCH).performClick()
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.RESET_ALL).performClick()
+    composeTestRule.waitForIdle()
+
+    assertEquals(null, viewModel.uiState.value.selectedRadiusMeters)
+    assertEquals(emptySet<String>(), viewModel.uiState.value.selectedZones)
+    assertEquals(false, viewModel.uiState.value.showLabRoomType)
+  }
+
   /** Applies a granted fine-location result to the pending distance selection. */
   @Test
   fun fineLocationPermissionResultSelectsPendingRadius() {
     val registry =
         ImmediatePermissionResultRegistry(mapOf(Manifest.permission.ACCESS_FINE_LOCATION to true))
-    setScreenWithRegistry(registry)
+    val viewModel = setScreenWithRegistry(registry)
 
     openFilterSheet()
-    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(250)).performClick()
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(500)).performClick()
 
     assertEquals(
         listOf(
@@ -107,8 +209,9 @@ class GroupSessionScreenFiltersTest {
         registry.launchedPermissions,
     )
     composeTestRule
-        .onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(250))
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(500))
         .assertIsSelected()
+    assertEquals(500, viewModel.uiState.value.selectedRadiusMeters)
   }
 
   /** Leaves Any selected when the location permission request is denied. */
@@ -121,7 +224,7 @@ class GroupSessionScreenFiltersTest {
                 Manifest.permission.ACCESS_COARSE_LOCATION to false,
             )
         )
-    setScreenWithRegistry(registry)
+    val viewModel = setScreenWithRegistry(registry)
 
     openFilterSheet()
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(250)).performClick()
@@ -136,6 +239,7 @@ class GroupSessionScreenFiltersTest {
     composeTestRule
         .onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(null))
         .assertIsSelected()
+    assertEquals(null, viewModel.uiState.value.selectedRadiusMeters)
   }
 
   /** Preserves distance, zone, and Lab selections through saved-state restoration. */
@@ -164,16 +268,18 @@ class GroupSessionScreenFiltersTest {
   }
 
   /** Provides a GroupSessionScreen with an immediate fake activity-result registry. */
-  private fun setScreenWithRegistry(registry: ActivityResultRegistry) {
+  private fun setScreenWithRegistry(registry: ActivityResultRegistry): GroupSessionsViewModel {
     val owner =
         object : ActivityResultRegistryOwner {
           override val activityResultRegistry = registry
         }
+    val viewModel = newViewModel()
     composeTestRule.setContent {
       CompositionLocalProvider(LocalActivityResultRegistryOwner provides owner) {
-        GroupSessionScreen(viewModel = newViewModel())
+        GroupSessionScreen(viewModel = viewModel)
       }
     }
+    return viewModel
   }
 
   /** Opens the sheet through the search bar's filter button. */
@@ -201,6 +307,23 @@ class GroupSessionScreenFiltersTest {
                     Result.failure<UserProfile>(UnsupportedOperationException())
               },
           locationProvider = LocationProvider { flowOf(null) },
+          campusLocationRepository =
+              FakeCampusLocationRepository(
+                  listOf(
+                      campusLocation("CM 1", "CM"),
+                      campusLocation("BC 2", "BC"),
+                      campusLocation("CO 4", "CO"),
+                  ),
+              ),
+      )
+
+  private fun campusLocation(name: String, zone: String) =
+      CampusLocation(
+          name = name,
+          zone = zone,
+          type = CampusLocationType.LECTURE_ROOM,
+          floor = null,
+          location = Location(0.0, 0.0),
       )
 
   private class FakeAuthRepository : AuthRepository {
@@ -233,6 +356,26 @@ class GroupSessionScreenFiltersTest {
 
     override suspend fun leaveSession(userId: String, sessionId: String): Result<Unit> =
         error("Not used by this test")
+  }
+
+  private class FakeCampusLocationRepository(
+      private val locations: List<CampusLocation>,
+  ) : CampusLocationRepository {
+    override suspend fun getAllLocations(): Result<List<CampusLocation>> = Result.success(locations)
+
+    override suspend fun search(filter: CampusLocationFilter): Result<List<CampusLocation>> =
+        Result.success(
+            locations.filter { location ->
+              (filter.query.isNullOrBlank() ||
+                  location.name.contains(filter.query.trim(), ignoreCase = true)) &&
+                  (filter.zone.isNullOrBlank() ||
+                      location.zone.equals(filter.zone.trim(), ignoreCase = true)) &&
+                  (filter.types.isEmpty() || location.type in filter.types)
+            },
+        )
+
+    override suspend fun getZones(): Result<List<String>> =
+        Result.success(locations.map { it.zone }.distinct().sorted())
   }
 
   private class ImmediatePermissionResultRegistry(

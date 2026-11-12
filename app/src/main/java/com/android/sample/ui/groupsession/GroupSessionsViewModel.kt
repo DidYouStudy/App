@@ -134,6 +134,7 @@ data class GroupSessionsUiState(
     val startingTimeFilter: GroupSessionTimeFilter = GroupSessionTimeFilter.ANYTIME,
     val selectedRadiusMeters: Int? = null,
     val selectedZones: Set<String> = emptySet(),
+    val availableZones: List<String> = emptyList(),
     val showLabRoomType: Boolean = true,
     val hideFullSessions: Boolean = false,
     val userLocation: Location? = null,
