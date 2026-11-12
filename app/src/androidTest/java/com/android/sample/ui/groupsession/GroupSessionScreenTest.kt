@@ -201,7 +201,7 @@ class GroupSessionScreenTest {
   @Test
   fun add_group_session_button_click_triggers_callback() {
     var addClicked = false
-    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
+    val viewModel = createViewModel()
     composeTestRule.setContent {
       GroupSessionScreen(
           viewModel = viewModel,
@@ -224,7 +224,7 @@ class GroupSessionScreenTest {
   @Test
   fun default_add_session_click_navigates_to_add_group_session() {
     val navActions = TestNavigationActions()
-    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
+    val viewModel = createViewModel()
     composeTestRule.setContent {
       GroupSessionScreen(
           navigationActions = navActions,
@@ -242,7 +242,7 @@ class GroupSessionScreenTest {
   @Test
   fun edit_group_session_button_click_triggers_callback() {
     var editedSessionId: String? = null
-    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
+    val viewModel = createViewModel()
     composeTestRule.setContent {
       GroupSessionScreen(
           viewModel = viewModel,
@@ -265,7 +265,7 @@ class GroupSessionScreenTest {
   @Test
   fun default_edit_session_click_navigates_to_edit_group_session() {
     val navActions = TestNavigationActions()
-    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
+    val viewModel = createViewModel()
     composeTestRule.setContent {
       GroupSessionScreen(
           navigationActions = navActions,

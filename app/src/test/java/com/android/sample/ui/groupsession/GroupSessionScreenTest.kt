@@ -26,6 +26,7 @@ import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.model.location.LocationProvider
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.UserProfile
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -127,7 +128,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun screen_renders_title_and_filters_joined_sessions() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
+    val viewModel = createViewModel()
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -156,7 +157,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun add_group_session_button_is_displayed() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
+    val viewModel = createViewModel()
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ADD_BUTTON).assertIsDisplayed()
@@ -165,7 +166,7 @@ class GroupSessionScreenTest {
   @Test
   fun add_group_session_button_click_triggers_callback() {
     var addClicked = false
-    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
+    val viewModel = createViewModel()
     composeTestRule.setContent {
       GroupSessionScreen(
           viewModel = viewModel,
@@ -180,7 +181,7 @@ class GroupSessionScreenTest {
   @Test
   fun default_add_session_click_navigates_to_add_group_session() {
     val navActions = org.mockito.kotlin.mock<com.android.sample.ui.navigation.NavigationActions>()
-    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
+    val viewModel = createViewModel()
     composeTestRule.setContent {
       GroupSessionScreen(
           navigationActions = navActions,
@@ -197,7 +198,7 @@ class GroupSessionScreenTest {
   @Test
   fun edit_group_session_button_click_triggers_callback() {
     var editedSessionId: String? = null
-    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
+    val viewModel = createViewModel()
     composeTestRule.setContent {
       GroupSessionScreen(
           viewModel = viewModel,
@@ -219,7 +220,7 @@ class GroupSessionScreenTest {
   @Test
   fun default_edit_session_click_navigates_to_edit_group_session() {
     val navActions = org.mockito.kotlin.mock<com.android.sample.ui.navigation.NavigationActions>()
-    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
+    val viewModel = createViewModel()
     composeTestRule.setContent {
       GroupSessionScreen(
           navigationActions = navActions,
@@ -247,7 +248,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun host_sees_edit_action_without_join_or_leave_actions() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
+    val viewModel = createViewModel()
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -264,7 +265,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun joined_filter_keeps_hosted_and_joined_sessions_only() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
+    val viewModel = createViewModel()
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -285,7 +286,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun nullable_session_fields_use_readable_fallbacks() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
+    val viewModel = createViewModel()
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -311,7 +312,7 @@ class GroupSessionScreenTest {
   @Test
   fun empty_repository_shows_empty_state() {
     val emptyRepository = FakeGroupSessionsRepository(emptyList())
-    val viewModel = GroupSessionsViewModel(authRepository, emptyRepository, profileRepository)
+    val viewModel = createViewModel(emptyRepository)
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
 
     composeTestRule
@@ -345,7 +346,7 @@ class GroupSessionScreenTest {
           override suspend fun leaveSession(userId: String, sessionId: String): Result<Unit> =
               Result.failure(RuntimeException())
         }
-    val viewModel = GroupSessionsViewModel(authRepository, neverEndingRepo, profileRepository)
+    val viewModel = createViewModel(neverEndingRepo)
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.LOADING).assertIsDisplayed()
@@ -356,7 +357,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun search_and_join_leave_actions_work() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
+    val viewModel = createViewModel()
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -391,7 +392,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun failed_join_shows_dismissible_error_message() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
+    val viewModel = createViewModel()
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -418,7 +419,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun failed_leave_shows_dismissible_error_message() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
+    val viewModel = createViewModel()
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -465,7 +466,7 @@ class GroupSessionScreenTest {
           override suspend fun leaveSession(userId: String, sessionId: String): Result<Unit> =
               Result.failure(RuntimeException())
         }
-    val viewModel = GroupSessionsViewModel(authRepository, failingRepo, profileRepository)
+    val viewModel = createViewModel(failingRepo)
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
 
     val loadErrorText = context.getString(R.string.group_session_error_load)
@@ -505,6 +506,16 @@ class GroupSessionScreenTest {
     assertEquals("In 1 day", dayOneLabel)
     assertEquals("In 3 days", daysOtherLabel)
   }
+
+  private fun createViewModel(
+      repository: GroupSessionsRepository = repo,
+  ): GroupSessionsViewModel =
+      GroupSessionsViewModel(
+          authRepository = authRepository,
+          repository = repository,
+          profileRepository = profileRepository,
+          locationProvider = LocationProvider { flowOf(null) },
+      )
 
   private class FakeProfileRepository(private val profiles: Map<String, UserProfile>) :
       ProfileRepository {
