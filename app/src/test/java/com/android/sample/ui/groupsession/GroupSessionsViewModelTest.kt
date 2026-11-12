@@ -86,6 +86,90 @@ class GroupSessionsViewModelTest {
     assertNull(viewModel.uiState.value.error)
   }
 
+  /** Exposes trimmed, distinct, non-blank campus zones in alphabetical order. */
+  @Test
+  fun availableZonesAreDistinctTrimmedAndSorted() = runTest {
+    val viewModel =
+        createViewModel(
+            campusLocationRepository =
+                FakeCampusLocationRepository(
+                    listOf(
+                        campusLocation("CM 1", zone = "CM"),
+                        campusLocation("BC 2", zone = "BC"),
+                        campusLocation("CM 3", zone = "CM"),
+                        campusLocation("CO 4", zone = " CO "),
+                        campusLocation("X 5", zone = ""),
+                    ),
+                ),
+        )
+    runCurrent()
+
+    assertEquals(listOf("BC", "CM", "CO"), viewModel.uiState.value.availableZones)
+  }
+
+  /** Leaves available zones empty when no campus-location repository is configured. */
+  @Test
+  fun availableZonesAreEmptyWithoutCampusLocationRepository() = runTest {
+    val viewModel = createViewModel()
+    runCurrent()
+
+    assertEquals(emptyList<String>(), viewModel.uiState.value.availableZones)
+  }
+
+  /** Leaves available zones empty and reports the location error when loading fails. */
+  @Test
+  fun availableZonesAreEmptyWhenCampusLocationLoadFails() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val viewModel =
+        createViewModel(
+            campusLocationRepository =
+                FakeCampusLocationRepository(Result.failure(IllegalStateException("unavailable"))),
+        )
+    runCurrent()
+
+    assertEquals(emptyList<String>(), viewModel.uiState.value.availableZones)
+    assertEquals(GroupSessionsError.LOCATION_LOAD_FAILED, viewModel.uiState.value.error)
+  }
+
+  /** Hides LAB-room sessions by default and shows them only after enabling lab rooms. */
+  @Test
+  fun labRoomSessionsAreHiddenUntilLabRoomsAreEnabled() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    repository.saveSession(
+        ALICE,
+        session("study-lab", ALICE, location = "Lab 1"),
+    )
+    val viewModel =
+        createViewModel(
+            campusLocationRepository =
+                FakeCampusLocationRepository(
+                    listOf(campusLocation("Lab 1", type = CampusLocationType.LAB)),
+                ),
+        )
+    runCurrent()
+
+    assertFalse(viewModel.uiState.value.showLabRoomType)
+    assertEquals(emptyList<String>(), visibleIds(viewModel))
+
+    viewModel.onShowLabRoomTypeChange(true)
+    runCurrent()
+
+    assertEquals(listOf("study-lab"), visibleIds(viewModel))
+  }
+
+  /** Resets lab visibility to off after it has been enabled. */
+  @Test
+  fun resetAdvancedFiltersDisablesLabRooms() = runTest {
+    val viewModel = createViewModel()
+    viewModel.onShowLabRoomTypeChange(true)
+    runCurrent()
+
+    viewModel.resetAdvancedFilters()
+    runCurrent()
+
+    assertFalse(viewModel.uiState.value.showLabRoomType)
+  }
+
   /** Loading remains active until the repository produces its first list. */
   @Test
   fun signedIn_waitsForFirstListBeforeClearingLoading() = runTest {
@@ -462,7 +546,7 @@ class GroupSessionsViewModelTest {
     viewModel.onFilterChange(GroupSessionFilter.JOINED)
     viewModel.onSessionTypesSelected(setOf(EventType.STUDY_SESSION))
     assertEquals(
-        listOf("available-study", "full-study", "study-lab", "late-study"),
+        listOf("available-study", "full-study", "late-study"),
         visibleIds(viewModel),
     )
 
@@ -477,7 +561,7 @@ class GroupSessionsViewModelTest {
     assertEquals("study", viewModel.uiState.value.query)
     assertEquals(GroupSessionFilter.JOINED, viewModel.uiState.value.filter)
     assertEquals(
-        listOf("available-study", "full-study", "study-lab", "exercise", "late-study"),
+        listOf("available-study", "full-study", "exercise", "late-study"),
         visibleIds(viewModel),
     )
   }

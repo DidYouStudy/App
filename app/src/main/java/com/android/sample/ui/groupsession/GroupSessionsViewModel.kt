@@ -1,4 +1,5 @@
 // Co-authored-by: GitHub Copilot
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
@@ -124,7 +125,8 @@ data class SessionWithProximity(
  *
  * The query retains the user's typed text while matching ignores case and surrounding whitespace.
  * [now] is the reference time every card uses for its relative labels, so they all agree. It has no
- * default value, so that every new state has to supply the current time.
+ * default value, so that every new state has to supply the current time. Laboratory rooms are
+ * hidden by default and shown only when [showLabRoomType] is enabled.
  */
 data class GroupSessionsUiState(
     val now: Instant,
@@ -137,7 +139,8 @@ data class GroupSessionsUiState(
     val startingTimeFilter: GroupSessionTimeFilter = GroupSessionTimeFilter.ANYTIME,
     val selectedRadiusMeters: Int? = null,
     val selectedZones: Set<String> = emptySet(),
-    val showLabRoomType: Boolean = true,
+    val availableZones: List<String> = emptyList(),
+    val showLabRoomType: Boolean = false,
     val hideFullSessions: Boolean = false,
     val userLocation: Location? = null,
     val error: GroupSessionsError? = null,
@@ -195,7 +198,12 @@ class GroupSessionsViewModel(
             }
             if (user == null) {
               observedSessions = emptyList()
-              _uiState.value = GroupSessionsUiState(now = clock.instant(), isLoading = false)
+              _uiState.value =
+                  GroupSessionsUiState(
+                      now = clock.instant(),
+                      isLoading = false,
+                      availableZones = _uiState.value.availableZones,
+                  )
             } else {
               val observedFrom = clock.instant()
               updateVisibleSessions()
@@ -310,7 +318,9 @@ class GroupSessionsViewModel(
     }
   }
 
-  /** Restores the advanced filter criteria without changing search or membership filters. */
+  /**
+   * Resets advanced criteria, including hiding labs, without changing search or membership filters.
+   */
   fun resetAdvancedFilters() {
     viewModelScope.launch {
       _uiState.update {
@@ -319,7 +329,7 @@ class GroupSessionsViewModel(
             startingTimeFilter = GroupSessionTimeFilter.ANYTIME,
             selectedRadiusMeters = null,
             selectedZones = emptySet(),
-            showLabRoomType = true,
+            showLabRoomType = false,
             hideFullSessions = false,
         )
       }
@@ -429,10 +439,25 @@ class GroupSessionsViewModel(
           .fold(
               onSuccess = { locations ->
                 campusLocationsByName = locations.associateBy { normalizeRoomName(it.name) }
+                _uiState.update {
+                  it.copy(
+                      availableZones =
+                          locations
+                              .map { location -> location.zone.trim() }
+                              .filter(String::isNotEmpty)
+                              .distinct()
+                              .sorted(),
+                  )
+                }
                 updateVisibleSessions()
               },
               onFailure = {
-                _uiState.update { it.copy(error = GroupSessionsError.LOCATION_LOAD_FAILED) }
+                _uiState.update {
+                  it.copy(
+                      availableZones = emptyList(),
+                      error = GroupSessionsError.LOCATION_LOAD_FAILED,
+                  )
+                }
               },
           )
     }
