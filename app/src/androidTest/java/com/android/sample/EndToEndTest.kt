@@ -91,25 +91,30 @@ class EndToEndTest {
           )
           .around(composeRule)
 
-  /** Releases the SDK state and wipes the emulators' Auth accounts and Firestore documents. */
+  /**
+   * Releases the SDK state and wipes the emulators' Auth accounts and Firestore documents.
+   *
+   * The explicit `Unit` return type matters: JUnit rejects `@After` methods that are not void.
+   */
   @After
-  fun cleanup() = runBlocking {
-    auth.signOut()
-    db.terminate().await()
-    db.clearPersistence().await()
-    app.delete()
-    // Run every wipe even if an earlier one fails, then report all failures together.
-    val failures =
-        listOf(
-                "http://$HOST:$AUTH_PORT/emulator/v1/projects/$PROJECT_ID/accounts",
-                "http://$HOST:$FIRESTORE_PORT/emulator/v1/projects/$PROJECT_ID/databases/(default)/documents",
-            )
-            .mapNotNull { url -> runCatching { clearEmulator(url) }.exceptionOrNull() }
-    failures.firstOrNull()?.let { first ->
-      failures.drop(1).forEach(first::addSuppressed)
-      throw first
-    }
-  }
+  fun cleanup(): Unit =
+      runBlocking<Unit> {
+        auth.signOut()
+        db.terminate().await()
+        db.clearPersistence().await()
+        app.delete()
+        // Run every wipe even if an earlier one fails, then report all failures together.
+        val failures =
+            listOf(
+                    "http://$HOST:$AUTH_PORT/emulator/v1/projects/$PROJECT_ID/accounts",
+                    "http://$HOST:$FIRESTORE_PORT/emulator/v1/projects/$PROJECT_ID/databases/(default)/documents",
+                )
+                .mapNotNull { url -> runCatching { clearEmulator(url) }.exceptionOrNull() }
+        failures.firstOrNull()?.let { first ->
+          failures.drop(1).forEach(first::addSuppressed)
+          throw first
+        }
+      }
 
   /** Waits until a node with [tag] exists; on timeout logs the UI tree (tag `E2EDUMP`). */
   private fun waitForTag(tag: String) {
