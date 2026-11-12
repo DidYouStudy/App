@@ -9,8 +9,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
-import com.android.sample.model.event.EventsError
-import com.android.sample.model.event.EventsException
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.EventsRepositoryProvider
 import com.android.sample.model.event.PersonalEvent
@@ -32,14 +30,14 @@ import kotlinx.coroutines.launch
  * @property isDeleting true while the event is being deleted.
  * @property isEventDeleted set to true when the event is successfully deleted, cleared by
  *   [EventDetailsViewModel.onEventDeletedHandled].
- * @property error failure message to display to the user, or null when there is none.
+ * @property error failure category to display to the user, or null when there is none.
  */
 data class EventDetailsUiState(
     val event: PersonalEvent? = null,
     val isLoading: Boolean = false,
     val isDeleting: Boolean = false,
     val isEventDeleted: Boolean = false,
-    val error: String? = null,
+    val error: EventPlanningError? = null,
 ) {
   /** True while any asynchronous operation (loading or deleting) is in progress. */
   val isBusy: Boolean
@@ -76,9 +74,7 @@ class EventDetailsViewModel(
         throw exception
       } catch (exception: Exception) {
         currentUserId = null
-        _uiState.update {
-          it.copy(error = exception.localizedMessage ?: FAILED_TO_OBSERVE_USER_ERROR)
-        }
+        _uiState.update { it.copy(error = EventPlanningError.FAILED_TO_OBSERVE_USER) }
       }
     }
   }
@@ -95,9 +91,11 @@ class EventDetailsViewModel(
     _uiState.update { it.copy(isLoading = true, error = null) }
     viewModelScope.launch {
       try {
-        val ownerId = currentUserId ?: authRepository.currentUser.first()?.uid
+        val ownerId = authRepository.currentUser.first()?.uid
         if (ownerId == null) {
-          _uiState.update { it.copy(isLoading = false, error = NO_SIGNED_IN_USER_ERROR) }
+          _uiState.update {
+            it.copy(isLoading = false, error = EventPlanningError.NO_SIGNED_IN_USER)
+          }
           return@launch
         }
         eventsRepository
@@ -110,7 +108,7 @@ class EventDetailsViewModel(
                 it.copy(
                     event = null,
                     isLoading = false,
-                    error = exception.toUserMessage(FAILED_TO_LOAD_EVENT_ERROR),
+                    error = exception.toUserError(EventPlanningError.FAILED_TO_LOAD_EVENT),
                 )
               }
             }
@@ -121,7 +119,7 @@ class EventDetailsViewModel(
           it.copy(
               event = null,
               isLoading = false,
-              error = exception.toUserMessage(FAILED_TO_LOAD_EVENT_ERROR),
+              error = exception.toUserError(EventPlanningError.FAILED_TO_LOAD_EVENT),
           )
         }
       }
@@ -135,7 +133,7 @@ class EventDetailsViewModel(
   fun deleteEvent() {
     val currentEvent = _uiState.value.event
     if (currentEvent == null) {
-      _uiState.update { it.copy(error = NO_EVENT_TO_DELETE_ERROR) }
+      _uiState.update { it.copy(error = EventPlanningError.NO_EVENT_TO_EDIT) }
       return
     }
 
@@ -144,9 +142,11 @@ class EventDetailsViewModel(
     _uiState.update { it.copy(isDeleting = true, error = null) }
     viewModelScope.launch {
       try {
-        val ownerId = currentUserId ?: authRepository.currentUser.first()?.uid
+        val ownerId = authRepository.currentUser.first()?.uid
         if (ownerId == null) {
-          _uiState.update { it.copy(isDeleting = false, error = NO_SIGNED_IN_USER_ERROR) }
+          _uiState.update {
+            it.copy(isDeleting = false, error = EventPlanningError.NO_SIGNED_IN_USER)
+          }
           return@launch
         }
         eventsRepository
@@ -165,7 +165,7 @@ class EventDetailsViewModel(
               _uiState.update {
                 it.copy(
                     isDeleting = false,
-                    error = exception.toUserMessage(FAILED_TO_DELETE_EVENT_ERROR),
+                    error = exception.toUserError(EventPlanningError.FAILED_TO_DELETE_EVENT),
                 )
               }
             }
@@ -175,7 +175,7 @@ class EventDetailsViewModel(
         _uiState.update {
           it.copy(
               isDeleting = false,
-              error = exception.toUserMessage(FAILED_TO_DELETE_EVENT_ERROR),
+              error = exception.toUserError(EventPlanningError.FAILED_TO_DELETE_EVENT),
           )
         }
       }
@@ -198,14 +198,7 @@ class EventDetailsViewModel(
     if (index !in currentEvent.tasks.indices) return
 
     val now = clock.instant()
-    val updatedTasks =
-        currentEvent.tasks.mapIndexed { i, task ->
-          if (i == index) {
-            task.copy(completedAt = if (task.isCompleted) null else now)
-          } else {
-            task
-          }
-        }
+    val updatedTasks = toggleTaskItem(currentEvent.tasks, index, clock)
     val updatedEvent = currentEvent.copy(tasks = updatedTasks, updatedAt = now)
     updateEventTasks(previousEvent = currentEvent, updatedEvent = updatedEvent)
   }
@@ -223,7 +216,7 @@ class EventDetailsViewModel(
           _uiState.update {
             it.copy(
                 event = previousEvent,
-                error = exception.toUserMessage(FAILED_TO_UPDATE_TASK_ERROR),
+                error = exception.toUserError(EventPlanningError.FAILED_TO_EDIT_EVENT),
             )
           }
         }
@@ -233,40 +226,15 @@ class EventDetailsViewModel(
         _uiState.update {
           it.copy(
               event = previousEvent,
-              error = exception.toUserMessage(FAILED_TO_UPDATE_TASK_ERROR),
+              error = exception.toUserError(EventPlanningError.FAILED_TO_EDIT_EVENT),
           )
         }
       }
     }
   }
 
-  private fun Throwable.toUserMessage(default: String): String =
-      if (this is EventsException) {
-        when (error) {
-          EventsError.INVALID_ARGUMENT -> INVALID_EVENT_ERROR
-          EventsError.NOT_FOUND -> EVENT_NOT_FOUND_ERROR
-          EventsError.PERMISSION_DENIED -> PERMISSION_DENIED_ERROR
-          EventsError.INVALID_EVENT_DATA -> INVALID_EVENT_DATA_ERROR
-          EventsError.STORAGE_FAILURE -> STORAGE_FAILURE_ERROR
-          EventsError.UNKNOWN -> default
-        }
-      } else {
-        message ?: default
-      }
-
-  companion object {
-    const val FAILED_TO_OBSERVE_USER_ERROR = "Failed to observe signed-in user"
-    const val NO_SIGNED_IN_USER_ERROR = "No signed-in user"
-    const val NO_EVENT_TO_DELETE_ERROR = "No event loaded to delete"
-    const val FAILED_TO_LOAD_EVENT_ERROR = "Failed to load event"
-    const val FAILED_TO_DELETE_EVENT_ERROR = "Failed to delete event"
-    const val FAILED_TO_UPDATE_TASK_ERROR = "Failed to update task"
-    const val INVALID_EVENT_ERROR = "The event is invalid"
-    const val EVENT_NOT_FOUND_ERROR = "This event no longer exists"
-    const val PERMISSION_DENIED_ERROR = "You are not allowed to change this event"
-    const val INVALID_EVENT_DATA_ERROR = "The stored event is corrupted"
-    const val STORAGE_FAILURE_ERROR = "Your events could not be stored on this device"
-  }
+  private fun Throwable.toUserError(default: EventPlanningError): EventPlanningError =
+      toEventPlanningError(default)
 }
 
 /** Supplies an injected repository when Android creates the [EventDetailsViewModel]. */

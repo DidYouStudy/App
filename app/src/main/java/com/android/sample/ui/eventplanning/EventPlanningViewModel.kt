@@ -9,15 +9,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
-import com.android.sample.model.event.EventsError
-import com.android.sample.model.event.EventsException
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.EventsRepositoryProvider
 import com.android.sample.model.event.GroupSession
@@ -56,47 +53,6 @@ enum class EventKind {
   /** A public or shared study session with multiple members. */
   GROUP_SESSION,
 }
-
-/** Stable failure categories for event planning errors. */
-enum class EventPlanningError {
-  FAILED_TO_OBSERVE_USER,
-  NO_SIGNED_IN_USER,
-  EVENT_DATE_AND_TIMES_REQUIRED,
-  NO_EVENT_TO_EDIT,
-  FAILED_TO_ADD_EVENT,
-  FAILED_TO_EDIT_EVENT,
-  FAILED_TO_DELETE_EVENT,
-  FAILED_TO_LOAD_EVENT,
-  INVALID_EVENT,
-  EVENT_NOT_FOUND,
-  PERMISSION_DENIED,
-  INVALID_EVENT_DATA,
-  STORAGE_FAILURE,
-}
-
-/** Maps an [EventPlanningError] to its localized string resource. */
-val EventPlanningError.stringResource: Int
-  get() =
-      when (this) {
-        EventPlanningError.FAILED_TO_OBSERVE_USER ->
-            R.string.event_planning_error_failed_to_observe_user
-        EventPlanningError.NO_SIGNED_IN_USER -> R.string.event_planning_error_no_signed_in_user
-        EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED ->
-            R.string.event_planning_error_date_and_times_required
-        EventPlanningError.NO_EVENT_TO_EDIT -> R.string.event_planning_error_no_event_to_edit
-        EventPlanningError.FAILED_TO_ADD_EVENT -> R.string.event_planning_error_failed_to_add_event
-        EventPlanningError.FAILED_TO_EDIT_EVENT ->
-            R.string.event_planning_error_failed_to_edit_event
-        EventPlanningError.FAILED_TO_DELETE_EVENT ->
-            R.string.event_planning_error_failed_to_delete_event
-        EventPlanningError.FAILED_TO_LOAD_EVENT ->
-            R.string.event_planning_error_failed_to_load_event
-        EventPlanningError.INVALID_EVENT -> R.string.event_planning_error_invalid_event
-        EventPlanningError.EVENT_NOT_FOUND -> R.string.event_planning_error_event_not_found
-        EventPlanningError.PERMISSION_DENIED -> R.string.event_planning_error_permission_denied
-        EventPlanningError.INVALID_EVENT_DATA -> R.string.event_planning_error_invalid_event_data
-        EventPlanningError.STORAGE_FAILURE -> R.string.event_planning_error_storage_failure
-      }
 
 /**
  * Form values, subject suggestions and the result of the latest add request.
@@ -274,9 +230,8 @@ class EventPlanningViewModel(
   /** Appends an open task; blank text is ignored. Forbidden for group sessions. */
   fun addTask(text: String) {
     requirePersonalEvent()
-    val trimmed = text.trim()
-    if (trimmed.isEmpty()) return
-    updateForm { copy(tasks = tasks + EventTask(trimmed)) }
+    if (text.trim().isEmpty()) return
+    updateForm { copy(tasks = addTaskItem(tasks, text)) }
   }
 
   /**
@@ -285,10 +240,8 @@ class EventPlanningViewModel(
    */
   fun removeTask(index: Int) {
     requirePersonalEvent()
-    updateForm {
-      if (index !in tasks.indices) this
-      else copy(tasks = tasks.filterIndexed { i, _ -> i != index })
-    }
+    if (index !in _uiState.value.tasks.indices) return
+    updateForm { copy(tasks = removeTaskItem(tasks, index)) }
   }
 
   /**
@@ -297,17 +250,8 @@ class EventPlanningViewModel(
    */
   fun toggleTask(index: Int) {
     requirePersonalEvent()
-    updateForm {
-      if (index !in tasks.indices) this
-      else
-          copy(
-              tasks =
-                  tasks.mapIndexed { i, task ->
-                    if (i != index) task
-                    else task.copy(completedAt = if (task.isCompleted) null else clock.instant())
-                  }
-          )
-    }
+    if (index !in _uiState.value.tasks.indices) return
+    updateForm { copy(tasks = toggleTaskItem(tasks, index, clock)) }
   }
 
   /** Clears a displayed save error. */
@@ -481,15 +425,14 @@ class EventPlanningViewModel(
       return null
     }
 
-    // An end time before the start time can only mean the next day (e.g. 22:00 to 01:00).
-    val endDate = if (endTime.isBefore(startTime)) date.plusDays(1) else date
+    val (startsAt, endsAt) = calculateStartAndEndInstants(date, startTime, endTime, clock)
 
     return try {
       EventDetails(
           type = state.type,
           subject = state.subject.trim().takeIf(String::isNotEmpty),
-          startsAt = date.atTime(startTime).atZone(clock.zone).toInstant(),
-          endsAt = endDate.atTime(endTime).atZone(clock.zone).toInstant(),
+          startsAt = startsAt,
+          endsAt = endsAt,
           location = state.location.trim().takeIf(String::isNotEmpty),
           description = state.description.trim().takeIf(String::isNotEmpty),
       )
@@ -653,18 +596,7 @@ class EventPlanningViewModel(
 
   /** Turns a repository failure into a stable [EventPlanningError] category for the UI. */
   private fun Throwable.toUserError(default: EventPlanningError): EventPlanningError =
-      if (this is EventsException) {
-        when (error) {
-          EventsError.INVALID_ARGUMENT -> EventPlanningError.INVALID_EVENT
-          EventsError.NOT_FOUND -> EventPlanningError.EVENT_NOT_FOUND
-          EventsError.PERMISSION_DENIED -> EventPlanningError.PERMISSION_DENIED
-          EventsError.INVALID_EVENT_DATA -> EventPlanningError.INVALID_EVENT_DATA
-          EventsError.STORAGE_FAILURE -> EventPlanningError.STORAGE_FAILURE
-          EventsError.UNKNOWN -> default
-        }
-      } else {
-        default
-      }
+      toEventPlanningError(default)
 }
 
 /** Supplies an injected repository when Android creates the settings ViewModel. */

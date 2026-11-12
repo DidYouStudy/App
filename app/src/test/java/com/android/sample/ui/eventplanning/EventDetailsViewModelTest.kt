@@ -105,7 +105,7 @@ class EventDetailsViewModelTest {
         .thenReturn(flow<UserAccount?> { throw RuntimeException("Auth error") })
 
     val viewModel = createViewModel()
-    assertEquals("Auth error", viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.FAILED_TO_OBSERVE_USER, viewModel.uiState.value.error)
   }
 
   @Test
@@ -153,7 +153,7 @@ class EventDetailsViewModelTest {
 
     val state = viewModel.uiState.value
     assertNull(state.event)
-    assertEquals(EventDetailsViewModel.NO_SIGNED_IN_USER_ERROR, state.error)
+    assertEquals(EventPlanningError.NO_SIGNED_IN_USER, state.error)
   }
 
   @Test
@@ -166,7 +166,7 @@ class EventDetailsViewModelTest {
 
     val state = viewModel.uiState.value
     assertNull(state.event)
-    assertEquals(EventDetailsViewModel.EVENT_NOT_FOUND_ERROR, state.error)
+    assertEquals(EventPlanningError.EVENT_NOT_FOUND, state.error)
   }
 
   @Test
@@ -192,7 +192,7 @@ class EventDetailsViewModelTest {
     val state = viewModel.uiState.value
     assertNull(state.event)
     assertFalse(state.isLoading)
-    assertEquals("Unexpected load error", state.error)
+    assertEquals(EventPlanningError.FAILED_TO_LOAD_EVENT, state.error)
   }
 
   @Test
@@ -200,7 +200,7 @@ class EventDetailsViewModelTest {
     val viewModel = createViewModel()
     viewModel.deleteEvent()
 
-    assertEquals(EventDetailsViewModel.NO_EVENT_TO_DELETE_ERROR, viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.NO_EVENT_TO_EDIT, viewModel.uiState.value.error)
   }
 
   @Test
@@ -216,7 +216,7 @@ class EventDetailsViewModelTest {
 
     val state = viewModel.uiState.value
     assertFalse(state.isDeleting)
-    assertEquals(EventDetailsViewModel.NO_SIGNED_IN_USER_ERROR, state.error)
+    assertEquals(EventPlanningError.NO_SIGNED_IN_USER, state.error)
   }
 
   @Test
@@ -254,7 +254,7 @@ class EventDetailsViewModelTest {
     assertEquals(sampleEvent, state.event)
     assertFalse(state.isDeleting)
     assertFalse(state.isEventDeleted)
-    assertEquals(EventDetailsViewModel.PERMISSION_DENIED_ERROR, state.error)
+    assertEquals(EventPlanningError.PERMISSION_DENIED, state.error)
   }
 
   @Test
@@ -287,7 +287,7 @@ class EventDetailsViewModelTest {
     val state = viewModel.uiState.value
     assertEquals(sampleEvent, state.event)
     assertFalse(state.isDeleting)
-    assertEquals("Unexpected delete error", state.error)
+    assertEquals(EventPlanningError.FAILED_TO_DELETE_EVENT, state.error)
   }
 
   @Test
@@ -346,7 +346,7 @@ class EventDetailsViewModelTest {
 
     val state = viewModel.uiState.value
     assertEquals(sampleEvent, state.event)
-    assertEquals(EventDetailsViewModel.STORAGE_FAILURE_ERROR, state.error)
+    assertEquals(EventPlanningError.STORAGE_FAILURE, state.error)
   }
 
   @Test
@@ -376,15 +376,15 @@ class EventDetailsViewModelTest {
 
     val state = viewModel.uiState.value
     assertEquals(sampleEvent, state.event)
-    assertEquals("Unexpected save error", state.error)
+    assertEquals(EventPlanningError.FAILED_TO_EDIT_EVENT, state.error)
   }
 
   @Test
   fun clearError_clearsErrorFromState() = runTest {
     val viewModel = createViewModel()
-    viewModel.deleteEvent() // sets NO_EVENT_TO_DELETE_ERROR
+    viewModel.deleteEvent() // sets NO_EVENT_TO_EDIT error
 
-    assertEquals(EventDetailsViewModel.NO_EVENT_TO_DELETE_ERROR, viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.NO_EVENT_TO_EDIT, viewModel.uiState.value.error)
 
     viewModel.clearError()
     assertNull(viewModel.uiState.value.error)
