@@ -4,5 +4,14 @@
     <!-- Local Firebase emulator access is confined to debug builds. -->
     <application
         android:allowBackup="false"
-        android:networkSecurityConfig="@xml/emulator_network_security_config" />
+        android:networkSecurityConfig="@xml/emulator_network_security_config">
+        <!--
+            Older Play services (as on the CI emulator image) load the legacy Apache HTTP classes in
+            the Maps module, which Android 9+ hides from apps unless they ask for them. Without
+            this the Maps module crashes the app process.
+        -->
+        <uses-library
+            android:name="org.apache.http.legacy"
+            android:required="false" />
+    </application>
 </manifest>
