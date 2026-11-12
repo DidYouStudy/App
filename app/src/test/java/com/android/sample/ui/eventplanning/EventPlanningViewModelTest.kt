@@ -982,6 +982,26 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertEquals(LocalTime.of(15, 30), viewModel.uiState.value.endTime)
   }
 
+  /** Setting start time does not overwrite end time if a custom end time was already set. */
+  @Test
+  fun setStartTime_doesNotOverwriteCustomEndTime_whenCustomEndTimeIsSet() = runTest {
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+
+    // User sets start time first -> auto fills 14:00 - 15:00
+    viewModel.setStartTime(LocalTime.of(14, 0))
+    assertEquals(LocalTime.of(15, 0), viewModel.uiState.value.endTime)
+
+    // User manually sets custom end time -> 18:00
+    viewModel.setEndTime(LocalTime.of(18, 0))
+    assertEquals(LocalTime.of(18, 0), viewModel.uiState.value.endTime)
+
+    // User changes start time to 15:00 -> custom end time 18:00 is preserved
+    viewModel.setStartTime(LocalTime.of(15, 0))
+    assertEquals(LocalTime.of(15, 0), viewModel.uiState.value.startTime)
+    assertEquals(LocalTime.of(18, 0), viewModel.uiState.value.endTime)
+  }
+
   // factory tests
 
   /** The factory creates an event-planning ViewModel for its supported type. */

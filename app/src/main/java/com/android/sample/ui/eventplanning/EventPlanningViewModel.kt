@@ -81,6 +81,7 @@ enum class EventKind {
  *   [EventPlanningViewModel.onEventEditedHandled].
  * @property isEventDeleted same for a successful delete, cleared by
  *   [EventPlanningViewModel.onEventDeletedHandled].
+ * @property hasSetCustomEndTime whether a custom end time has been set or loaded.
  */
 data class EventPlanningUiState(
     val eventKind: EventKind = EventKind.PERSONAL,
@@ -89,6 +90,7 @@ data class EventPlanningUiState(
     val date: LocalDate? = null,
     val startTime: LocalTime? = null,
     val endTime: LocalTime? = null,
+    val hasSetCustomEndTime: Boolean = false,
     val location: String = "",
     val description: String = "",
     val tasks: List<EventTask> = emptyList(),
@@ -241,17 +243,24 @@ class EventPlanningViewModel(
 
   /**
    * Updates the start time of day and automatically sets the end time to start time plus
-   * sessionLengthMinutes from user preferences.
+   * sessionLengthMinutes from user preferences unless a custom end time has already been set.
    */
   fun setStartTime(startTime: LocalTime?) {
     updateForm {
-      val endTime = startTime?.plusMinutes(sessionLengthMinutes.toLong()) ?: this.endTime
-      copy(startTime = startTime, endTime = endTime)
+      val computedEndTime =
+          if (!hasSetCustomEndTime && startTime != null) {
+            startTime.plusMinutes(sessionLengthMinutes.toLong())
+          } else {
+            endTime
+          }
+      copy(startTime = startTime, endTime = computedEndTime)
     }
   }
 
   /** Updates the end time of day. */
-  fun setEndTime(endTime: LocalTime?) = updateForm { copy(endTime = endTime) }
+  fun setEndTime(endTime: LocalTime?) = updateForm {
+    copy(endTime = endTime, hasSetCustomEndTime = true)
+  }
 
   /** Updates the optional event location. */
   fun setLocation(location: String) = updateForm { copy(location = location) }
@@ -616,6 +625,7 @@ class EventPlanningViewModel(
           date = start.toLocalDate(),
           startTime = start.toLocalTime(),
           endTime = end.toLocalTime(),
+          hasSetCustomEndTime = true,
           location = event.details.location.orEmpty(),
           description = event.details.description.orEmpty(),
           tasks = (event as? PersonalEvent)?.tasks.orEmpty(),
