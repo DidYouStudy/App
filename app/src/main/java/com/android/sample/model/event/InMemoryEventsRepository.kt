@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 
@@ -128,6 +129,23 @@ class InMemoryEventsRepository : EventsRepository {
       currentMap
     }
     return Result.success(Unit)
+  }
+
+  override suspend fun updateEventTasks(
+      ownerId: String,
+      eventId: String,
+      tasks: List<EventTask>,
+      updatedAt: Instant,
+  ): Result<Unit> {
+    if (ownerId.isBlank() || eventId.isBlank()) return invalidArgument()
+    val previous = data.getAndUpdate { byOwner ->
+      val owned = byOwner[ownerId] ?: return@getAndUpdate byOwner
+      val event = owned.events[eventId] ?: return@getAndUpdate byOwner
+      val updatedEvent = event.copy(tasks = tasks.toList(), updatedAt = updatedAt)
+      byOwner + (ownerId to owned.copy(events = owned.events + (eventId to updatedEvent)))
+    }
+    return if (previous[ownerId]?.events?.containsKey(eventId) == true) Result.success(Unit)
+    else Result.failure(EventsException(EventsError.NOT_FOUND))
   }
 
   override suspend fun deleteEvent(ownerId: String, eventId: String): Result<Unit> {

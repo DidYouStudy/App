@@ -73,6 +73,14 @@ interface EventsRepository {
    */
   suspend fun saveEvents(events: List<PersonalEvent>): Result<Unit>
 
+  /** Updates the checklist and modification time of an existing event, preserving other fields. */
+  suspend fun updateEventTasks(
+      ownerId: String,
+      eventId: String,
+      tasks: List<EventTask>,
+      updatedAt: Instant,
+  ): Result<Unit>
+
   /** Deletes the owner's event; deleting an event that does not exist also succeeds. */
   suspend fun deleteEvent(ownerId: String, eventId: String): Result<Unit>
 }

@@ -16,14 +16,20 @@ internal object EventFirestoreMapper {
             mapOf(
                 "ownerId" to ownerId,
                 "createdAt" to timestamp(createdAt),
-                "updatedAt" to timestamp(updatedAt),
                 "importKey" to importKey,
-                "tasks" to
-                    tasks.map {
-                      mapOf("text" to it.text, "completedAt" to it.completedAt?.let(::timestamp))
-                    },
-            )
+            ) +
+            encodeTaskUpdate(tasks, updatedAt)
       }
+
+  /** Serializes the fields changed by a checklist write. */
+  fun encodeTaskUpdate(tasks: List<EventTask>, updatedAt: Instant): Map<String, Any> =
+      mapOf(
+          "tasks" to
+              tasks.map {
+                mapOf("text" to it.text, "completedAt" to it.completedAt?.let(::timestamp))
+              },
+          "updatedAt" to timestamp(updatedAt),
+      )
 
   /** Uses the document path as the event ID and verifies the stored owner. */
   fun decode(id: String, owner: String, data: Map<String, Any?>): PersonalEvent = decodeData {
