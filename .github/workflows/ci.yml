@@ -20,6 +20,9 @@ on:
 jobs:
   build:
     name: Build, lint and unit tests
+    # Google Maps key injected into the manifest; without it the map in the APK stays blank.
+    env:
+      MAP_API_KEY: ${{ secrets.MAP_API_KEY }}
     runs-on: ubuntu-latest
     steps:
       # First step : Checkout the repository on the runner
@@ -127,6 +130,9 @@ jobs:
 
   android-tests:
     name: Emulator tests
+    # Google Maps key injected into the manifest; without it the map in the APK stays blank.
+    env:
+      MAP_API_KEY: ${{ secrets.MAP_API_KEY }}
     runs-on: ubuntu-latest
     steps:
       # First step : Checkout the repository on the runner
