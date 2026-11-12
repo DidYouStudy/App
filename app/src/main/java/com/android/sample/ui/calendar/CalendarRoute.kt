@@ -21,14 +21,15 @@ import kotlinx.coroutines.launch
  * Collects calendar ViewModel state and passes it with user actions to [CalendarScreen].
  *
  * @param onAddEventClick invoked when the Event menu option is selected.
- * @param onAddGroupSessionClick invoked when the Group Session menu option is selected.
+ * @param onAddGroupSessionClick invoked when the Group Session menu option is selected; by default
+ *   navigates to [Screen.AddGroupSession] when [navigationActions] is available.
  */
 @Composable
 fun CalendarRoute(
     navigationActions: NavigationActions? = null,
     viewModel: CalendarViewModel = calendarViewModel(),
     onAddEventClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
-    onAddGroupSessionClick: () -> Unit = {},
+    onAddGroupSessionClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddGroupSession) },
     onEventClick: (String) -> Unit = {},
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()

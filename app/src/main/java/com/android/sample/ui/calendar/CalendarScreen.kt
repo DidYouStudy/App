@@ -63,7 +63,8 @@ import java.time.ZoneId
  * Renders the calendar scaffold from the supplied state and action callbacks.
  *
  * @param onAddEventClick invoked when the Event menu option is selected.
- * @param onAddGroupSessionClick invoked when the Group Session menu option is selected.
+ * @param onAddGroupSessionClick invoked when the Group Session menu option is selected; by default
+ *   navigates to [Screen.AddGroupSession] when [navigationActions] is available.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,7 +76,7 @@ fun CalendarScreen(
     onRetry: () -> Unit,
     navigationActions: NavigationActions? = null,
     onAddEventClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
-    onAddGroupSessionClick: () -> Unit = {},
+    onAddGroupSessionClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddGroupSession) },
     onEventClick: (String) -> Unit = {},
 ) {
   // The menu leaves composition while hidden, so it returns in its collapsed state.
