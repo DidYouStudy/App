@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -25,6 +26,7 @@ import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -327,8 +329,13 @@ class CalendarScreenTest {
 
     composeTestRule.waitForIdle()
     composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).assertExists()
+    val before =
+        composeTestRule.onNodeWithTag(CalendarTestTags.hourLabel(12)).getUnclippedBoundsInRoot().top
     composeTestRule.onNodeWithTag(CalendarTestTags.TIME_GRID).performTouchInput { swipeUp() }
     composeTestRule.waitForIdle()
+    val after =
+        composeTestRule.onNodeWithTag(CalendarTestTags.hourLabel(12)).getUnclippedBoundsInRoot().top
+    assertTrue(after < before)
 
     composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).assertDoesNotExist()
   }
@@ -347,11 +354,19 @@ class CalendarScreenTest {
     }
 
     composeTestRule.waitForIdle()
+    val before =
+        composeTestRule.onNodeWithTag(CalendarTestTags.hourLabel(12)).getUnclippedBoundsInRoot().top
     composeTestRule.onNodeWithTag(CalendarTestTags.TIME_GRID).performTouchInput { swipeUp() }
     composeTestRule.waitForIdle()
+    val afterSwipeUp =
+        composeTestRule.onNodeWithTag(CalendarTestTags.hourLabel(12)).getUnclippedBoundsInRoot().top
+    assertTrue(afterSwipeUp < before)
     composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).assertDoesNotExist()
     composeTestRule.onNodeWithTag(CalendarTestTags.TIME_GRID).performTouchInput { swipeDown() }
     composeTestRule.waitForIdle()
+    val afterSwipeDown =
+        composeTestRule.onNodeWithTag(CalendarTestTags.hourLabel(12)).getUnclippedBoundsInRoot().top
+    assertTrue(afterSwipeDown > afterSwipeUp)
 
     composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).assertExists()
     composeTestRule
