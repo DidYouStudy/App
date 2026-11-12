@@ -275,6 +275,29 @@ class CalendarScreenTest {
     verify(navigationActions).navigateTo(Screen.AddEvent)
   }
 
+  /** Closes the Event menu option safely when navigation is unavailable. */
+  @Test
+  fun defaultEventOptionWithoutNavigationDoesNothing() {
+    composeTestRule.setContent {
+      CalendarScreen(
+          uiState = calendarUiState(LocalDate.of(2026, 10, 28)),
+          onToday = {},
+          onPreviousWeek = {},
+          onNextWeek = {},
+          onRetry = {},
+      )
+    }
+
+    composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON)
+        .assertDoesNotExist()
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.FAB_MENU_GROUP_SESSION_BUTTON)
+        .assertDoesNotExist()
+  }
+
   /** Keeps the add menu available while the calendar is in its error state. */
   @Test
   fun addMenuWorksInErrorState() {
