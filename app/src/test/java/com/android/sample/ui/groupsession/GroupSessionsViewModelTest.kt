@@ -1,5 +1,6 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
 import androidx.lifecycle.viewModelScope
@@ -242,6 +243,31 @@ class GroupSessionsViewModelTest {
     assertEquals(listOf("joined-biology", "not-joined-biology"), visibleIds(viewModel))
     viewModel.onQueryChange("")
     assertEquals(listOf("own-math", "joined-biology", "not-joined-biology"), visibleIds(viewModel))
+  }
+
+  /** Visible sessions with known campus rooms are grouped into [RoomSessions]. */
+  @Test
+  fun resolvedRooms_groupsVisibleSessionsIntoRooms() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val s1 = session("s1", ALICE, location = "CM 1")
+    val s2 = session("s2", BOB, location = "cm 1")
+    val s3 = session("s3", BOB, location = "BC 2")
+    val s4 = session("s4", BOB, location = "Unknown room")
+    val campusLocations = listOf(campusLocation("CM 1"), campusLocation("BC 2"))
+    val viewModel =
+        createViewModel(
+            sessionsRepository =
+                FlowGroupSessionsRepository(flowOf(Result.success(listOf(s1, s2, s3, s4)))),
+            campusLocationRepository = FakeCampusLocationRepository(campusLocations),
+        )
+    observe(viewModel)
+
+    val rooms = viewModel.uiState.value.rooms
+    assertEquals(2, rooms.size)
+    assertEquals("CM 1", rooms[0].room.name)
+    assertEquals(listOf("s1", "s2"), rooms[0].items.map { it.session.id })
+    assertEquals("BC 2", rooms[1].room.name)
+    assertEquals(listOf("s3"), rooms[1].items.map { it.session.id })
   }
 
   /** Without a GPS fix, selecting a radius keeps sessions and exposes no distance. */
