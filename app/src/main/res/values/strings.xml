@@ -45,6 +45,7 @@
     <string name="preferences_retry_button_on_error">Retry</string>
     <string name="preferences_import_schedule_label">Import course schedule</string>
     <string name="preferences_import_schedule_button">Import&#8230;</string>
+    <string name="preferences_import_schedule_file_type">Requires an .ics calendar file</string>
     <!-- %1$d: number of events imported from the schedule file -->
     <plurals name="preferences_import_schedule_success">
         <item quantity="one">Imported %1$d event</item>
