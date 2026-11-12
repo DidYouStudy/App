@@ -18,6 +18,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -155,7 +157,7 @@ fun DidYouStudyApp() {
               )
             },
             onEventClick = { eventId ->
-              if (navController.currentBackStackEntry == entry) {
+              navController.runIfCurrentEntry(entry) {
                 navigationActions.navigateIfAllowed(
                     Screen.EventDetails(eventId),
                     applicationViewModel::canNavigateTo,
@@ -205,11 +207,9 @@ fun DidYouStudyApp() {
       EventDetailsScreen(
           eventId = eventId,
           viewModel = viewModel,
-          onNavigateBack = {
-            if (navController.currentBackStackEntry == entry) navigationActions.goBack()
-          },
+          onNavigateBack = { navController.runIfCurrentEntry(entry, navigationActions::goBack) },
           onEdit = { selectedEventId ->
-            if (navController.currentBackStackEntry == entry) {
+            navController.runIfCurrentEntry(entry) {
               navigationActions.navigateIfAllowed(
                   Screen.EditEvent(selectedEventId),
                   applicationViewModel::canNavigateTo,
@@ -226,17 +226,15 @@ fun DidYouStudyApp() {
       val eventId = entry.arguments?.getString(Screen.EVENT_ID_ARGUMENT) ?: return@composable
       EditEventScreen(
           eventId = eventId,
-          onBackClick = {
-            if (navController.currentBackStackEntry == entry) navigationActions.goBack()
-          },
+          onBackClick = { navController.runIfCurrentEntry(entry, navigationActions::goBack) },
           onEventSaved = {
-            if (navController.currentBackStackEntry == entry) {
+            navController.runIfCurrentEntry(entry) {
               navController.previousBackStackEntry?.savedStateHandle?.set(EVENT_EDITED_RESULT, true)
               navigationActions.goBack()
             }
           },
           onEventDelete = {
-            if (navController.currentBackStackEntry == entry) {
+            navController.runIfCurrentEntry(entry) {
               navigationActions.goBackPast(Screen.EventDetails(eventId))
             }
           },
@@ -277,4 +275,9 @@ fun DidYouStudyApp() {
       }
     }
   }
+}
+
+/** Runs a navigation callback only while its originating back-stack entry is current. */
+private fun NavHostController.runIfCurrentEntry(entry: NavBackStackEntry, action: () -> Unit) {
+  if (currentBackStackEntry == entry) action()
 }
