@@ -80,7 +80,7 @@ firebase-tools`) and access to the project, deploy them with
 firebase deploy --only firestore:rules --project <project-id>
 ```
 
-where `<project-id>` is the `project_id` in `google-services.json`.
+where `<project-id>` is the `project_id` in `app/google-services.json`.
 `firebase emulators:start` runs the Auth and Firestore emulators configured in
 `firebase.json`, and the Firestore emulator enforces the same rules.
 

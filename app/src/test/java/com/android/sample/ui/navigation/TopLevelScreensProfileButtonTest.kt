@@ -14,6 +14,8 @@ import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.model.profile.ProfileRepository
+import com.android.sample.model.profile.UserProfile
 import com.android.sample.ui.calendar.CalendarDateHelper
 import com.android.sample.ui.calendar.CalendarScreen
 import com.android.sample.ui.calendar.CalendarUiState
@@ -100,7 +102,11 @@ class TopLevelScreensProfileButtonTest {
   @Test
   fun groupSessionProfileButtonOpensSettings() {
     val groupSessionsViewModel =
-        GroupSessionsViewModel(fakeAuthRepository, EmptyGroupSessionsRepository())
+        GroupSessionsViewModel(
+            fakeAuthRepository,
+            EmptyGroupSessionsRepository(),
+            EmptyProfileRepository(),
+        )
     assertProfileButtonOpensSettings(groupSessionsViewModel) { navigationActions, viewModel ->
       GroupSessionScreen(
           navigationActions = navigationActions,
@@ -136,5 +142,12 @@ class TopLevelScreensProfileButtonTest {
 
     override suspend fun leaveSession(userId: String, sessionId: String): Result<Unit> =
         error("Not used by this test")
+  }
+
+  private class EmptyProfileRepository : ProfileRepository {
+    override suspend fun getProfile(userId: String): Result<UserProfile?> = Result.success(null)
+
+    override suspend fun createProfile(userId: String): Result<UserProfile> =
+        Result.success(UserProfile(uid = userId))
   }
 }

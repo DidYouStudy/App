@@ -66,18 +66,27 @@ object Dimens {
   val preferencesWideButtonHeight = 56.dp
   val preferencesChoiceHeight = 40.dp
 
+  // Calendar screen
   val calendarWeekSwitchHeaderHeight = 52.dp
+  val calendarWeekSwitchHeaderHeightLandscape = 40.dp
   val calendarWeekNavigationButtonSize = 36.dp
   val calendarDayHeaderHeight = 54.dp
+  val calendarDayHeaderHeightLandscape = 42.dp
   val calendarDayHeaderBorderWidth = 0.5.dp
   val calendarDayNumberSlotSize = 20.dp
   val calendarTodayCircleSize = 22.dp
   val calendarDayLabelVerticalOffset = (-5).dp
   val calendarHourLabelVerticalOffset = (-8).dp
   val calendarTimeAxisWidth = 48.dp
-  val calendarInitialLabelClearance = 6.dp
+  val calendarInitialLabelClearance = 14.dp
   val calendarTodayChipHorizontalPadding = 8.dp
   val calendarTodayChipVerticalPadding = 4.dp
+  val calendarLoadingSignSize = 24.dp
+  val calendarRetryButtonWidth = 90.dp
+  val calendarRetryButtonHeight = 48.dp
+  val calendarEventCardCorner = 6.dp
+  val calendarEventCardMinHeight = 34.dp
+  val calendarMinHourRowHeight = 48.dp
   // Event planning & form dimensions
   val borderMedium = 1.5.dp
   val cornerPill = 30.dp
@@ -96,12 +105,22 @@ object Dimens {
   val taskRowVerticalPadding = 4.dp
   val taskTextStartPadding = 4.dp
   val errorVerticalPadding = 4.dp
-  val calendarLoadingSignSize = 24.dp
-  val calendarRetryButtonWidth = 90.dp
-  val calendarRetryButtonHeight = 48.dp
-  val calendarEventCardCorner = 6.dp
-  val calendarEventCardMinHeight = 34.dp
   val dialogCornerRadius = 28.dp
   val subjectPickerMaxHeight = 350.dp
+  val screenHorizontalPadding = 16.dp
+  val contentTopSpacing = 12.dp
+  val titleToMetaSpacing = 4.dp
+  val metaRowSpacing = 4.dp
+  val sectionSpacing = 12.dp
+  val sectionLabelToContentSpacing = 4.dp
+  val taskListSpacing = 8.dp
+  val actionButtonSpacing = 8.dp
+  val actionsTopPadding = 16.dp
+  val actionsBottomPadding = 24.dp
+  val locationPickerMaxHeight = 350.dp
   val noPadding = 0.dp
+  val datePickerInputHeight = 260.dp
+  val datePickerCalendarHeight = 512.dp
+  val datePickerMaxLandscapeHeight = 120.dp
+  val datePickerMinimumHeight = 200.dp
 }

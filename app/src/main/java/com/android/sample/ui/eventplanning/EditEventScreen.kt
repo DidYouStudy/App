@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
 
 import androidx.activity.compose.BackHandler
@@ -10,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.android.sample.R
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import java.time.LocalDate
@@ -24,6 +26,7 @@ import java.time.LocalTime
  *
  * @param eventId ID of the event to load for editing.
  * @param modifier Modifier applied to the screen.
+ * @param eventKind Category of event to edit (defaults to [EventKind.PERSONAL]).
  * @param viewModel ViewModel backing the event editing workflow; defaults to the screen's
  *   repository-backed ViewModel.
  * @param onBackClick Invoked by the top-bar back button or system back action; unsaved edits are
@@ -46,6 +49,7 @@ import java.time.LocalTime
 fun EditEventScreen(
     eventId: String,
     modifier: Modifier = Modifier,
+    eventKind: EventKind = EventKind.PERSONAL,
     viewModel: EventPlanningViewModel = eventsPlanningViewModel(),
     onBackClick: () -> Unit,
     onEventSaved: () -> Unit,
@@ -59,7 +63,7 @@ fun EditEventScreen(
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val focusManager = LocalFocusManager.current
 
-  LaunchedEffect(viewModel, eventId) { viewModel.loadEvent(eventId) }
+  LaunchedEffect(viewModel, eventId, eventKind) { viewModel.loadEvent(eventId, eventKind) }
 
   LaunchedEffect(uiState.isEventEdited) {
     if (uiState.isEventEdited) {
@@ -84,8 +88,18 @@ fun EditEventScreen(
 
   BackHandler(onBack = handleBack)
 
+  val titleRes =
+      if (eventKind == EventKind.GROUP_SESSION) {
+        R.string.group_session_edit_title
+      } else {
+        R.string.event_planning_edit_title
+      }
+
   EventPlanningScreen(
-      uiState = uiState,
+      // Ensure the form uses eventKind immediately while the ViewModel loads the event details
+      uiState =
+          if (uiState.eventKind != eventKind) uiState.copy(eventKind = eventKind) else uiState,
+      titleRes = titleRes,
       onBackClick = handleBack,
       onTypeChange = viewModel::setType,
       onDateSelected = viewModel::setDate,
@@ -93,6 +107,7 @@ fun EditEventScreen(
       onEndTimeSelected = viewModel::setEndTime,
       onSubjectSelected = viewModel::setSubject,
       onLocationChange = viewModel::setLocation,
+      onLocationSearchQueryChange = viewModel::searchLocations,
       onDescriptionChange = viewModel::setDescription,
       onAddTask = viewModel::addTask,
       onToggleTask = viewModel::toggleTask,
@@ -112,7 +127,7 @@ fun EditEventScreen(
 
 @Preview
 @Composable
-private fun EditEventScreenPreview() {
+internal fun EditEventScreenPreview() {
   MaterialTheme {
     EventPlanningScreenStateless(
         uiState =
@@ -133,7 +148,7 @@ private fun EditEventScreenPreview() {
         onStartTimeClick = {},
         onEndTimeClick = {},
         onSubjectClick = {},
-        onLocationChange = {},
+        onLocationClick = {},
         onDescriptionChange = {},
         onAddTask = {},
         onToggleTask = {},

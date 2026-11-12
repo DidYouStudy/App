@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.groupsession
 
+import androidx.lifecycle.viewModelScope
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
@@ -10,6 +11,8 @@ import com.android.sample.model.event.EventsException
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
+import com.android.sample.model.profile.ProfileRepository
+import com.android.sample.model.profile.UserProfile
 import com.android.sample.ui.auth.TestAuthRepository
 import java.time.Clock
 import java.time.Instant
@@ -18,14 +21,21 @@ import java.time.ZoneOffset
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -40,12 +50,14 @@ class GroupSessionsViewModelTest {
   private val now = Instant.parse("2025-03-01T12:00:00Z")
   private lateinit var authRepository: TestAuthRepository
   private lateinit var repository: InMemoryGroupSessionsRepository
+  private lateinit var profileRepository: FakeProfileRepository
 
   @Before
   fun setUp() {
     Dispatchers.setMain(testDispatcher)
     authRepository = TestAuthRepository()
     repository = InMemoryGroupSessionsRepository()
+    profileRepository = FakeProfileRepository()
   }
 
   @After
@@ -58,6 +70,7 @@ class GroupSessionsViewModelTest {
   fun signedOut_startsWithEmptyNonLoadingState() = runTest {
     val viewModel = createViewModel()
 
+    assertEquals(now, viewModel.uiState.value.now)
     assertFalse(viewModel.uiState.value.isLoading)
     assertEquals(emptyList<GroupSessionItem>(), viewModel.uiState.value.sessions)
     assertNull(viewModel.uiState.value.error)
@@ -474,7 +487,8 @@ class GroupSessionsViewModelTest {
             endsAt = now.plusSeconds(120),
         )
     repository.saveSession(ALICE, expiring)
-    val viewModel = GroupSessionsViewModel(authRepository, repository, mutableClock)
+    val viewModel =
+        GroupSessionsViewModel(authRepository, repository, profileRepository, mutableClock)
 
     assertEquals(listOf("expiring"), visibleIds(viewModel))
     mutableClock.currentInstant = expiring.details.endsAt
@@ -485,13 +499,425 @@ class GroupSessionsViewModelTest {
     assertTrue(viewModel.uiState.value.sessions.isEmpty())
   }
 
+  /** Refresh updates the reference time even when no screen collects the state. */
+  @Test
+  fun now_refreshUpdatesTimeWithoutUiStateCollector() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val clock = MutableTestClock(now)
+    val viewModel =
+        GroupSessionsViewModel(
+            authRepository,
+            FlowGroupSessionsRepository(flowOf(Result.success(emptyList()))),
+            profileRepository,
+            clock,
+        )
+    clock.currentInstant = Instant.parse("2025-03-01T12:00:25Z")
+
+    viewModel.refresh()
+    runCurrent()
+
+    assertEquals(Instant.parse("2025-03-01T12:00:25Z"), viewModel.uiState.value.now)
+  }
+
+  /** Signing in updates the reference time without waiting for a visible screen or tick. */
+  @Test
+  fun now_signInUpdatesTimeWithoutUiStateCollector() = runTest {
+    val clock = MutableTestClock(now)
+    val viewModel =
+        GroupSessionsViewModel(
+            authRepository,
+            FlowGroupSessionsRepository(flowOf(Result.success(emptyList()))),
+            profileRepository,
+            clock,
+        )
+    clock.currentInstant = Instant.parse("2025-03-01T12:00:25Z")
+
+    authRepository.currentUser.value = account(ALICE)
+    runCurrent()
+
+    assertEquals(Instant.parse("2025-03-01T12:00:25Z"), viewModel.uiState.value.now)
+  }
+
+  /** The refreshed list cutoff and UI reference time come from the same clock read. */
+  @Test
+  fun now_refreshUsesSameInstantAsRepositoryCutoff() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val sessionsRepository =
+        FlowGroupSessionsRepository(flowOf(Result.success(emptyList<GroupSession>())))
+    val viewModel =
+        GroupSessionsViewModel(
+            authRepository,
+            sessionsRepository,
+            profileRepository,
+            AdvancingTestClock(now),
+        )
+
+    viewModel.refresh()
+    runCurrent()
+
+    assertEquals(sessionsRepository.endingAfters.last(), viewModel.uiState.value.now)
+  }
+
+  /** The first signed-in state carries the injected time before the repository emits. */
+  @Test
+  fun now_startsFromTheInjectedClock() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel =
+        GroupSessionsViewModel(
+            authRepository,
+            FlowGroupSessionsRepository(emissions),
+            profileRepository,
+            MutableTestClock(now),
+        )
+
+    assertEquals(now, viewModel.uiState.value.now)
+    assertTrue(viewModel.uiState.value.isLoading)
+  }
+
+  /** The time changes after exactly 30 seconds of being observed, and not one moment earlier. */
+  @Test
+  fun now_refreshesEveryThirtySecondsWhileObserved() = runTest {
+    val clock = MutableTestClock(now)
+    val viewModel = GroupSessionsViewModel(authRepository, repository, profileRepository, clock)
+    observe(viewModel)
+    val later = now.plusSeconds(30)
+    clock.currentInstant = later
+
+    advanceTimeBy(29_999)
+    runCurrent()
+    assertEquals(now, viewModel.uiState.value.now)
+
+    advanceTimeBy(1)
+    runCurrent()
+    assertEquals(later, viewModel.uiState.value.now)
+  }
+
+  /** A time tick updates the clock without clearing an existing join failure. */
+  @Test
+  fun now_refreshPreservesJoinFailure() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val own = session("own", ALICE)
+    repository.saveSession(ALICE, own)
+    val clock = MutableTestClock(now)
+    val viewModel = GroupSessionsViewModel(authRepository, repository, profileRepository, clock)
+    viewModel.join("missing")
+    assertEquals(GroupSessionsError.JOIN_FAILED, viewModel.uiState.value.error)
+    observe(viewModel)
+    clock.currentInstant = Instant.parse("2025-03-01T12:00:30Z")
+
+    advanceTimeBy(30_000)
+    runCurrent()
+
+    assertEquals(Instant.parse("2025-03-01T12:00:30Z"), viewModel.uiState.value.now)
+    assertEquals(GroupSessionsError.JOIN_FAILED, viewModel.uiState.value.error)
+  }
+
+  /** A time tick preserves loading while the signed-in repository has not emitted. */
+  @Test
+  fun now_refreshPreservesLoadingBeforeFirstEmission() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val clock = MutableTestClock(now)
+    val viewModel =
+        GroupSessionsViewModel(
+            authRepository,
+            FlowGroupSessionsRepository(emissions),
+            profileRepository,
+            clock,
+        )
+    observe(viewModel)
+    clock.currentInstant = Instant.parse("2025-03-01T12:00:30Z")
+
+    advanceTimeBy(30_000)
+    runCurrent()
+
+    assertEquals(Instant.parse("2025-03-01T12:00:30Z"), viewModel.uiState.value.now)
+    assertTrue(viewModel.uiState.value.isLoading)
+  }
+
+  /** A hidden screen does no work, and coming back shows the right time without waiting. */
+  @Test
+  fun now_pausesWithoutCollectorAndUpdatesAsSoonAsOneReturns() = runTest {
+    val clock = MutableTestClock(now)
+    val viewModel = GroupSessionsViewModel(authRepository, repository, profileRepository, clock)
+    val hiddenAt = now.plusSeconds(600)
+    observe(viewModel).cancel()
+    clock.currentInstant = hiddenAt
+
+    advanceTimeBy(60_000)
+    runCurrent()
+    val timeWithoutCollector = viewModel.uiState.value.now
+
+    val collector = observe(viewModel)
+    val timeAfterReturn = viewModel.uiState.value.now
+    collector.cancel()
+    // Cancel ViewModel work before assertions so its collectors cannot mutate state afterward.
+    viewModel.viewModelScope.cancel()
+
+    assertEquals(now, timeWithoutCollector)
+    assertEquals(hiddenAt, timeAfterReturn)
+  }
+
+  /** The sign-out reset rebuilds the whole state, which must not bring back an old time. */
+  @Test
+  fun now_staysCurrentAfterSignOut() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val clock = MutableTestClock(now)
+    val viewModel = GroupSessionsViewModel(authRepository, repository, profileRepository, clock)
+    val signedOutAt = now.plusSeconds(600)
+    clock.currentInstant = signedOutAt
+
+    authRepository.currentUser.value = null
+
+    assertEquals(signedOutAt, viewModel.uiState.value.now)
+  }
+
+  /** A refresh only changes the time: the list, search text and filter stay as they were. */
+  @Test
+  fun now_refreshLeavesTheRestOfTheStateUntouched() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    repository.saveSession(ALICE, session("own", ALICE))
+    val clock = MutableTestClock(now)
+    val viewModel = GroupSessionsViewModel(authRepository, repository, profileRepository, clock)
+    viewModel.onQueryChange("bio")
+    viewModel.onFilterChange(GroupSessionFilter.JOINED)
+    val before = viewModel.uiState.value
+    observe(viewModel)
+    val later = now.plusSeconds(30)
+    clock.currentInstant = later
+
+    advanceTimeBy(30_000)
+    runCurrent()
+
+    assertEquals(before.copy(now = later), viewModel.uiState.value)
+  }
+
+  /** A host lookup does not delay the list, then supplies the resolved username. */
+  @Test
+  fun hostNameLookupDoesNotBlockListAndPublishesNameWhenFinished() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val pending = CompletableDeferred<Result<UserProfile?>>()
+    profileRepository.hold(BOB, pending)
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val hosted = session("hosted", BOB)
+
+    emissions.emit(Result.success(listOf(hosted)))
+    runCurrent()
+
+    assertEquals(listOf(BOB), profileRepository.getProfileUserIds)
+    assertEquals(listOf(hosted.id), visibleIds(viewModel))
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertNull(viewModel.uiState.value.sessions.single().hostName)
+
+    pending.complete(Result.success(UserProfile(uid = BOB, username = "Bob")))
+    runCurrent()
+
+    assertEquals("Bob", viewModel.uiState.value.sessions.single().hostName)
+  }
+
+  /**
+   * Missing, blank and failed profiles stay null without list errors and retry on new emissions.
+   */
+  @Test
+  fun unusableHostProfilesStayNullAndAreRetriedOnNextListUpdate() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    profileRepository.enqueue("blank-host", Result.success(UserProfile("blank-host", "   ")))
+    profileRepository.enqueue(
+        "failed-host",
+        Result.failure<UserProfile?>(IllegalStateException("profile lookup failed")),
+    )
+    profileRepository.enqueue("missing-host", Result.success(null))
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val sessions =
+        listOf(
+            session("blank", "blank-host"),
+            session("failed", "failed-host"),
+            session("missing", "missing-host"),
+        )
+
+    emissions.emit(Result.success(sessions))
+    runCurrent()
+
+    assertEquals(sessions.map { it.id }, visibleIds(viewModel))
+    assertEquals(
+        setOf("blank-host", "failed-host", "missing-host"),
+        profileRepository.getProfileUserIds.toSet(),
+    )
+    assertTrue(viewModel.uiState.value.sessions.all { it.hostName == null })
+    assertNull(viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isLoading)
+
+    emissions.emit(Result.success(sessions))
+    runCurrent()
+
+    assertEquals(2, profileRepository.getProfileUserIds.count { it == "blank-host" })
+    assertEquals(2, profileRepository.getProfileUserIds.count { it == "failed-host" })
+    assertEquals(2, profileRepository.getProfileUserIds.count { it == "missing-host" })
+    assertNull(viewModel.uiState.value.error)
+  }
+
+  /** Host lookups deduplicate, skip the signed-in user and survive later list and view updates. */
+  @Test
+  fun hostNamesAreCachedAcrossHostsFiltersTicksAndListUpdates() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val pendingBob = CompletableDeferred<Result<UserProfile?>>()
+    profileRepository.hold(BOB, pendingBob)
+    profileRepository.enqueue("carol", Result.success(UserProfile("carol", "Carol")))
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val clock = MutableTestClock(now)
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions), clock = clock)
+    val own = session("own", ALICE, subject = "Art")
+    val bobFirst = session("bob-first", BOB, listOf(BOB, ALICE), subject = "Biology")
+    val bobSecond = session("bob-second", BOB, subject = "Chemistry")
+    val carol = session("carol", "carol", listOf("carol", ALICE), subject = "Art")
+
+    emissions.emit(Result.success(listOf(own, bobFirst, bobSecond, carol)))
+    runCurrent()
+
+    assertEquals(1, profileRepository.getProfileUserIds.count { it == BOB })
+    assertEquals(1, profileRepository.getProfileUserIds.count { it == "carol" })
+    assertFalse(profileRepository.getProfileUserIds.contains(ALICE))
+    emissions.emit(Result.success(listOf(own, bobFirst, bobSecond, carol)))
+    runCurrent()
+    assertEquals(1, profileRepository.getProfileUserIds.count { it == BOB })
+
+    pendingBob.complete(Result.success(UserProfile(uid = BOB, username = "Bob")))
+    runCurrent()
+    assertEquals(
+        "Bob",
+        viewModel.uiState.value.sessions.first { it.session.id == "bob-first" }.hostName,
+    )
+
+    viewModel.onQueryChange("biology")
+    runCurrent()
+    assertEquals(listOf("bob-first"), visibleIds(viewModel))
+    assertEquals("Bob", viewModel.uiState.value.sessions.single().hostName)
+    viewModel.onQueryChange("")
+    viewModel.onFilterChange(GroupSessionFilter.JOINED)
+    runCurrent()
+    assertEquals(listOf(null, "Bob", "Carol"), viewModel.uiState.value.sessions.map { it.hostName })
+
+    val collector = observe(viewModel)
+    clock.currentInstant = now.plusSeconds(30)
+    advanceTimeBy(30_000)
+    runCurrent()
+    assertEquals(now.plusSeconds(30), viewModel.uiState.value.now)
+    assertEquals(listOf(null, "Bob", "Carol"), viewModel.uiState.value.sessions.map { it.hostName })
+    collector.cancel()
+
+    val bobLater = session("bob-later", BOB, listOf(BOB, ALICE), subject = "Physics")
+    emissions.emit(Result.success(listOf(own, bobFirst, bobSecond, carol, bobLater)))
+    runCurrent()
+    assertEquals(1, profileRepository.getProfileUserIds.count { it == BOB })
+    assertEquals(
+        "Bob",
+        viewModel.uiState.value.sessions.first { it.session.id == "bob-later" }.hostName,
+    )
+  }
+
+  /** A lookup held for one account does not block the next account's lookup for that host. */
+  @Test
+  fun pendingHostLookupDoesNotBlockLookupAfterUserChange() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val pending = CompletableDeferred<Result<UserProfile?>>()
+    profileRepository.hold(BOB, pending)
+    profileRepository.enqueue(BOB, Result.success(UserProfile(uid = BOB, username = "Bob")))
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val hosted = session("hosted", BOB)
+
+    emissions.emit(Result.success(listOf(hosted)))
+    runCurrent()
+    assertEquals(1, profileRepository.getProfileUserIds.count { it == BOB })
+    assertFalse(pending.isCompleted)
+
+    authRepository.currentUser.value = account("carol")
+    runCurrent()
+    emissions.emit(Result.success(listOf(hosted)))
+    runCurrent()
+
+    assertEquals(2, profileRepository.getProfileUserIds.count { it == BOB })
+    assertEquals(
+        "Bob",
+        viewModel.uiState.value.sessions.first { it.session.id == hosted.id }.hostName,
+    )
+
+    pending.complete(Result.success(UserProfile(uid = BOB, username = "Stale Bob")))
+    runCurrent()
+    assertEquals(
+        "Bob",
+        viewModel.uiState.value.sessions.first { it.session.id == hosted.id }.hostName,
+    )
+  }
+
+  /** Refresh repeats profile reads so a changed username replaces the cached value. */
+  @Test
+  fun refreshReadsHostProfileAgainAndShowsChangedUsername() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    profileRepository.enqueue(
+        BOB,
+        Result.success(UserProfile(uid = BOB, username = "Bob")),
+    )
+    profileRepository.enqueue(BOB, Result.success(UserProfile(uid = BOB, username = "Robert")))
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val hosted = session("hosted", BOB)
+    emissions.emit(Result.success(listOf(hosted)))
+    runCurrent()
+    assertEquals("Bob", viewModel.uiState.value.sessions.single().hostName)
+
+    viewModel.refresh()
+    runCurrent()
+    emissions.emit(Result.success(listOf(hosted)))
+    runCurrent()
+
+    assertEquals("Robert", viewModel.uiState.value.sessions.single().hostName)
+  }
+
+  /** A held lookup finishing after sign-out cannot restore or mutate the signed-out list. */
+  @Test
+  fun lateHostLookupAfterSignOutDoesNotChangeStateOrCrash() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val pending = CompletableDeferred<Result<UserProfile?>>()
+    profileRepository.hold(BOB, pending)
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val hosted = session("hosted", BOB)
+    val signedOutState = GroupSessionsUiState(now = now, isLoading = false)
+    emissions.emit(Result.success(listOf(hosted)))
+    runCurrent()
+    assertEquals(listOf(BOB), profileRepository.getProfileUserIds)
+    assertFalse(pending.isCompleted)
+    assertEquals(listOf(hosted.id), visibleIds(viewModel))
+    assertNull(viewModel.uiState.value.sessions.single().hostName)
+
+    authRepository.currentUser.value = null
+    runCurrent()
+    assertEquals(signedOutState, viewModel.uiState.value)
+
+    pending.complete(Result.success(UserProfile(uid = BOB, username = "Bob")))
+    runCurrent()
+
+    assertEquals(signedOutState, viewModel.uiState.value)
+  }
+
+  /** Collects the state like a visible screen does, until the test ends or the job is cancelled. */
+  private fun TestScope.observe(viewModel: GroupSessionsViewModel) =
+      backgroundScope.launch(testDispatcher) { viewModel.uiState.collect {} }
+
   private fun createViewModel(
       sessionsRepository: GroupSessionsRepository = repository,
+      profiles: FakeProfileRepository = profileRepository,
+      clock: Clock = MutableTestClock(now),
   ): GroupSessionsViewModel =
       GroupSessionsViewModel(
           authRepository = authRepository,
           repository = sessionsRepository,
-          clock = MutableTestClock(now),
+          profileRepository = profiles,
+          clock = clock,
       )
 
   private fun visibleIds(viewModel: GroupSessionsViewModel): List<String> =
@@ -535,11 +961,26 @@ class GroupSessionsViewModelTest {
     override fun instant(): Instant = currentInstant
   }
 
+  private class AdvancingTestClock(private val firstInstant: Instant) : Clock() {
+    private var reads = 0L
+
+    override fun getZone(): ZoneId = ZoneOffset.UTC
+
+    override fun withZone(zone: ZoneId): Clock =
+        require(zone == ZoneOffset.UTC) { "Test clock only supports UTC" }.let { this }
+
+    override fun instant(): Instant = firstInstant.plusSeconds(reads++)
+  }
+
   private class FlowGroupSessionsRepository(
       private val sessionsFlow: Flow<Result<List<GroupSession>>>
   ) : GroupSessionsRepository {
-    override fun observeSessions(endingAfter: Instant): Flow<Result<List<GroupSession>>> =
-        sessionsFlow
+    val endingAfters = mutableListOf<Instant>()
+
+    override fun observeSessions(endingAfter: Instant): Flow<Result<List<GroupSession>>> {
+      endingAfters.add(endingAfter)
+      return sessionsFlow
+    }
 
     override fun newSessionId(): String = "unused"
 
@@ -589,6 +1030,32 @@ class GroupSessionsViewModelTest {
       leaveStarted.complete(Unit)
       return leaveResult.await()
     }
+  }
+
+  private class FakeProfileRepository : ProfileRepository {
+    val getProfileUserIds = mutableListOf<String>()
+    private val outcomes = mutableMapOf<String, MutableList<Result<UserProfile?>>>()
+    private val heldLookups = mutableMapOf<String, CompletableDeferred<Result<UserProfile?>>>()
+
+    fun enqueue(userId: String, result: Result<UserProfile?>) {
+      outcomes.getOrPut(userId) { mutableListOf() }.add(result)
+    }
+
+    fun hold(userId: String, result: CompletableDeferred<Result<UserProfile?>>) {
+      heldLookups[userId] = result
+    }
+
+    override suspend fun getProfile(userId: String): Result<UserProfile?> {
+      getProfileUserIds += userId
+      heldLookups.remove(userId)?.let { pending ->
+        return withContext(NonCancellable) { pending.await() }
+      }
+      val configured = outcomes[userId]
+      return if (configured.isNullOrEmpty()) Result.success(null) else configured.removeAt(0)
+    }
+
+    override suspend fun createProfile(userId: String): Result<UserProfile> =
+        Result.success(UserProfile(uid = userId))
   }
 
   private companion object {

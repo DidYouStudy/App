@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
 
 import android.content.Context
@@ -13,6 +14,8 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
@@ -22,7 +25,14 @@ import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsRepository
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.PersonalEvent
+import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.model.location.CampusLocation
+import com.android.sample.model.location.CampusLocationFilter
+import com.android.sample.model.location.CampusLocationRepository
+import com.android.sample.model.location.CampusLocationType
+import com.android.sample.model.location.Location
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
 import java.time.Clock
 import java.time.Instant
@@ -39,6 +49,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -59,6 +70,8 @@ class EditEventScreenTest {
   private val currentUser = MutableStateFlow<UserAccount?>(null)
   private val authRepository: AuthRepository = mock()
   private val eventsRepository: EventsRepository = mock()
+  private val campusLocationRepository: CampusLocationRepository = mock()
+  private val groupSessionsRepository: GroupSessionsRepository = mock()
   private val clock = Clock.fixed(Instant.parse("2026-10-27T12:00:00Z"), ZoneId.of("Europe/Berlin"))
   private val storedEvent =
       PersonalEvent(
@@ -90,6 +103,7 @@ class EditEventScreenTest {
       whenever(eventsRepository.saveEvent(any())).thenReturn(Result.success(Unit))
       whenever(eventsRepository.deleteEvent("user-1", storedEvent.id))
           .thenReturn(Result.success(Unit))
+      whenever(campusLocationRepository.search(any())).thenReturn(Result.success(emptyList()))
     }
   }
 
@@ -99,7 +113,14 @@ class EditEventScreenTest {
   }
 
   private fun createViewModel(): EventPlanningViewModel {
-    val viewModel = EventPlanningViewModel(authRepository, eventsRepository, clock)
+    val viewModel =
+        EventPlanningViewModel(
+            authRepository,
+            eventsRepository,
+            campusLocationRepository,
+            groupSessionsRepository,
+            clock,
+        )
     testDispatcher.scheduler.advanceUntilIdle()
     return viewModel
   }
@@ -110,12 +131,23 @@ class EditEventScreenTest {
     composeTestRule.waitForIdle()
   }
 
+  /** Builds a minimal campus location for tests; only the name is usually relevant. */
+  private fun sampleLocation(name: String): CampusLocation =
+      CampusLocation(
+          name = name,
+          zone = "BC",
+          type = CampusLocationType.LECTURE_ROOM,
+          floor = null,
+          location = Location(latitude = 46.52, longitude = 6.56),
+      )
+
   /** Renders the shared stateless form explicitly in Edit mode for focused UI behavior tests. */
   private fun setEditStatelessScreen(
       uiState: EventPlanningUiState,
       onBackClick: () -> Unit = {},
       onSaveClick: () -> Unit = {},
       onDeleteClick: (() -> Unit)? = null,
+      isEditing: Boolean = true,
       isLoading: Boolean = false,
   ) {
     composeTestRule.setContent {
@@ -127,14 +159,14 @@ class EditEventScreenTest {
           onStartTimeClick = {},
           onEndTimeClick = {},
           onSubjectClick = {},
-          onLocationChange = {},
+          onLocationClick = {},
           onDescriptionChange = {},
           onAddTask = {},
           onToggleTask = {},
           onDeleteTask = {},
           onSaveClick = onSaveClick,
           onDeleteClick = onDeleteClick,
-          isEditing = true,
+          isEditing = isEditing,
           isLoading = isLoading,
       )
     }
@@ -172,7 +204,7 @@ class EditEventScreenTest {
     composeTestRule.onNodeWithTag(Tags.START_TIME_SELECTOR).assertTextContains("09:00")
     composeTestRule.onNodeWithTag(Tags.END_TIME_SELECTOR).assertTextContains("11:00")
     composeTestRule.onNodeWithTag(Tags.SUBJECT_SELECTOR).assertTextContains("Operating Systems")
-    composeTestRule.onNodeWithTag(Tags.LOCATION_INPUT).assertTextContains("INF 1")
+    composeTestRule.onNodeWithTag(Tags.LOCATION_SELECTOR).assertTextContains("INF 1")
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION_INPUT).assertTextContains("Bring lecture notes")
     assertTrue(
         composeTestRule.onAllNodesWithText("Review chapter").fetchSemanticsNodes().isNotEmpty()
@@ -225,9 +257,7 @@ class EditEventScreenTest {
   @Test
   fun editStatelessScreenShowsRequiredFieldErrorForInvalidEvent() {
     val context = ApplicationProvider.getApplicationContext<Context>()
-    setEditStatelessScreen(
-        uiState = EventPlanningUiState(error = EventPlanningViewModel.INVALID_EVENT_ERROR)
-    )
+    setEditStatelessScreen(uiState = EventPlanningUiState(error = EventPlanningError.INVALID_EVENT))
 
     composeTestRule
         .onNodeWithTag(Tags.ERROR_TEXT)
@@ -261,6 +291,7 @@ class EditEventScreenTest {
           onEndTimeSelected = { selectedEndTime = it },
           onSubjectSelected = { selectedSubject = it },
           onLocationChange = {},
+          onLocationSearchQueryChange = {},
           onDescriptionChange = {},
           onAddTask = {},
           onToggleTask = {},
@@ -327,6 +358,39 @@ class EditEventScreenTest {
     assertTrue(subjectPickerOpened)
   }
 
+  /** Tapping a location picker result end to end sets the ViewModel's location. */
+  @Test
+  fun editScreenSelectingLocationFromPickerUpdatesViewModel() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val results = listOf(sampleLocation("BC 01"))
+    runBlocking {
+      whenever(campusLocationRepository.search(CampusLocationFilter(query = "BC")))
+          .thenReturn(Result.success(results))
+    }
+    val viewModel = createViewModel()
+
+    composeTestRule.setContent {
+      EditEventScreen(
+          eventId = storedEvent.id,
+          viewModel = viewModel,
+          onBackClick = {},
+          onEventSaved = {},
+          onEventDelete = {},
+      )
+    }
+    finishPendingComposeAndViewModelWork()
+
+    composeTestRule.onNodeWithTag(Tags.LOCATION_SELECTOR).performScrollTo().performClick()
+    finishPendingComposeAndViewModelWork()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_search_placeholder))
+        .performTextInput("BC")
+    finishPendingComposeAndViewModelWork()
+    composeTestRule.onNodeWithText("BC 01").performClick()
+
+    assertEquals("BC 01", viewModel.uiState.value.location)
+  }
+
   @Test
   fun loadsExistingEventAndBackDoesNotSaveChanges() {
     val context = ApplicationProvider.getApplicationContext<Context>()
@@ -352,7 +416,7 @@ class EditEventScreenTest {
     composeTestRule.onNodeWithTag(Tags.START_TIME_SELECTOR).assertTextContains("09:00")
     composeTestRule.onNodeWithTag(Tags.END_TIME_SELECTOR).assertTextContains("11:00")
     composeTestRule.onNodeWithTag(Tags.SUBJECT_SELECTOR).assertTextContains("Operating Systems")
-    composeTestRule.onNodeWithTag(Tags.LOCATION_INPUT).assertTextContains("INF 1")
+    composeTestRule.onNodeWithTag(Tags.LOCATION_SELECTOR).assertTextContains("INF 1")
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION_INPUT).assertTextContains("Bring lecture notes")
     composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).assertIsEnabled()
     composeTestRule.onNodeWithTag(Tags.DELETE_BUTTON).assertIsDisplayed()
@@ -413,5 +477,248 @@ class EditEventScreenTest {
 
     assertTrue(eventDeleted)
     runBlocking { verify(eventsRepository).deleteEvent("user-1", storedEvent.id) }
+  }
+
+  @Test
+  fun loadsAndDisplaysGroupSession_whenEventKindIsGroupSession() {
+    val session =
+        GroupSession(
+            id = "session-1",
+            createdBy = "user-1",
+            memberIds = listOf("user-1"),
+            details =
+                EventDetails(
+                    type = EventType.STUDY_SESSION,
+                    subject = "Computer Networks",
+                    startsAt = Instant.parse("2026-10-27T14:00:00Z"),
+                    endsAt = Instant.parse("2026-10-27T16:00:00Z"),
+                    location = "BC 01",
+                    description = "Midterm study",
+                ),
+            createdAt = Instant.parse("2026-10-20T09:00:00Z"),
+        )
+    runBlocking {
+      whenever(groupSessionsRepository.getSession("session-1")).thenReturn(Result.success(session))
+    }
+
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      EditEventScreen(
+          eventId = "session-1",
+          eventKind = EventKind.GROUP_SESSION,
+          viewModel = viewModel,
+          onBackClick = {},
+          onEventSaved = {},
+          onEventDelete = {},
+      )
+    }
+
+    finishPendingComposeAndViewModelWork()
+
+    assertEquals(EventKind.GROUP_SESSION, viewModel.uiState.value.eventKind)
+    assertFalse(viewModel.uiState.value.showTasksSection)
+    composeTestRule.onNodeWithTag(Tags.ADD_TASK_BUTTON).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(Tags.SUBJECT_SELECTOR).assertTextContains("Computer Networks")
+  }
+
+  @Test
+  fun saveButton_updatesGroupSessionInGroupSessionsRepository() {
+    val session =
+        GroupSession(
+            id = "session-1",
+            createdBy = "user-1",
+            memberIds = listOf("user-1", "user-2"),
+            details =
+                EventDetails(
+                    type = EventType.STUDY_SESSION,
+                    subject = "Original Subject",
+                    startsAt = Instant.parse("2026-10-27T14:00:00Z"),
+                    endsAt = Instant.parse("2026-10-27T16:00:00Z"),
+                ),
+            createdAt = Instant.parse("2026-10-20T09:00:00Z"),
+        )
+    runBlocking {
+      whenever(groupSessionsRepository.getSession("session-1")).thenReturn(Result.success(session))
+      whenever(groupSessionsRepository.saveSession(any(), any())).thenReturn(Result.success(Unit))
+    }
+
+    var saved = false
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      EditEventScreen(
+          eventId = "session-1",
+          eventKind = EventKind.GROUP_SESSION,
+          viewModel = viewModel,
+          onBackClick = {},
+          onEventSaved = { saved = true },
+          onEventDelete = {},
+      )
+    }
+
+    finishPendingComposeAndViewModelWork()
+
+    composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).performClick()
+    finishPendingComposeAndViewModelWork()
+
+    assertTrue(saved)
+    val captor = org.mockito.kotlin.argumentCaptor<GroupSession>()
+    runBlocking {
+      verify(groupSessionsRepository).saveSession(org.mockito.kotlin.eq("user-1"), captor.capture())
+    }
+    val savedSession = captor.firstValue
+    assertEquals("session-1", savedSession.id)
+    assertEquals("user-1", savedSession.createdBy)
+    assertEquals(listOf("user-1", "user-2"), savedSession.memberIds)
+    assertEquals("Original Subject", savedSession.details.subject)
+  }
+
+  @Test
+  fun editEventScreenPreview_rendersWithoutCrashing() {
+    composeTestRule.setContent { EditEventScreenPreview() }
+    composeTestRule.onNodeWithTag(Tags.SCREEN_CONTAINER).assertIsDisplayed()
+  }
+
+  @Test
+  fun deleteButton_deletesGroupSessionFromGroupSessionsRepository() {
+    val session =
+        GroupSession(
+            id = "session-1",
+            createdBy = "user-1",
+            memberIds = listOf("user-1"),
+            details =
+                EventDetails(
+                    type = EventType.STUDY_SESSION,
+                    subject = "Subject",
+                    startsAt = Instant.parse("2026-10-27T14:00:00Z"),
+                    endsAt = Instant.parse("2026-10-27T16:00:00Z"),
+                ),
+            createdAt = Instant.parse("2026-10-20T09:00:00Z"),
+        )
+    runBlocking {
+      whenever(groupSessionsRepository.getSession("session-1")).thenReturn(Result.success(session))
+      whenever(groupSessionsRepository.deleteSession(any(), any())).thenReturn(Result.success(Unit))
+    }
+
+    var deleted = false
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      EditEventScreen(
+          eventId = "session-1",
+          eventKind = EventKind.GROUP_SESSION,
+          viewModel = viewModel,
+          onBackClick = {},
+          onEventSaved = {},
+          onEventDelete = { deleted = true },
+      )
+    }
+
+    finishPendingComposeAndViewModelWork()
+
+    composeTestRule.onNodeWithTag(Tags.DELETE_BUTTON).performClick()
+    finishPendingComposeAndViewModelWork()
+
+    assertTrue(deleted)
+    runBlocking { verify(groupSessionsRepository).deleteSession("user-1", "session-1") }
+  }
+
+  @Test
+  fun editEventScreen_displaysGroupSessionTitle_whenEventKindIsGroupSession() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val session =
+        GroupSession(
+            id = "session-1",
+            createdBy = "user-1",
+            memberIds = listOf("user-1"),
+            details =
+                EventDetails(
+                    type = EventType.STUDY_SESSION,
+                    subject = "Subject",
+                    startsAt = Instant.parse("2026-10-27T14:00:00Z"),
+                    endsAt = Instant.parse("2026-10-27T16:00:00Z"),
+                ),
+            createdAt = Instant.parse("2026-10-20T09:00:00Z"),
+        )
+    runBlocking {
+      whenever(groupSessionsRepository.getSession("session-1")).thenReturn(Result.success(session))
+    }
+
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      EditEventScreen(
+          eventId = "session-1",
+          eventKind = EventKind.GROUP_SESSION,
+          viewModel = viewModel,
+          onBackClick = {},
+          onEventSaved = {},
+          onEventDelete = {},
+      )
+    }
+
+    finishPendingComposeAndViewModelWork()
+
+    composeTestRule
+        .onNodeWithTag(Tags.TOP_BAR_TITLE)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.group_session_edit_title))
+  }
+
+  @Test
+  fun eventPlanningScreenStateless_displaysAddGroupSessionTitle() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val addState = EventPlanningUiState(eventKind = EventKind.GROUP_SESSION)
+    setEditStatelessScreen(uiState = addState, isEditing = false)
+    composeTestRule
+        .onNodeWithTag(Tags.TOP_BAR_TITLE)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.group_session_add_title))
+  }
+
+  @Test
+  fun eventPlanningScreenStateless_displaysEditGroupSessionTitle() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val editState = EventPlanningUiState(eventKind = EventKind.GROUP_SESSION, isEditing = true)
+    setEditStatelessScreen(uiState = editState, isEditing = true)
+    composeTestRule
+        .onNodeWithTag(Tags.TOP_BAR_TITLE)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.group_session_edit_title))
+  }
+
+  /**
+   * Verifies that the task management section is displayed when editing a personal event, but
+   * hidden when editing a group session.
+   */
+  @Test
+  fun editEventScreen_displaysTaskSection_forPersonalEvent() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      EditEventScreen(
+          eventId = "personal-1",
+          eventKind = EventKind.PERSONAL,
+          viewModel = viewModel,
+          onBackClick = {},
+          onEventSaved = {},
+          onEventDelete = {},
+      )
+    }
+    finishPendingComposeAndViewModelWork()
+    composeTestRule.onNodeWithTag(Tags.ADD_TASK_BUTTON).performScrollTo().assertIsDisplayed()
+  }
+
+  @Test
+  fun editEventScreen_hidesTaskSection_forGroupSession() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      EditEventScreen(
+          eventId = "group-1",
+          eventKind = EventKind.GROUP_SESSION,
+          viewModel = viewModel,
+          onBackClick = {},
+          onEventSaved = {},
+          onEventDelete = {},
+      )
+    }
+    finishPendingComposeAndViewModelWork()
+    composeTestRule.onNodeWithTag(Tags.ADD_TASK_BUTTON).assertDoesNotExist()
   }
 }

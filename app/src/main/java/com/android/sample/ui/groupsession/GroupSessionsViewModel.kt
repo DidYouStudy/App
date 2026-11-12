@@ -13,12 +13,19 @@ import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
+import com.android.sample.model.profile.ProfileRepository
+import com.android.sample.model.profile.ProfileRepositoryProvider
 import java.time.Clock
+import java.time.Instant
+import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -45,24 +52,39 @@ enum class GroupSessionsError {
   LEAVE_FAILED,
 }
 
+/**
+ * How often the reference time is refreshed while the screen is visible.
+ *
+ * Status badges change at most once a minute, so a badge is never more than 30 seconds late.
+ */
+private val NOW_REFRESH_INTERVAL = 30.seconds
+
 /** Returns this error unless it is LOAD_FAILED, which a new list or refresh resolves. */
 private fun GroupSessionsError?.withoutLoadFailure() = takeUnless {
   it == GroupSessionsError.LOAD_FAILED
 }
 
-/** One row of the list, including the current user's membership and creator relationship. */
+/**
+ * One row of the list, including membership, creator relationship, and the known host username.
+ *
+ * [hostName] is null until a nonblank username has been loaded for another user's profile.
+ */
 data class GroupSessionItem(
     val session: GroupSession,
     val isMember: Boolean,
     val isCreator: Boolean,
+    val hostName: String? = null,
 )
 
 /**
  * State of the Group sessions screen; [sessions] is already searched and filtered.
  *
  * The query retains the user's typed text while matching ignores case and surrounding whitespace.
+ * [now] is the reference time every card uses for its relative labels, so they all agree. It has no
+ * default value, so that every new state has to supply the current time.
  */
 data class GroupSessionsUiState(
+    val now: Instant,
     val isLoading: Boolean = true,
     val sessions: List<GroupSessionItem> = emptyList(),
     val query: String = "",
@@ -78,14 +100,18 @@ data class GroupSessionsUiState(
  * uses the current clock instant, because an existing repository flow retains its original cutoff.
  * Successful list emissions and refreshes clear only [GroupSessionsError.LOAD_FAILED]; action
  * errors remain until cleared or the observed user ID changes. Action results from an earlier
- * observed user ID are ignored.
+ * observed user ID are ignored. Host usernames are loaded asynchronously through
+ * [profileRepository], so profile lookups never delay the session list. [GroupSessionsUiState.now]
+ * is refreshed from [clock] while [uiState] has a collector, immediately when a collector returns,
+ * and when the list is observed again.
  */
 class GroupSessionsViewModel(
     private val authRepository: AuthRepository,
     private val repository: GroupSessionsRepository,
+    private val profileRepository: ProfileRepository,
     private val clock: Clock = Clock.systemUTC(),
 ) : ViewModel() {
-  private val _uiState = MutableStateFlow(GroupSessionsUiState())
+  private val _uiState = MutableStateFlow(GroupSessionsUiState(now = clock.instant()))
   /** The current loading, list, search, filter, and categorized-error state. */
   val uiState: StateFlow<GroupSessionsUiState> = _uiState.asStateFlow()
 
@@ -94,8 +120,11 @@ class GroupSessionsViewModel(
   /** Distinguishes action requests made during different observed sign-in periods. */
   private var authGeneration = 0L
   private var observedSessions: List<GroupSession> = emptyList()
+  private val hostNamesByUserId = mutableMapOf<String, String>()
+  private val hostLookupsInProgress = mutableSetOf<String>()
 
   init {
+    refreshNowWhileObserved()
     viewModelScope.launch {
       combine(authRepository.currentUser, refreshVersion) { user, _ -> user }
           .collectLatest { user ->
@@ -104,14 +133,18 @@ class GroupSessionsViewModel(
             if (userChanged) {
               currentUserId = userId
               authGeneration += 1
+              hostNamesByUserId.clear()
+              hostLookupsInProgress.clear()
             }
             if (user == null) {
               observedSessions = emptyList()
-              _uiState.value = GroupSessionsUiState(isLoading = false)
+              _uiState.value = GroupSessionsUiState(now = clock.instant(), isLoading = false)
             } else {
+              val observedFrom = clock.instant()
               updateVisibleSessions()
               _uiState.update {
                 it.copy(
+                    now = observedFrom,
                     isLoading = true,
                     error =
                         if (userChanged) {
@@ -121,7 +154,8 @@ class GroupSessionsViewModel(
                         },
                 )
               }
-              repository.observeSessions(clock.instant()).collect { result ->
+              // Keep the list cutoff and badge reference time aligned.
+              repository.observeSessions(observedFrom).collect { result ->
                 result.fold(
                     onSuccess = { sessions ->
                       observedSessions = sessions
@@ -132,6 +166,7 @@ class GroupSessionsViewModel(
                             error = it.error.withoutLoadFailure(),
                         )
                       }
+                      lookupHostNames(sessions)
                     },
                     onFailure = {
                       _uiState.update {
@@ -203,12 +238,74 @@ class GroupSessionsViewModel(
    * clears only [GroupSessionsError.LOAD_FAILED], preserving action errors.
    */
   fun refresh() {
-    viewModelScope.launch { refreshVersion.update { it + 1 } }
+    viewModelScope.launch {
+      hostNamesByUserId.clear()
+      refreshVersion.update { it + 1 }
+    }
   }
 
   /** Clears the categorized error without changing the rest of the screen state. */
   fun clearError() {
     viewModelScope.launch { _uiState.update { it.copy(error = null) } }
+  }
+
+  /**
+   * Keeps the reference time current only while the screen collects [uiState].
+   *
+   * The loop stops with the last collector, so a hidden screen does no work, and restarts with an
+   * immediate update, so returning to the screen never shows an outdated time.
+   */
+  private fun refreshNowWhileObserved() {
+    viewModelScope.launch {
+      _uiState.subscriptionCount
+          .map { it > 0 }
+          .distinctUntilChanged()
+          .collectLatest { isObserved ->
+            while (isObserved) {
+              _uiState.update { it.copy(now = clock.instant()) }
+              delay(NOW_REFRESH_INTERVAL)
+            }
+          }
+    }
+  }
+
+  /** Starts non-blocking lookups for distinct session hosts whose names are not yet known. */
+  private fun lookupHostNames(sessions: List<GroupSession>) {
+    val currentUser = currentUserId ?: return
+    val requestGeneration = authGeneration
+    sessions
+        .asSequence()
+        .map { it.createdBy }
+        .distinct()
+        // Skip the current user, hosts whose names are known, and hosts already being looked up.
+        .filter { hostUserId ->
+          hostUserId != currentUser &&
+              hostUserId !in hostNamesByUserId &&
+              hostUserId !in hostLookupsInProgress
+        }
+        .forEach { hostUserId ->
+          hostLookupsInProgress += hostUserId
+          viewModelScope.launch {
+            try {
+              // Ignore results from earlier auth generations so a prior user's lookup can't apply.
+              val result = profileRepository.getProfile(hostUserId)
+              if (requestGeneration == authGeneration) {
+                // getProfile reports failures as Result; missing, blank, or failed profiles stay
+                // null, so the next list update can retry this host.
+                val hostName = result.getOrNull()?.username?.takeIf { it.isNotBlank() }
+                if (hostName != null) {
+                  hostNamesByUserId[hostUserId] = hostName
+                  updateVisibleSessions()
+                }
+              }
+            } finally {
+              if (requestGeneration == authGeneration) {
+                // Remove the in-progress mark so a later list update can retry this host.
+                hostLookupsInProgress.remove(hostUserId)
+              }
+            }
+          }
+        }
   }
 
   private fun updateVisibleSessions() {
@@ -222,6 +319,7 @@ class GroupSessionsViewModel(
                     session = session,
                     isMember = userId in session.memberIds,
                     isCreator = userId == session.createdBy,
+                    hostName = hostNamesByUserId[session.createdBy],
                 )
               }
               .filter { item ->
@@ -243,6 +341,7 @@ class GroupSessionsViewModel(
 class GroupSessionsViewModelFactory(
     private val authRepository: AuthRepository,
     private val repository: GroupSessionsRepository,
+    private val profileRepository: ProfileRepository,
 ) : ViewModelProvider.Factory {
   /**
    * Creates the requested ViewModel and rejects unsupported classes with their class name.
@@ -254,7 +353,7 @@ class GroupSessionsViewModelFactory(
       "Unsupported ViewModel: ${modelClass.name}"
     }
     @Suppress("UNCHECKED_CAST")
-    return GroupSessionsViewModel(authRepository, repository) as T
+    return GroupSessionsViewModel(authRepository, repository, profileRepository) as T
   }
 }
 
@@ -270,5 +369,6 @@ fun groupSessionsViewModel(): GroupSessionsViewModel =
             GroupSessionsViewModelFactory(
                 authRepository = AuthRepositoryProvider.getRepository(LocalContext.current),
                 repository = GroupSessionsRepositoryProvider.getRepository(),
+                profileRepository = ProfileRepositoryProvider.getRepository(),
             )
     )

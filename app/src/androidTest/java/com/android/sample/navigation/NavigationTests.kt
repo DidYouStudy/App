@@ -2,16 +2,21 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.navigation
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import com.android.sample.DidYouStudyApp
 import com.android.sample.MainActivity
@@ -29,6 +34,7 @@ import com.android.sample.ui.auth.SignInScreenTestTags
 import com.android.sample.ui.calendar.CalendarTestTags
 import com.android.sample.ui.dashboard.DashboardContentTestTags
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags
+import com.android.sample.ui.groupsession.GroupSessionScreenTestTags
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.preferences.PreferencesScreenTestTags
 import com.android.sample.ui.profile.ProfileButtonTestTags
@@ -341,6 +347,29 @@ class NavigationTests {
     composeTestRule.onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON).performClick()
 
     checkAddEventScreenIsDisplayed()
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.BACK_BUTTON).performClick()
+    checkDashboardScreenIsDisplayed()
+  }
+
+  @Test
+  fun canNavigateToAddGroupSessionFromDashboardFabMenu() {
+    checkDashboardScreenIsDisplayed()
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.ADD_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.FAB_MENU_GROUP_SESSION_BUTTON)
+        .performClick()
+
+    checkAddEventScreenIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventPlanningScreenTestTags.TOP_BAR_TITLE)
+        .assertTextContains(
+            composeTestRule.activity.getString(com.android.sample.R.string.group_session_add_title)
+        )
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.ADD_TASK_BUTTON).assertDoesNotExist()
+
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.BACK_BUTTON).performClick()
+    checkDashboardScreenIsDisplayed()
   }
 
   @Test
@@ -369,6 +398,71 @@ class NavigationTests {
 
     checkCalendarScreenIsDisplayed()
     composeTestRule.onNodeWithTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU).assertIsDisplayed()
+  }
+
+  @Test
+  fun canNavigateToAddGroupSessionFromGroupSessionFabAndBackToGroupSession() {
+    composeTestRule.onNodeWithTag(NavigationTestTags.GROUP_SESSION_TAB).performClick()
+    checkGroupSessionScreenIsDisplayed()
+
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ADD_BUTTON).performClick()
+    checkAddEventScreenIsDisplayed()
+    // Verify that the screen is configured for a group session (no tasks section)
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.ADD_TASK_BUTTON).assertDoesNotExist()
+
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.BACK_BUTTON).performClick()
+    checkGroupSessionScreenIsDisplayed()
+  }
+
+  @Test
+  fun canNavigateToEditGroupSessionFromSessionCardAndBack() {
+    val now = java.time.Instant.now()
+    val session =
+        com.android.sample.model.event.GroupSession(
+            id = "session-1",
+            createdBy = "navigation-test-user",
+            memberIds = listOf("navigation-test-user"),
+            details =
+                com.android.sample.model.event.EventDetails(
+                    type = com.android.sample.model.event.EventType.STUDY_SESSION,
+                    subject = "Networks",
+                    startsAt = now.plus(java.time.Duration.ofHours(1)),
+                    endsAt = now.plus(java.time.Duration.ofHours(2)),
+                ),
+            createdAt = now,
+        )
+    kotlinx.coroutines.runBlocking {
+      com.android.sample.model.groupsession.GroupSessionsRepositoryProvider.getRepository()
+          .saveSession(
+              "navigation-test-user",
+              session,
+          )
+    }
+
+    composeTestRule.onNodeWithTag(NavigationTestTags.GROUP_SESSION_TAB).performClick()
+    checkGroupSessionScreenIsDisplayed()
+
+    val cardMatcher = hasAnyDescendant(hasText(session.details.subject ?: ""))
+    val editButtonMatcher =
+        hasText(
+            composeTestRule.activity.getString(
+                com.android.sample.R.string.group_session_action_edit
+            )
+        ) and hasAnyAncestor(cardMatcher)
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(editButtonMatcher)
+    composeTestRule.onNode(editButtonMatcher).performClick()
+
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.SCREEN_CONTAINER).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventPlanningScreenTestTags.TOP_BAR_TITLE)
+        .assertTextContains(
+            composeTestRule.activity.getString(com.android.sample.R.string.group_session_edit_title)
+        )
+
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.BACK_BUTTON).performClick()
+    checkGroupSessionScreenIsDisplayed()
   }
 }
 

@@ -4,22 +4,26 @@
 // Co-authored-by: Gemini AI Agent
 package com.android.sample
 
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
-import com.android.sample.model.auth.AuthRepository
-import com.android.sample.model.auth.UserAccount
-import com.android.sample.model.event.InMemoryEventsRepository
-import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
-import com.android.sample.model.preferences.PreferencesRepository
+import androidx.compose.ui.test.printToLog
+import androidx.credentials.ClearCredentialStateRequest
+import androidx.test.core.app.ApplicationProvider
+import com.android.sample.model.auth.AuthRepositoryFirebase
+import com.android.sample.model.event.EventsRepositoryFirestore
+import com.android.sample.model.groupsession.GroupSessionsRepositoryFirestore
+import com.android.sample.model.preferences.PreferencesRepositoryFirestore
 import com.android.sample.model.preferences.TimeOfDay
 import com.android.sample.model.preferences.UserPreferences
-import com.android.sample.model.profile.ProfileRepository
-import com.android.sample.model.profile.UserProfile
+import com.android.sample.model.profile.ProfileRepositoryFirestore
+import com.android.sample.testing.FakeGoogleCredentialManager
 import com.android.sample.testing.RepositoryOverridesRule
 import com.android.sample.ui.auth.SignInScreenTestTags
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -27,34 +31,101 @@ import com.android.sample.ui.preferences.PreferencesScreenTestTags as PrefTags
 import com.android.sample.ui.preferences.PreferencesScreenTestsUtils.click
 import com.android.sample.ui.profile.ProfileButtonTestTags
 import com.android.sample.ui.settings.SettingsScreenTestTags
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import com.google.firebase.FirebaseApp
+import com.google.firebase.FirebaseOptions
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.UUID
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.tasks.await
+import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
 
 /**
- * End-to-end tests driving the real [MainActivity] and navigation graph through the whole user
- * journey: sign-in, first-time preferences, dashboard tabs, settings and logout.
+ * End-to-end tests driving the real [MainActivity] through the whole user journey (sign-in,
+ * first-time preferences, dashboard tabs, settings, logout) against the real Firebase SDKs talking
+ * to the local Firebase emulators (Auth on 9099, Firestore on 8080, reached from the Android
+ * emulator at 10.0.2.2).
  *
- * Only the repositories are faked (no Firebase, Firestore or Google account picker is needed), so
- * the real AppViewModel, navigation, ViewModels and screens are exercised together. Sign-in is
- * simulated by emitting a user from [FakeSessionAuthRepository], which is what the app reacts to
- * after the real Google flow completes.
+ * Sign-in goes through the app's real flow: the Google button, the account picker (replaced by
+ * [FakeGoogleCredentialManager], which returns a fake ID token), `AuthRepositoryFirebase` and the
+ * Auth emulator. Preferences are written and read through the real Firestore SDK and verified
+ * directly on the emulator server. Each test uses a uniquely named Firebase app and user, and
+ * removes everything it created, so runs are repeatable and never touch production data.
+ *
+ * Requires: `firebase emulators:start --only auth,firestore` running on the host.
  */
 class EndToEndTest {
-  private val environment = FakeEnvironment()
+  private val email = "e2e-${UUID.randomUUID()}@example.test"
+  private val picker = FakeGoogleCredentialManager(email)
+
+  // Configured before any SDK use: the emulator endpoints must be set on a fresh instance.
+  private val app: FirebaseApp = initializeEmulatorApp("e2e")
+  private val auth = FirebaseAuth.getInstance(app).apply { useEmulator(HOST, AUTH_PORT) }
+  private val db = FirebaseFirestore.getInstance(app).apply { useEmulator(HOST, FIRESTORE_PORT) }
   private val composeRule = createAndroidComposeRule<MainActivity>()
 
-  // The fakes must be installed before MainActivity is launched by the compose rule.
-  @get:Rule val rules: RuleChain = RuleChain.outerRule(environment.repositories).around(composeRule)
+  // Installs emulator-backed repositories and the fake picker before MainActivity launches. Every
+  // repository the screens read is emulator-backed, so no test can fall back to production.
+  @get:Rule
+  val rules: RuleChain =
+      RuleChain.outerRule(
+              RepositoryOverridesRule(
+                  auth =
+                      AuthRepositoryFirebase(auth) {
+                        picker.clearCredentialState(ClearCredentialStateRequest())
+                      },
+                  preferences = PreferencesRepositoryFirestore(db),
+                  profile = ProfileRepositoryFirestore(db),
+                  events = EventsRepositoryFirestore(db, auth),
+                  groupSessions = GroupSessionsRepositoryFirestore(db, auth),
+                  credentialManager = picker,
+              )
+          )
+          .around(composeRule)
 
-  /** Waits until a node with [tag] exists, so tests tolerate asynchronous navigation. */
+  /**
+   * Releases the SDK state and wipes the emulators' Auth accounts and Firestore documents.
+   *
+   * The explicit `Unit` return type matters: JUnit rejects `@After` methods that are not void.
+   */
+  @After
+  fun cleanup(): Unit =
+      runBlocking<Unit> {
+        auth.signOut()
+        db.terminate().await()
+        db.clearPersistence().await()
+        app.delete()
+        // Run every wipe even if an earlier one fails, then report all failures together.
+        val failures =
+            listOf(
+                    "http://$HOST:$AUTH_PORT/emulator/v1/projects/$PROJECT_ID/accounts",
+                    "http://$HOST:$FIRESTORE_PORT/emulator/v1/projects/$PROJECT_ID/databases/(default)/documents",
+                )
+                .mapNotNull { url -> runCatching { clearEmulator(url) }.exceptionOrNull() }
+        failures.firstOrNull()?.let { first ->
+          failures.drop(1).forEach(first::addSuppressed)
+          throw first
+        }
+      }
+
+  /** Waits until a node with [tag] exists; on timeout logs the UI tree (tag `E2EDUMP`). */
   private fun waitForTag(tag: String) {
-    composeRule.waitUntil(timeoutMillis = TIMEOUT_MILLIS) {
-      composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+    try {
+      composeRule.waitUntil(timeoutMillis = TIMEOUT_MILLIS) {
+        composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+      }
+    } catch (e: ComposeTimeoutException) {
+      composeRule.onRoot().printToLog("E2EDUMP")
+      throw e
     }
   }
 
@@ -73,6 +144,12 @@ class EndToEndTest {
     assertTopBarTitle("Dashboard")
   }
 
+  /** Taps the Google button: fake picker -> Firebase Auth emulator, as in production. */
+  private fun signInThroughUi() {
+    waitForTag(SignInScreenTestTags.SCREEN)
+    composeRule.onNodeWithTag(SignInScreenTestTags.GOOGLE_BUTTON).performClick()
+  }
+
   /** Opens settings through the profile button and checks the settings screen is displayed. */
   private fun openSettings() {
     composeRule.onNodeWithTag(ProfileButtonTestTags.PROFILE_BUTTON).performClick()
@@ -88,18 +165,59 @@ class EndToEndTest {
     composeRule.onNodeWithTag(SettingsScreenTestTags.SCREEN).assertDoesNotExist()
   }
 
+  /**
+   * Creates the Google account's Firebase user and stores [preferences] for it, through a separate
+   * Firebase app so the app under test keeps showing the sign-in screen. Returns the stored
+   * preferences (with the user's uid), which the emulator reuses when the same Google account signs
+   * in through the UI.
+   */
+  private fun seedReturningUser(preferences: (uid: String) -> UserPreferences): UserPreferences =
+      runBlocking {
+        val seedApp = initializeEmulatorApp("seed")
+        val seedAuth = FirebaseAuth.getInstance(seedApp).apply { useEmulator(HOST, AUTH_PORT) }
+        val seedDb =
+            FirebaseFirestore.getInstance(seedApp).apply { useEmulator(HOST, FIRESTORE_PORT) }
+        try {
+          val account = AuthRepositoryFirebase(seedAuth) {}.signInWithGoogle(picker.idToken())
+          val stored = preferences(account.uid)
+          PreferencesRepositoryFirestore(seedDb).savePreferences(stored).getOrThrow()
+          stored
+        } finally {
+          seedAuth.signOut()
+          seedDb.terminate().await()
+          seedDb.clearPersistence().await()
+          seedApp.delete()
+        }
+      }
+
+  /** Reads the preferences document from the emulator server, bypassing the local cache. */
+  private fun storedPreferences(uid: String): UserPreferences? = runBlocking {
+    db.collection("preferences")
+        .document(uid)
+        .get(Source.SERVER)
+        .await()
+        .toObject(UserPreferences::class.java)
+  }
+
   @Test
   fun firstTimeUser_completesPreferences_usesApp_andLogsOut() {
-    // Signed out at launch: the sign-in screen is shown.
+    // Signed out at launch: the sign-in screen is shown and the Auth emulator has no session.
     waitForTag(SignInScreenTestTags.SCREEN)
     composeRule.onNodeWithTag(SignInScreenTestTags.GOOGLE_BUTTON).assertIsDisplayed()
+    assertNull(auth.currentUser)
 
     // Signing in as a user without preferences leads to the preferences screen.
-    environment.auth.signInAs(USER)
+    signInThroughUi()
     waitForTag(PrefTags.PREFERENCE_SCREEN)
     composeRule.onNodeWithTag(SignInScreenTestTags.SCREEN).assertDoesNotExist()
+    assertEquals(1, picker.getCredentialCalls)
+    val user = auth.currentUser
+    assertNotNull("The Auth emulator created a session", user)
+    assertEquals(email, user!!.email)
+    val uid = user.uid
+    assertNull("Nothing stored yet for a new user", storedPreferences(uid))
 
-    // Edit the draft and save: preferences are persisted and the dashboard opens.
+    // Edit the draft and save: preferences reach the Firestore emulator and the dashboard opens.
     composeRule.click(PrefTags.STUDY_TIME_EVENING)
     composeRule.click(PrefTags.SESSION_LENGTH_2_HOURS)
     composeRule.click(PrefTags.BREAK_DURATION_15_MIN)
@@ -109,13 +227,13 @@ class EndToEndTest {
     composeRule.onNodeWithTag(PrefTags.PREFERENCE_SCREEN).assertDoesNotExist()
     assertEquals(
         UserPreferences(
-            userId = USER.uid,
+            userId = uid,
             preferredStudyTimes = listOf(TimeOfDay.MORNING, TimeOfDay.AFTERNOON, TimeOfDay.EVENING),
             sessionLengthMinutes = 120,
             breakLengthMinutes = 15,
             breakFrequencyMinutes = 60,
         ),
-        environment.preferences.saved[USER.uid],
+        storedPreferences(uid),
     )
 
     // Walk through every bottom navigation tab and come back.
@@ -132,35 +250,37 @@ class EndToEndTest {
     composeRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).performClick()
     assertOnDashboard()
 
-    // Logging out signs the user out and returns to the sign-in screen.
+    // Logging out ends the Firebase session and clears the picker state.
     openSettings()
     logOutFromSettings()
-    assertNull(environment.auth.currentUserValue)
+    assertNull(auth.currentUser)
+    assertEquals(1, picker.clearCalls)
   }
 
   @Test
   fun returningUser_skipsPreferences_andCanSignInAgainAfterLogout() {
-    environment.preferences.saved[USER.uid] = UserPreferences(userId = USER.uid)
-    environment.auth.signInAs(USER)
+    val uid = seedReturningUser { UserPreferences(userId = it) }.userId
 
-    // A restored session with saved preferences goes straight to the dashboard.
+    // A returning user with preferences stored in Firestore goes straight to the dashboard.
+    signInThroughUi()
     assertOnDashboard()
+    assertEquals(uid, auth.currentUser?.uid)
     composeRule.onNodeWithTag(PrefTags.PREFERENCE_SCREEN).assertDoesNotExist()
 
     // After logging out, signing in again still skips the preferences screen.
     openSettings()
     logOutFromSettings()
-    environment.auth.signInAs(USER)
+    signInThroughUi()
     assertOnDashboard()
+    assertEquals(uid, auth.currentUser?.uid)
     composeRule.onNodeWithTag(PrefTags.PREFERENCE_SCREEN).assertDoesNotExist()
     composeRule.onNodeWithTag(SignInScreenTestTags.SCREEN).assertDoesNotExist()
   }
 
   @Test
   fun returningUser_opensPreferencesFromSettings_andBackReturnsWithoutSaving() {
-    val original = UserPreferences(userId = USER.uid)
-    environment.preferences.saved[USER.uid] = original
-    environment.auth.signInAs(USER)
+    val original = seedReturningUser { UserPreferences(userId = it) }
+    signInThroughUi()
     assertOnDashboard()
 
     // The Settings button opens Preferences in edit mode: edit title and a back button.
@@ -175,13 +295,13 @@ class EndToEndTest {
     composeRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).performClick()
     waitForTag(SettingsScreenTestTags.SCREEN)
     composeRule.onNodeWithTag(PrefTags.PREFERENCE_SCREEN).assertDoesNotExist()
-    assertEquals(original, environment.preferences.saved[USER.uid])
+    assertEquals(original, storedPreferences(original.userId))
   }
 
   @Test
   fun returningUser_savesEditedPreferences_andReturnsToSettings() {
-    environment.preferences.saved[USER.uid] = UserPreferences(userId = USER.uid)
-    environment.auth.signInAs(USER)
+    val uid = seedReturningUser { UserPreferences(userId = it) }.userId
+    signInThroughUi()
     assertOnDashboard()
 
     openSettings()
@@ -190,10 +310,10 @@ class EndToEndTest {
     composeRule.click(PrefTags.SESSION_LENGTH_2_HOURS)
     composeRule.onNodeWithTag(PrefTags.SAVE_BUTTON).performClick()
 
-    // Saving persists the edit and lands back on Settings, not on the dashboard.
+    // Saving persists the edit in Firestore and lands back on Settings, not on the dashboard.
     waitForTag(SettingsScreenTestTags.SCREEN)
     composeRule.onNodeWithTag(PrefTags.PREFERENCE_SCREEN).assertDoesNotExist()
-    assertEquals(120, environment.preferences.saved[USER.uid]?.sessionLengthMinutes)
+    assertEquals(120, storedPreferences(uid)?.sessionLengthMinutes)
 
     // Back from Settings reaches the dashboard: Preferences was not left on the back stack.
     composeRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).performClick()
@@ -202,7 +322,7 @@ class EndToEndTest {
 
   @Test
   fun firstTimeUser_backFromDashboardLeavesApp_insteadOfReturningToPreferences() {
-    environment.auth.signInAs(USER)
+    signInThroughUi()
     waitForTag(PrefTags.PREFERENCE_SCREEN)
     composeRule.onNodeWithTag(PrefTags.SAVE_BUTTON).performClick()
     assertOnDashboard()
@@ -215,74 +335,41 @@ class EndToEndTest {
     assertEquals(true, composeRule.activity.isFinishing)
   }
 
+  /**
+   * Sends an HTTP DELETE to an emulator REST endpoint that wipes its state.
+   *
+   * Fails with an [IllegalStateException] naming the URL and status when the emulator does not
+   * answer with a 2xx, so a failed cleanup cannot leak state into later tests.
+   */
+  private fun clearEmulator(url: String) {
+    val connection = URL(url).openConnection() as HttpURLConnection
+    try {
+      connection.requestMethod = "DELETE"
+      val status = connection.responseCode
+      check(status in 200..299) { "Emulator cleanup failed: DELETE $url returned HTTP $status" }
+    } finally {
+      connection.disconnect()
+    }
+  }
+
   private companion object {
-    const val TIMEOUT_MILLIS = 20_000L
-    val USER = UserAccount("end-to-end-user", "End To End", "e2e@example.com", null)
+    const val HOST = "10.0.2.2"
+    const val AUTH_PORT = 9099
+    const val FIRESTORE_PORT = 8080
+    const val PROJECT_ID = "demo-didyoustudy"
+    const val TIMEOUT_MILLIS = 30_000L
+
+    /** Creates a uniquely named app on a demo project, so it can never address production. */
+    fun initializeEmulatorApp(prefix: String): FirebaseApp =
+        FirebaseApp.initializeApp(
+            ApplicationProvider.getApplicationContext(),
+            FirebaseOptions.Builder()
+                .setProjectId(PROJECT_ID)
+                .setApplicationId("1:123:android:e2e")
+                // A unique fake key keeps Auth's per-key emulator registry isolated per app.
+                .setApiKey("fake-${UUID.randomUUID()}")
+                .build(),
+            "$prefix-${UUID.randomUUID()}",
+        )
   }
-}
-
-/** In-memory fakes for every repository the journey reads, kept here so tests can drive them. */
-private class FakeEnvironment {
-  val auth = FakeSessionAuthRepository()
-  val preferences = InMemoryPreferencesRepository()
-
-  /** Installs the fakes before the activity starts and restores the real providers afterwards. */
-  val repositories =
-      RepositoryOverridesRule(
-          auth = auth,
-          preferences = preferences,
-          profile = EmptyProfileRepository(),
-          events = InMemoryEventsRepository(),
-          groupSessions = InMemoryGroupSessionsRepository(),
-      )
-}
-
-/** Auth fake whose session starts signed out and changes only through [signInAs]/[signOut]. */
-private class FakeSessionAuthRepository : AuthRepository {
-  private val session = MutableStateFlow<UserAccount?>(null)
-  override val currentUser: StateFlow<UserAccount?> = session
-  override val isAuthenticated: Boolean
-    get() = session.value != null
-
-  override val currentUserId: String?
-    get() = session.value?.uid
-
-  /** Current session value, for assertions. */
-  val currentUserValue: UserAccount?
-    get() = session.value
-
-  /** Simulates a completed Google sign-in (or a restored session). */
-  fun signInAs(user: UserAccount) {
-    session.value = user
-  }
-
-  override suspend fun signInWithGoogle(idToken: String): UserAccount =
-      checkNotNull(session.value) { "Use signInAs() to simulate signing in" }
-
-  override suspend fun signOut() {
-    session.value = null
-  }
-}
-
-/** Preferences fake backed by a map, so saved values can be asserted. */
-private class InMemoryPreferencesRepository : PreferencesRepository {
-  val saved = mutableMapOf<String, UserPreferences>()
-
-  override fun hasPreferences(userId: String): Boolean = saved.containsKey(userId)
-
-  override suspend fun getPreferences(userId: String): Result<UserPreferences?> =
-      Result.success(saved[userId])
-
-  override suspend fun savePreferences(preferences: UserPreferences): Result<Unit> {
-    saved[preferences.userId] = preferences
-    return Result.success(Unit)
-  }
-}
-
-/** Profile fake with no stored profile, so the settings screen falls back to the auth account. */
-private class EmptyProfileRepository : ProfileRepository {
-  override suspend fun getProfile(userId: String): Result<UserProfile?> = Result.success(null)
-
-  override suspend fun createProfile(userId: String): Result<UserProfile> =
-      Result.failure(UnsupportedOperationException("Profiles are not created in this test"))
 }
