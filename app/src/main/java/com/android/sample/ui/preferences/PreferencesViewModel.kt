@@ -10,6 +10,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
+import com.android.sample.model.preferences.OnboardingStore
+import com.android.sample.model.preferences.OnboardingStoreProvider
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.PreferencesRepositoryProvider
 import com.android.sample.model.preferences.UserPreferences
@@ -30,6 +32,7 @@ sealed interface PreferencesUiState {
 class PreferencesViewModel(
     private val repository: PreferencesRepository,
     private val authRepository: AuthRepository,
+    private val onboardingStore: OnboardingStore = OnboardingStoreProvider.getStore(),
 ) : ViewModel() {
 
   private val _uiState = MutableStateFlow<PreferencesUiState>(PreferencesUiState.Loading)
@@ -86,6 +89,7 @@ class PreferencesViewModel(
         repository
             .savePreferences(updated)
             .onSuccess {
+              onboardingStore.setCompletedOnboarding(updated.userId, true)
               _uiState.value = PreferencesUiState.Success(updated)
               onSuccess()
             }
@@ -110,25 +114,32 @@ class PreferencesViewModel(
 class PreferencesViewModelFactory(
     private val repository: PreferencesRepository,
     private val authRepository: AuthRepository,
+    private val onboardingStore: OnboardingStore? = null,
 ) : ViewModelProvider.Factory {
   override fun <T : ViewModel> create(modelClass: Class<T>): T {
     require(modelClass == PreferencesViewModel::class.java) {
       "Unsupported ViewModel: ${modelClass.name}"
     }
     @Suppress("UNCHECKED_CAST")
-    return PreferencesViewModel(repository, authRepository) as T
+    return PreferencesViewModel(
+        repository,
+        authRepository,
+        onboardingStore ?: OnboardingStoreProvider.getStore(),
+    )
+        as T
   }
 }
 
 /** Returns a preferences ViewModel backed by the application's repositories. */
 @Composable
-fun preferencesViewModel(): PreferencesViewModel =
-    viewModel(
-        factory =
-            PreferencesViewModelFactory(
-                PreferencesRepositoryProvider.getRepository(),
-                AuthRepositoryProvider.getRepository(
-                    androidx.compose.ui.platform.LocalContext.current
-                ),
-            ),
-    )
+fun preferencesViewModel(): PreferencesViewModel {
+  val context = androidx.compose.ui.platform.LocalContext.current
+  return viewModel(
+      factory =
+          PreferencesViewModelFactory(
+              PreferencesRepositoryProvider.getRepository(),
+              AuthRepositoryProvider.getRepository(context),
+              OnboardingStoreProvider.getStore(context),
+          ),
+  )
+}

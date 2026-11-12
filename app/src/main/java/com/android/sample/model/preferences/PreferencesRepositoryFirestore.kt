@@ -2,6 +2,7 @@
 package com.android.sample.model.preferences
 
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.tasks.await
 
@@ -20,6 +21,9 @@ class PreferencesRepositoryFirestore(private val firestore: FirebaseFirestore) :
   /**
    * Fetches the preferences for a given user from Firestore.
    *
+   * Tries to fetch from Firestore first and falls back to local cache ([Source.CACHE]) if the
+   * network request fails while offline.
+   *
    * @param userId The ID of the user whose preferences are requested. Must not be blank.
    * @return A [Result] containing [UserPreferences] if found, `null` if the document does not
    *   exist, or a [Result.failure] if an error occurs.
@@ -28,7 +32,18 @@ class PreferencesRepositoryFirestore(private val firestore: FirebaseFirestore) :
   override suspend fun getPreferences(userId: String): Result<UserPreferences?> =
       try {
         require(userId.isNotBlank()) { "User ID must not be blank" }
-        val documentSnapshot = collection.document(userId).get().await()
+        val doc = collection.document(userId)
+        val documentSnapshot =
+            try {
+              doc.get().await()
+            } catch (e: Exception) {
+              if (e is CancellationException) throw e
+              try {
+                doc.get(Source.CACHE).await()
+              } catch (_: Exception) {
+                throw e
+              }
+            }
         if (documentSnapshot.exists()) {
           Result.success(documentSnapshot.toObject(UserPreferences::class.java))
         } else {

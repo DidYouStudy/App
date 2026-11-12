@@ -24,6 +24,7 @@ import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.InMemoryEventsRepository
 import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
+import com.android.sample.model.preferences.OnboardingStore
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.model.profile.ProfileRepository
@@ -609,6 +610,7 @@ private class NavigationTestEnvironment(uid: String) {
   val profile = FakeProfileRepository()
   val events = InMemoryEventsRepository()
   val groupSessions = InMemoryGroupSessionsRepository()
+  val onboarding = FakeOnboardingStore(mapOf(uid to true))
   val rule =
       RepositoryOverridesRule(
           auth = auth,
@@ -616,6 +618,7 @@ private class NavigationTestEnvironment(uid: String) {
           profile = profile,
           events = events,
           groupSessions = groupSessions,
+          onboardingStore = onboarding,
       )
 }
 
@@ -631,6 +634,7 @@ private fun signedInRepositories(uid: String): RepositoryOverridesRule {
       profile = FakeProfileRepository(),
       events = InMemoryEventsRepository(),
       groupSessions = InMemoryGroupSessionsRepository(),
+      onboardingStore = FakeOnboardingStore(mapOf(uid to true)),
   )
 }
 
@@ -646,6 +650,7 @@ private fun signedInWithoutPreferencesRepositories(uid: String): RepositoryOverr
       profile = FakeProfileRepository(),
       events = InMemoryEventsRepository(),
       groupSessions = InMemoryGroupSessionsRepository(),
+      onboardingStore = FakeOnboardingStore(mapOf(uid to false)),
   )
 }
 
@@ -657,7 +662,20 @@ private fun signedOutRepositories(): RepositoryOverridesRule {
       profile = FakeProfileRepository(),
       events = InMemoryEventsRepository(),
       groupSessions = InMemoryGroupSessionsRepository(),
+      onboardingStore = FakeOnboardingStore(),
   )
+}
+
+private class FakeOnboardingStore(
+    initialState: Map<String, Boolean> = emptyMap(),
+) : OnboardingStore {
+  private val state = initialState.toMutableMap()
+
+  override fun hasCompletedOnboarding(userId: String): Boolean = state[userId] ?: false
+
+  override fun setCompletedOnboarding(userId: String, completed: Boolean) {
+    state[userId] = completed
+  }
 }
 
 private class FakeAuthRepository(private val user: UserAccount?) : AuthRepository {

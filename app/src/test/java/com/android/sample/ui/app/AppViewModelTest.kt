@@ -4,6 +4,7 @@
 package com.android.sample.ui.app
 
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.preferences.OnboardingStore
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.ui.auth.TestAuthRepository
@@ -18,6 +19,8 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.mockito.Mockito.mock
@@ -28,12 +31,24 @@ class AppViewModelTest {
   private val dispatcher = UnconfinedTestDispatcher()
   private lateinit var authRepository: TestAuthRepository
   private lateinit var preferencesRepository: PreferencesRepository
+  private lateinit var onboardingStore: FakeOnboardingStore
+
+  class FakeOnboardingStore : OnboardingStore {
+    val completed = mutableMapOf<String, Boolean>()
+
+    override fun hasCompletedOnboarding(userId: String): Boolean = completed[userId] ?: false
+
+    override fun setCompletedOnboarding(userId: String, completed: Boolean) {
+      this.completed[userId] = completed
+    }
+  }
 
   @Before
   fun setUp() {
     Dispatchers.setMain(dispatcher)
     authRepository = TestAuthRepository()
     preferencesRepository = mock(PreferencesRepository::class.java)
+    onboardingStore = FakeOnboardingStore()
   }
 
   @After
@@ -43,17 +58,57 @@ class AppViewModelTest {
 
   @Test
   fun startDestinationIsAuthWhenUnauthenticated() {
-    val viewModel = AppViewModel(authRepository, preferencesRepository)
+    val viewModel = AppViewModel(authRepository, preferencesRepository, onboardingStore)
 
     assertEquals(Screen.Auth, viewModel.startDestination)
   }
 
   @Test
-  fun startDestinationIsDashboardWhenAuthenticated() {
-    authRepository.currentUser.value = UserAccount("user-1", null, null, null)
-    val viewModel = AppViewModel(authRepository, preferencesRepository)
+  fun startDestinationIsDashboardWhenAuthenticatedAndOnboarded() {
+    val user = UserAccount("user-1", null, null, null)
+    authRepository.currentUser.value = user
+    onboardingStore.setCompletedOnboarding(user.uid, true)
+    val viewModel = AppViewModel(authRepository, preferencesRepository, onboardingStore)
 
     assertEquals(Screen.Dashboard, viewModel.startDestination)
+  }
+
+  @Test
+  fun startDestinationIsPreferencesWhenAuthenticatedWithoutOnboarding() {
+    val user = UserAccount("user-1", null, null, null)
+    authRepository.currentUser.value = user
+    onboardingStore.setCompletedOnboarding(user.uid, false)
+    val viewModel = AppViewModel(authRepository, preferencesRepository, onboardingStore)
+
+    assertEquals(Screen.Preferences, viewModel.startDestination)
+  }
+
+  @Test
+  fun loadDestinationUpdatesOnboardingStoreWhenPreferencesExist() = runTest {
+    val user = UserAccount("user-1", null, null, null)
+    val prefs = UserPreferences(userId = user.uid)
+    `when`(preferencesRepository.getPreferences(user.uid)).thenReturn(Result.success(prefs))
+
+    val viewModel = AppViewModel(authRepository, preferencesRepository, onboardingStore)
+    authRepository.currentUser.value = user
+    testScheduler.advanceUntilIdle()
+
+    assertTrue(onboardingStore.hasCompletedOnboarding(user.uid))
+    assertEquals(AppUiState.Dashboard, viewModel.uiState.value)
+  }
+
+  @Test
+  fun loadDestinationClearsOnboardingStoreWhenPreferencesNull() = runTest {
+    val user = UserAccount("user-1", null, null, null)
+    onboardingStore.setCompletedOnboarding(user.uid, true)
+    `when`(preferencesRepository.getPreferences(user.uid)).thenReturn(Result.success(null))
+
+    val viewModel = AppViewModel(authRepository, preferencesRepository, onboardingStore)
+    authRepository.currentUser.value = user
+    testScheduler.advanceUntilIdle()
+
+    assertFalse(onboardingStore.hasCompletedOnboarding(user.uid))
+    assertEquals(AppUiState.FirstTimeSignIn, viewModel.uiState.value)
   }
 
   @Test

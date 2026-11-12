@@ -12,6 +12,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
+import com.android.sample.model.preferences.OnboardingStore
+import com.android.sample.model.preferences.OnboardingStoreProvider
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.PreferencesRepositoryProvider
 import com.android.sample.ui.navigation.Screen
@@ -40,6 +42,7 @@ sealed interface AppUiState {
 class AppViewModel(
     private val authRepository: AuthRepository,
     private val preferencesRepository: PreferencesRepository,
+    private val onboardingStore: OnboardingStore = OnboardingStoreProvider.getStore(),
 ) : ViewModel() {
   companion object {
     private const val SIGN_IN_TIMEOUT_MILLIS = 10_000L
@@ -53,11 +56,17 @@ class AppViewModel(
   /**
    * Initial start destination for NavHost.
    *
-   * Authenticated users default to [Screen.Dashboard] without waiting for async flows or showing a
-   * sign-in flash. Unauthenticated users start on [Screen.Auth].
+   * Authenticated users who have completed onboarding start on [Screen.Dashboard]. Authenticated
+   * users who have not completed onboarding start directly on [Screen.Preferences]. Unauthenticated
+   * users start on [Screen.Auth].
    */
   val startDestination: Screen =
-      if (authRepository.isAuthenticated) Screen.Dashboard else Screen.Auth
+      when {
+        !authRepository.isAuthenticated -> Screen.Auth
+        authRepository.currentUserId?.let { onboardingStore.hasCompletedOnboarding(it) } == true ->
+            Screen.Dashboard
+        else -> Screen.Preferences
+      }
 
   init {
     viewModelScope.launch {
@@ -123,8 +132,13 @@ class AppViewModel(
     preferencesRepository
         .getPreferences(userId)
         .onSuccess { preferences ->
-          mutableUiState.value =
-              if (preferences == null) AppUiState.FirstTimeSignIn else AppUiState.Dashboard
+          if (preferences != null) {
+            onboardingStore.setCompletedOnboarding(userId, true)
+            mutableUiState.value = AppUiState.Dashboard
+          } else {
+            onboardingStore.setCompletedOnboarding(userId, false)
+            mutableUiState.value = AppUiState.FirstTimeSignIn
+          }
         }
         .onFailure { exception ->
           mutableUiState.value =
@@ -137,21 +151,30 @@ class AppViewModel(
 class AppViewModelFactory(
     private val authRepository: AuthRepository,
     private val preferencesRepository: PreferencesRepository,
+    private val onboardingStore: OnboardingStore? = null,
 ) : ViewModelProvider.Factory {
   override fun <T : ViewModel> create(modelClass: Class<T>): T {
     require(modelClass == AppViewModel::class.java) { "Unsupported ViewModel: ${modelClass.name}" }
     @Suppress("UNCHECKED_CAST")
-    return AppViewModel(authRepository, preferencesRepository) as T
+    return AppViewModel(
+        authRepository,
+        preferencesRepository,
+        onboardingStore ?: OnboardingStoreProvider.getStore(),
+    )
+        as T
   }
 }
 
 /** Returns the application ViewModel backed by the application's repositories. */
 @Composable
-fun appViewModel(): AppViewModel =
-    viewModel(
-        factory =
-            AppViewModelFactory(
-                AuthRepositoryProvider.getRepository(LocalContext.current),
-                PreferencesRepositoryProvider.getRepository(),
-            )
-    )
+fun appViewModel(): AppViewModel {
+  val context = LocalContext.current
+  return viewModel(
+      factory =
+          AppViewModelFactory(
+              AuthRepositoryProvider.getRepository(context),
+              PreferencesRepositoryProvider.getRepository(),
+              OnboardingStoreProvider.getStore(context),
+          )
+  )
+}
