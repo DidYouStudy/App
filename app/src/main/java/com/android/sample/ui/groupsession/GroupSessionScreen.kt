@@ -3,6 +3,7 @@
 // Co-authored-by: Copilot
 // Co-authored-by: Gemini
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
 import androidx.compose.foundation.BorderStroke
@@ -70,6 +71,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
+import com.android.sample.ui.eventplanning.EventKind
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -77,6 +79,7 @@ import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.profile.ProfileButton
 import com.android.sample.ui.sharedComponents.AddButton
+import com.android.sample.ui.sharedComponents.EventTypeBadge
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.ParticipantInitialTextStyle
 import com.android.sample.ui.theme.ParticipantOverflowTextStyle
@@ -110,6 +113,10 @@ object GroupSessionScreenTestTags {
 fun GroupSessionScreen(
     navigationActions: NavigationActions? = null,
     viewModel: GroupSessionsViewModel = groupSessionsViewModel(),
+    onAddSessionClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddGroupSession) },
+    onEditSessionClick: (String) -> Unit = { sessionId ->
+      navigationActions?.navigateTo(Screen.EditEvent(sessionId, EventKind.GROUP_SESSION))
+    },
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val snackbarHostState = remember { SnackbarHostState() }
@@ -172,7 +179,7 @@ fun GroupSessionScreen(
       },
       floatingActionButton = {
         AddButton(
-            onClick = { /* TODO ADD GROUPSESSION */ },
+            onClick = onAddSessionClick,
             contentDescription = stringResource(R.string.group_session_add_description),
             modifier = Modifier.testTag(GroupSessionScreenTestTags.ADD_BUTTON),
         )
@@ -185,6 +192,7 @@ fun GroupSessionScreen(
             onFilterChange = viewModel::onFilterChange,
             onJoin = viewModel::join,
             onLeave = viewModel::leave,
+            onEdit = onEditSessionClick,
         )
       },
   )
@@ -198,6 +206,7 @@ private fun GroupSessionContent(
     onFilterChange: (GroupSessionFilter) -> Unit = {},
     onJoin: (String) -> Unit = {},
     onLeave: (String) -> Unit = {},
+    onEdit: (String) -> Unit = {},
 ) {
   Column(modifier = modifier.fillMaxSize().padding(horizontal = Spacing.large)) {
     OutlinedTextField(
@@ -306,6 +315,7 @@ private fun GroupSessionContent(
                   now = state.now,
                   onJoin = onJoin,
                   onLeave = onLeave,
+                  onEdit = onEdit,
                   modifier = Modifier.testTag(GroupSessionScreenTestTags.sessionItem(index)),
               )
             }
@@ -320,6 +330,7 @@ private fun GroupSessionCard(
     now: Instant,
     onJoin: (String) -> Unit,
     onLeave: (String) -> Unit,
+    onEdit: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
   val session = item.session
@@ -378,11 +389,11 @@ private fun GroupSessionCard(
           )
           Spacer(Modifier.height(Spacing.extraExtraSmall))
           Text(
-              // TODO: currently shows ID, but should show name. Need the viewmodel to translate
-              // from ID instead
               text =
                   if (shouldShowHost) stringResource(R.string.group_session_host_self)
-                  else stringResource(R.string.group_session_hosted_by, session.createdBy),
+                  else
+                      item.hostName?.let { stringResource(R.string.group_session_hosted_by, it) }
+                          ?: stringResource(R.string.group_session_host_unknown),
               style = MaterialTheme.typography.bodyMedium,
               color =
                   if (shouldShowHost) MaterialTheme.colorScheme.primary
@@ -411,18 +422,7 @@ private fun GroupSessionCard(
       Spacer(Modifier.height(Spacing.mediumLarge))
 
       // Type Badge
-      Surface(
-          shape = RoundedCornerShape(Dimens.cornerMedium),
-          color = session.details.type.color,
-      ) {
-        Text(
-            text = session.details.type.label(),
-            modifier = Modifier.padding(horizontal = Spacing.medium, vertical = Spacing.extraSmall),
-            color = session.details.type.onColor,
-            fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.labelLarge,
-        )
-      }
+      EventTypeBadge(type = session.details.type)
 
       Spacer(Modifier.height(Spacing.mediumSmall))
 
@@ -561,7 +561,7 @@ private fun GroupSessionCard(
         // Action Buttons (Host Edit vs Member Leave/Joined vs Join)
         if (shouldShowHost) {
           Button(
-              onClick = { /* TODO EDIT GROUP SESSION */ },
+              onClick = { onEdit(session.id) },
               shape = RoundedCornerShape(Dimens.cornerLarge),
               colors =
                   ButtonDefaults.buttonColors(

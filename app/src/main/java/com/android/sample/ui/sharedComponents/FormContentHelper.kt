@@ -2,6 +2,10 @@
 // Co-authored-by: Claude AI Agent
 package com.android.sample.ui.sharedComponents
 
+import android.content.res.Configuration
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,9 +25,11 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -32,8 +38,6 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -70,6 +74,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -81,6 +88,7 @@ import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.model.location.CampusLocation
 import com.android.sample.ui.theme.AlphaTokens
+import com.android.sample.ui.theme.AnimationTokens
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.label
@@ -237,42 +245,13 @@ fun TaskRowItem(
     checkboxTag: String,
     deleteTag: String,
 ) {
-  val shape = RoundedCornerShape(Dimens.cornerLarge)
-  Row(
-      modifier =
-          Modifier.fillMaxWidth()
-              .clip(shape)
-              .background(MaterialTheme.colorScheme.surfaceVariant)
-              .padding(
-                  horizontal = Dimens.taskRowHorizontalPadding,
-                  vertical = Dimens.taskRowVerticalPadding,
-              )
-              .testTag(itemTag),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.SpaceBetween,
+  TaskCheckRow(
+      text = task.text,
+      isCompleted = task.isCompleted,
+      onToggle = onToggle,
+      modifier = Modifier.testTag(itemTag),
+      checkboxTag = checkboxTag,
   ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.weight(1f),
-    ) {
-      Checkbox(
-          checked = task.isCompleted,
-          onCheckedChange = { onToggle() },
-          colors =
-              CheckboxDefaults.colors(
-                  checkedColor = MaterialTheme.colorScheme.primary,
-                  uncheckedColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                  checkmarkColor = MaterialTheme.colorScheme.onPrimary,
-              ),
-          modifier = Modifier.testTag(checkboxTag),
-      )
-      Text(
-          text = task.text,
-          color = MaterialTheme.colorScheme.onSecondaryContainer,
-          style = MaterialTheme.typography.bodyMedium,
-          modifier = Modifier.padding(start = Dimens.taskTextStartPadding),
-      )
-    }
     IconButton(onClick = onDelete, modifier = Modifier.testTag(deleteTag)) {
       Icon(
           imageVector = Icons.Outlined.Delete,
@@ -392,7 +371,7 @@ fun PillActionButton(
         }
         Text(
             text = label,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.titleSmall,
             color = contentColor,
         )
       }
@@ -441,6 +420,7 @@ fun EventTypeDropdownMenu(
 }
 
 /** Material 3 DatePickerDialog configured for text input mode. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventDatePickerDialog(
     initialDate: LocalDate?,
@@ -454,7 +434,27 @@ fun EventDatePickerDialog(
   val datePickerState =
       rememberDatePickerState(
           initialSelectedDateMillis = initialMillis,
-          initialDisplayMode = DisplayMode.Input,
+          initialDisplayMode = DisplayMode.Picker,
+      )
+
+  val configuration = LocalConfiguration.current
+  val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+  // Smooth height transition for portrait mode
+  val portraitTargetHeight by
+      animateDpAsState(
+          targetValue =
+              if (datePickerState.displayMode == DisplayMode.Picker) {
+                Dimens.datePickerCalendarHeight
+              } else {
+                Dimens.datePickerInputHeight
+              },
+          animationSpec =
+              tween(
+                  durationMillis = AnimationTokens.DATE_PICKER_HEIGHT_TRANSITION_MS,
+                  easing = FastOutSlowInEasing,
+              ),
+          label = "datePickerHeightAnimation",
       )
 
   DatePickerDialog(
@@ -474,8 +474,43 @@ fun EventDatePickerDialog(
         }
       },
       dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+      properties =
+          DialogProperties(
+              // In landscape, allowing full-width avoids side clipping
+              usePlatformDefaultWidth = !isLandscape
+          ),
+      modifier =
+          Modifier.padding(
+              horizontal = if (isLandscape) Dimens.formHorizontalPadding else Dimens.noPadding,
+              vertical = if (isLandscape) Dimens.formVerticalPadding else Dimens.noPadding,
+          ),
   ) {
-    DatePicker(state = datePickerState)
+    if (isLandscape) {
+      // Landscape: limit to viewport height and allow vertical scrolling
+      val scrollState = rememberScrollState()
+      val windowInfo = LocalWindowInfo.current
+      val density = LocalDensity.current
+      val maxLandscapeHeight =
+          with(density) {
+            (windowInfo.containerSize.height.toDp() - Dimens.datePickerMaxLandscapeHeight)
+                .coerceAtLeast(Dimens.datePickerMinimumHeight)
+          }
+
+      Box(
+          modifier =
+              Modifier.fillMaxWidth()
+                  .heightIn(max = maxLandscapeHeight)
+                  .verticalScroll(scrollState)
+                  .testTag(FormContentTestTags.LANDSCAPE_DATE_PICKER_SCROLL)
+      ) {
+        DatePicker(state = datePickerState)
+      }
+    } else {
+      // Portrait: maintain smooth animated container height
+      Box(modifier = Modifier.fillMaxWidth().height(portraitTargetHeight)) {
+        DatePicker(state = datePickerState)
+      }
+    }
   }
 }
 
@@ -814,4 +849,5 @@ object FormContentTestTags {
 
   // Actions & Feedback
   const val ENDS_NEXT_DAY_WARNING = "form_content_ends_next_day_warning"
+  const val LANDSCAPE_DATE_PICKER_SCROLL = "form_content_landscape_date_picker_scroll"
 }
