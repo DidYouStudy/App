@@ -107,5 +107,20 @@ object Dimens {
   val errorVerticalPadding = 4.dp
   val dialogCornerRadius = 28.dp
   val subjectPickerMaxHeight = 350.dp
+  val screenHorizontalPadding = 16.dp
+  val contentTopSpacing = 12.dp
+  val titleToMetaSpacing = 4.dp
+  val metaRowSpacing = 4.dp
+  val sectionSpacing = 12.dp
+  val sectionLabelToContentSpacing = 4.dp
+  val taskListSpacing = 8.dp
+  val actionButtonSpacing = 8.dp
+  val actionsTopPadding = 16.dp
+  val actionsBottomPadding = 24.dp
+  val locationPickerMaxHeight = 350.dp
   val noPadding = 0.dp
+  val datePickerInputHeight = 260.dp
+  val datePickerCalendarHeight = 512.dp
+  val datePickerMaxLandscapeHeight = 120.dp
+  val datePickerMinimumHeight = 200.dp
 }

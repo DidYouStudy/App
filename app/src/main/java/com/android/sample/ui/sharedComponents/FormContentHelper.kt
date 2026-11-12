@@ -2,6 +2,10 @@
 // Co-authored-by: Claude AI Agent
 package com.android.sample.ui.sharedComponents
 
+import android.content.res.Configuration
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,21 +21,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -68,6 +74,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -77,7 +86,9 @@ import androidx.compose.ui.window.DialogProperties
 import com.android.sample.R
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
+import com.android.sample.model.location.CampusLocation
 import com.android.sample.ui.theme.AlphaTokens
+import com.android.sample.ui.theme.AnimationTokens
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.label
@@ -109,6 +120,8 @@ fun SelectorFieldPill(
     modifier: Modifier = Modifier,
     hasDropdownArrow: Boolean = false,
     isError: Boolean = false,
+    onClear: (() -> Unit)? = null,
+    clearButtonTestTag: String? = null,
 ) {
   val shape = RoundedCornerShape(Dimens.cornerPill)
   Box(
@@ -148,7 +161,20 @@ fun SelectorFieldPill(
                   ),
           style = MaterialTheme.typography.bodyMedium,
       )
-      if (hasDropdownArrow) {
+      if (onClear != null && !valueText.isNullOrBlank()) {
+        Icon(
+            imageVector = Icons.Default.Close,
+            contentDescription = stringResource(R.string.clear_field_content_description),
+            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier =
+                Modifier.size(Dimens.iconSizeMedium)
+                    .clickable(onClick = onClear)
+                    .then(
+                        if (clearButtonTestTag != null) Modifier.testTag(clearButtonTestTag)
+                        else Modifier
+                    ),
+        )
+      } else if (hasDropdownArrow) {
         Icon(
             imageVector = Icons.Default.ArrowDropDown,
             contentDescription = null,
@@ -219,42 +245,13 @@ fun TaskRowItem(
     checkboxTag: String,
     deleteTag: String,
 ) {
-  val shape = RoundedCornerShape(Dimens.cornerLarge)
-  Row(
-      modifier =
-          Modifier.fillMaxWidth()
-              .clip(shape)
-              .background(MaterialTheme.colorScheme.surfaceVariant)
-              .padding(
-                  horizontal = Dimens.taskRowHorizontalPadding,
-                  vertical = Dimens.taskRowVerticalPadding,
-              )
-              .testTag(itemTag),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.SpaceBetween,
+  TaskCheckRow(
+      text = task.text,
+      isCompleted = task.isCompleted,
+      onToggle = onToggle,
+      modifier = Modifier.testTag(itemTag),
+      checkboxTag = checkboxTag,
   ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.weight(1f),
-    ) {
-      Checkbox(
-          checked = task.isCompleted,
-          onCheckedChange = { onToggle() },
-          colors =
-              CheckboxDefaults.colors(
-                  checkedColor = MaterialTheme.colorScheme.primary,
-                  uncheckedColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                  checkmarkColor = MaterialTheme.colorScheme.onPrimary,
-              ),
-          modifier = Modifier.testTag(checkboxTag),
-      )
-      Text(
-          text = task.text,
-          color = MaterialTheme.colorScheme.onSecondaryContainer,
-          style = MaterialTheme.typography.bodyMedium,
-          modifier = Modifier.padding(start = Dimens.taskTextStartPadding),
-      )
-    }
     IconButton(onClick = onDelete, modifier = Modifier.testTag(deleteTag)) {
       Icon(
           imageVector = Icons.Outlined.Delete,
@@ -374,7 +371,7 @@ fun PillActionButton(
         }
         Text(
             text = label,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.titleSmall,
             color = contentColor,
         )
       }
@@ -423,6 +420,7 @@ fun EventTypeDropdownMenu(
 }
 
 /** Material 3 DatePickerDialog configured for text input mode. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventDatePickerDialog(
     initialDate: LocalDate?,
@@ -436,7 +434,27 @@ fun EventDatePickerDialog(
   val datePickerState =
       rememberDatePickerState(
           initialSelectedDateMillis = initialMillis,
-          initialDisplayMode = DisplayMode.Input,
+          initialDisplayMode = DisplayMode.Picker,
+      )
+
+  val configuration = LocalConfiguration.current
+  val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+  // Smooth height transition for portrait mode
+  val portraitTargetHeight by
+      animateDpAsState(
+          targetValue =
+              if (datePickerState.displayMode == DisplayMode.Picker) {
+                Dimens.datePickerCalendarHeight
+              } else {
+                Dimens.datePickerInputHeight
+              },
+          animationSpec =
+              tween(
+                  durationMillis = AnimationTokens.DATE_PICKER_HEIGHT_TRANSITION_MS,
+                  easing = FastOutSlowInEasing,
+              ),
+          label = "datePickerHeightAnimation",
       )
 
   DatePickerDialog(
@@ -456,8 +474,43 @@ fun EventDatePickerDialog(
         }
       },
       dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+      properties =
+          DialogProperties(
+              // In landscape, allowing full-width avoids side clipping
+              usePlatformDefaultWidth = !isLandscape
+          ),
+      modifier =
+          Modifier.padding(
+              horizontal = if (isLandscape) Dimens.formHorizontalPadding else Dimens.noPadding,
+              vertical = if (isLandscape) Dimens.formVerticalPadding else Dimens.noPadding,
+          ),
   ) {
-    DatePicker(state = datePickerState)
+    if (isLandscape) {
+      // Landscape: limit to viewport height and allow vertical scrolling
+      val scrollState = rememberScrollState()
+      val windowInfo = LocalWindowInfo.current
+      val density = LocalDensity.current
+      val maxLandscapeHeight =
+          with(density) {
+            (windowInfo.containerSize.height.toDp() - Dimens.datePickerMaxLandscapeHeight)
+                .coerceAtLeast(Dimens.datePickerMinimumHeight)
+          }
+
+      Box(
+          modifier =
+              Modifier.fillMaxWidth()
+                  .heightIn(max = maxLandscapeHeight)
+                  .verticalScroll(scrollState)
+                  .testTag(FormContentTestTags.LANDSCAPE_DATE_PICKER_SCROLL)
+      ) {
+        DatePicker(state = datePickerState)
+      }
+    } else {
+      // Portrait: maintain smooth animated container height
+      Box(modifier = Modifier.fillMaxWidth().height(portraitTargetHeight)) {
+        DatePicker(state = datePickerState)
+      }
+    }
   }
 }
 
@@ -566,19 +619,11 @@ fun SubjectPickerDialogContent(
               }
             }
 
-            itemsIndexed(filteredSubjects) { index, subject ->
-              ListItem(
-                  headlineContent = { Text(subject) },
-                  colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                  modifier = Modifier.fillMaxWidth().clickable { onConfirm(subject) },
-              )
-              if (index < filteredSubjects.lastIndex) {
-                HorizontalDivider(
-                    color =
-                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = AlphaTokens.OUTLINE)
-                )
-              }
-            }
+            pickerListItems(
+                items = filteredSubjects,
+                headline = { it },
+                onItemClick = onConfirm,
+            )
           }
         }
       }
@@ -626,6 +671,139 @@ fun SubjectPickerDialog(
   }
 }
 
+/**
+ * Emits [items] inside a [LazyColumn] as clickable, divider-separated [ListItem] rows. Shared by
+ * picker dialogs ([SubjectPickerDialogContent], [LocationPickerDialogContent]) so the row and
+ * divider styling stays in one place.
+ */
+private fun <T> LazyListScope.pickerListItems(
+    items: List<T>,
+    headline: (T) -> String,
+    onItemClick: (T) -> Unit,
+) {
+  itemsIndexed(items) { index, item ->
+    ListItem(
+        headlineContent = { Text(headline(item)) },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier.fillMaxWidth().clickable { onItemClick(item) },
+    )
+    if (index < items.lastIndex) {
+      HorizontalDivider(
+          color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = AlphaTokens.OUTLINE)
+      )
+    }
+  }
+}
+
+/**
+ * Location Picker Dialog content: a search field whose text is reported through
+ * [onSearchQueryChange] so the caller's ViewModel can resolve [searchResults] via
+ * [com.android.sample.model.location.CampusLocationRepository], which ranks matches (exact name
+ * first). Tapping a row immediately reports the chosen name through [onConfirm]; there is no
+ * custom-entry option, so the search text itself is never saved as a location.
+ */
+@Composable
+fun LocationPickerDialogContent(
+    searchResults: List<CampusLocation>,
+    onDismiss: () -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+  var searchQuery by rememberSaveable { mutableStateOf("") }
+
+  Surface(
+      shape = RoundedCornerShape(Dimens.dialogCornerRadius),
+      color = MaterialTheme.colorScheme.surfaceContainerHigh,
+      modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.formHorizontalPadding),
+  ) {
+    Column(modifier = Modifier.padding(Dimens.formHorizontalPadding)) {
+      Text(
+          text = stringResource(R.string.location_picker_dialog_title),
+          style = MaterialTheme.typography.headlineSmall,
+          color = MaterialTheme.colorScheme.onSurface,
+      )
+
+      Spacer(modifier = Modifier.height(Dimens.cornerLarge))
+
+      Column(modifier = Modifier.fillMaxWidth().heightIn(max = Dimens.locationPickerMaxHeight)) {
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = {
+              searchQuery = it
+              onSearchQueryChange(it)
+            },
+            placeholder = { Text(stringResource(R.string.location_picker_search_placeholder)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Spacer(modifier = Modifier.height(Dimens.cornerMedium))
+
+        if (searchResults.isEmpty()) {
+          Text(
+              text =
+                  stringResource(
+                      if (searchQuery.isBlank()) R.string.location_picker_search_prompt
+                      else R.string.location_picker_empty_results
+                  ),
+              style = MaterialTheme.typography.bodyMedium,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              modifier = Modifier.padding(vertical = Spacing.medium),
+          )
+        } else {
+          Surface(
+              shape = RoundedCornerShape(Dimens.cornerLarge),
+              color = MaterialTheme.colorScheme.surfaceContainerLow,
+              modifier = Modifier.fillMaxWidth().weight(1f),
+          ) {
+            LazyColumn(modifier = Modifier.fillMaxWidth()) {
+              pickerListItems(
+                  items = searchResults,
+                  headline = { it.name },
+                  onItemClick = { onConfirm(it.name) },
+              )
+            }
+          }
+        }
+      }
+
+      Spacer(modifier = Modifier.height(Dimens.formHorizontalPadding))
+
+      Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.End,
+      ) {
+        TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+      }
+    }
+  }
+}
+
+/**
+ * Location Picker Dialog wrapper. Selection happens by tapping a row in
+ * [LocationPickerDialogContent]; the single Cancel button only closes the dialog without changing
+ * the location.
+ */
+@Composable
+fun LocationPickerDialog(
+    searchResults: List<CampusLocation>,
+    onDismiss: () -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+  Dialog(
+      onDismissRequest = onDismiss,
+      properties = DialogProperties(usePlatformDefaultWidth = false),
+  ) {
+    LocationPickerDialogContent(
+        searchResults = searchResults,
+        onDismiss = onDismiss,
+        onSearchQueryChange = onSearchQueryChange,
+        onConfirm = onConfirm,
+    )
+  }
+}
+
 @Composable
 private fun formTextFieldColors(): TextFieldColors =
     TextFieldDefaults.colors(
@@ -659,7 +837,8 @@ object FormContentTestTags {
   const val START_TIME_SELECTOR = "form_content_start_time_selector"
   const val END_TIME_SELECTOR = "form_content_end_time_selector"
   const val SUBJECT_SELECTOR = "form_content_subject_selector"
-  const val LOCATION_INPUT = "form_content_location_input"
+  const val LOCATION_SELECTOR = "form_content_location_selector"
+  const val LOCATION_CLEAR_BUTTON = "form_content_location_clear_button"
   const val DESCRIPTION_INPUT = "form_content_description_input"
 
   // Tasks
@@ -670,4 +849,5 @@ object FormContentTestTags {
 
   // Actions & Feedback
   const val ENDS_NEXT_DAY_WARNING = "form_content_ends_next_day_warning"
+  const val LANDSCAPE_DATE_PICKER_SCROLL = "form_content_landscape_date_picker_scroll"
 }

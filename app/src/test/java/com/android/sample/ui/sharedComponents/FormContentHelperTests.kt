@@ -2,10 +2,13 @@
 package com.android.sample.ui.sharedComponents
 
 import android.content.Context
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
@@ -20,16 +23,22 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
+import com.android.sample.model.location.CampusLocation
+import com.android.sample.model.location.CampusLocationType
+import com.android.sample.model.location.Location
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as EventTags
 import java.time.LocalDate
 import java.time.LocalTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -309,23 +318,119 @@ class FormContentHelperTests {
     assertEquals(EventType.COURSE, selectedType)
   }
 
+  /**
+   * Verifies that confirming the EventDatePickerDialog returns the selected LocalDate and closes.
+   */
   @Test
   fun eventDatePickerDialogTriggersConfirmAndDismiss() {
     val context = ApplicationProvider.getApplicationContext<Context>()
+    var selectedDate: LocalDate? = null
     var dismissed = false
+    val expectedDate = LocalDate.of(2026, 11, 1)
 
     composeTestRule.setContent {
       EventDatePickerDialog(
-          initialDate = LocalDate.of(2026, 11, 1),
-          onDateSelected = {},
+          initialDate = expectedDate,
+          onDateSelected = { selectedDate = it },
           onDismiss = { dismissed = true },
       )
     }
 
     composeTestRule.onNodeWithText(context.getString(R.string.confirm)).performClick()
+    assertEquals(expectedDate, selectedDate)
     assertTrue(dismissed)
   }
 
+  /** Verifies that EventDatePickerDialog properly handles a null initial date parameter. */
+  @Test
+  fun eventDatePickerDialogHandlesNullInitialDate() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var selectedDate: LocalDate? = null
+    var dismissed = false
+
+    composeTestRule.setContent {
+      EventDatePickerDialog(
+          initialDate = null,
+          onDateSelected = { selectedDate = it },
+          onDismiss = { dismissed = true },
+      )
+    }
+
+    composeTestRule.onNodeWithText(context.getString(R.string.confirm)).performClick()
+    assertNotNull(selectedDate)
+    assertTrue(dismissed)
+  }
+
+  /** Verifies that EventDatePickerDialog renders correctly in landscape orientation. */
+  @Test
+  fun eventDatePickerDialogRendersInLandscapeMode() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var selectedDate: LocalDate? = null
+    var dismissed = false
+    val expectedDate = LocalDate.of(2026, 11, 1)
+
+    val landscapeConfig =
+        Configuration(context.resources.configuration).apply {
+          orientation = Configuration.ORIENTATION_LANDSCAPE
+        }
+
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalConfiguration provides landscapeConfig) {
+        EventDatePickerDialog(
+            initialDate = expectedDate,
+            onDateSelected = { selectedDate = it },
+            onDismiss = { dismissed = true },
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithText(context.getString(R.string.confirm)).performClick()
+    assertEquals(expectedDate, selectedDate)
+    assertTrue(dismissed)
+  }
+
+  /**
+   * Verifies that when in landscape orientation, the date picker container is scrollable, allowing
+   * the user to scroll through the content, select a specific date, and confirm it.
+   */
+  @Test
+  fun eventDatePickerDialogAllowsScrollingAndSelectingDateInLandscape() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var selectedDate: LocalDate? = null
+    var dismissed = false
+    val initialDate = LocalDate.of(2026, 11, 1)
+
+    val landscapeConfig =
+        Configuration(context.resources.configuration).apply {
+          orientation = Configuration.ORIENTATION_LANDSCAPE
+        }
+
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalConfiguration provides landscapeConfig) {
+        EventDatePickerDialog(
+            initialDate = initialDate,
+            onDateSelected = { selectedDate = it },
+            onDismiss = { dismissed = true },
+        )
+      }
+    }
+
+    // Scroll through the date picker container in landscape view
+    composeTestRule
+        .onNodeWithTag(FormContentTestTags.LANDSCAPE_DATE_PICKER_SCROLL)
+        .performTouchInput { swipeUp() }
+
+    // Select day 15 in the picker
+    composeTestRule.onAllNodesWithText("15", substring = true)[0].performClick()
+
+    // Confirm selection
+    composeTestRule.onNodeWithText(context.getString(R.string.confirm)).performClick()
+
+    assertEquals(LocalDate.of(2026, 11, 15), selectedDate)
+    assertTrue(dismissed)
+  }
+
+  /** Verifies that clicking the cancel button in EventDatePickerDialog invokes onDismiss. */
   @Test
   fun eventDatePickerDialogDismissButtonTriggersCallback() {
     val context = ApplicationProvider.getApplicationContext<Context>()
@@ -498,6 +603,125 @@ class FormContentHelperTests {
           currentSelection = "",
           allSubjects = listOf("Linear Algebra", "Analysis I"),
           onDismiss = {},
+          onConfirm = {},
+      )
+    }
+
+    val searchInputNode = composeTestRule.onNode(hasSetTextAction())
+    searchInputNode.assertIsDisplayed().performTextInput(query)
+    searchInputNode.assertTextContains(query)
+
+    restorationTester.emulateSavedInstanceStateRestore()
+
+    composeTestRule.onNode(hasSetTextAction()).assertIsDisplayed().assertTextContains(query)
+  }
+
+  /** Builds a minimal campus location for tests; only the name is usually relevant. */
+  private fun sampleLocation(name: String): CampusLocation =
+      CampusLocation(
+          name = name,
+          zone = "AAB",
+          type = CampusLocationType.LECTURE_ROOM,
+          floor = null,
+          location = Location(latitude = 46.52, longitude = 6.56),
+      )
+
+  @Test
+  fun locationPickerDialogContentDisplaysResultsAndConfirmsOnClick() {
+    var confirmedLocation = ""
+    val results = listOf(sampleLocation("AAB 0 26"), sampleLocation("AAC 0 06"))
+
+    composeTestRule.setContent {
+      LocationPickerDialogContent(
+          searchResults = results,
+          onDismiss = {},
+          onSearchQueryChange = {},
+          onConfirm = { confirmedLocation = it },
+      )
+    }
+
+    composeTestRule.onNodeWithText("AAC 0 06").assertIsDisplayed().performClick()
+    assertEquals("AAC 0 06", confirmedLocation)
+  }
+
+  @Test
+  fun locationPickerDialogContentReportsTypedTextThroughOnSearchQueryChange() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var reportedQuery = ""
+
+    composeTestRule.setContent {
+      LocationPickerDialogContent(
+          searchResults = emptyList(),
+          onDismiss = {},
+          onSearchQueryChange = { reportedQuery = it },
+          onConfirm = {},
+      )
+    }
+
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_search_placeholder))
+        .performTextInput("AAB")
+
+    assertEquals("AAB", reportedQuery)
+  }
+
+  @Test
+  fun locationPickerDialogContentShowsProperMessageWhenSearchResultsEmpty() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+
+    composeTestRule.setContent {
+      LocationPickerDialogContent(
+          searchResults = emptyList(),
+          onDismiss = {},
+          onSearchQueryChange = {},
+          onConfirm = {},
+      )
+    }
+
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_search_prompt))
+        .assertIsDisplayed()
+
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_search_placeholder))
+        .performTextInput("ZZZ")
+
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_empty_results))
+        .assertIsDisplayed()
+  }
+
+  @Test
+  fun locationPickerDialogShowsTitleAndCancelDismisses() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var dismissed = false
+
+    composeTestRule.setContent {
+      LocationPickerDialog(
+          searchResults = listOf(sampleLocation("AAB 0 26")),
+          onDismiss = { dismissed = true },
+          onSearchQueryChange = {},
+          onConfirm = {},
+      )
+    }
+
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.location_picker_dialog_title))
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithText(context.getString(R.string.cancel)).performClick()
+    assertTrue(dismissed)
+  }
+
+  @Test
+  fun locationPickerDialogContentQuerySurvivesScreenRestoration() {
+    val restorationTester = StateRestorationTester(composeTestRule)
+    val query = "AAB"
+
+    restorationTester.setContent {
+      LocationPickerDialogContent(
+          searchResults = emptyList(),
+          onDismiss = {},
+          onSearchQueryChange = {},
           onConfirm = {},
       )
     }
