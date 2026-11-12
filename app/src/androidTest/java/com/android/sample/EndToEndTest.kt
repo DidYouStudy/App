@@ -41,6 +41,7 @@ import com.android.sample.testing.FakeGoogleCredentialManager
 import com.android.sample.testing.RepositoryOverridesRule
 import com.android.sample.ui.auth.SignInScreenTestTags
 import com.android.sample.ui.calendar.CalendarTestTags
+import com.android.sample.ui.dashboard.DashboardContentTestTags
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as EventTags
 import com.android.sample.ui.groupsession.GroupSessionScreenTestTags
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -430,10 +431,11 @@ class EndToEndTest {
     assertOnDashboard()
     assertTrue("No event stored yet", storedEvents(uid).isEmpty())
 
-    // The calendar's add button opens the event form.
+    // The calendar's add menu opens the event form via "Event".
     composeRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
     assertTopBarTitle(string(R.string.calendar_title))
     composeRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).performClick()
+    composeRule.onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON).performClick()
     waitForTag(EventTags.SCREEN_CONTAINER)
 
     // "Other" needs no subject. Date and start time keep the pickers' defaults (tomorrow, now).

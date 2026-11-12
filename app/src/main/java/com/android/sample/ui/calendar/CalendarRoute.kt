@@ -1,5 +1,6 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.sample.ui.calendar
 
 import androidx.compose.runtime.Composable
@@ -16,12 +17,19 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-/** Collects calendar ViewModel state and passes it with user actions to [CalendarScreen]. */
+/**
+ * Collects calendar ViewModel state and passes it with user actions to [CalendarScreen].
+ *
+ * @param onAddEventClick invoked when the Event menu option is selected.
+ * @param onAddGroupSessionClick invoked when the Group Session menu option is selected; by default
+ *   navigates to [Screen.AddGroupSession] when [navigationActions] is available.
+ */
 @Composable
 fun CalendarRoute(
     navigationActions: NavigationActions? = null,
     viewModel: CalendarViewModel = calendarViewModel(),
-    onAddClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
+    onAddEventClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
+    onAddGroupSessionClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddGroupSession) },
     onEventClick: (String) -> Unit = {},
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -49,7 +57,8 @@ fun CalendarRoute(
       onPreviousWeek = viewModel::previousWeek,
       onNextWeek = viewModel::nextWeek,
       onRetry = viewModel::retryEvents,
-      onAddClick = onAddClick,
+      onAddEventClick = onAddEventClick,
+      onAddGroupSessionClick = onAddGroupSessionClick,
       onEventClick = onEventClick,
   )
 }
