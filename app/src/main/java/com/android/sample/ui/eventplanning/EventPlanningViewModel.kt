@@ -490,7 +490,8 @@ class EventPlanningViewModel(
       return
     }
 
-    val details = validateAndBuildDetails(editingEvent?.details?.takeIf { isEditing }, isEditing) ?: return
+    val details =
+        validateAndBuildDetails(editingEvent?.details?.takeIf { isEditing }, isEditing) ?: return
     val now = clock.instant()
     val defaultError =
         if (isEditing) EventPlanningError.FAILED_TO_EDIT_EVENT
