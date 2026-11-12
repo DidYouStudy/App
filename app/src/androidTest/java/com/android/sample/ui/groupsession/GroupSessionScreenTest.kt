@@ -27,6 +27,11 @@ import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.model.location.CampusLocation
+import com.android.sample.model.location.CampusLocationFilter
+import com.android.sample.model.location.CampusLocationRepository
+import com.android.sample.model.location.CampusLocationType
+import com.android.sample.model.location.Location
 import com.android.sample.model.location.LocationProvider
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.UserProfile
@@ -73,6 +78,7 @@ class GroupSessionScreenTest {
                           EventDetails(
                               type = EventType.STUDY_SESSION,
                               subject = "Software Architecture",
+                              location = "BC 01",
                               startsAt = testInstant.plus(Duration.ofHours(1)),
                               endsAt = testInstant.plus(Duration.ofHours(2)),
                           ),
@@ -560,17 +566,163 @@ class GroupSessionScreenTest {
     composeTestRule.onNodeWithText("In 5 min").assertIsDisplayed()
   }
 
+  @Test
+  fun view_switcher_pill_is_displayed_with_list_and_map_options() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.VIEW_SWITCHER_PILL).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.LIST_VIEW_BUTTON).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.MAP_VIEW_BUTTON).assertIsDisplayed()
+  }
+
+  @Test
+  fun toggling_view_mode_switches_between_list_and_map() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
+
+    // Initially in list view mode
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.MAP_CONTENT).assertDoesNotExist()
+
+    // Switch to map view mode
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.MAP_VIEW_BUTTON).performClick()
+
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.MAP_CONTENT).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SEARCH).assertIsDisplayed()
+
+    // Switch back to list view mode
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.LIST_VIEW_BUTTON).performClick()
+
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.MAP_CONTENT).assertDoesNotExist()
+  }
+
+  @Test
+  fun location_badge_renders_room_name_only_when_distance_is_missing() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(hasTestTag(GroupSessionScreenTestTags.sessionItem(0)))
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.sessionItem(0))
+        .assert(hasAnyDescendant(hasText("BC 01")))
+  }
+
+  @Test
+  fun location_badge_renders_distance_when_coordinates_and_user_location_exist() {
+    val campusLocation =
+        CampusLocation(
+            name = "BC 01",
+            zone = "BC",
+            type = CampusLocationType.LECTURE_ROOM,
+            floor = 0,
+            location = Location(46.519, 6.565),
+        )
+    val locationProvider = LocationProvider { flowOf(Location(46.519, 6.565)) }
+    val campusLocationRepo = FakeCampusLocationRepository(listOf(campusLocation))
+    val viewModel =
+        createViewModel(
+            locationProvider = locationProvider,
+            campusLocationRepository = campusLocationRepo,
+        )
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) {
+      viewModel.uiState.value.sessions.firstOrNull()?.proximity?.formattedDistance != null
+    }
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(hasTestTag(GroupSessionScreenTestTags.sessionItem(0)))
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.sessionItem(0))
+        .assert(hasAnyDescendant(hasText("BC 01 • 0m")))
+  }
+
+  @Test
+  fun card_location_pill_click_switches_to_map_mode_and_selects_session() {
+    val campusLocation =
+        CampusLocation(
+            name = "BC 01",
+            zone = "BC",
+            type = CampusLocationType.LECTURE_ROOM,
+            floor = 0,
+            location = Location(46.519, 6.565),
+        )
+    val campusLocationRepo = FakeCampusLocationRepository(listOf(campusLocation))
+    val viewModel = createViewModel(campusLocationRepository = campusLocationRepo)
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.rooms.isNotEmpty() }
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(hasTestTag(GroupSessionScreenTestTags.sessionItem(0)))
+    composeTestRule.onNodeWithText("BC 01").performClick()
+
+    // Switches to map mode
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.MAP_CONTENT).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST).assertDoesNotExist()
+    // Session sheet for BC 01 is opened on the map
+    composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Software Architecture").assertIsDisplayed()
+  }
+
+  @Test
+  fun initial_view_mode_map_renders_map_directly() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      GroupSessionScreen(
+          viewModel = viewModel,
+          initialViewMode = GroupSessionViewMode.MAP,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.MAP_CONTENT).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST).assertDoesNotExist()
+  }
+
   private fun createViewModel(
       repository: GroupSessionsRepository = repo,
       clock: Clock = Clock.systemUTC(),
+      locationProvider: LocationProvider = LocationProvider { flowOf(null) },
+      campusLocationRepository: CampusLocationRepository? = null,
   ): GroupSessionsViewModel =
       GroupSessionsViewModel(
           authRepository = authRepository,
           repository = repository,
           profileRepository = profileRepository,
           clock = clock,
-          locationProvider = LocationProvider { flowOf(null) },
+          locationProvider = locationProvider,
+          campusLocationRepository = campusLocationRepository,
       )
+
+  private class FakeCampusLocationRepository(
+      private val locations: Result<List<CampusLocation>>,
+  ) : CampusLocationRepository {
+    constructor(locations: List<CampusLocation>) : this(Result.success(locations))
+
+    override suspend fun getAllLocations(): Result<List<CampusLocation>> = locations
+
+    override suspend fun search(filter: CampusLocationFilter): Result<List<CampusLocation>> =
+        locations.map { entries ->
+          entries.filter { location ->
+            (filter.query.isNullOrBlank() ||
+                location.name.contains(filter.query.trim(), ignoreCase = true)) &&
+                (filter.zone.isNullOrBlank() ||
+                    location.zone.equals(filter.zone.trim(), ignoreCase = true)) &&
+                (filter.types.isEmpty() || location.type in filter.types)
+          }
+        }
+
+    override suspend fun getZones(): Result<List<String>> = locations.map { entries ->
+      entries.map { it.zone }.distinct().sorted()
+    }
+  }
 
   private class FakeAuthRepository(private val currentUserId: String) : AuthRepository {
     override val currentUser = MutableStateFlow(UserAccount(currentUserId, null, "Alice", null))
