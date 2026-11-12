@@ -716,7 +716,7 @@ private class FakeOnboardingStore(
 ) : OnboardingStore {
   private val state = initialState.toMutableMap()
 
-  override fun hasCompletedOnboarding(userId: String): Boolean = state[userId] ?: false
+  override fun hasCompletedOnboarding(userId: String): Boolean? = state[userId]
 
   override fun setCompletedOnboarding(userId: String, completed: Boolean) {
     state[userId] = completed

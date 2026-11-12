@@ -7,6 +7,7 @@ import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.preferences.OnboardingStore
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.UserPreferences
+import com.android.sample.resolveStartDestination
 import com.android.sample.ui.auth.TestAuthRepository
 import com.android.sample.ui.navigation.Screen
 import kotlinx.coroutines.Dispatchers
@@ -19,8 +20,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.mockito.Mockito.mock
@@ -36,7 +36,7 @@ class AppViewModelTest {
   class FakeOnboardingStore : OnboardingStore {
     val completed = mutableMapOf<String, Boolean>()
 
-    override fun hasCompletedOnboarding(userId: String): Boolean = completed[userId] ?: false
+    override fun hasCompletedOnboarding(userId: String): Boolean? = completed[userId]
 
     override fun setCompletedOnboarding(userId: String, completed: Boolean) {
       this.completed[userId] = completed
@@ -84,6 +84,50 @@ class AppViewModelTest {
   }
 
   @Test
+  fun startDestinationIsNullWhenAuthenticatedWithMissingOnboardingFlag() {
+    val user = UserAccount("user-1", null, null, null)
+    authRepository.currentUser.value = user
+    val viewModel = AppViewModel(authRepository, preferencesRepository, onboardingStore)
+
+    assertNull(viewModel.startDestination)
+  }
+
+  @Test
+  fun resolveStartDestination_preservesNonNullStartDestination() {
+    assertEquals(Screen.Auth, resolveStartDestination(Screen.Auth, AppUiState.Dashboard))
+    assertEquals(
+        Screen.Dashboard,
+        resolveStartDestination(Screen.Dashboard, AppUiState.FirstTimeSignIn),
+    )
+    assertEquals(
+        Screen.Preferences,
+        resolveStartDestination(Screen.Preferences, AppUiState.Dashboard),
+    )
+  }
+
+  @Test
+  fun resolveStartDestination_resolvesToDashboardWhenAppStateIsDashboard() {
+    assertEquals(Screen.Dashboard, resolveStartDestination(null, AppUiState.Dashboard))
+  }
+
+  @Test
+  fun resolveStartDestination_resolvesToPreferencesWhenAppStateIsFirstTimeSignIn() {
+    assertEquals(Screen.Preferences, resolveStartDestination(null, AppUiState.FirstTimeSignIn))
+  }
+
+  @Test
+  fun resolveStartDestination_resolvesToPreferencesWhenAppStateIsError() {
+    assertEquals(Screen.Preferences, resolveStartDestination(null, AppUiState.Error("offline")))
+  }
+
+  @Test
+  fun resolveStartDestination_returnsNullWhenAppStateIsLoadingOrPending() {
+    assertNull(resolveStartDestination(null, AppUiState.Loading))
+    assertNull(resolveStartDestination(null, AppUiState.SignIn))
+    assertNull(resolveStartDestination(null, AppUiState.LogOut))
+  }
+
+  @Test
   fun loadDestinationUpdatesOnboardingStoreWhenPreferencesExist() = runTest {
     val user = UserAccount("user-1", null, null, null)
     val prefs = UserPreferences(userId = user.uid)
@@ -93,7 +137,7 @@ class AppViewModelTest {
     authRepository.currentUser.value = user
     testScheduler.advanceUntilIdle()
 
-    assertTrue(onboardingStore.hasCompletedOnboarding(user.uid))
+    assertEquals(true, onboardingStore.hasCompletedOnboarding(user.uid))
     assertEquals(AppUiState.Dashboard, viewModel.uiState.value)
   }
 
@@ -107,7 +151,7 @@ class AppViewModelTest {
     authRepository.currentUser.value = user
     testScheduler.advanceUntilIdle()
 
-    assertFalse(onboardingStore.hasCompletedOnboarding(user.uid))
+    assertEquals(false, onboardingStore.hasCompletedOnboarding(user.uid))
     assertEquals(AppUiState.FirstTimeSignIn, viewModel.uiState.value)
   }
 

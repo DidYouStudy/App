@@ -57,15 +57,20 @@ class AppViewModel(
    * Initial start destination for NavHost.
    *
    * Authenticated users who have completed onboarding start on [Screen.Dashboard]. Authenticated
-   * users who have not completed onboarding start directly on [Screen.Preferences]. Unauthenticated
-   * users start on [Screen.Auth].
+   * users who have explicitly not completed onboarding start directly on [Screen.Preferences].
+   * Unauthenticated users start on [Screen.Auth]. When authenticated but the onboarding completion
+   * status is unknown (missing local flag), returns null so UI can display a loading state until
+   * preferences are fetched.
    */
-  val startDestination: Screen =
+  val startDestination: Screen? =
       when {
         !authRepository.isAuthenticated -> Screen.Auth
-        authRepository.currentUserId?.let { onboardingStore.hasCompletedOnboarding(it) } == true ->
-            Screen.Dashboard
-        else -> Screen.Preferences
+        else ->
+            when (authRepository.currentUserId?.let(onboardingStore::hasCompletedOnboarding)) {
+              true -> Screen.Dashboard
+              false -> Screen.Preferences
+              null -> null
+            }
       }
 
   init {

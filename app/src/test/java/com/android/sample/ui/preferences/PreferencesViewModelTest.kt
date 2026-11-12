@@ -143,7 +143,7 @@ class PreferencesViewModelTest {
         object : com.android.sample.model.preferences.OnboardingStore {
           var completed = false
 
-          override fun hasCompletedOnboarding(userId: String) = completed
+          override fun hasCompletedOnboarding(userId: String): Boolean = completed
 
           override fun setCompletedOnboarding(userId: String, completed: Boolean) {
             this.completed = completed
@@ -153,7 +153,7 @@ class PreferencesViewModelTest {
 
     viewModel.updatePreferences(updatedPrefs)
 
-    assertTrue(fakeStore.hasCompletedOnboarding(userId))
+    assertEquals(true, fakeStore.hasCompletedOnboarding(userId))
   }
 
   @Test

@@ -10,14 +10,18 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -37,6 +41,7 @@ import com.android.sample.ui.eventplanning.EditEventScreen
 import com.android.sample.ui.eventplanning.EventKind
 import com.android.sample.ui.groupsession.GroupSessionScreen
 import com.android.sample.ui.navigation.NavigationActions
+import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.preferences.PreferencesScreen
 import com.android.sample.ui.preferences.rememberScheduleImportLauncher
@@ -61,13 +66,42 @@ class MainActivity : ComponentActivity() {
   }
 }
 
+/**
+ * Resolves the initial start destination for the application NavHost.
+ *
+ * If the synchronous [startDestination] is already known, it is returned immediately. Otherwise,
+ * the destination is resolved from the asynchronous [appState] once determined.
+ */
+internal fun resolveStartDestination(startDestination: Screen?, appState: AppUiState): Screen? =
+    startDestination
+        ?: when (appState) {
+          AppUiState.Dashboard -> Screen.Dashboard
+          AppUiState.FirstTimeSignIn,
+          is AppUiState.Error -> Screen.Preferences
+          else -> null
+        }
+
 @Composable
 fun DidYouStudyApp(
     applicationViewModel: AppViewModel = appViewModel(),
 ) {
+  val appState by applicationViewModel.uiState.collectAsStateWithLifecycle()
+
+  val start = resolveStartDestination(applicationViewModel.startDestination, appState)
+  if (start == null) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+      CircularProgressIndicator(
+          modifier = Modifier.testTag(NavigationTestTags.LOADING_INDICATOR),
+      )
+    }
+    return
+  }
+
   val navController = rememberNavController()
   val navigationActions = NavigationActions(navController)
-  val appState by applicationViewModel.uiState.collectAsStateWithLifecycle()
 
   LaunchedEffect(appState) {
     if (appState == AppUiState.LogOut && navigationActions.currentRoute() != Screen.Auth.route) {
@@ -77,7 +111,7 @@ fun DidYouStudyApp(
 
   NavHost(
       navController = navController,
-      startDestination = applicationViewModel.startDestination.name,
+      startDestination = start.name,
   ) {
     navigation(
         startDestination = Screen.Auth.route,
@@ -107,15 +141,6 @@ fun DidYouStudyApp(
         // A returning user opened this from Settings: edit mode with back navigation.
         // Onboarding has no previous back stack entry. Fixed for the lifetime of this entry.
         val isEditing = remember { navController.previousBackStackEntry != null }
-        LaunchedEffect(appState) {
-          if (appState == AppUiState.Dashboard && !isEditing) {
-            navigationActions.navigateToAndClear(
-                Screen.Dashboard,
-                Screen.Preferences,
-                clearAll = true,
-            )
-          }
-        }
         PreferencesScreen(
             onImportClick = rememberScheduleImportLauncher(),
             onAddLocationClick = {},

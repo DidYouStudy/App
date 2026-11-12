@@ -1,3 +1,4 @@
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.navigation
 
 object NavigationTestTags {
@@ -9,6 +10,7 @@ object NavigationTestTags {
   const val PREFERENCES_TAB = "PreferencesTab"
   const val CALENDAR_TAB = "CalendarTab"
   const val GROUP_SESSION_TAB = "GroupSessionTab"
+  const val LOADING_INDICATOR = "LoadingIndicator"
 
   fun getTabTestTag(tab: Tab): String =
       when (tab) {

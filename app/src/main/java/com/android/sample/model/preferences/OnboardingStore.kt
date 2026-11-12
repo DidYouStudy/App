@@ -13,11 +13,12 @@ import androidx.core.content.edit
  */
 interface OnboardingStore {
   /**
-   * Returns true if the user with [userId] has completed the onboarding flow.
+   * Returns true if the user with [userId] has completed the onboarding flow, false if explicitly
+   * not completed, or null if the onboarding completion status is unknown (missing local flag).
    *
    * @param userId The ID of the user to check.
    */
-  fun hasCompletedOnboarding(userId: String): Boolean
+  fun hasCompletedOnboarding(userId: String): Boolean?
 
   /**
    * Records whether the user with [userId] has completed the onboarding flow.
@@ -35,8 +36,13 @@ class SharedPreferencesOnboardingStore(
 ) : OnboardingStore {
   private val sharedPreferences = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
 
-  override fun hasCompletedOnboarding(userId: String): Boolean {
-    return userId.isNotBlank() && sharedPreferences.getBoolean(key(userId), false)
+  override fun hasCompletedOnboarding(userId: String): Boolean? {
+    if (userId.isBlank()) return null
+    return if (sharedPreferences.contains(key(userId))) {
+      sharedPreferences.getBoolean(key(userId), false)
+    } else {
+      null
+    }
   }
 
   override fun setCompletedOnboarding(userId: String, completed: Boolean) {
@@ -62,13 +68,12 @@ object OnboardingStoreProvider {
   fun getStore(): OnboardingStore =
       instance
           ?: object : OnboardingStore {
-            private val completedUsers = mutableSetOf<String>()
+            private val completedUsers = mutableMapOf<String, Boolean>()
 
-            override fun hasCompletedOnboarding(userId: String): Boolean =
-                completedUsers.contains(userId)
+            override fun hasCompletedOnboarding(userId: String): Boolean? = completedUsers[userId]
 
             override fun setCompletedOnboarding(userId: String, completed: Boolean) {
-              if (completed) completedUsers.add(userId) else completedUsers.remove(userId)
+              completedUsers[userId] = completed
             }
           }
 
