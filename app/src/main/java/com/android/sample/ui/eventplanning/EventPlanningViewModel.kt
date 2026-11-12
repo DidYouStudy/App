@@ -446,12 +446,11 @@ class EventPlanningViewModel(
       fail(EventPlanningError.REQUIRED_FIELDS_MISSING)
       return null
     }
-    if (startTime == endTime) {
+    val (startsAt, endsAt) = calculateStartAndEndInstants(date, startTime, endTime, clock, original)
+    if (startsAt == endsAt) {
       fail(EventPlanningError.INVALID_TIME_RANGE)
       return null
     }
-
-    val (startsAt, endsAt) = calculateStartAndEndInstants(date, startTime, endTime, clock, original)
     if (!isEditing && startsAt.isBefore(clock.instant())) {
       fail(EventPlanningError.EVENT_IN_PAST)
       return null
