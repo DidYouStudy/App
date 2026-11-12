@@ -154,6 +154,25 @@
     <string name="group_session_search_icon_description">Search</string>
     <string name="group_session_filter_icon_description">Filter sessions</string>
     <string name="group_session_search_placeholder">Search group sessions</string>
+    <string name="group_session_filter_title">Filter sessions</string>
+    <string name="group_session_filter_reset_all">Reset all</string>
+    <string name="group_session_filter_distance_title">DISTANCE FROM ME</string>
+    <string name="group_session_filter_zone_title">ZONE</string>
+    <string name="group_session_filter_room_type_title">ROOM TYPE</string>
+    <string name="group_session_filter_any">Any</string>
+    <string name="group_session_filter_radius_250">&lt; 250m</string>
+    <string name="group_session_filter_radius_500">&lt; 500m</string>
+    <string name="group_session_filter_radius_1000">&lt; 1km</string>
+    <string name="group_session_filter_zone_co">CO</string>
+    <string name="group_session_filter_zone_cm">CM</string>
+    <string name="group_session_filter_zone_bc">BC</string>
+    <string name="group_session_filter_view_more">View more…</string>
+    <string name="group_session_filter_show_labs">Show “Lab” room type</string>
+    <string name="group_session_filter_permission_rationale">Allow location access to filter by distance</string>
+    <plurals name="group_session_filter_show_sessions">
+        <item quantity="one">Show %d session</item>
+        <item quantity="other">Show %d sessions</item>
+    </plurals>
     <string name="group_session_filter_all">All sessions</string>
     <string name="group_session_filter_my">My sessions</string>
     <string name="group_session_active_sessions_title">Active sessions</string>
