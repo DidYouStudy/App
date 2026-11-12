@@ -25,8 +25,8 @@ import java.time.LocalTime
  * built-in pickers. Leaving the screen discards the current form state.
  *
  * @param eventId ID of the event to load for editing.
- * @param eventKind Category of event to edit (defaults to [EventKind.PERSONAL]).
  * @param modifier Modifier applied to the screen.
+ * @param eventKind Category of event to edit (defaults to [EventKind.PERSONAL]).
  * @param viewModel ViewModel backing the event editing workflow; defaults to the screen's
  *   repository-backed ViewModel.
  * @param onBackClick Invoked by the top-bar back button or system back action; unsaved edits are
@@ -48,8 +48,8 @@ import java.time.LocalTime
 @Composable
 fun EditEventScreen(
     eventId: String,
-    eventKind: EventKind = EventKind.PERSONAL,
     modifier: Modifier = Modifier,
+    eventKind: EventKind = EventKind.PERSONAL,
     viewModel: EventPlanningViewModel = eventsPlanningViewModel(),
     onBackClick: () -> Unit,
     onEventSaved: () -> Unit,
