@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Copilot
 package com.android.sample.ui.eventplanning
 
 import com.android.sample.model.event.EventTask
@@ -83,6 +84,14 @@ class EventDetailsScreenHelperTest {
 
     assertNull(display.title)
     assertNull(display.location)
+    assertNull(display.description)
+  }
+
+  @Test
+  fun whitespaceOnlyDescriptionIsDisplayedAsMissing() {
+    val display =
+        samplePersonalEvent(description = " \t\n").toDisplay(zone = berlin, locale = Locale.US)
+
     assertNull(display.description)
   }
 

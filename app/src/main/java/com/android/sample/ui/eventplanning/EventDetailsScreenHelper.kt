@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Copilot
 
 package com.android.sample.ui.eventplanning
 
@@ -43,12 +44,12 @@ internal fun PersonalEvent.toDisplay(
   val timeFormatter = DateTimeFormatter.ofPattern(EVENT_TIME_PATTERN, locale).withZone(zone)
   return EventDetailsDisplay(
       type = details.type,
-      title = details.subject,
+      title = details.subject?.takeIf { it.isNotBlank() },
       dateLabel = dateFormatter.format(details.startsAt),
       startTimeLabel = timeFormatter.format(details.startsAt),
       endTimeLabel = timeFormatter.format(details.endsAt),
-      location = details.location,
-      description = details.description,
+      location = details.location?.takeIf { it.isNotBlank() },
+      description = details.description?.takeIf { it.isNotBlank() },
       tasks = tasks.map { EventTaskDisplay(it.text, it.isCompleted) },
   )
 }
