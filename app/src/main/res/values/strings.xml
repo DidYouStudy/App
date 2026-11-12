@@ -152,6 +152,7 @@
     <string name="group_session_filter_all">All sessions</string>
     <string name="group_session_filter_my">My sessions</string>
     <string name="group_session_active_sessions_title">Active sessions</string>
+    <string name="group_session_host_unknown">Unknown host</string>
     <string name="group_session_loading">Loading sessions&#8230;</string>
     <string name="group_session_empty">No active sessions</string>
     <string name="group_session_subject_fallback">Other</string>

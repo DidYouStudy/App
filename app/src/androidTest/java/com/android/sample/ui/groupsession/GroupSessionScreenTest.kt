@@ -25,6 +25,8 @@ import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.model.profile.ProfileRepository
+import com.android.sample.model.profile.UserProfile
 import com.android.sample.ui.navigation.NavigationTestTags
 import java.time.Clock
 import java.time.Duration
@@ -114,6 +116,8 @@ class GroupSessionScreenTest {
       )
 
   private val authRepository = FakeAuthRepository("user-1")
+  private val profileRepository =
+      FakeProfileRepository(mapOf("user-3" to UserProfile(uid = "user-3", username = "Bob")))
 
   @Before
   fun resetRepo() {
@@ -123,7 +127,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun screen_renders_title_and_filters_joined_sessions() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -150,9 +154,38 @@ class GroupSessionScreenTest {
     composeTestRule.onNodeWithText("Capstone planning").assertDoesNotExist()
   }
 
+  /** Cards show host names or a safe fallback, never another user's raw ID. */
+  @Test
+  fun cards_show_names_fallbacks_and_keep_the_own_host_label() {
+    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
+    composeTestRule.waitForIdle()
+
+    val list = composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+    list.performScrollToNode(hasTestTag(GroupSessionScreenTestTags.sessionItem(0)))
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.sessionItem(0))
+        .assert(hasAnyDescendant(hasText(context.getString(R.string.group_session_host_self))))
+
+    list.performScrollToNode(hasTestTag(GroupSessionScreenTestTags.sessionItem(1)))
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.sessionItem(1))
+        .assert(
+            hasAnyDescendant(hasText(context.getString(R.string.group_session_hosted_by, "Bob")))
+        )
+        .assert(!hasAnyDescendant(hasText("user-3", substring = true)))
+
+    list.performScrollToNode(hasTestTag(GroupSessionScreenTestTags.sessionItem(3)))
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.sessionItem(3))
+        .assert(hasAnyDescendant(hasText(context.getString(R.string.group_session_host_unknown))))
+        .assert(!hasAnyDescendant(hasText("user-4", substring = true)))
+  }
+
   @Test
   fun add_group_session_button_is_displayed() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ADD_BUTTON).assertIsDisplayed()
@@ -160,7 +193,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun host_sees_edit_action_without_join_or_leave_actions() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -177,7 +210,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun joined_filter_keeps_hosted_and_joined_sessions_only() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -198,7 +231,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun nullable_session_fields_use_readable_fallbacks() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -224,7 +257,7 @@ class GroupSessionScreenTest {
   @Test
   fun empty_repository_shows_empty_state() {
     val emptyRepository = FakeGroupSessionsRepository(emptyList())
-    val viewModel = GroupSessionsViewModel(authRepository, emptyRepository)
+    val viewModel = GroupSessionsViewModel(authRepository, emptyRepository, profileRepository)
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
 
     composeTestRule
@@ -258,7 +291,7 @@ class GroupSessionScreenTest {
           override suspend fun leaveSession(userId: String, sessionId: String): Result<Unit> =
               Result.failure(RuntimeException())
         }
-    val viewModel = GroupSessionsViewModel(authRepository, neverEndingRepo)
+    val viewModel = GroupSessionsViewModel(authRepository, neverEndingRepo, profileRepository)
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.LOADING).assertIsDisplayed()
@@ -269,7 +302,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun search_and_join_leave_actions_work() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -304,7 +337,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun failed_join_shows_dismissible_error_message() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -331,7 +364,7 @@ class GroupSessionScreenTest {
 
   @Test
   fun failed_leave_shows_dismissible_error_message() {
-    val viewModel = GroupSessionsViewModel(authRepository, repo)
+    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository)
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
@@ -378,7 +411,7 @@ class GroupSessionScreenTest {
           override suspend fun leaveSession(userId: String, sessionId: String): Result<Unit> =
               Result.failure(RuntimeException())
         }
-    val viewModel = GroupSessionsViewModel(authRepository, failingRepo)
+    val viewModel = GroupSessionsViewModel(authRepository, failingRepo, profileRepository)
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
 
     val loadErrorText = context.getString(R.string.group_session_error_load)
@@ -423,7 +456,7 @@ class GroupSessionScreenTest {
   @Test
   fun card_status_uses_the_time_from_the_viewmodel() {
     val clock = Clock.fixed(testInstant.plus(Duration.ofMinutes(55)), ZoneOffset.UTC)
-    val viewModel = GroupSessionsViewModel(authRepository, repo, clock)
+    val viewModel = GroupSessionsViewModel(authRepository, repo, profileRepository, clock)
 
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
 
@@ -437,6 +470,15 @@ class GroupSessionScreenTest {
         UserAccount(currentUserId, null, "Alice", null)
 
     override suspend fun signOut() = Unit
+  }
+
+  private class FakeProfileRepository(private val profiles: Map<String, UserProfile>) :
+      ProfileRepository {
+    override suspend fun getProfile(userId: String): Result<UserProfile?> =
+        Result.success(profiles[userId])
+
+    override suspend fun createProfile(userId: String): Result<UserProfile> =
+        Result.success(UserProfile(uid = userId))
   }
 
   private class FakeGroupSessionsRepository(
