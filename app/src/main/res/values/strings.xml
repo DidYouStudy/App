@@ -147,6 +147,7 @@
     <string name="group_session_error_dismiss">Dismiss</string>
     <string name="group_session_add_description">Add group session</string>
     <string name="group_session_error_load">Could not load sessions. Please try again.</string>
+    <string name="group_session_error_location_load">Could not load locations. Please try again.</string>
     <string name="group_session_error_join">Could not join session. Please try again.</string>
     <string name="group_session_error_leave">Could not leave session. Please try again.</string>
     <string name="group_session_search_icon_description">Search</string>
