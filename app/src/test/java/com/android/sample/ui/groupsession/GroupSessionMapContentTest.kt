@@ -2,6 +2,8 @@
 package com.android.sample.ui.groupsession
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
@@ -27,7 +29,8 @@ import org.junit.runner.RunWith
 /**
  * Tests of [GroupSessionMapContent]'s selection and cards, with the real Google map replaced by its
  * stand-in. The stand-in has no pins, so a room is selected through `initialSelectedRoom`; tapping
- * the pins themselves is tested in the instrumented `GroupSessionMapContentRealMapTest`.
+ * the pins themselves is tested in the instrumented `GroupSessionMapContentRealMapTest`. It also
+ * covers [dropletPath], the shape of those pins, which needs no map.
  */
 @RunWith(AndroidJUnit4::class)
 class GroupSessionMapContentTest {
@@ -165,8 +168,41 @@ class GroupSessionMapContentTest {
     assertEquals("s3", joined)
   }
 
+  /** The bounds of the [dropletPath] of [size], with the turns in degrees. */
+  private fun dropletBounds(size: Size): Rect = dropletPath(size, 90f, 360f).getBounds()
+
+  private fun assertBounds(expected: Rect, actual: Rect, tolerance: Float) {
+    assertEquals(expected.left, actual.left, tolerance)
+    assertEquals(expected.top, actual.top, tolerance)
+    assertEquals(expected.right, actual.right, tolerance)
+    assertEquals(expected.bottom, actual.bottom, tolerance)
+  }
+
+  @Test
+  fun dropletPath_ofTheMarkerSize_fillsItsWholeSize() {
+    // The size of the pin on the map: 32 x 40, taller than it is wide.
+    val bounds = dropletBounds(Size(32f, 40f))
+
+    // The tip is the lowest point, so the shape ends exactly on the bottom edge.
+    assertEquals(40f, bounds.bottom, DROPLET_EXACT)
+    // Robolectric bounds an arc loosely (by about 1.7 here), so the other edges only need to be
+    // near the size: a NaN or a collapsed shape would still be far off.
+    assertBounds(Rect(0f, 0f, 32f, 40f), bounds, DROPLET_ARC_TOLERANCE)
+  }
+
+  @Test
+  fun dropletPath_ofAShapeNotTallerThanWide_isJustTheCircle() {
+    // Equal height and width, a height under the width, a height of half the width (a tip distance
+    // of 0, which divides by 0 without the guard), and an empty size: none has room for a tip.
+    listOf(Size(32f, 32f), Size(32f, 20f), Size(32f, 16f), Size.Zero).forEach { size ->
+      assertBounds(Rect(0f, 0f, size.width, size.width), dropletBounds(size), DROPLET_EXACT)
+    }
+  }
+
   private companion object {
     const val MAP_TITLE = "Map (shown on a device only)"
     const val JOIN_LABEL = "Join"
+    const val DROPLET_EXACT = 0.01f
+    const val DROPLET_ARC_TOLERANCE = 3f
   }
 }

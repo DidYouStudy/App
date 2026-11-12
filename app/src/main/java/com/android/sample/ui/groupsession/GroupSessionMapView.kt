@@ -164,6 +164,9 @@ private fun MarkerPin() {
   val color = MaterialTheme.colorScheme.primary
   Canvas(modifier = Modifier.size(width, height)) {
     drawPath(dropletPath(size, quarterTurn, fullTurn), color)
+    // The dot sits at the centre of the droplet's circle, which [dropletPath] draws as wide as the
+    // shape, at the top: its centre is half a width from the left and from the top. If the circle
+    // in [dropletPath] changes, move this dot with it.
     drawCircle(
         Color.White,
         radius = dotDiameter.toPx() / 2,
@@ -174,17 +177,22 @@ private fun MarkerPin() {
 
 /**
  * Outline of a droplet that fits [size]: a circle as wide as the shape, with two straight sides
- * running down, tangent to the circle, to a tip at the bottom centre.
+ * running down, tangent to the circle, to a tip at the bottom centre. A shape that is not taller
+ * than it is wide has no room for a tip, so it is drawn as just the circle.
  *
  * @param quarterTurn A quarter turn, in degrees.
  * @param fullTurn A full turn, in degrees.
  */
 internal fun dropletPath(size: Size, quarterTurn: Float, fullTurn: Float): Path {
+  val circle = Rect(Offset.Zero, Size(size.width, size.width))
+  // A tangent from the tip to the circle only exists when the tip is outside it, that is when the
+  // shape is taller than it is wide. Otherwise there is no tip: draw the circle. This also keeps
+  // the `acos` below from getting an argument over 1, or from a division by 0.
+  if (size.height <= size.width) return Path().apply { addOval(circle) }
   val radius = size.width / 2
   val tipDistance = size.height - radius
   // Angle, at the circle's centre, between the downward direction and each tangent point.
   val tangentAngle = Math.toDegrees(acos(radius / tipDistance).toDouble()).toFloat()
-  val circle = Rect(Offset.Zero, Size(size.width, size.width))
   return Path().apply {
     moveTo(radius, size.height)
     // Angles are clockwise from 3 o'clock; start at the left tangent point, go over the top.
