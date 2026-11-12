@@ -574,7 +574,9 @@ class AuthenticatedWithoutPreferencesNavigationTests {
   @Test
   fun activityStartsOnPreferencesForUserWithoutPreferences() {
     composeTestRule.onNodeWithTag(PreferencesScreenTestTags.PREFERENCE_SCREEN).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(PreferencesScreenTestTags.PREFERENCE_TITLE).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).assertDoesNotExist()
   }
 }
 
