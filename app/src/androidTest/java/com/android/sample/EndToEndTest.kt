@@ -98,10 +98,14 @@ class EndToEndTest {
     db.terminate().await()
     db.clearPersistence().await()
     app.delete()
-    clearEmulator("http://$HOST:$AUTH_PORT/emulator/v1/projects/$PROJECT_ID/accounts")
-    clearEmulator(
-        "http://$HOST:$FIRESTORE_PORT/emulator/v1/projects/$PROJECT_ID/databases/(default)/documents"
-    )
+    try {
+      clearEmulator("http://$HOST:$AUTH_PORT/emulator/v1/projects/$PROJECT_ID/accounts")
+    } finally {
+      // Still wipe Firestore if the Auth cleanup failed; the first failure is still reported.
+      clearEmulator(
+          "http://$HOST:$FIRESTORE_PORT/emulator/v1/projects/$PROJECT_ID/databases/(default)/documents"
+      )
+    }
   }
 
   /** Waits until a node with [tag] exists; on timeout logs the UI tree (tag `E2EDUMP`). */
@@ -322,12 +326,20 @@ class EndToEndTest {
     assertEquals(true, composeRule.activity.isFinishing)
   }
 
-  /** Sends an HTTP DELETE to an emulator REST endpoint that wipes its state. */
+  /**
+   * Sends an HTTP DELETE to an emulator REST endpoint that wipes its state.
+   *
+   * Fails with an [IllegalStateException] naming the URL and status when the emulator does not
+   * answer with a 2xx, so a failed cleanup cannot leak state into later tests.
+   */
   private fun clearEmulator(url: String) {
-    (URL(url).openConnection() as HttpURLConnection).run {
-      requestMethod = "DELETE"
-      responseCode // Forces the request to run.
-      disconnect()
+    val connection = URL(url).openConnection() as HttpURLConnection
+    try {
+      connection.requestMethod = "DELETE"
+      val status = connection.responseCode
+      check(status in 200..299) { "Emulator cleanup failed: DELETE $url returned HTTP $status" }
+    } finally {
+      connection.disconnect()
     }
   }
 
