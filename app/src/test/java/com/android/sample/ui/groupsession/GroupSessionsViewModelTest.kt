@@ -15,6 +15,7 @@ import com.android.sample.model.location.CampusLocation
 import com.android.sample.model.location.CampusLocationFilter
 import com.android.sample.model.location.CampusLocationRepository
 import com.android.sample.model.location.CampusLocationType
+import com.android.sample.model.location.FakeLocationProvider
 import com.android.sample.model.location.Location
 import com.android.sample.model.location.LocationProvider
 import com.android.sample.model.profile.ProfileRepository
@@ -373,13 +374,12 @@ class GroupSessionsViewModelTest {
     viewModel.onRadiusFilterSelected(600)
     viewModel.onZoneFilterSelected(" cm ")
 
-    assertEquals("cm", viewModel.uiState.value.selectedZone)
     assertEquals(setOf("cm"), viewModel.uiState.value.selectedZones)
     assertEquals(listOf("cm"), visibleIds(viewModel))
 
     viewModel.onZoneFilterSelected(null)
 
-    assertNull(viewModel.uiState.value.selectedZone)
+    assertTrue(viewModel.uiState.value.selectedZones.isEmpty())
     assertEquals(listOf("cm", "bc"), visibleIds(viewModel))
   }
 
@@ -758,7 +758,13 @@ class GroupSessionsViewModelTest {
         )
     repository.saveSession(ALICE, expiring)
     val viewModel =
-        GroupSessionsViewModel(authRepository, repository, profileRepository, mutableClock)
+        GroupSessionsViewModel(
+            authRepository,
+            repository,
+            profileRepository,
+            mutableClock,
+            locationProvider = FakeLocationProvider(),
+        )
 
     assertEquals(listOf("expiring"), visibleIds(viewModel))
     mutableClock.currentInstant = expiring.details.endsAt
@@ -780,6 +786,7 @@ class GroupSessionsViewModelTest {
             FlowGroupSessionsRepository(flowOf(Result.success(emptyList()))),
             profileRepository,
             clock,
+            locationProvider = FakeLocationProvider(),
         )
     clock.currentInstant = Instant.parse("2025-03-01T12:00:25Z")
 
@@ -799,6 +806,7 @@ class GroupSessionsViewModelTest {
             FlowGroupSessionsRepository(flowOf(Result.success(emptyList()))),
             profileRepository,
             clock,
+            locationProvider = FakeLocationProvider(),
         )
     clock.currentInstant = Instant.parse("2025-03-01T12:00:25Z")
 
@@ -820,6 +828,7 @@ class GroupSessionsViewModelTest {
             sessionsRepository,
             profileRepository,
             AdvancingTestClock(now),
+            locationProvider = FakeLocationProvider(),
         )
 
     viewModel.refresh()
@@ -839,6 +848,7 @@ class GroupSessionsViewModelTest {
             FlowGroupSessionsRepository(emissions),
             profileRepository,
             MutableTestClock(now),
+            locationProvider = FakeLocationProvider(),
         )
 
     assertEquals(now, viewModel.uiState.value.now)
@@ -849,7 +859,14 @@ class GroupSessionsViewModelTest {
   @Test
   fun now_refreshesEveryThirtySecondsWhileObserved() = runTest {
     val clock = MutableTestClock(now)
-    val viewModel = GroupSessionsViewModel(authRepository, repository, profileRepository, clock)
+    val viewModel =
+        GroupSessionsViewModel(
+            authRepository,
+            repository,
+            profileRepository,
+            clock,
+            locationProvider = FakeLocationProvider(),
+        )
     observe(viewModel)
     val later = now.plusSeconds(30)
     clock.currentInstant = later
@@ -870,7 +887,14 @@ class GroupSessionsViewModelTest {
     val own = session("own", ALICE)
     repository.saveSession(ALICE, own)
     val clock = MutableTestClock(now)
-    val viewModel = GroupSessionsViewModel(authRepository, repository, profileRepository, clock)
+    val viewModel =
+        GroupSessionsViewModel(
+            authRepository,
+            repository,
+            profileRepository,
+            clock,
+            locationProvider = FakeLocationProvider(),
+        )
     viewModel.join("missing")
     assertEquals(GroupSessionsError.JOIN_FAILED, viewModel.uiState.value.error)
     observe(viewModel)
@@ -895,6 +919,7 @@ class GroupSessionsViewModelTest {
             FlowGroupSessionsRepository(emissions),
             profileRepository,
             clock,
+            locationProvider = FakeLocationProvider(),
         )
     observe(viewModel)
     clock.currentInstant = Instant.parse("2025-03-01T12:00:30Z")
@@ -910,7 +935,14 @@ class GroupSessionsViewModelTest {
   @Test
   fun now_pausesWithoutCollectorAndUpdatesAsSoonAsOneReturns() = runTest {
     val clock = MutableTestClock(now)
-    val viewModel = GroupSessionsViewModel(authRepository, repository, profileRepository, clock)
+    val viewModel =
+        GroupSessionsViewModel(
+            authRepository,
+            repository,
+            profileRepository,
+            clock,
+            locationProvider = FakeLocationProvider(),
+        )
     val hiddenAt = now.plusSeconds(600)
     observe(viewModel).cancel()
     clock.currentInstant = hiddenAt
@@ -934,7 +966,14 @@ class GroupSessionsViewModelTest {
   fun now_staysCurrentAfterSignOut() = runTest {
     authRepository.currentUser.value = account(ALICE)
     val clock = MutableTestClock(now)
-    val viewModel = GroupSessionsViewModel(authRepository, repository, profileRepository, clock)
+    val viewModel =
+        GroupSessionsViewModel(
+            authRepository,
+            repository,
+            profileRepository,
+            clock,
+            locationProvider = FakeLocationProvider(),
+        )
     val signedOutAt = now.plusSeconds(600)
     clock.currentInstant = signedOutAt
 
@@ -949,7 +988,14 @@ class GroupSessionsViewModelTest {
     authRepository.currentUser.value = account(ALICE)
     repository.saveSession(ALICE, session("own", ALICE))
     val clock = MutableTestClock(now)
-    val viewModel = GroupSessionsViewModel(authRepository, repository, profileRepository, clock)
+    val viewModel =
+        GroupSessionsViewModel(
+            authRepository,
+            repository,
+            profileRepository,
+            clock,
+            locationProvider = FakeLocationProvider(),
+        )
     viewModel.onQueryChange("bio")
     viewModel.onFilterChange(GroupSessionFilter.JOINED)
     val before = viewModel.uiState.value
@@ -1180,7 +1226,7 @@ class GroupSessionsViewModelTest {
 
   private fun createViewModel(
       sessionsRepository: GroupSessionsRepository = repository,
-      locationProvider: LocationProvider = LocationProvider { flowOf(null) },
+      locationProvider: LocationProvider = FakeLocationProvider(),
       campusLocationRepository: CampusLocationRepository? = null,
       profiles: FakeProfileRepository = profileRepository,
       clock: Clock = MutableTestClock(now),

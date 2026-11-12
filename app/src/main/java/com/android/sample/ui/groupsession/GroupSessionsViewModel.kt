@@ -3,6 +3,7 @@
 package com.android.sample.ui.groupsession
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -14,6 +15,7 @@ import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
+import com.android.sample.model.location.AndroidLocationProvider
 import com.android.sample.model.location.CampusLocation
 import com.android.sample.model.location.CampusLocationRepository
 import com.android.sample.model.location.CampusLocationRepositoryProvider
@@ -26,7 +28,6 @@ import com.android.sample.model.profile.ProfileRepositoryProvider
 import java.time.Clock
 import java.time.DayOfWeek
 import java.time.Instant
-import java.time.ZoneId
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
 import kotlin.time.Duration.Companion.seconds
@@ -38,7 +39,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -133,7 +133,6 @@ data class GroupSessionsUiState(
     val selectedSessionTypes: Set<EventType> = emptySet(),
     val startingTimeFilter: GroupSessionTimeFilter = GroupSessionTimeFilter.ANYTIME,
     val selectedRadiusMeters: Int? = null,
-    val selectedZone: String? = null,
     val selectedZones: Set<String> = emptySet(),
     val showLabRoomType: Boolean = true,
     val hideFullSessions: Boolean = false,
@@ -160,7 +159,7 @@ class GroupSessionsViewModel(
     private val repository: GroupSessionsRepository,
     private val profileRepository: ProfileRepository,
     private val clock: Clock = Clock.systemUTC(),
-    private val locationProvider: LocationProvider = LocationProvider { flowOf(null) },
+    private val locationProvider: LocationProvider,
     private val campusLocationRepository: CampusLocationRepository? = null,
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(GroupSessionsUiState(now = clock.instant()))
@@ -287,9 +286,7 @@ class GroupSessionsViewModel(
   fun onZonesFilterSelected(zones: Set<String>) {
     val normalizedZones = zones.mapNotNull { it.trim().takeIf(String::isNotEmpty) }.toSet()
     viewModelScope.launch {
-      _uiState.update {
-        it.copy(selectedZone = normalizedZones.singleOrNull(), selectedZones = normalizedZones)
-      }
+      _uiState.update { it.copy(selectedZones = normalizedZones) }
       updateVisibleSessions()
     }
   }
@@ -318,7 +315,6 @@ class GroupSessionsViewModel(
             selectedSessionTypes = emptySet(),
             startingTimeFilter = GroupSessionTimeFilter.ANYTIME,
             selectedRadiusMeters = null,
-            selectedZone = null,
             selectedZones = emptySet(),
             showLabRoomType = true,
             hideFullSessions = false,
@@ -395,7 +391,9 @@ class GroupSessionsViewModel(
           .collectLatest { isObserved ->
             while (isObserved) {
               _uiState.update { it.copy(now = clock.instant()) }
-              updateVisibleSessions()
+              if (_uiState.value.startingTimeFilter != GroupSessionTimeFilter.ANYTIME) {
+                updateVisibleSessions()
+              }
               delay(NOW_REFRESH_INTERVAL)
             }
           }
@@ -538,7 +536,7 @@ class GroupSessionsViewModel(
 
   /** Matches a session start against the chosen local-time range. */
   private fun matchesStartingTime(start: Instant, state: GroupSessionsUiState): Boolean {
-    val zone = ZoneId.systemDefault()
+    val zone = clock.zone
     val startDate = start.atZone(zone).toLocalDate()
     val today = state.now.atZone(zone).toLocalDate()
     return when (state.startingTimeFilter) {
@@ -571,7 +569,7 @@ class GroupSessionsViewModelFactory(
     private val authRepository: AuthRepository,
     private val repository: GroupSessionsRepository,
     private val profileRepository: ProfileRepository,
-    private val locationProvider: LocationProvider = LocationProvider { flowOf(null) },
+    private val locationProvider: LocationProvider,
     private val campusLocationRepository: CampusLocationRepository? = null,
 ) : ViewModelProvider.Factory {
   /**
@@ -603,6 +601,7 @@ class GroupSessionsViewModelFactory(
 @Composable
 fun groupSessionsViewModel(): GroupSessionsViewModel {
   val context = LocalContext.current
+  val locationProvider = remember(context) { AndroidLocationProvider.create(context) }
   return viewModel(
       factory =
           GroupSessionsViewModelFactory(
@@ -610,6 +609,7 @@ fun groupSessionsViewModel(): GroupSessionsViewModel {
               repository = GroupSessionsRepositoryProvider.getRepository(),
               campusLocationRepository = CampusLocationRepositoryProvider.getRepository(context),
               profileRepository = ProfileRepositoryProvider.getRepository(),
+              locationProvider = locationProvider,
           )
   )
 }

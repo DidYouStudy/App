@@ -115,6 +115,7 @@ fun GroupSessionScreen(
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val snackbarHostState = remember { SnackbarHostState() }
   val loadErrorMessage = stringResource(R.string.group_session_error_load)
+  val locationLoadErrorMessage = stringResource(R.string.group_session_error_location_load)
   val joinErrorMessage = stringResource(R.string.group_session_error_join)
   val leaveErrorMessage = stringResource(R.string.group_session_error_leave)
   LaunchedEffect(uiState.error) {
@@ -122,7 +123,7 @@ fun GroupSessionScreen(
       val msg =
           when (error) {
             GroupSessionsError.LOAD_FAILED -> loadErrorMessage
-            GroupSessionsError.LOCATION_LOAD_FAILED -> loadErrorMessage
+            GroupSessionsError.LOCATION_LOAD_FAILED -> locationLoadErrorMessage
             GroupSessionsError.JOIN_FAILED -> joinErrorMessage
             GroupSessionsError.LEAVE_FAILED -> leaveErrorMessage
           }
