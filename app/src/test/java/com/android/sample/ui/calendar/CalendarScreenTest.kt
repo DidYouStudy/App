@@ -3,6 +3,9 @@
 package com.android.sample.ui.calendar
 
 import android.content.Context
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
@@ -275,6 +278,7 @@ class CalendarScreenTest {
   /** Keeps the add menu available while the calendar is in its error state. */
   @Test
   fun addMenuWorksInErrorState() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
     var eventClicks = 0
     composeTestRule.setContent {
       CalendarScreen(
@@ -291,10 +295,54 @@ class CalendarScreenTest {
       )
     }
 
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.calendar_load_events_error))
+        .assertIsDisplayed()
     composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).performClick()
     composeTestRule.onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON).performClick()
 
     composeTestRule.runOnIdle { assertEquals(1, eventClicks) }
+  }
+
+  /** Restores the hidden add menu when a failed load replaces the scrollable grid. */
+  @Test
+  fun addMenuReappearsWhenErrorReplacesScrolledGrid() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var state by mutableStateOf(calendarUiState(LocalDate.of(2026, 10, 28)))
+    var eventClicks = 0
+    composeTestRule.setContent {
+      CalendarScreen(
+          uiState = state,
+          onToday = {},
+          onPreviousWeek = {},
+          onNextWeek = {},
+          onRetry = {},
+          onAddEventClick = { eventClicks++ },
+      )
+    }
+
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(CalendarTestTags.TIME_GRID).performTouchInput { swipeUp() }
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).assertDoesNotExist()
+
+    state =
+        calendarUiState(
+            LocalDate.of(2026, 10, 28),
+            error = CalendarViewModelError.LOAD_EVENTS_FAILED,
+        )
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.calendar_load_events_error))
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).assertExists()
+    composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON).performClick()
+    composeTestRule.runOnIdle { assertEquals(1, eventClicks) }
+
+    state = calendarUiState(LocalDate.of(2026, 10, 28))
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).assertExists()
   }
 
   /** Keeps the add button visible after the initial automatic grid scroll. */
