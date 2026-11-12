@@ -31,6 +31,7 @@ import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.PreferencesRepositoryProvider
 import com.android.sample.model.preferences.UserPreferences
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -470,17 +471,33 @@ class EventPlanningViewModel(
   }
 
   /** Validates form inputs and builds [EventDetails], or sets the error and returns null. */
-  private fun validateAndBuildDetails(original: EventDetails?): EventDetails? {
+  private fun validateAndBuildDetails(original: EventDetails?, isEditing: Boolean): EventDetails? {
     val state = _uiState.value
     val date = state.date
     val startTime = state.startTime
     val endTime = state.endTime
-    if (date == null || startTime == null || endTime == null) {
-      fail(EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED)
+    if (
+        date == null ||
+            startTime == null ||
+            endTime == null ||
+            (state.type != EventType.OTHER && state.subject.isBlank())
+    ) {
+      fail(EventPlanningError.REQUIRED_FIELDS_MISSING)
       return null
     }
-
     val (startsAt, endsAt) = calculateStartAndEndInstants(date, startTime, endTime, clock, original)
+    if (startsAt == endsAt) {
+      fail(EventPlanningError.INVALID_TIME_RANGE)
+      return null
+    }
+    if (!isEditing && startsAt.isBefore(clock.instant())) {
+      fail(EventPlanningError.EVENT_IN_PAST)
+      return null
+    }
+    if (Duration.between(startsAt, endsAt) > EventDetails.MAX_DURATION) {
+      fail(EventPlanningError.EVENT_TOO_LONG)
+      return null
+    }
 
     return try {
       EventDetails(
@@ -511,7 +528,8 @@ class EventPlanningViewModel(
       return
     }
 
-    val details = validateAndBuildDetails(editingEvent?.details?.takeIf { isEditing }) ?: return
+    val details =
+        validateAndBuildDetails(editingEvent?.details?.takeIf { isEditing }, isEditing) ?: return
     val now = clock.instant()
     val defaultError =
         if (isEditing) EventPlanningError.FAILED_TO_EDIT_EVENT

@@ -58,7 +58,12 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
@@ -417,6 +422,11 @@ class EndToEndTest {
   @Test
   fun returningUser_createsEventFromCalendar_andItIsStoredInFirestore() {
     val uid = seedReturningUser { UserPreferences(userId = it) }.userId
+    val tomorrow = LocalDate.now(ZoneOffset.UTC).plusDays(1)
+    val tomorrowDescription =
+        DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)
+            .withLocale(Locale.getDefault())
+            .format(tomorrow)
     signInThroughUi()
     assertOnDashboard()
     assertTrue("No event stored yet", storedEvents(uid).isEmpty())
@@ -428,10 +438,14 @@ class EndToEndTest {
     composeRule.onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON).performClick()
     waitForTag(EventTags.SCREEN_CONTAINER)
 
-    // "Other" needs no subject. Date and start time keep the pickers' defaults (today, now).
+    // "Other" needs no subject. Date and start time keep the pickers' defaults (tomorrow, now).
     composeRule.onNodeWithTag(EventTags.TYPE_SELECTOR).performClick()
     composeRule.onNodeWithText(string(R.string.event_type_other)).performClick()
     composeRule.onNodeWithTag(EventTags.DATE_SELECTOR).performClick()
+    if (tomorrow.dayOfMonth == 1) {
+      composeRule.onNodeWithContentDescription("Next month").performClick()
+    }
+    composeRule.onNodeWithText(tomorrowDescription).performClick()
     composeRule.onNodeWithText(string(R.string.confirm)).performClick()
     composeRule.onNodeWithTag(EventTags.START_TIME_SELECTOR).performClick()
     composeRule.onNodeWithContentDescription("8 hours").performClick()
