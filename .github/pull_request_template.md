@@ -18,6 +18,13 @@ Closes #
 ## Screenshots / recordings UI
 <!-- Required for UI changes. Delete if not applicable. -->
 
+## AI usage
+<!-- Describe how and where an AI agent was used in this PR. Write "None" if no AI was used. -->
+- **Agent / model:** <!-- e.g. Claude Code (Sonnet 5.5), Copilot, ... -->
+- **Where it was used:** <!-- e.g. implementation of X, unit tests for Y, refactor of Z, PR description, review -->
+- **How it was used:** <!-- e.g. generated a first draft then edited by hand, pair-programmed, only suggested fixes -->
+- **What I verified:** <!-- e.g. read the full diff, ran `./gradlew check` and `ktfmtCheck`, tested manually -->
+
 ## Checklist
 - [ ] PR is small and focused on one task
 - [ ] New code is covered by tests

@@ -337,6 +337,36 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertFalse(state.showTasksSection)
   }
 
+  /** Switching event kind resets form fields and clears tasks. */
+  @Test
+  fun setEventKind_switchingKind_resetsFormAndClearsTasks() = runTest {
+    val viewModel = createViewModel()
+    viewModel.setSubject("Personal Study")
+    viewModel.setLocation("BC 01")
+    viewModel.addTask("Task 1")
+    assertEquals(1, viewModel.uiState.value.tasks.size)
+
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+
+    val state = viewModel.uiState.value
+    assertEquals(EventKind.GROUP_SESSION, state.eventKind)
+    assertTrue(state.tasks.isEmpty())
+    assertTrue(state.subject.isEmpty())
+    assertTrue(state.location.isEmpty())
+    assertFalse(state.showTasksSection)
+  }
+
+  /** Calling setEventKind with the same kind preserves user edits. */
+  @Test
+  fun setEventKind_sameKind_preservesExistingInput() = runTest {
+    val viewModel = createViewModel()
+    viewModel.setSubject("Drafting proposal")
+
+    viewModel.setEventKind(EventKind.PERSONAL)
+
+    assertEquals("Drafting proposal", viewModel.uiState.value.subject)
+  }
+
   /** Date and time setters accept null to clear previously selected values. */
   @Test
   fun setters_acceptNullDateAndTimes() = runTest {
@@ -1053,6 +1083,35 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertFalse(state.isLoading)
     assertFalse(state.isEditing)
     assertEquals(EventPlanningError.EVENT_NOT_FOUND, state.error)
+  }
+
+  /** loadEvent immediately clears prior event fields and sets loading state. */
+  @Test
+  fun loadEvent_resetsPreviousFormFieldsWhileLoading() = runTest {
+    val fetchGate = CompletableDeferred<Unit>()
+    `when`(groupSessionsRepository.getSession("session-async")).doSuspendableAnswer {
+      fetchGate.await()
+      Result.failure(EventsException(EventsError.NOT_FOUND))
+    }
+
+    val viewModel = createViewModel()
+    viewModel.setSubject("Stale Event")
+    viewModel.setLocation("Old Room")
+
+    viewModel.loadEvent("session-async", EventKind.GROUP_SESSION)
+
+    val loadingState = viewModel.uiState.value
+    assertTrue(loadingState.isLoading)
+    assertEquals(EventKind.GROUP_SESSION, loadingState.eventKind)
+    assertTrue(loadingState.subject.isEmpty())
+    assertTrue(loadingState.location.isEmpty())
+
+    fetchGate.complete(Unit)
+    advanceUntilIdle()
+
+    val finishedState = viewModel.uiState.value
+    assertFalse(finishedState.isLoading)
+    assertEquals(EventPlanningError.EVENT_NOT_FOUND, finishedState.error)
   }
 
   /** Deleting a group session deletes from the group sessions repository. */

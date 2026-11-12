@@ -45,6 +45,7 @@
     <string name="preferences_retry_button_on_error">Retry</string>
     <string name="preferences_import_schedule_label">Import course schedule</string>
     <string name="preferences_import_schedule_button">Import&#8230;</string>
+    <string name="preferences_import_schedule_file_type">Requires an .ics calendar file</string>
     <!-- %1$d: number of events imported from the schedule file -->
     <plurals name="preferences_import_schedule_success">
         <item quantity="one">Imported %1$d event</item>
@@ -78,7 +79,7 @@
     <string name="settings_logout_button">Log out</string>
 
     <!-- Event Planning -->
-    <string name="event_planning_add_title">Add new&#8230;</string>
+    <string name="event_planning_add_title">Add new event</string>
     <string name="event_planning_edit_title">Edit event</string>
     <string name="event_planning_save_button">Save</string>
     <string name="event_planning_delete_button">Delete event</string>
@@ -141,9 +142,12 @@
 
     <!-- Group Sessions Screen -->
     <string name="group_session_title">Group sessions</string>
+    <string name="group_session_add_title">Add new group session</string>
+    <string name="group_session_edit_title">Edit group session</string>
     <string name="group_session_error_dismiss">Dismiss</string>
     <string name="group_session_add_description">Add group session</string>
     <string name="group_session_error_load">Could not load sessions. Please try again.</string>
+    <string name="group_session_error_location_load">Could not load locations. Please try again.</string>
     <string name="group_session_error_join">Could not join session. Please try again.</string>
     <string name="group_session_error_leave">Could not leave session. Please try again.</string>
     <string name="group_session_search_icon_description">Search</string>
@@ -152,6 +156,7 @@
     <string name="group_session_filter_all">All sessions</string>
     <string name="group_session_filter_my">My sessions</string>
     <string name="group_session_active_sessions_title">Active sessions</string>
+    <string name="group_session_host_unknown">Unknown host</string>
     <string name="group_session_loading">Loading sessions&#8230;</string>
     <string name="group_session_empty">No active sessions</string>
     <string name="group_session_subject_fallback">Other</string>

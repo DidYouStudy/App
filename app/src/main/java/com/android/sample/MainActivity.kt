@@ -3,6 +3,7 @@
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample
 
 import android.os.Bundle
@@ -19,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -35,6 +37,7 @@ import com.android.sample.ui.dashboard.DashboardScreen
 import com.android.sample.ui.eventplanning.AddEventScreen
 import com.android.sample.ui.eventplanning.EditEventScreen
 import com.android.sample.ui.eventplanning.EventDetailsScreen
+import com.android.sample.ui.eventplanning.EventKind
 import com.android.sample.ui.eventplanning.eventDetailsViewModel
 import com.android.sample.ui.groupsession.GroupSessionScreen
 import com.android.sample.ui.navigation.NavigationActions
@@ -139,6 +142,12 @@ fun DidYouStudyApp() {
                   applicationViewModel::canNavigateTo,
               )
             },
+            onGroupSessionClick = {
+              navigationActions.navigateIfAllowed(
+                  Screen.AddGroupSession,
+                  applicationViewModel::canNavigateTo,
+              )
+            },
         )
       }
     }
@@ -172,20 +181,31 @@ fun DidYouStudyApp() {
         startDestination = Screen.AddEvent.route,
         route = Screen.AddEvent.name,
     ) {
-      composable(Screen.AddEvent.route) {
+      val renderAddEvent: @Composable (EventKind, String) -> Unit = { initialKind, routePrefix ->
         AddEventScreen(
+            initialKind = initialKind,
             onBackClick = {
-              if (navigationActions.currentRoute() == Screen.AddEvent.route) {
+              if (navigationActions.currentRoute().startsWith(routePrefix)) {
                 navigationActions.goBack()
               }
             },
             onEventSaved = {
-              if (navigationActions.currentRoute() == Screen.AddEvent.route) {
+              if (navigationActions.currentRoute().startsWith(routePrefix)) {
                 navigationActions.goBack()
               }
             },
         )
       }
+
+      composable(Screen.AddEvent.route) {
+        renderAddEvent(EventKind.PERSONAL, Screen.AddEvent.route)
+      }
+
+      composable(Screen.AddGroupSession.route) {
+        renderAddEvent(EventKind.GROUP_SESSION, Screen.AddGroupSession.route)
+      }
+
+      editEventDestination(navController, navigationActions)
     }
 
     composable(
@@ -219,28 +239,6 @@ fun DidYouStudyApp() {
       )
     }
 
-    composable(
-        Screen.EditEvent.ROUTE,
-        arguments = listOf(navArgument(Screen.EVENT_ID_ARGUMENT) { type = NavType.StringType }),
-    ) { entry ->
-      val eventId = entry.arguments?.getString(Screen.EVENT_ID_ARGUMENT) ?: return@composable
-      EditEventScreen(
-          eventId = eventId,
-          onBackClick = { navController.runIfCurrentEntry(entry, navigationActions::goBack) },
-          onEventSaved = {
-            navController.runIfCurrentEntry(entry) {
-              navController.previousBackStackEntry?.savedStateHandle?.set(EVENT_EDITED_RESULT, true)
-              navigationActions.goBack()
-            }
-          },
-          onEventDelete = {
-            navController.runIfCurrentEntry(entry) {
-              navigationActions.goBackPast(Screen.EventDetails(eventId))
-            }
-          },
-      )
-    }
-
     navigation(
         startDestination = Screen.GroupSession.route,
         route = Screen.GroupSession.name,
@@ -248,6 +246,18 @@ fun DidYouStudyApp() {
       composable(Screen.GroupSession.route) {
         GroupSessionScreen(
             navigationActions = navigationActions,
+            onAddSessionClick = {
+              navigationActions.navigateIfAllowed(
+                  Screen.AddGroupSession,
+                  applicationViewModel::canNavigateTo,
+              )
+            },
+            onEditSessionClick = { sessionId ->
+              navigationActions.navigateIfAllowed(
+                  Screen.EditEvent(sessionId, EventKind.GROUP_SESSION),
+                  applicationViewModel::canNavigateTo,
+              )
+            },
         )
       }
     }
@@ -274,6 +284,69 @@ fun DidYouStudyApp() {
         )
       }
     }
+  }
+}
+
+/** Registers the editor shared by personal event details and the group session list. */
+private fun NavGraphBuilder.editEventDestination(
+    navController: NavHostController,
+    navigationActions: NavigationActions,
+) {
+  composable(
+      route = Screen.EditEvent.ROUTE,
+      arguments =
+          listOf(
+              navArgument(Screen.EVENT_ID_ARGUMENT) { type = NavType.StringType },
+              navArgument("kind") {
+                type = NavType.StringType
+                defaultValue = EventKind.PERSONAL.name
+              },
+          ),
+  ) { entry ->
+    val eventId = entry.arguments?.getString(Screen.EVENT_ID_ARGUMENT).orEmpty()
+    if (eventId.isBlank()) {
+      LaunchedEffect(Unit) { navController.runIfCurrentEntry(entry, navigationActions::goBack) }
+      return@composable
+    }
+    val kind =
+        entry.arguments?.getString("kind")?.let {
+          runCatching { EventKind.valueOf(it) }.getOrNull()
+        } ?: EventKind.PERSONAL
+    EditEventScreen(
+        eventId = eventId,
+        eventKind = kind,
+        onBackClick = { navController.runIfCurrentEntry(entry, navigationActions::goBack) },
+        onEventSaved = {
+          navController.runIfCurrentEntry(entry) {
+            navController
+                .previousEventDetails(eventId, kind)
+                ?.savedStateHandle
+                ?.set(EVENT_EDITED_RESULT, true)
+            navigationActions.goBack()
+          }
+        },
+        onEventDelete = {
+          navController.runIfCurrentEntry(entry) {
+            if (navController.previousEventDetails(eventId, kind) != null) {
+              navigationActions.goBackPast(Screen.EventDetails(eventId))
+            } else {
+              navigationActions.goBack()
+            }
+          }
+        },
+    )
+  }
+}
+
+/** Finds the matching personal event details entry that opened the editor. */
+private fun NavHostController.previousEventDetails(
+    eventId: String,
+    kind: EventKind,
+): NavBackStackEntry? {
+  if (kind != EventKind.PERSONAL) return null
+  return previousBackStackEntry?.takeIf {
+    it.destination.route == Screen.EventDetails.ROUTE &&
+        it.arguments?.getString(Screen.EVENT_ID_ARGUMENT) == eventId
   }
 }
 

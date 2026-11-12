@@ -203,7 +203,10 @@ class EventPlanningViewModel(
   }
 
   /** Updates the category of the event being planned (personal vs group session). */
-  fun setEventKind(kind: EventKind) = updateForm { copy(eventKind = kind) }
+  fun setEventKind(kind: EventKind) {
+    if (_uiState.value.eventKind == kind && !_uiState.value.isEditing) return
+    resetForm(kind)
+  }
 
   /** Updates the event activity kind. */
   fun setType(type: EventType) = updateForm { copy(type = type) }
@@ -273,7 +276,15 @@ class EventPlanningViewModel(
     // Already loaded (e.g. after rotation) or loading right now: keep the user's edits.
     if (editingEvent?.id == eventId || _uiState.value.isLoading) return
 
-    _uiState.update { it.withoutResults().copy(isLoading = true, eventKind = kind) }
+    pendingEventId = null
+    editingEvent = null
+    _uiState.update {
+      EventPlanningUiState(
+          eventKind = kind,
+          isLoading = true,
+          recommendedSubjects = it.recommendedSubjects,
+      )
+    }
     viewModelScope.launch {
       try {
         // Suspends until the auth flow has delivered its first value.
@@ -407,13 +418,13 @@ class EventPlanningViewModel(
     _uiState.update { it.copy(isEventDeleted = false) }
   }
 
-  /** Discards the form, e.g. when the user leaves the screen without adding. */
-  fun resetForm() {
+  /** Discards the form, e.g. when the user leaves the screen without adding or changes kind. */
+  fun resetForm(kind: EventKind? = null) {
     pendingEventId = null
     editingEvent = null
     _uiState.update {
       EventPlanningUiState(
-          eventKind = it.eventKind,
+          eventKind = kind ?: it.eventKind,
           recommendedSubjects = it.recommendedSubjects,
       )
     }
