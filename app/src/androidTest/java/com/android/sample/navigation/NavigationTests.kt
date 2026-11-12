@@ -386,12 +386,36 @@ class NavigationTests {
     checkDashboardScreenIsDisplayed()
   }
 
+  /** Verifies the Calendar FAB menu opens group-session creation and returns to Calendar. */
+  @Test
+  fun canNavigateToAddGroupSessionFromCalendarFabMenu() {
+    composeTestRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
+    checkCalendarScreenIsDisplayed()
+
+    composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.FAB_MENU_GROUP_SESSION_BUTTON)
+        .performClick()
+
+    checkAddEventScreenIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventPlanningScreenTestTags.TOP_BAR_TITLE)
+        .assertTextContains(
+            composeTestRule.activity.getString(com.android.sample.R.string.group_session_add_title)
+        )
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.ADD_TASK_BUTTON).assertDoesNotExist()
+
+    composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.BACK_BUTTON).performClick()
+    checkCalendarScreenIsDisplayed()
+  }
+
   @Test
   fun canNavigateToAddEventFromCalendarFabAndBackToCalendar() {
     composeTestRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
     checkCalendarScreenIsDisplayed()
 
     composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON).performClick()
     checkAddEventScreenIsDisplayed()
 
     composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.BACK_BUTTON).performClick()
@@ -404,6 +428,7 @@ class NavigationTests {
     checkCalendarScreenIsDisplayed()
 
     composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON).performClick()
     checkAddEventScreenIsDisplayed()
 
     composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.BACK_BUTTON).performTouchInput {

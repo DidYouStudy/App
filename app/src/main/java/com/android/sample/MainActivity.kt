@@ -159,7 +159,7 @@ fun DidYouStudyApp() {
       composable(Screen.Calendar.route) { entry ->
         CalendarRoute(
             navigationActions = navigationActions,
-            onAddClick = {
+            onAddEventClick = {
               navigationActions.navigateIfAllowed(
                   Screen.AddEvent,
                   applicationViewModel::canNavigateTo,
@@ -172,6 +172,12 @@ fun DidYouStudyApp() {
                     applicationViewModel::canNavigateTo,
                 )
               }
+            },
+            onAddGroupSessionClick = {
+              navigationActions.navigateIfAllowed(
+                  Screen.AddGroupSession,
+                  applicationViewModel::canNavigateTo,
+              )
             },
         )
       }

@@ -108,12 +108,12 @@ fun SpeedDialFabOption(
 }
 
 /**
- * Displays an expandable speed dial FAB menu for the Dashboard.
+ * Displays an expandable add menu offering Event and Group session actions.
  *
- * Toggles an expanded menu displaying options for creating an Event or a Group Session.
+ * Used by the Dashboard and Calendar.
  */
 @Composable
-fun DashboardAddFabMenu(
+fun AddFabMenu(
     onEventClick: () -> Unit,
     onGroupSessionClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -187,12 +187,12 @@ fun AddButtonPreview() {
   }
 }
 
-/** Previews the dashboard speed dial FAB menu in expanded state. */
+/** Previews the expanded add menu. */
 @Preview(showBackground = true)
 @Composable
-fun DashboardAddFabMenuPreview() {
+fun AddFabMenuPreview() {
   DidYouStudyTheme {
-    DashboardAddFabMenu(
+    AddFabMenu(
         onEventClick = {},
         onGroupSessionClick = {},
     )
