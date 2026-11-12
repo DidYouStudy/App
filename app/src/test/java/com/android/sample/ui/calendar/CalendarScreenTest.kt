@@ -234,7 +234,7 @@ class CalendarScreenTest {
     composeTestRule
         .onNodeWithContentDescription(context.getString(R.string.cancel))
         .assertIsDisplayed()
-    composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).performClick()
+    composeTestRule.onNodeWithContentDescription(context.getString(R.string.cancel)).performClick()
     composeTestRule.waitForIdle()
 
     composeTestRule.runOnIdle {
