@@ -77,6 +77,7 @@ import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.profile.ProfileButton
 import com.android.sample.ui.sharedComponents.AddButton
+import com.android.sample.ui.sharedComponents.EventTypeBadge
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.ParticipantInitialTextStyle
 import com.android.sample.ui.theme.ParticipantOverflowTextStyle
@@ -411,18 +412,7 @@ private fun GroupSessionCard(
       Spacer(Modifier.height(Spacing.mediumLarge))
 
       // Type Badge
-      Surface(
-          shape = RoundedCornerShape(Dimens.cornerMedium),
-          color = session.details.type.color,
-      ) {
-        Text(
-            text = session.details.type.label(),
-            modifier = Modifier.padding(horizontal = Spacing.medium, vertical = Spacing.extraSmall),
-            color = session.details.type.onColor,
-            fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.labelLarge,
-        )
-      }
+      EventTypeBadge(type = session.details.type)
 
       Spacer(Modifier.height(Spacing.mediumSmall))
 
