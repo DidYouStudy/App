@@ -17,9 +17,6 @@ class PreferencesRepositoryFirestore(private val firestore: FirebaseFirestore) :
 
   private val collection = firestore.collection("preferences")
 
-  /** Firestore operations are remote; local presence is always false. */
-  override fun hasPreferences(userId: String): Boolean = false
-
   /**
    * Fetches the preferences for a given user from Firestore.
    *

@@ -3,7 +3,6 @@
 // Co-authored-by: Gemini AI Agent
 package com.android.sample.model.preferences
 
-import android.content.Context
 import androidx.annotation.VisibleForTesting
 import com.google.firebase.firestore.FirebaseFirestore
 
@@ -11,27 +10,11 @@ import com.google.firebase.firestore.FirebaseFirestore
 object PreferencesRepositoryProvider {
   private var instance: PreferencesRepository? = null
 
-  /**
-   * Returns the shared preferences repository. If [context] is provided, returns an offline-first
-   * synced repository backed by local storage and Firestore.
-   */
+  /** Returns the shared Firestore-backed preferences repository, or the one set for tests. */
   @Synchronized
-  fun getRepository(context: Context? = null): PreferencesRepository {
-    instance?.let {
-      return it
-    }
-    val firestoreRepo = PreferencesRepositoryFirestore(FirebaseFirestore.getInstance())
-    val repository =
-        if (context != null) {
-          PreferencesRepositorySync(
-              SharedPreferencesPreferencesLocalStore(context.applicationContext),
-              firestoreRepo,
-          )
-        } else {
-          firestoreRepo
-        }
-    return repository.also { instance = it }
-  }
+  fun getRepository(): PreferencesRepository =
+      instance
+          ?: PreferencesRepositoryFirestore(FirebaseFirestore.getInstance()).also { instance = it }
 
   /**
    * Replaces the shared repository, so tests that start the whole app can supply a fake or an

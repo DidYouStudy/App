@@ -53,17 +53,11 @@ class AppViewModel(
   /**
    * Initial start destination for NavHost.
    *
-   * Authenticated users with existing preferences start on [Screen.Dashboard]. Authenticated users
-   * who have not completed onboarding start on [Screen.Preferences]. Unauthenticated users start on
-   * [Screen.Auth].
+   * Authenticated users default to [Screen.Dashboard] without waiting for async flows or showing a
+   * sign-in flash. Unauthenticated users start on [Screen.Auth].
    */
   val startDestination: Screen =
-      when {
-        !authRepository.isAuthenticated -> Screen.Auth
-        authRepository.currentUserId?.let { preferencesRepository.hasPreferences(it) } == true ->
-            Screen.Dashboard
-        else -> Screen.Preferences
-      }
+      if (authRepository.isAuthenticated) Screen.Dashboard else Screen.Auth
 
   init {
     viewModelScope.launch {
@@ -153,13 +147,11 @@ class AppViewModelFactory(
 
 /** Returns the application ViewModel backed by the application's repositories. */
 @Composable
-fun appViewModel(): AppViewModel {
-  val context = LocalContext.current
-  return viewModel(
-      factory =
-          AppViewModelFactory(
-              AuthRepositoryProvider.getRepository(context),
-              PreferencesRepositoryProvider.getRepository(context),
-          )
-  )
-}
+fun appViewModel(): AppViewModel =
+    viewModel(
+        factory =
+            AppViewModelFactory(
+                AuthRepositoryProvider.getRepository(LocalContext.current),
+                PreferencesRepositoryProvider.getRepository(),
+            )
+    )

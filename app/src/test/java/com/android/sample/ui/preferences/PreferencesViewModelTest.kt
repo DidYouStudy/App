@@ -204,8 +204,6 @@ class PreferencesViewModelTest {
     var pendingSave = CompletableDeferred<Result<Unit>>()
     var saveCalls = 0
 
-    override fun hasPreferences(userId: String): Boolean = true
-
     override suspend fun getPreferences(userId: String): Result<UserPreferences?> =
         Result.success(loaded)
 

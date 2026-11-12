@@ -122,13 +122,13 @@ class PreferencesViewModelFactory(
 
 /** Returns a preferences ViewModel backed by the application's repositories. */
 @Composable
-fun preferencesViewModel(): PreferencesViewModel {
-  val context = androidx.compose.ui.platform.LocalContext.current
-  return viewModel(
-      factory =
-          PreferencesViewModelFactory(
-              PreferencesRepositoryProvider.getRepository(context),
-              AuthRepositoryProvider.getRepository(context),
-          ),
-  )
-}
+fun preferencesViewModel(): PreferencesViewModel =
+    viewModel(
+        factory =
+            PreferencesViewModelFactory(
+                PreferencesRepositoryProvider.getRepository(),
+                AuthRepositoryProvider.getRepository(
+                    androidx.compose.ui.platform.LocalContext.current
+                ),
+            ),
+    )

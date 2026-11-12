@@ -49,23 +49,11 @@ class AppViewModelTest {
   }
 
   @Test
-  fun startDestinationIsDashboardWhenAuthenticatedWithPreferences() {
-    val user = UserAccount("user-1", null, null, null)
-    authRepository.currentUser.value = user
-    `when`(preferencesRepository.hasPreferences(user.uid)).thenReturn(true)
+  fun startDestinationIsDashboardWhenAuthenticated() {
+    authRepository.currentUser.value = UserAccount("user-1", null, null, null)
     val viewModel = AppViewModel(authRepository, preferencesRepository)
 
     assertEquals(Screen.Dashboard, viewModel.startDestination)
-  }
-
-  @Test
-  fun startDestinationIsPreferencesWhenAuthenticatedWithoutPreferences() {
-    val user = UserAccount("user-1", null, null, null)
-    authRepository.currentUser.value = user
-    `when`(preferencesRepository.hasPreferences(user.uid)).thenReturn(false)
-    val viewModel = AppViewModel(authRepository, preferencesRepository)
-
-    assertEquals(Screen.Preferences, viewModel.startDestination)
   }
 
   @Test
