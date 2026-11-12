@@ -3,6 +3,7 @@ package com.android.sample.ui.navigation
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -39,6 +40,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -157,6 +159,50 @@ class CalendarEventNavigationTest {
     assertCalendarWeekIsDisplayed()
   }
 
+  /** Edit stays open until a stored save is acknowledged and Details can reload. */
+  @Test
+  fun backWaitsForPendingSaveToRefreshDetails() {
+    val acknowledgement = CompletableDeferred<Unit>()
+    events.saveAcknowledgement = acknowledgement
+    openEdit()
+    replaceDescription("Saved while Back is pressed")
+
+    composeRule.onNodeWithTag(EditTags.SAVE_BUTTON).performClick()
+    composeRule.onNodeWithTag(EditTags.BACK_BUTTON).assertIsNotEnabled()
+    val stored = runBlocking { events.getEvent(userId, selectedEvent.id).getOrThrow() }
+    assertEquals("Saved while Back is pressed", stored.details.description)
+    pressSystemBack()
+    composeRule.onNodeWithTag(EditTags.SCREEN_CONTAINER).assertIsDisplayed()
+
+    acknowledgement.complete(Unit)
+    composeRule
+        .onNodeWithTag(DetailsTags.DESCRIPTION)
+        .assertTextContains("Saved while Back is pressed")
+  }
+
+  /** Each card opens its own event even when one starts with and contains the other. */
+  @Test
+  fun bothOverlappingCardsCanBeOpenedByTouch() {
+    val shortEvent =
+        selectedEvent.copy(
+            id = "short-event",
+            details =
+                selectedEvent.details.copy(
+                    subject = "Shorter event",
+                    endsAt = selectedEvent.details.endsAt.minus(1, ChronoUnit.HOURS),
+                ),
+        )
+    runBlocking { events.saveEvents(listOf(shortEvent)).getOrThrow() }
+    val shortCardTag = CalendarTestTags.eventCard(shortEvent.id, dayIndex = 1)
+
+    composeRule.onNodeWithTag(shortCardTag).performTouchInput { click(center) }
+    composeRule.onNodeWithTag(DetailsTags.SUBJECT).assertTextContains("Shorter event")
+    composeRule.onNodeWithTag(DetailsTags.BACK_BUTTON).performClick()
+
+    composeRule.onNodeWithTag(selectedCardTag).performTouchInput { click(center) }
+    composeRule.onNodeWithTag(DetailsTags.SUBJECT).assertTextContains("Operating systems")
+  }
+
   /** Deleting in Details returns to Calendar and removes the selected card. */
   @Test
   fun detailsDeleteReturnsToCalendar() {
@@ -262,6 +308,7 @@ class CalendarEventNavigationTest {
   private class TestEventsRepository(private val delegate: EventsRepository) :
       EventsRepository by delegate {
     var rejectWrites = false
+    var saveAcknowledgement: CompletableDeferred<Unit>? = null
     var saveAttempts = 0
       private set
 
@@ -271,7 +318,9 @@ class CalendarEventNavigationTest {
     override suspend fun saveEvent(event: PersonalEvent): Result<Unit> {
       saveAttempts++
       if (rejectWrites) return Result.failure(EventsException(EventsError.STORAGE_FAILURE))
-      return delegate.saveEvent(event)
+      val result = delegate.saveEvent(event)
+      saveAcknowledgement?.await()
+      return result
     }
 
     override suspend fun deleteEvent(ownerId: String, eventId: String): Result<Unit> {

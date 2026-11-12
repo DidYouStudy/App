@@ -111,6 +111,40 @@ class EventsRepositoryFirestoreEmulatorTest {
   private fun document(id: String) =
       db.collection("users").document(uid).collection("events").document(id)
 
+  /**
+   * A checklist patch works offline, preserves newer details, and cannot restore a deleted event.
+   */
+  @Test
+  fun offlineChecklistPatchPreservesDetailsAndDoesNotRecreateDeletedEvent() = runBlocking {
+    val original = event()
+    repository.saveEvent(original).getOrThrow()
+    val edited = original.copy(details = original.details.copy(description = "New description"))
+    repository.saveEvent(edited).getOrThrow()
+    sync()
+    val tasks = listOf(EventTask("Review", day.plusSeconds(60)))
+    val updatedAt = day.plusSeconds(60)
+
+    db.disableNetwork().await()
+    withTimeout(5000) {
+      repository.updateEventTasks(uid, original.id, tasks, updatedAt).getOrThrow()
+    }
+    assertEquals(
+        edited.copy(tasks = tasks, updatedAt = updatedAt),
+        repository.getEvent(uid, original.id).getOrThrow(),
+    )
+    db.enableNetwork().await()
+    sync()
+    val stored = document(original.id).get(Source.SERVER).await()
+    assertEquals("New description", stored.getString("description"))
+    assertEquals(tasks, repository.getEvent(uid, original.id).getOrThrow().tasks)
+
+    repository.deleteEvent(uid, original.id).getOrThrow()
+    val result = repository.updateEventTasks(uid, original.id, tasks, updatedAt)
+    assertEquals(EventsError.NOT_FOUND, (result.exceptionOrNull() as EventsException).error)
+    sync()
+    assertFalse(document(original.id).get(Source.SERVER).await().exists())
+  }
+
   /** A bulk save persists every event and each subject suggestion through the real SDK. */
   @Test
   fun bulkSavePersistsEventsAndSubjects() = runBlocking {
