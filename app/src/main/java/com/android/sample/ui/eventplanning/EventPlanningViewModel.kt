@@ -179,13 +179,13 @@ class EventPlanningViewModel(
         authRepository.currentUser
             .onEach { user ->
               currentUserId = user?.uid
-              if (user != null) {
-                preferencesRepository.getPreferences(user.uid).onSuccess { prefs ->
-                  if (prefs != null) {
-                    sessionLengthMinutes = prefs.sessionLengthMinutes
+              sessionLengthMinutes =
+                  if (user == null) {
+                    PreferenceDefaults.DEFAULT_SESSION_MINUTES
+                  } else {
+                    preferencesRepository.getPreferences(user.uid).getOrNull()?.sessionLengthMinutes
+                        ?: PreferenceDefaults.DEFAULT_SESSION_MINUTES
                   }
-                }
-              }
             }
             .flatMapLatest { user ->
               if (user == null) flowOf(Result.success(emptyList()))

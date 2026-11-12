@@ -982,6 +982,23 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertEquals(LocalTime.of(15, 30), viewModel.uiState.value.endTime)
   }
 
+  /** When preferences fail to load, setting start time falls back to default session length. */
+  @Test
+  fun setStartTime_preferencesFailure_fallsBackToDefaultSessionLength() = runTest {
+    runBlocking {
+      `when`(preferencesRepository.getPreferences("user123"))
+          .thenReturn(Result.failure(RuntimeException("Network failure")))
+    }
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+
+    viewModel.setStartTime(LocalTime.of(10, 0))
+
+    assertEquals(LocalTime.of(10, 0), viewModel.uiState.value.startTime)
+    assertEquals(LocalTime.of(11, 0), viewModel.uiState.value.endTime)
+    assertNull(viewModel.uiState.value.error)
+  }
+
   /** Setting start time does not overwrite end time if a custom end time was already set. */
   @Test
   fun setStartTime_doesNotOverwriteCustomEndTime_whenCustomEndTimeIsSet() = runTest {
