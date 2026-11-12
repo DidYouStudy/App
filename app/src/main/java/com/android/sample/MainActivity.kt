@@ -140,7 +140,7 @@ fun DidYouStudyApp() {
       composable(Screen.Calendar.route) {
         CalendarRoute(
             navigationActions = navigationActions,
-            onAddClick = {
+            onAddEventClick = {
               navigationActions.navigateIfAllowed(
                   Screen.AddEvent,
                   applicationViewModel::canNavigateTo,

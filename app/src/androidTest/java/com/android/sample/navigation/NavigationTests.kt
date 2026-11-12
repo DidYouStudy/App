@@ -350,6 +350,7 @@ class NavigationTests {
     checkCalendarScreenIsDisplayed()
 
     composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON).performClick()
     checkAddEventScreenIsDisplayed()
 
     composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.BACK_BUTTON).performClick()
@@ -362,6 +363,7 @@ class NavigationTests {
     checkCalendarScreenIsDisplayed()
 
     composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON).performClick()
     checkAddEventScreenIsDisplayed()
 
     composeTestRule.onNodeWithTag(EventPlanningScreenTestTags.BACK_BUTTON).performTouchInput {

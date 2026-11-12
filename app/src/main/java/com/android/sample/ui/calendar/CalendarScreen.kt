@@ -61,7 +61,8 @@ fun CalendarScreen(
     onNextWeek: () -> Unit,
     onRetry: () -> Unit,
     navigationActions: NavigationActions? = null,
-    onAddClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
+    onAddEventClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
+    onAddGroupSessionClick: () -> Unit = {},
 ) {
   Scaffold(
       topBar = {
@@ -112,7 +113,7 @@ fun CalendarScreen(
       },
       floatingActionButton = {
         FloatingActionButton(
-            onClick = onAddClick,
+            onClick = onAddEventClick,
             modifier = Modifier.testTag(CalendarTestTags.ADD_BUTTON),
         ) {
           Icon(imageVector = Icons.Default.Add, contentDescription = "Add calendar event")

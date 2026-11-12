@@ -21,7 +21,8 @@ import kotlinx.coroutines.launch
 fun CalendarRoute(
     navigationActions: NavigationActions? = null,
     viewModel: CalendarViewModel = calendarViewModel(),
-    onAddClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
+    onAddEventClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
+    onAddGroupSessionClick: () -> Unit = {},
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val lifecycleOwner = LocalLifecycleOwner.current
@@ -48,6 +49,7 @@ fun CalendarRoute(
       onPreviousWeek = viewModel::previousWeek,
       onNextWeek = viewModel::nextWeek,
       onRetry = viewModel::retryEvents,
-      onAddClick = onAddClick,
+      onAddEventClick = onAddEventClick,
+      onAddGroupSessionClick = onAddGroupSessionClick,
   )
 }
