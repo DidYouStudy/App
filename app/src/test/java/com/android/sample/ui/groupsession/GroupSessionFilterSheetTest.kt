@@ -9,15 +9,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -36,6 +39,7 @@ class GroupSessionFilterSheetTest {
   private fun setSheet(
       filters: GroupSessionFilters = GroupSessionFilters(),
       matchingSessionCount: Int = 4,
+      zones: List<String> = availableZones,
       hasLocationPermission: Boolean = true,
       onRadiusSelected: (Int?) -> Unit = {},
       onZonesSelected: (Set<String>) -> Unit = {},
@@ -47,7 +51,7 @@ class GroupSessionFilterSheetTest {
     composeTestRule.setContent {
       GroupSessionFilterSheetContent(
           filters = filters,
-          availableZones = availableZones,
+          availableZones = zones,
           matchingSessionCount = matchingSessionCount,
           hasLocationPermission = hasLocationPermission,
           onRadiusSelected = onRadiusSelected,
@@ -277,6 +281,48 @@ class GroupSessionFilterSheetTest {
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.zoneOption("CM")).performClick()
 
     composeTestRule.runOnIdle { assertEquals(listOf(setOf("CM", "AI"), setOf("AI")), selected) }
+  }
+
+  /** Matches the expanded zone list width to its View more button. */
+  @Test
+  fun zoneMenuIsAsWideAsViewMoreButton() {
+    val zones = (1..20).map { "Z%02d".format(it) }
+    setSheet(zones = zones)
+
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.VIEW_MORE).performClick()
+
+    val buttonBounds =
+        composeTestRule
+            .onNodeWithTag(GroupSessionFilterSheetTestTags.VIEW_MORE)
+            .getUnclippedBoundsInRoot()
+    val optionBounds =
+        composeTestRule
+            .onNodeWithTag(GroupSessionFilterSheetTestTags.zoneOption("Z01"))
+            .getUnclippedBoundsInRoot()
+    val buttonWidth = buttonBounds.right - buttonBounds.left
+    val optionWidth = optionBounds.right - optionBounds.left
+
+    assertEquals(buttonWidth.value, optionWidth.value, 1f)
+  }
+
+  /** Keeps the expanded zone list scrollable instead of showing every option at once. */
+  @Test
+  fun zoneMenuScrollsInsteadOfFillingTheScreen() {
+    val zones = (1..20).map { "Z%02d".format(it) }
+    setSheet(zones = zones)
+
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.VIEW_MORE).performClick()
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.zoneOption("Z01"))
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.zoneOption("Z08"))
+        .assertIsNotDisplayed()
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.zoneOption("Z20"))
+        .assertIsNotDisplayed()
+        .performScrollTo()
+        .assertIsDisplayed()
   }
 
   /** A zone selected by chip stays selected after it is shown in the expanded list. */

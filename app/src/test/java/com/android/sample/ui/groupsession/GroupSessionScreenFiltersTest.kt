@@ -213,6 +213,28 @@ class GroupSessionScreenFiltersTest {
     assertEquals(500, viewModel.uiState.value.selectedRadiusMeters)
   }
 
+  /** Hides the permission rationale after a granted result selects the pending radius. */
+  @Test
+  fun permissionMessageDisappearsOnceGranted() {
+    val registry = DeferredPermissionResultRegistry()
+    val viewModel = setScreenWithRegistry(registry)
+
+    openFilterSheet()
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(500)).performClick()
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.PERMISSION_RATIONALE)
+        .assertIsDisplayed()
+
+    grantFineLocationPermission()
+    registry.dispatchGrantedResult()
+    composeTestRule.waitForIdle()
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.PERMISSION_RATIONALE)
+        .assertDoesNotExist()
+    assertEquals(500, viewModel.uiState.value.selectedRadiusMeters)
+  }
+
   /** Leaves Any selected when the location permission request is denied. */
   @Test
   fun deniedLocationPermissionKeepsAnyRadiusSelected() {
@@ -393,6 +415,30 @@ class GroupSessionScreenFiltersTest {
     ) {
       launchedPermissions = (input as Array<*>).map { it as String }
       dispatchResult(requestCode, permissionResult)
+    }
+  }
+
+  private class DeferredPermissionResultRegistry : ActivityResultRegistry() {
+    private var requestCode: Int? = null
+
+    override fun <I, O> onLaunch(
+        requestCode: Int,
+        contract: ActivityResultContract<I, O>,
+        input: I,
+        options: ActivityOptionsCompat?,
+    ) {
+      this.requestCode = requestCode
+    }
+
+    fun dispatchGrantedResult() {
+      val permissionRequestCode = checkNotNull(requestCode)
+      dispatchResult(
+          permissionRequestCode,
+          mapOf(
+              Manifest.permission.ACCESS_FINE_LOCATION to true,
+              Manifest.permission.ACCESS_COARSE_LOCATION to false,
+          ),
+      )
     }
   }
 }
