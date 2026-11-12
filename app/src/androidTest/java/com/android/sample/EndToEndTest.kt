@@ -60,6 +60,9 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
@@ -419,6 +422,10 @@ class EndToEndTest {
   fun returningUser_createsEventFromCalendar_andItIsStoredInFirestore() {
     val uid = seedReturningUser { UserPreferences(userId = it) }.userId
     val tomorrow = LocalDate.now(ZoneOffset.UTC).plusDays(1)
+    val tomorrowDescription =
+        DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)
+            .withLocale(Locale.getDefault())
+            .format(tomorrow)
     signInThroughUi()
     assertOnDashboard()
     assertTrue("No event stored yet", storedEvents(uid).isEmpty())
@@ -436,7 +443,7 @@ class EndToEndTest {
     if (tomorrow.dayOfMonth == 1) {
       composeRule.onNodeWithContentDescription("Next month").performClick()
     }
-    composeRule.onNodeWithText(tomorrow.dayOfMonth.toString()).performClick()
+    composeRule.onNodeWithText(tomorrowDescription).performClick()
     composeRule.onNodeWithText(string(R.string.confirm)).performClick()
     composeRule.onNodeWithTag(EventTags.START_TIME_SELECTOR).performClick()
     composeRule.onNodeWithContentDescription("8 hours").performClick()
