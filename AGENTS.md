@@ -39,6 +39,22 @@ This is a Kotlin/Android study planner app (`com.android.sample`) built using **
 ## Commits
 
 - Use an imperative commit subject of no more than 50 characters. Start it with a type prefix, then an imperative description whose first letter is capitalized (for example, `Add user authentication`). Add a commit body when the subject alone does not describe the change sufficiently.
+- Choose the type prefix that best describes the change:
+
+| Type | Use for |
+|---|---|
+| `feat` | New feature or functionality |
+| `fix` | Bug fix |
+| `docs` | Documentation changes |
+| `style` | Formatting or style changes, no behavior change |
+| `refactor` | Restructuring code without changing behavior |
+| `test` | Adding, updating or fixing tests |
+| `chore` | Maintenance, dependencies, miscellaneous tasks |
+| `build` | Build system or configuration changes |
+| `ci` | CI/CD configuration or pipeline changes |
+| `perf` | Performance improvements |
+| `revert` | Reverting a previous change |
+
 - Stage only the files you changed. Never run `git add .` or `git add -A`, since those commands may include local configuration such as `local.properties`.
 - Before each commit, run the tests you added and confirm they pass. If tests fail, review the errors and iterate until `./gradlew check` passes.
 
