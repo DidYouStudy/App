@@ -347,9 +347,11 @@ internal fun GroupSessionContent(
             else ->
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(Spacing.medium),
-                    contentPadding = PaddingValues(bottom = 120.dp),
+                    contentPadding = PaddingValues(bottom = Spacing.small),
                     modifier =
-                        Modifier.fillMaxSize().testTag(GroupSessionScreenTestTags.SESSION_LIST),
+                        Modifier.fillMaxSize()
+                            .padding(bottom = Dimens.groupSessionViewSwitcherClearance)
+                            .testTag(GroupSessionScreenTestTags.SESSION_LIST),
                 ) {
                   itemsIndexed(
                       items = state.sessions,

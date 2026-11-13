@@ -487,11 +487,9 @@ class GroupSessionScreenTest {
     composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
 
     repo.failLeave = true
-    val searchPlaceholder = context.getString(R.string.group_session_search_placeholder)
     val leaveText = context.getString(R.string.group_session_action_leave)
     val leaveErrorText = context.getString(R.string.group_session_error_leave)
 
-    composeTestRule.onNodeWithText(searchPlaceholder).performTextInput("exam")
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
         .performScrollToNode(hasText(leaveText))
