@@ -281,7 +281,7 @@ class FormContentHelperTests {
   /** Truncating at the description limit never leaves a lone surrogate from an emoji. */
   @Test
   fun outlinedInputFieldDoesNotSplitEmojiAt500Characters() {
-    val input = mutableStateOf("a".repeat(499))
+    val input = mutableStateOf("")
     composeTestRule.setContent {
       OutlinedInputField(
           value = input.value,
@@ -291,7 +291,7 @@ class FormContentHelperTests {
       )
     }
 
-    composeTestRule.onNodeWithTag("input_tag").performTextInput("😀")
+    composeTestRule.onNodeWithTag("input_tag").performTextInput("a".repeat(499) + "😀")
 
     assertEquals("a".repeat(499), input.value)
   }
