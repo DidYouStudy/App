@@ -8,6 +8,8 @@ import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.EventsRepositoryProvider
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
+import com.android.sample.model.preferences.OnboardingStore
+import com.android.sample.model.preferences.OnboardingStoreProvider
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.PreferencesRepositoryProvider
 import com.android.sample.model.profile.ProfileRepository
@@ -26,6 +28,7 @@ import org.junit.rules.ExternalResource
  *
  * @param credentialManager optional fake behind the Google account picker; `null` keeps the
  *   platform one.
+ * @param onboardingStore optional fake onboarding flag store.
  */
 class RepositoryOverridesRule(
     private val auth: AuthRepository,
@@ -34,6 +37,7 @@ class RepositoryOverridesRule(
     private val events: EventsRepository,
     private val groupSessions: GroupSessionsRepository,
     private val credentialManager: CredentialManager? = null,
+    private val onboardingStore: OnboardingStore? = null,
 ) : ExternalResource() {
 
   /** Installs the repositories before the test, and therefore its activity, starts. */
@@ -44,6 +48,7 @@ class RepositoryOverridesRule(
     ProfileRepositoryProvider.setRepository(profile)
     EventsRepositoryProvider.setRepository(events)
     GroupSessionsRepositoryProvider.setRepository(groupSessions)
+    OnboardingStoreProvider.setStore(onboardingStore)
   }
 
   /** Removes every override, so the next test starts from the production defaults again. */
@@ -54,5 +59,6 @@ class RepositoryOverridesRule(
     ProfileRepositoryProvider.setRepository(null)
     EventsRepositoryProvider.setRepository(null)
     GroupSessionsRepositoryProvider.setRepository(null)
+    OnboardingStoreProvider.setStore(null)
   }
 }

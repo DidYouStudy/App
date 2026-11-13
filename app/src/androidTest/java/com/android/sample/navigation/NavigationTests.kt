@@ -30,11 +30,13 @@ import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.InMemoryEventsRepository
 import com.android.sample.model.event.PersonalEvent
 import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
+import com.android.sample.model.preferences.OnboardingStore
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.UserProfile
 import com.android.sample.testing.RepositoryOverridesRule
+import com.android.sample.ui.app.AppViewModel
 import com.android.sample.ui.auth.SignInScreenTestTags
 import com.android.sample.ui.calendar.CalendarTestTags
 import com.android.sample.ui.dashboard.DashboardContentTestTags
@@ -59,8 +61,6 @@ import org.junit.Test
 import org.junit.rules.RuleChain
 
 // some tests inspired from NavigationB1Test.kt from the bootcamp repo
-// TODO add firebase conditions for testing + new screens navigation tests
-// TODO state management tests for the new screens
 class NavigationTests {
   private val composeTestRule = createAndroidComposeRule<ComponentActivity>()
   private val userId = "navigation-test-user"
@@ -184,7 +184,6 @@ class NavigationTests {
   }
 
   @Test
-  // TODO change to SignIn when VM can be created as default parameter
   fun navigationStartsOnDashboardTab() {
     checkDashboardScreenIsDisplayed()
   }
@@ -582,13 +581,12 @@ class NavigationTests {
 
 /** Verifies that the real activity hosts the Compose navigation graph. */
 class MainActivityNavigationTests {
+  private val environment = NavigationTestEnvironment("main-activity-test-user")
   private val composeTestRule = createAndroidComposeRule<MainActivity>()
 
   // Installed per test, before MainActivity launches, so one test's logout cannot leak into the
   // next test's signed-in session.
-  @get:Rule
-  val rules: RuleChain =
-      RuleChain.outerRule(signedInRepositories("main-activity-test-user")).around(composeTestRule)
+  @get:Rule val rules: RuleChain = RuleChain.outerRule(environment.rule).around(composeTestRule)
 
   @Test
   fun activityStartsOnDashboardForAnAuthenticatedUser() {
@@ -596,6 +594,47 @@ class MainActivityNavigationTests {
         .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
         .assertIsDisplayed()
         .assertTextContains("Dashboard")
+  }
+
+  @Test
+  fun recreationRestoresSameScreen() {
+    composeTestRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
+    composeTestRule
+        .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
+        .assertIsDisplayed()
+        .assertTextContains("Calendar", substring = true, ignoreCase = true)
+
+    // Activity recreation restores the exact screen
+    composeTestRule.activityRule.scenario.recreate()
+
+    composeTestRule
+        .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
+        .assertIsDisplayed()
+        .assertTextContains("Calendar", substring = true, ignoreCase = true)
+  }
+
+  /**
+   * Verifies that revoking the authentication session while the user is active on the Dashboard
+   * triggers the logout LaunchedEffect in MainActivity and redirects to the sign-in screen.
+   */
+  @Test
+  fun sessionRevocationWhileOnDashboardNavigatesToSignIn() {
+    composeTestRule
+        .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
+        .assertIsDisplayed()
+        .assertTextContains("Dashboard")
+
+    // Revoke the session while the user is still on Dashboard
+    runBlocking { environment.auth.signOut() }
+
+    composeTestRule.waitUntil(timeoutMillis = 20_000) {
+      composeTestRule
+          .onAllNodesWithTag(SignInScreenTestTags.SCREEN)
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    composeTestRule.onNodeWithTag(SignInScreenTestTags.SCREEN).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE).assertDoesNotExist()
   }
 
   @Test
@@ -620,6 +659,110 @@ class MainActivityNavigationTests {
   }
 }
 
+/** Verifies that an unauthenticated launch opens directly on the sign-in screen. */
+class UnauthenticatedNavigationTests {
+  private val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+  @get:Rule
+  val rules: RuleChain = RuleChain.outerRule(signedOutRepositories()).around(composeTestRule)
+
+  @Test
+  fun activityStartsOnSignInForUnauthenticatedUser() {
+    composeTestRule.onNodeWithTag(SignInScreenTestTags.SCREEN).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(SignInScreenTestTags.GOOGLE_BUTTON).assertIsDisplayed()
+  }
+}
+
+/**
+ * Verifies that an authenticated user without preferences starts directly on preferences screen.
+ */
+class AuthenticatedWithoutPreferencesNavigationTests {
+  private val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+  @get:Rule
+  val rules: RuleChain =
+      RuleChain.outerRule(signedInWithoutPreferencesRepositories("onboarding-user"))
+          .around(composeTestRule)
+
+  @Test
+  fun activityStartsOnPreferencesForUserWithoutPreferences() {
+    composeTestRule.onNodeWithTag(PreferencesScreenTestTags.PREFERENCE_SCREEN).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(PreferencesScreenTestTags.PREFERENCE_TITLE).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).assertDoesNotExist()
+  }
+}
+
+/**
+ * Verifies that an authenticated existing user who has preferences in the repository but no local
+ * onboarding flag (e.g. after updating the app) automatically advances to the dashboard.
+ */
+class AuthenticatedExistingUserNavigationTests {
+  private val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+  @get:Rule
+  val rules: RuleChain =
+      RuleChain.outerRule(signedInWithoutOnboardingFlagRepositories("existing-user"))
+          .around(composeTestRule)
+
+  @Test
+  fun activityNavigatesToDashboardForExistingUserWithoutOnboardingFlag() {
+    composeTestRule.waitUntil(timeoutMillis = 20_000) {
+      composeTestRule
+          .onAllNodesWithTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU)
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    composeTestRule
+        .onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE)
+        .assertIsDisplayed()
+        .assertTextContains("Dashboard", substring = true, ignoreCase = true)
+    composeTestRule.onNodeWithTag(PreferencesScreenTestTags.PREFERENCE_SCREEN).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(NavigationTestTags.BOTTOM_NAVIGATION_MENU).assertIsDisplayed()
+  }
+}
+
+/** Verifies that [DidYouStudyApp] supports dependency injection of [AppViewModel]. */
+class DidYouStudyAppInjectionTests {
+  private val composeTestRule = createAndroidComposeRule<ComponentActivity>()
+
+  @get:Rule
+  val rules: RuleChain =
+      RuleChain.outerRule(signedInRepositories("injection-test-user")).around(composeTestRule)
+
+  /** Verifies that passing an explicit [AppViewModel] routes using its start destination. */
+  @Test
+  fun appRespectsExplicitApplicationViewModel() {
+    val auth = FakeAuthRepository(null)
+    val preferences = FakePreferencesRepository(null)
+    val customViewModel = AppViewModel(auth, preferences)
+
+    composeTestRule.setContent { DidYouStudyApp(applicationViewModel = customViewModel) }
+
+    composeTestRule.onNodeWithTag(SignInScreenTestTags.SCREEN).assertIsDisplayed()
+  }
+}
+
+/** Holds test repositories and the overriding rule for MainActivity tests. */
+private class NavigationTestEnvironment(uid: String) {
+  val user = UserAccount(uid, null, null, null)
+  val auth = FakeAuthRepository(user)
+  val preferences = FakePreferencesRepository(UserPreferences(userId = user.uid))
+  val profile = FakeProfileRepository()
+  val events = InMemoryEventsRepository()
+  val groupSessions = InMemoryGroupSessionsRepository()
+  val onboarding = FakeOnboardingStore(mapOf(uid to true))
+  val rule =
+      RepositoryOverridesRule(
+          auth = auth,
+          preferences = preferences,
+          profile = profile,
+          events = events,
+          groupSessions = groupSessions,
+          onboardingStore = onboarding,
+      )
+}
+
 /**
  * Fakes for a signed-in user [uid] who already saved preferences, so the app opens on the
  * dashboard. No repository falls back to the real Firebase project.
@@ -635,14 +778,77 @@ private fun signedInRepositories(
       profile = FakeProfileRepository(),
       events = events,
       groupSessions = InMemoryGroupSessionsRepository(),
+      onboardingStore = FakeOnboardingStore(mapOf(uid to true)),
   )
 }
 
-private class FakeAuthRepository(private val user: UserAccount) : AuthRepository {
+/**
+ * Fakes for a signed-in user [uid] who has not yet saved preferences, so the app opens directly on
+ * the preferences screen.
+ */
+private fun signedInWithoutPreferencesRepositories(uid: String): RepositoryOverridesRule {
+  val user = UserAccount(uid, null, null, null)
+  return RepositoryOverridesRule(
+      auth = FakeAuthRepository(user),
+      preferences = FakePreferencesRepository(null),
+      profile = FakeProfileRepository(),
+      events = InMemoryEventsRepository(),
+      groupSessions = InMemoryGroupSessionsRepository(),
+      onboardingStore = FakeOnboardingStore(mapOf(uid to false)),
+  )
+}
+
+/**
+ * Fakes for a signed-in user [uid] who has preferences in the repository but no local onboarding
+ * flag (simulating an existing user on first launch after an update or on a new device).
+ */
+private fun signedInWithoutOnboardingFlagRepositories(uid: String): RepositoryOverridesRule {
+  val user = UserAccount(uid, null, null, null)
+  return RepositoryOverridesRule(
+      auth = FakeAuthRepository(user),
+      preferences = FakePreferencesRepository(UserPreferences(userId = user.uid)),
+      profile = FakeProfileRepository(),
+      events = InMemoryEventsRepository(),
+      groupSessions = InMemoryGroupSessionsRepository(),
+      onboardingStore = FakeOnboardingStore(),
+  )
+}
+
+/** Fakes for an unauthenticated user, so the app opens on the sign-in screen. */
+private fun signedOutRepositories(): RepositoryOverridesRule {
+  return RepositoryOverridesRule(
+      auth = FakeAuthRepository(null),
+      preferences = FakePreferencesRepository(null),
+      profile = FakeProfileRepository(),
+      events = InMemoryEventsRepository(),
+      groupSessions = InMemoryGroupSessionsRepository(),
+      onboardingStore = FakeOnboardingStore(),
+  )
+}
+
+private class FakeOnboardingStore(
+    initialState: Map<String, Boolean> = emptyMap(),
+) : OnboardingStore {
+  private val state = initialState.toMutableMap()
+
+  override fun hasCompletedOnboarding(userId: String): Boolean? = state[userId]
+
+  override fun setCompletedOnboarding(userId: String, completed: Boolean) {
+    state[userId] = completed
+  }
+}
+
+private class FakeAuthRepository(private val user: UserAccount?) : AuthRepository {
   private val currentUserState = MutableStateFlow<UserAccount?>(user)
   override val currentUser: StateFlow<UserAccount?> = currentUserState
+  override val isAuthenticated: Boolean
+    get() = currentUserState.value != null
 
-  override suspend fun signInWithGoogle(idToken: String): UserAccount = user
+  override val currentUserId: String?
+    get() = currentUserState.value?.uid
+
+  override suspend fun signInWithGoogle(idToken: String): UserAccount =
+      user ?: throw IllegalStateException("Not signed in")
 
   override suspend fun signOut() {
     currentUserState.value = null
@@ -650,10 +856,10 @@ private class FakeAuthRepository(private val user: UserAccount) : AuthRepository
 }
 
 private class FakePreferencesRepository(
-    private val preferences: UserPreferences,
+    private val preferences: UserPreferences?,
 ) : PreferencesRepository {
   override suspend fun getPreferences(userId: String): Result<UserPreferences?> =
-      Result.success(preferences.takeIf { it.userId == userId })
+      Result.success(preferences?.takeIf { it.userId == userId })
 
   override suspend fun savePreferences(preferences: UserPreferences): Result<Unit> =
       Result.success(Unit)

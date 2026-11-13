@@ -10,14 +10,20 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
@@ -30,6 +36,7 @@ import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.ui.app.AppUiState
+import com.android.sample.ui.app.AppViewModel
 import com.android.sample.ui.app.appViewModel
 import com.android.sample.ui.auth.SignInRoute
 import com.android.sample.ui.calendar.CalendarRoute
@@ -41,6 +48,7 @@ import com.android.sample.ui.eventplanning.EventKind
 import com.android.sample.ui.eventplanning.eventDetailsViewModel
 import com.android.sample.ui.groupsession.GroupSessionScreen
 import com.android.sample.ui.navigation.NavigationActions
+import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.preferences.PreferencesScreen
 import com.android.sample.ui.preferences.rememberScheduleImportLauncher
@@ -68,14 +76,43 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun DidYouStudyApp() {
+fun DidYouStudyApp(
+    applicationViewModel: AppViewModel = appViewModel(),
+) {
+  val appState by applicationViewModel.uiState.collectAsStateWithLifecycle()
+
+  var initialDestination by remember {
+    mutableStateOf(applicationViewModel.resolveStartDestination(appState))
+  }
+  if (initialDestination == null) {
+    initialDestination = applicationViewModel.resolveStartDestination(appState)
+  }
+
+  val start = initialDestination
+  if (start == null) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+      CircularProgressIndicator(
+          modifier = Modifier.testTag(NavigationTestTags.LOADING_INDICATOR),
+      )
+    }
+    return
+  }
+
   val navController = rememberNavController()
   val navigationActions = NavigationActions(navController)
-  val applicationViewModel = appViewModel()
-  val appState by applicationViewModel.uiState.collectAsStateWithLifecycle()
+
+  LaunchedEffect(appState) {
+    if (appState == AppUiState.LogOut && navigationActions.currentRoute() != Screen.Auth.route) {
+      navigationActions.navigateToAndClear(Screen.Auth, Screen.Auth, clearAll = true)
+    }
+  }
+
   NavHost(
       navController = navController,
-      startDestination = Screen.Auth.name,
+      startDestination = start.name,
   ) {
     navigation(
         startDestination = Screen.Auth.route,
@@ -102,9 +139,9 @@ fun DidYouStudyApp() {
         route = Screen.Preferences.name,
     ) {
       composable(Screen.Preferences.route) {
-        // A returning user (Dashboard state) opened this from Settings: edit mode, not onboarding.
-        // Fixed for the lifetime of this entry so the saving transition doesn't flip the UI.
-        val isEditing = remember { appState == AppUiState.Dashboard }
+        // A returning user opened this from Settings: edit mode with back navigation.
+        // Onboarding has no previous back stack entry. Fixed for the lifetime of this entry.
+        val isEditing = remember { navController.previousBackStackEntry != null }
         PreferencesScreen(
             onImportClick = rememberScheduleImportLauncher(),
             onAddLocationClick = {},
@@ -284,9 +321,6 @@ fun DidYouStudyApp() {
               )
             },
             onManageFriendsClick = { /* TODO */ },
-            onLogoutSuccess = {
-              navigationActions.navigateToAndClear(Screen.Auth, Screen.Auth, clearAll = true)
-            },
         )
       }
     }

@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
 import com.android.sample.model.location.CampusLocation
@@ -23,9 +24,6 @@ data class RoomSessions(val room: CampusLocation, val items: List<GroupSessionIt
  * Sessions in the same room share one entry. Sessions with no location, or in a place that is not a
  * known room, cannot be shown on the map and are left out. Entries keep the order in which their
  * room first appears in [items], so the result is stable between calls.
- *
- * Not used by the app yet: it is meant for when the map is wired to the group sessions ViewModel,
- * which would pass the screen's sessions here to get the rooms [GroupSessionMapContent] shows.
  */
 fun groupByRoom(items: List<GroupSessionItem>, resolver: SessionPlaceResolver): List<RoomSessions> {
   val byRoom = LinkedHashMap<CampusLocation, MutableList<GroupSessionItem>>()

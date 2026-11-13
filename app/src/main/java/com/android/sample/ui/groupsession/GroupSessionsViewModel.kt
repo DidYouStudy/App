@@ -1,6 +1,7 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
 import androidx.compose.runtime.Composable
@@ -130,6 +131,7 @@ data class GroupSessionsUiState(
     val now: Instant,
     val isLoading: Boolean = true,
     val sessions: List<GroupSessionItem> = emptyList(),
+    val rooms: List<RoomSessions> = emptyList(),
     val query: String = "",
     val filter: GroupSessionFilter = GroupSessionFilter.ALL,
     val selectedSessionTypes: Set<EventType> = emptySet(),
@@ -539,7 +541,11 @@ class GroupSessionsViewModel(
                     (!state.hideFullSessions ||
                         item.session.memberIds.size < GroupSession.MAX_MEMBERS)
               }
-      state.copy(sessions = matchingSessions)
+      val rooms =
+          matchingSessions
+              .groupBy { it.proximity.campusLocation }
+              .mapNotNull { (room, items) -> room?.let { RoomSessions(it, items) } }
+      state.copy(sessions = matchingSessions, rooms = rooms)
     }
   }
 

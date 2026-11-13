@@ -3,6 +3,7 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.theme
 
 import androidx.compose.ui.unit.dp
@@ -36,6 +37,8 @@ object Dimens {
   val actionButtonWidth = 88.dp
   val sessionTimeColumnWidth = 72.dp
   val fabClearance = 88.dp
+  val groupSessionViewSwitcherHeight = 48.dp
+  val groupSessionViewSwitcherClearance = groupSessionViewSwitcherHeight + Spacing.large
   val signInLogoSize = 200.dp
   val signInTopSpacing = 125.dp
   val signInLogoToTitleSpacing = 75.dp
