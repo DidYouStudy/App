@@ -348,7 +348,7 @@ internal fun GroupSessionContent(
             else ->
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(Spacing.medium),
-                    contentPadding = PaddingValues(bottom = Dimens.fabClearance),
+                    contentPadding = PaddingValues(bottom = 120.dp),
                     modifier =
                         Modifier.fillMaxSize().testTag(GroupSessionScreenTestTags.SESSION_LIST),
                 ) {
