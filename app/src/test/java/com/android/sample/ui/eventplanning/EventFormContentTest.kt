@@ -66,6 +66,29 @@ class EventFormContentTest {
     composeTestRule.onNodeWithText("3/500").assertIsDisplayed()
   }
 
+  /** An over-limit description displays its full length in the shared form counter. */
+  @Test
+  fun eventFormContentDisplays600CharacterDescriptionCount() {
+    composeTestRule.setContent {
+      EventFormContent(
+          uiState =
+              EventPlanningUiState(
+                  eventKind = EventKind.GROUP_SESSION,
+                  description = "a".repeat(600),
+              ),
+          onTypeChange = {},
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationClick = {},
+          onDescriptionChange = {},
+      )
+    }
+
+    composeTestRule.onNodeWithText("600/500", useUnmergedTree = true).assertIsDisplayed()
+  }
+
   @Test
   fun eventFormContentRendersPopulatedStateAndInteractions() {
     val context = ApplicationProvider.getApplicationContext<Context>()

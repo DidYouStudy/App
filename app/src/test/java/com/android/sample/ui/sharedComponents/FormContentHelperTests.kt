@@ -260,6 +260,42 @@ class FormContentHelperTests {
     assertEquals("a".repeat(500), input.value)
   }
 
+  /** Typing into a 600-character value keeps the existing over-limit text intact. */
+  @Test
+  fun outlinedInputFieldKeeps600CharacterValueWhenTyping() {
+    val input = mutableStateOf("a".repeat(600))
+    composeTestRule.setContent {
+      OutlinedInputField(
+          value = input.value,
+          onValueChange = { input.value = it },
+          placeholder = "Enter text",
+          testTag = "input_tag",
+      )
+    }
+
+    composeTestRule.onNodeWithTag("input_tag").performTextInput("x")
+
+    assertEquals("a".repeat(600), input.value)
+  }
+
+  /** Truncating at the description limit never leaves a lone surrogate from an emoji. */
+  @Test
+  fun outlinedInputFieldDoesNotSplitEmojiAt500Characters() {
+    val input = mutableStateOf("a".repeat(499))
+    composeTestRule.setContent {
+      OutlinedInputField(
+          value = input.value,
+          onValueChange = { input.value = it },
+          placeholder = "Enter text",
+          testTag = "input_tag",
+      )
+    }
+
+    composeTestRule.onNodeWithTag("input_tag").performTextInput("😀")
+
+    assertEquals("a".repeat(499), input.value)
+  }
+
   @Test
   fun taskRowItemDisplaysTaskAndInvokesToggleAndDeleteCallbacks() {
     val context = ApplicationProvider.getApplicationContext<Context>()

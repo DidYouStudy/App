@@ -135,6 +135,24 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     assertNull(state.error)
   }
 
+  /** Loading an over-limit description through the edit path keeps all 600 characters. */
+  @Test
+  fun loadEvent_keeps600CharacterDescription() = runTest {
+    val description = "a".repeat(600)
+    val viewModel = loadedViewModel(storedEvent(description = description))
+
+    assertEquals(description, viewModel.uiState.value.description)
+  }
+
+  /** Loading an over-limit subject through the edit path keeps all 150 characters. */
+  @Test
+  fun loadEvent_keeps150CharacterSubject() = runTest {
+    val subject = "a".repeat(150)
+    val viewModel = loadedViewModel(storedEvent(subject = subject))
+
+    assertEquals(subject, viewModel.uiState.value.subject)
+  }
+
   @Test
   fun loadEvent_eventWithoutOptionalFields_fillsEmptyStrings() = runTest {
     val viewModel =
@@ -308,6 +326,74 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     assertEquals(createdAt, saved.createdAt)
     assertEquals(now, saved.updatedAt)
     verify(eventsRepository, never()).newEventId()
+  }
+
+  /** Typing into an over-limit description cannot discard or add existing text. */
+  @Test
+  fun setDescription_overLimitExistingTextCannotGrow() = runTest {
+    val description = "a".repeat(600)
+    val viewModel = loadedViewModel(storedEvent(description = description))
+    assertEquals(description, viewModel.uiState.value.description)
+
+    viewModel.setDescription(description + "x")
+
+    assertEquals(description, viewModel.uiState.value.description)
+  }
+
+  /** An over-limit description can shrink without being truncated to the new limit. */
+  @Test
+  fun setDescription_overLimitExistingTextCanShrink() = runTest {
+    val description = "a".repeat(600)
+    val viewModel = loadedViewModel(storedEvent(description = description))
+
+    viewModel.setDescription(description.dropLast(10))
+
+    assertEquals("a".repeat(590), viewModel.uiState.value.description)
+  }
+
+  /** Saving another field preserves an untouched 600-character description. */
+  @Test
+  fun editEvent_preservesUntouched600CharacterDescription() = runTest {
+    val description = "a".repeat(600)
+    val viewModel = loadedViewModel(storedEvent(description = description))
+    viewModel.setLocation("Room 2")
+
+    viewModel.editEvent()
+
+    assertEquals(description, savedEvents().single().details.description)
+  }
+
+  /** Typing into an over-limit subject cannot discard or add existing text. */
+  @Test
+  fun setSubject_overLimitExistingTextCannotGrow() = runTest {
+    val subject = "a".repeat(150)
+    val viewModel = loadedViewModel(storedEvent(subject = subject))
+    assertEquals(subject, viewModel.uiState.value.subject)
+
+    viewModel.setSubject(subject + "x")
+
+    assertEquals(subject, viewModel.uiState.value.subject)
+  }
+
+  /** An over-limit subject can shrink without being truncated to the new limit. */
+  @Test
+  fun setSubject_overLimitExistingTextCanShrink() = runTest {
+    val subject = "a".repeat(150)
+    val viewModel = loadedViewModel(storedEvent(subject = subject))
+
+    viewModel.setSubject(subject.dropLast(10))
+
+    assertEquals("a".repeat(140), viewModel.uiState.value.subject)
+  }
+
+  /** Truncating new text at 500 UTF-16 units does not leave half of an emoji. */
+  @Test
+  fun setDescription_newTextDoesNotSplitEmojiAt500Characters() = runTest {
+    val viewModel = createViewModel()
+
+    viewModel.setDescription("a".repeat(499) + "😀")
+
+    assertEquals("a".repeat(499), viewModel.uiState.value.description)
   }
 
   /** A description-only edit preserves the exact schedule of a full-day event. */
