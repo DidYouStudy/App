@@ -287,6 +287,21 @@ fun EventFormContent(
         placeholder = stringResource(R.string.event_planning_description_placeholder),
         testTag = FormContentTestTags.DESCRIPTION_INPUT,
     )
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = Spacing.extraSmall),
+        horizontalArrangement = Arrangement.End,
+    ) {
+      Text(
+          text =
+              stringResource(
+                  R.string.event_planning_character_count,
+                  uiState.description.length,
+                  EventTextLimits.DESCRIPTION,
+              ),
+          style = MaterialTheme.typography.labelSmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+    }
 
     // Tasks (optional, personal events only)
     if (uiState.showTasksSection) {

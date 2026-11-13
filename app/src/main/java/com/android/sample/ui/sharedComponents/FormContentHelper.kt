@@ -86,6 +86,7 @@ import com.android.sample.R
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.model.location.CampusLocation
+import com.android.sample.ui.eventplanning.EventTextLimits
 import com.android.sample.ui.theme.AlphaTokens
 import com.android.sample.ui.theme.AnimationTokens
 import com.android.sample.ui.theme.Dimens
@@ -193,6 +194,7 @@ fun OutlinedInputField(
     testTag: String,
     modifier: Modifier = Modifier,
     minLines: Int = 1,
+    maxLength: Int = EventTextLimits.DESCRIPTION,
 ) {
   var isFocused by remember { mutableStateOf(false) }
   val shape = RoundedCornerShape(Dimens.cornerPill)
@@ -200,7 +202,7 @@ fun OutlinedInputField(
   val coroutineScope = rememberCoroutineScope()
   TextField(
       value = value,
-      onValueChange = onValueChange,
+      onValueChange = { onValueChange(it.take(maxLength)) },
       placeholder = {
         Text(
             text = placeholder,
@@ -277,7 +279,7 @@ fun AddTaskInputField(
 
   TextField(
       value = text,
-      onValueChange = { text = it },
+      onValueChange = { text = it.take(EventTextLimits.TASK) },
       placeholder = {
         Text(
             text = stringResource(R.string.event_planning_add_task_placeholder),
@@ -625,7 +627,7 @@ fun SubjectPickerDialogContent(
       Column(modifier = Modifier.fillMaxWidth().heightIn(max = Dimens.subjectPickerMaxHeight)) {
         OutlinedTextField(
             value = searchQuery,
-            onValueChange = { searchQuery = it },
+            onValueChange = { searchQuery = it.take(EventTextLimits.SUBJECT) },
             placeholder = {
               Text(stringResource(R.string.event_planning_subject_search_placeholder))
             },

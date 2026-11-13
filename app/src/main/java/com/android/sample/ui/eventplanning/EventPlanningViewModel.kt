@@ -237,7 +237,9 @@ class EventPlanningViewModel(
   fun setType(type: EventType) = updateForm { copy(type = type) }
 
   /** Updates the event subject. */
-  fun setSubject(subject: String) = updateForm { copy(subject = subject) }
+  fun setSubject(subject: String) = updateForm {
+    copy(subject = subject.take(EventTextLimits.SUBJECT))
+  }
 
   /** Updates the event date. */
   fun setDate(date: LocalDate?) = updateForm { copy(date = date) }
@@ -267,7 +269,9 @@ class EventPlanningViewModel(
   fun setLocation(location: String) = updateForm { copy(location = location) }
 
   /** Updates the optional event description. */
-  fun setDescription(description: String) = updateForm { copy(description = description) }
+  fun setDescription(description: String) = updateForm {
+    copy(description = description.take(EventTextLimits.DESCRIPTION))
+  }
 
   /** Replaces the event checklist. Forbidden for group sessions. */
   fun setTasks(tasks: List<EventTask>) {
@@ -279,7 +283,7 @@ class EventPlanningViewModel(
   fun addTask(text: String) {
     requirePersonalEvent()
     if (text.trim().isEmpty()) return
-    updateForm { copy(tasks = addTaskItem(tasks, text)) }
+    updateForm { copy(tasks = addTaskItem(tasks, text.take(EventTextLimits.TASK))) }
   }
 
   /**
