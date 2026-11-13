@@ -63,6 +63,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -221,12 +222,22 @@ fun GroupSessionScreen(
         TopAppBar(
             title = {
               Text(
-                  stringResource(R.string.group_session_title),
+                  text = stringResource(R.string.group_session_title),
+                  style = MaterialTheme.typography.headlineLarge,
+                  fontWeight = FontWeight.Bold,
                   modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE),
               )
             },
+            colors =
+                TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                ),
             actions = {
-              ProfileButton(onClick = { navigationActions?.navigateTo(Screen.Settings) })
+              ProfileButton(
+                  onClick = { navigationActions?.navigateTo(Screen.Settings) },
+                  modifier = Modifier.padding(end = Dimens.profileButtonPadding),
+              )
             },
         )
       },

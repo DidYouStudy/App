@@ -134,7 +134,10 @@ fun CalendarScreen(
                 )
               }
               Spacer(Modifier.width(Spacing.small))
-              ProfileButton(onClick = { navigationActions?.navigateTo(Screen.Settings) })
+              ProfileButton(
+                  onClick = { navigationActions?.navigateTo(Screen.Settings) },
+                  modifier = Modifier.padding(end = Dimens.profileButtonPadding),
+              )
             },
         )
       },
