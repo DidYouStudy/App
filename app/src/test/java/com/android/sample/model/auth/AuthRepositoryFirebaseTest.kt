@@ -1,5 +1,6 @@
 // Co-authored-by: Codex AI Agent
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.model.auth
 
 import android.net.Uri
@@ -314,6 +315,36 @@ class AuthRepositoryFirebaseTest {
     runCurrent()
     signOut.await()
     assertEquals(account, signIn.await())
+  }
+
+  @Test
+  fun isAuthenticatedReturnsTrueWhenFirebaseHasCurrentUser() {
+    val user = firebaseUser(account)
+    `when`(auth.currentUser).thenReturn(user)
+
+    assertTrue(repository.isAuthenticated)
+  }
+
+  @Test
+  fun isAuthenticatedReturnsFalseWhenFirebaseHasNoCurrentUser() {
+    `when`(auth.currentUser).thenReturn(null)
+
+    assertFalse(repository.isAuthenticated)
+  }
+
+  @Test
+  fun currentUserIdReturnsUidWhenFirebaseHasCurrentUser() {
+    val user = firebaseUser(account)
+    `when`(auth.currentUser).thenReturn(user)
+
+    assertEquals(account.uid, repository.currentUserId)
+  }
+
+  @Test
+  fun currentUserIdReturnsNullWhenFirebaseHasNoCurrentUser() {
+    `when`(auth.currentUser).thenReturn(null)
+
+    assertNull(repository.currentUserId)
   }
 
   private fun firebaseUser(account: UserAccount): FirebaseUser {

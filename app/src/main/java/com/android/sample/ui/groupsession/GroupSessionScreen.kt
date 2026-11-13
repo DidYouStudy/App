@@ -15,6 +15,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,11 +33,13 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -108,6 +111,12 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 
+/** Mode for displaying group sessions: a list of cards or an interactive campus map. */
+enum class GroupSessionViewMode {
+  LIST,
+  MAP,
+}
+
 object GroupSessionScreenTestTags {
   const val SCREEN = "groupSessionScreen"
   const val SEARCH = "groupSessionSearch"
@@ -121,6 +130,11 @@ object GroupSessionScreenTestTags {
   const val SESSION_LIST = "groupSessionList"
   const val ADD_BUTTON = "groupSessionAddButton"
   const val SESSION_ITEM_PREFIX = "groupSessionItem_"
+  const val VIEW_SWITCHER_PILL = "groupSessionViewSwitcherPill"
+  const val LIST_VIEW_BUTTON = "groupSessionListViewButton"
+  const val MAP_VIEW_BUTTON = "groupSessionMapViewButton"
+  const val MAP_CONTENT = "groupSessionMapContent"
+  const val LOCATION_PILL = "groupSessionLocationPill"
   const val PARTICIPANTS_PILL = "groupSessionParticipantsPill"
 
   fun sessionItem(index: Int) = "$SESSION_ITEM_PREFIX$index"
@@ -131,12 +145,15 @@ object GroupSessionScreenTestTags {
 fun GroupSessionScreen(
     navigationActions: NavigationActions? = null,
     viewModel: GroupSessionsViewModel = groupSessionsViewModel(),
+    initialViewMode: GroupSessionViewMode = GroupSessionViewMode.LIST,
     onAddSessionClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddGroupSession) },
     onEditSessionClick: (String) -> Unit = { sessionId ->
       navigationActions?.navigateTo(Screen.EditEvent(sessionId, EventKind.GROUP_SESSION))
     },
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+  var viewMode by rememberSaveable { mutableStateOf(initialViewMode) }
+  var selectedRoom by rememberSaveable { mutableStateOf<String?>(null) }
   var pendingLocationRadius by rememberSaveable { mutableStateOf<Int?>(null) }
   var showFilterSheet by rememberSaveable { mutableStateOf(false) }
   val filterSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -234,6 +251,14 @@ fun GroupSessionScreen(
         GroupSessionContent(
             state = uiState,
             modifier = Modifier.padding(pd),
+            viewMode = viewMode,
+            onViewModeChange = { viewMode = it },
+            selectedRoom = selectedRoom,
+            onSelectedRoomChange = { selectedRoom = it },
+            onLocationClick = { item ->
+              selectedRoom = item.proximity.campusLocation?.name ?: item.session.details.location
+              viewMode = GroupSessionViewMode.MAP
+            },
             onQueryChange = viewModel::onQueryChange,
             onFilterChange = viewModel::onFilterChange,
             onJoin = viewModel::join,
@@ -278,9 +303,14 @@ fun GroupSessionScreen(
 }
 
 @Composable
-private fun GroupSessionContent(
+internal fun GroupSessionContent(
     state: GroupSessionsUiState,
     modifier: Modifier = Modifier,
+    viewMode: GroupSessionViewMode = GroupSessionViewMode.LIST,
+    onViewModeChange: (GroupSessionViewMode) -> Unit = {},
+    selectedRoom: String? = null,
+    onSelectedRoomChange: (String?) -> Unit = {},
+    onLocationClick: (GroupSessionItem) -> Unit = {},
     onQueryChange: (String) -> Unit = {},
     onFilterChange: (GroupSessionFilter) -> Unit = {},
     onJoin: (String) -> Unit = {},
@@ -288,124 +318,291 @@ private fun GroupSessionContent(
     onEdit: (String) -> Unit = {},
     onOpenFilters: () -> Unit = {},
 ) {
-  Column(modifier = modifier.fillMaxSize().padding(horizontal = Spacing.large)) {
-    OutlinedTextField(
-        value = state.query,
-        onValueChange = onQueryChange,
-        modifier = Modifier.fillMaxWidth().testTag(GroupSessionScreenTestTags.SEARCH),
-        singleLine = true,
-        shape = RoundedCornerShape(Dimens.cornerFull),
-        leadingIcon = {
-          Icon(
-              Icons.Default.Search,
-              contentDescription = stringResource(R.string.group_session_search_icon_description),
+  when (viewMode) {
+    GroupSessionViewMode.LIST -> {
+      Box(modifier = modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().padding(horizontal = Spacing.large)) {
+          GroupSessionSearchBar(
+              query = state.query,
+              onQueryChange = onQueryChange,
+              onFilterClick = onOpenFilters,
           )
-        },
-        trailingIcon = {
-          IconButton(
-              modifier = Modifier.testTag(GroupSessionScreenTestTags.FILTER_BUTTON),
-              onClick = onOpenFilters,
-          ) {
-            Icon(
-                Icons.Outlined.Tune,
-                contentDescription = stringResource(R.string.group_session_filter_icon_description),
-            )
+          Spacer(Modifier.height(Spacing.small))
+          GroupSessionFilterRow(
+              filter = state.filter,
+              onFilterChange = onFilterChange,
+          )
+          Text(
+              stringResource(R.string.group_session_active_sessions_title),
+              style = MaterialTheme.typography.titleLarge,
+              fontWeight = FontWeight.Bold,
+              modifier =
+                  Modifier.padding(vertical = Spacing.mediumSmall)
+                      .testTag(GroupSessionScreenTestTags.ACTIVE_TITLE),
+          )
+          when {
+            state.isLoading ->
+                Text(
+                    stringResource(R.string.group_session_loading),
+                    modifier = Modifier.testTag(GroupSessionScreenTestTags.LOADING),
+                )
+            state.sessions.isEmpty() -> Text(stringResource(R.string.group_session_empty))
+            else ->
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(Spacing.medium),
+                    contentPadding = PaddingValues(bottom = Spacing.small),
+                    modifier =
+                        Modifier.fillMaxSize()
+                            .padding(bottom = Dimens.groupSessionViewSwitcherClearance)
+                            .testTag(GroupSessionScreenTestTags.SESSION_LIST),
+                ) {
+                  itemsIndexed(
+                      items = state.sessions,
+                      key = { _, item -> item.session.id },
+                  ) { index, item ->
+                    GroupSessionCard(
+                        item = item,
+                        now = state.now,
+                        onJoin = onJoin,
+                        onLeave = onLeave,
+                        onEdit = onEdit,
+                        onLocationClick = onLocationClick,
+                        // Member list is not built yet.
+                        onParticipantsClick = rememberNotImplementedToast(),
+                        modifier = Modifier.testTag(GroupSessionScreenTestTags.sessionItem(index)),
+                    )
+                  }
+                }
           }
-        },
-        placeholder = { Text(stringResource(R.string.group_session_search_placeholder)) },
-        colors =
-            OutlinedTextFieldDefaults.colors(
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                unfocusedBorderColor = Color.Transparent,
-                focusedBorderColor = Color.Transparent,
+        }
+        GroupSessionViewSwitcher(
+            viewMode = viewMode,
+            onViewModeChange = onViewModeChange,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = Spacing.large),
+        )
+      }
+    }
+    GroupSessionViewMode.MAP -> {
+      Box(modifier = modifier.fillMaxSize().testTag(GroupSessionScreenTestTags.MAP_CONTENT)) {
+        GroupSessionMapContent(
+            rooms = state.rooms,
+            now = state.now,
+            onJoin = onJoin,
+            onLeave = onLeave,
+            onEdit = onEdit,
+            selectedRoom = selectedRoom,
+            onSelectedRoomChange = onSelectedRoomChange,
+            onLocationClick = onLocationClick,
+        )
+        Column(
+            modifier =
+                Modifier.align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = Spacing.large, vertical = Spacing.small),
+        ) {
+          GroupSessionSearchBar(
+              query = state.query,
+              onQueryChange = onQueryChange,
+              onFilterClick = onOpenFilters,
+          )
+          Spacer(Modifier.height(Spacing.small))
+          GroupSessionFilterRow(
+              filter = state.filter,
+              onFilterChange = onFilterChange,
+          )
+        }
+        if (selectedRoom == null) {
+          GroupSessionViewSwitcher(
+              viewMode = viewMode,
+              onViewModeChange = onViewModeChange,
+              modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = Spacing.large),
+          )
+        }
+      }
+    }
+  }
+}
+
+/** Filter chips row (All sessions / My sessions) used across both list and map views. */
+@Composable
+internal fun GroupSessionFilterRow(
+    filter: GroupSessionFilter,
+    onFilterChange: (GroupSessionFilter) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+  val chipColors =
+      FilterChipDefaults.filterChipColors(
+          containerColor = MaterialTheme.colorScheme.surface,
+          selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+      )
+
+  Row(
+      modifier = modifier,
+      horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+  ) {
+    FilterChip(
+        modifier = Modifier.testTag(GroupSessionScreenTestTags.ALL_SESSIONS_FILTER),
+        selected = filter == GroupSessionFilter.ALL,
+        onClick = { onFilterChange(GroupSessionFilter.ALL) },
+        label = { Text(stringResource(R.string.group_session_filter_all)) },
+        leadingIcon =
+            if (filter == GroupSessionFilter.ALL) {
+              {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(Dimens.iconSizeSmall),
+                )
+              }
+            } else null,
+        shape = RoundedCornerShape(Dimens.cornerMedium),
+        colors = chipColors,
+        border =
+            FilterChipDefaults.filterChipBorder(
+                enabled = true,
+                selected = filter == GroupSessionFilter.ALL,
             ),
     )
-    Spacer(Modifier.height(Spacing.small))
-    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
-      FilterChip(
-          modifier = Modifier.testTag(GroupSessionScreenTestTags.ALL_SESSIONS_FILTER),
-          selected = state.filter == GroupSessionFilter.ALL,
-          onClick = { onFilterChange(GroupSessionFilter.ALL) },
-          label = { Text(stringResource(R.string.group_session_filter_all)) },
-          leadingIcon =
-              if (state.filter == GroupSessionFilter.ALL) {
-                {
-                  Icon(
-                      Icons.Default.Check,
-                      contentDescription = null,
-                      modifier = Modifier.size(Dimens.iconSizeSmall),
-                  )
-                }
-              } else null,
-          shape = RoundedCornerShape(Dimens.cornerMedium),
-          border =
-              FilterChipDefaults.filterChipBorder(
-                  enabled = true,
-                  selected = state.filter == GroupSessionFilter.ALL,
-              ),
-      )
-      FilterChip(
-          modifier = Modifier.testTag(GroupSessionScreenTestTags.MY_SESSIONS_FILTER),
-          selected = state.filter == GroupSessionFilter.JOINED,
-          onClick = { onFilterChange(GroupSessionFilter.JOINED) },
-          label = { Text(stringResource(R.string.group_session_filter_my)) },
-          leadingIcon =
-              if (state.filter == GroupSessionFilter.JOINED) {
-                {
-                  Icon(
-                      Icons.Default.Check,
-                      contentDescription = null,
-                      modifier = Modifier.size(Dimens.iconSizeSmall),
-                  )
-                }
-              } else null,
-          shape = RoundedCornerShape(Dimens.cornerMedium),
-          border =
-              FilterChipDefaults.filterChipBorder(
-                  enabled = true,
-                  selected = state.filter == GroupSessionFilter.JOINED,
-              ),
-      )
-    }
-    Text(
-        stringResource(R.string.group_session_active_sessions_title),
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Bold,
-        modifier =
-            Modifier.padding(vertical = Spacing.mediumSmall)
-                .testTag(GroupSessionScreenTestTags.ACTIVE_TITLE),
+    FilterChip(
+        modifier = Modifier.testTag(GroupSessionScreenTestTags.MY_SESSIONS_FILTER),
+        selected = filter == GroupSessionFilter.JOINED,
+        onClick = { onFilterChange(GroupSessionFilter.JOINED) },
+        label = { Text(stringResource(R.string.group_session_filter_my)) },
+        leadingIcon =
+            if (filter == GroupSessionFilter.JOINED) {
+              {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(Dimens.iconSizeSmall),
+                )
+              }
+            } else null,
+        shape = RoundedCornerShape(Dimens.cornerMedium),
+        colors = chipColors,
+        border =
+            FilterChipDefaults.filterChipBorder(
+                enabled = true,
+                selected = filter == GroupSessionFilter.JOINED,
+            ),
     )
-    when {
-      state.isLoading ->
-          Text(
-              stringResource(R.string.group_session_loading),
-              modifier = Modifier.testTag(GroupSessionScreenTestTags.LOADING),
+  }
+}
+
+/** Search bar used across both list and map modes of the group sessions screen. */
+@Composable
+internal fun GroupSessionSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    onFilterClick: () -> Unit = {},
+) {
+  OutlinedTextField(
+      value = query,
+      onValueChange = onQueryChange,
+      modifier = modifier.fillMaxWidth().testTag(GroupSessionScreenTestTags.SEARCH),
+      singleLine = true,
+      shape = RoundedCornerShape(Dimens.cornerFull),
+      leadingIcon = {
+        Icon(
+            Icons.Default.Search,
+            contentDescription = stringResource(R.string.group_session_search_icon_description),
+        )
+      },
+      trailingIcon = {
+        IconButton(
+            modifier = Modifier.testTag(GroupSessionScreenTestTags.FILTER_BUTTON),
+            onClick = onFilterClick,
+        ) {
+          Icon(
+              Icons.Outlined.Tune,
+              contentDescription = stringResource(R.string.group_session_filter_icon_description),
           )
-      state.sessions.isEmpty() -> Text(stringResource(R.string.group_session_empty))
-      else ->
-          LazyColumn(
-              verticalArrangement = Arrangement.spacedBy(Spacing.medium),
-              contentPadding = PaddingValues(bottom = Dimens.fabClearance),
-              modifier = Modifier.fillMaxSize().testTag(GroupSessionScreenTestTags.SESSION_LIST),
-          ) {
-            itemsIndexed(
-                items = state.sessions,
-                key = { _, item -> item.session.id },
-            ) { index, item ->
-              GroupSessionCard(
-                  item = item,
-                  now = state.now,
-                  onJoin = onJoin,
-                  onLeave = onLeave,
-                  onEdit = onEdit,
-                  // Member list is not built yet.
-                  onParticipantsClick = rememberNotImplementedToast(),
-                  modifier = Modifier.testTag(GroupSessionScreenTestTags.sessionItem(index)),
-              )
-            }
-          }
+        }
+      },
+      placeholder = { Text(stringResource(R.string.group_session_search_placeholder)) },
+      colors =
+          OutlinedTextFieldDefaults.colors(
+              unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+              focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+              unfocusedBorderColor = Color.Transparent,
+              focusedBorderColor = Color.Transparent,
+          ),
+  )
+}
+
+/** Floating segmented pill control toggling between list and map views of group sessions. */
+@Composable
+internal fun GroupSessionViewSwitcher(
+    viewMode: GroupSessionViewMode,
+    onViewModeChange: (GroupSessionViewMode) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+  Surface(
+      modifier = modifier.testTag(GroupSessionScreenTestTags.VIEW_SWITCHER_PILL),
+      shape = RoundedCornerShape(Dimens.cornerFull),
+      color = MaterialTheme.colorScheme.surfaceContainerHigh,
+      shadowElevation = Spacing.extraSmall,
+  ) {
+    Row(
+        modifier = Modifier.padding(Spacing.extraSmall),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+      ViewSwitcherOption(
+          label = stringResource(R.string.group_session_view_mode_list),
+          icon = Icons.AutoMirrored.Outlined.FormatListBulleted,
+          selected = viewMode == GroupSessionViewMode.LIST,
+          onClick = { onViewModeChange(GroupSessionViewMode.LIST) },
+          modifier = Modifier.testTag(GroupSessionScreenTestTags.LIST_VIEW_BUTTON),
+      )
+      ViewSwitcherOption(
+          label = stringResource(R.string.group_session_view_mode_map),
+          icon = Icons.Outlined.Map,
+          selected = viewMode == GroupSessionViewMode.MAP,
+          onClick = { onViewModeChange(GroupSessionViewMode.MAP) },
+          modifier = Modifier.testTag(GroupSessionScreenTestTags.MAP_VIEW_BUTTON),
+      )
     }
+  }
+}
+
+@Composable
+private fun ViewSwitcherOption(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+  val selectedBgColor = MaterialTheme.colorScheme.secondaryContainer
+  val unselectedBgColor = Color.Transparent
+  val contentColor =
+      if (selected) MaterialTheme.colorScheme.onSecondaryContainer
+      else MaterialTheme.colorScheme.onSurfaceVariant
+
+  Row(
+      modifier =
+          modifier
+              .clip(RoundedCornerShape(Dimens.cornerFull))
+              .background(if (selected) selectedBgColor else unselectedBgColor)
+              .clickable(onClick = onClick)
+              .padding(horizontal = Spacing.large, vertical = Spacing.small),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.Center,
+  ) {
+    Icon(
+        imageVector = icon,
+        contentDescription = null,
+        modifier = Modifier.size(Dimens.iconSizeMedium),
+        tint = contentColor,
+    )
+    Spacer(modifier = Modifier.width(Spacing.small))
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Medium,
+        color = contentColor,
+    )
   }
 }
 
@@ -418,6 +615,7 @@ internal fun GroupSessionCard(
     onEdit: (String) -> Unit,
     modifier: Modifier = Modifier,
     onParticipantsClick: () -> Unit = {},
+    onLocationClick: (GroupSessionItem) -> Unit = {},
 ) {
   val session = item.session
   val statusLabel = sessionStatusLabel(session.details.startsAt, now)
@@ -528,8 +726,15 @@ internal fun GroupSessionCard(
           modifier = Modifier.fillMaxWidth(),
           verticalArrangement = Arrangement.spacedBy(Spacing.small),
       ) {
+        val locationText =
+            session.details.location?.let { loc ->
+              item.proximity.formattedDistance?.let { dist ->
+                stringResource(R.string.group_session_location_with_distance, loc, dist)
+              } ?: loc
+            } ?: stringResource(R.string.group_session_location_fallback)
+
         MetaInfoPill(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().testTag(GroupSessionScreenTestTags.LOCATION_PILL),
             icon = {
               Icon(
                   Icons.Outlined.LocationOn,
@@ -537,9 +742,11 @@ internal fun GroupSessionCard(
                   modifier = Modifier.size(Dimens.iconSizeSmall),
               )
             },
-            text =
-                session.details.location
-                    ?: stringResource(R.string.group_session_location_fallback),
+            text = locationText,
+            onClick =
+                if (session.details.location != null) {
+                  { onLocationClick(item) }
+                } else null,
         )
         MetaInfoPill(
             modifier = Modifier.fillMaxWidth(),
@@ -721,7 +928,9 @@ private fun MetaInfoPill(
     modifier: Modifier = Modifier,
     icon: @Composable () -> Unit,
     text: String,
+    onClick: (() -> Unit)? = null,
 ) {
+  val clickModifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
   Row(
       modifier =
           modifier
@@ -730,6 +939,8 @@ private fun MetaInfoPill(
                   MaterialTheme.colorScheme.outlineVariant,
                   RoundedCornerShape(Dimens.cornerLarge),
               )
+              .clip(RoundedCornerShape(Dimens.cornerLarge))
+              .then(clickModifier)
               .padding(horizontal = Spacing.medium, vertical = Spacing.mediumSmall),
       verticalAlignment = Alignment.CenterVertically,
   ) {

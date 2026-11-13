@@ -1,5 +1,6 @@
 // Co-authored-by: Codex AI Agent
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.sample.ui.sharedComponents
 
 import android.content.res.Configuration
@@ -84,7 +85,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.android.sample.R
 import com.android.sample.model.event.EventTask
+import com.android.sample.model.event.EventTextLimits
 import com.android.sample.model.event.EventType
+import com.android.sample.model.event.applyTextLimit
 import com.android.sample.model.location.CampusLocation
 import com.android.sample.ui.theme.AlphaTokens
 import com.android.sample.ui.theme.AnimationTokens
@@ -193,6 +196,7 @@ fun OutlinedInputField(
     testTag: String,
     modifier: Modifier = Modifier,
     minLines: Int = 1,
+    maxLength: Int = EventTextLimits.DESCRIPTION,
 ) {
   var isFocused by remember { mutableStateOf(false) }
   val shape = RoundedCornerShape(Dimens.cornerPill)
@@ -200,7 +204,9 @@ fun OutlinedInputField(
   val coroutineScope = rememberCoroutineScope()
   TextField(
       value = value,
-      onValueChange = onValueChange,
+      onValueChange = {
+        onValueChange(applyTextLimit(current = value, newValue = it, limit = maxLength))
+      },
       placeholder = {
         Text(
             text = placeholder,
@@ -277,7 +283,9 @@ fun AddTaskInputField(
 
   TextField(
       value = text,
-      onValueChange = { text = it },
+      onValueChange = {
+        text = applyTextLimit(current = text, newValue = it, limit = EventTextLimits.TASK)
+      },
       placeholder = {
         Text(
             text = stringResource(R.string.event_planning_add_task_placeholder),
@@ -625,7 +633,14 @@ fun SubjectPickerDialogContent(
       Column(modifier = Modifier.fillMaxWidth().heightIn(max = Dimens.subjectPickerMaxHeight)) {
         OutlinedTextField(
             value = searchQuery,
-            onValueChange = { searchQuery = it },
+            onValueChange = {
+              searchQuery =
+                  applyTextLimit(
+                      current = searchQuery,
+                      newValue = it,
+                      limit = EventTextLimits.SUBJECT,
+                  )
+            },
             placeholder = {
               Text(stringResource(R.string.event_planning_subject_search_placeholder))
             },

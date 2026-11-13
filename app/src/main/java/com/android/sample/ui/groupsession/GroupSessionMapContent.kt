@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Gemini <noreply@google.com>
 // Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.groupsession
 
@@ -14,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,24 +73,47 @@ fun GroupSessionMapContent(
     onEdit: (String) -> Unit,
     modifier: Modifier = Modifier,
     initialSelectedRoom: String? = null,
+    selectedRoom: String? = null,
+    onSelectedRoomChange: ((String?) -> Unit)? = null,
+    onLocationClick: (GroupSessionItem) -> Unit = {},
     cameraPositionState: CameraPositionState? = null,
 ) {
-  var selectedRoom by rememberSaveable { mutableStateOf(initialSelectedRoom) }
+  // Supports both state hosting (controlled by parent via selectedRoom/onSelectedRoomChange)
+  // and self-contained state (uncontrolled, falling back to internalSelectedRoom initialized with
+  // initialSelectedRoom).
+  var internalSelectedRoom by rememberSaveable { mutableStateOf(initialSelectedRoom) }
+  val activeSelectedRoom = if (onSelectedRoomChange != null) selectedRoom else internalSelectedRoom
+  val updateSelectedRoom: (String?) -> Unit = { room ->
+    if (onSelectedRoomChange != null) {
+      onSelectedRoomChange(room)
+    } else {
+      internalSelectedRoom = room
+    }
+  }
   val campusRooms = remember(rooms) { rooms.map { it.room } }
-  val selected = rooms.firstOrNull { it.room.name == selectedRoom }
+  val selected = rooms.firstOrNull { it.room.name == activeSelectedRoom }
   val maxListHeightFraction = floatResource(R.dimen.map_session_list_max_height_fraction)
   val campusCenter =
       Location(
           floatResource(R.dimen.map_campus_center_latitude).toDouble(),
           floatResource(R.dimen.map_campus_center_longitude).toDouble(),
       )
+  var cameraTarget by remember {
+    mutableStateOf<Location?>(selected?.room?.location ?: campusCenter)
+  }
+
+  LaunchedEffect(selected) {
+    if (selected != null) {
+      cameraTarget = selected.room.location
+    }
+  }
 
   BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     GroupSessionMapView(
         rooms = campusRooms,
-        cameraTarget = campusCenter,
-        onMarkerClick = { selectedRoom = it },
-        onMapClick = { selectedRoom = null },
+        cameraTarget = cameraTarget,
+        onMarkerClick = updateSelectedRoom,
+        onMapClick = { updateSelectedRoom(null) },
         cameraPositionState = cameraPositionState,
     )
     if (selected != null) {
@@ -98,6 +123,7 @@ fun GroupSessionMapContent(
           onJoin = onJoin,
           onLeave = onLeave,
           onEdit = onEdit,
+          onLocationClick = onLocationClick,
           modifier =
               Modifier.align(Alignment.BottomCenter)
                   .heightIn(max = maxHeight * maxListHeightFraction),
@@ -115,6 +141,7 @@ private fun SessionCardList(
     onLeave: (String) -> Unit,
     onEdit: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onLocationClick: (GroupSessionItem) -> Unit = {},
 ) {
   Surface(
       modifier = modifier.fillMaxWidth(),
@@ -134,6 +161,7 @@ private fun SessionCardList(
             onJoin = onJoin,
             onLeave = onLeave,
             onEdit = onEdit,
+            onLocationClick = onLocationClick,
             // Member list is not built yet.
             onParticipantsClick = rememberNotImplementedToast(),
         )

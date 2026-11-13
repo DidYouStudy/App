@@ -135,6 +135,28 @@ class PreferencesViewModelTest {
   }
 
   @Test
+  fun updatePreferences_success_marksOnboardingComplete() = runTest {
+    val updatedPrefs = UserPreferences(userId = userId)
+    `when`(repository.getPreferences(userId)).thenReturn(Result.success(null))
+    `when`(repository.savePreferences(updatedPrefs)).thenReturn(Result.success(Unit))
+    val fakeStore =
+        object : com.android.sample.model.preferences.OnboardingStore {
+          var completed = false
+
+          override fun hasCompletedOnboarding(userId: String): Boolean = completed
+
+          override fun setCompletedOnboarding(userId: String, completed: Boolean) {
+            this.completed = completed
+          }
+        }
+    val viewModel = PreferencesViewModel(repository, authRepository, fakeStore)
+
+    viewModel.updatePreferences(updatedPrefs)
+
+    assertEquals(true, fakeStore.hasCompletedOnboarding(userId))
+  }
+
+  @Test
   fun updatePreferences_failure_updatesUiStateToError() = runTest {
     val initialPrefs = UserPreferences(userId = userId)
     val updatedPrefs = initialPrefs.copy(sessionLengthMinutes = 90)

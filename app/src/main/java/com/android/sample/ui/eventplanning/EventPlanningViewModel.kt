@@ -1,5 +1,6 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: GitHub Copilot
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
@@ -15,18 +16,25 @@ import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
+import com.android.sample.model.event.EventTextLimits
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.EventsRepositoryProvider
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.PersonalEvent
+import com.android.sample.model.event.applyTextLimit
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
 import com.android.sample.model.location.CampusLocation
 import com.android.sample.model.location.CampusLocationFilter
 import com.android.sample.model.location.CampusLocationRepository
 import com.android.sample.model.location.CampusLocationRepositoryProvider
+import com.android.sample.model.preferences.PreferenceDefaults
+import com.android.sample.model.preferences.PreferencesRepository
+import com.android.sample.model.preferences.PreferencesRepositoryProvider
+import com.android.sample.model.preferences.UserPreferences
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -77,6 +85,7 @@ enum class EventKind {
  *   [EventPlanningViewModel.onEventEditedHandled].
  * @property isEventDeleted same for a successful delete, cleared by
  *   [EventPlanningViewModel.onEventDeletedHandled].
+ * @property hasSetCustomEndTime whether a custom end time has been set or loaded.
  */
 data class EventPlanningUiState(
     val eventKind: EventKind = EventKind.PERSONAL,
@@ -85,6 +94,7 @@ data class EventPlanningUiState(
     val date: LocalDate? = null,
     val startTime: LocalTime? = null,
     val endTime: LocalTime? = null,
+    val hasSetCustomEndTime: Boolean = false,
     val location: String = "",
     val description: String = "",
     val tasks: List<EventTask> = emptyList(),
@@ -135,11 +145,20 @@ class EventPlanningViewModel(
     private val campusLocationRepository: CampusLocationRepository,
     private val groupSessionsRepository: GroupSessionsRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
+    private val preferencesRepository: PreferencesRepository =
+        object : PreferencesRepository {
+          override suspend fun getPreferences(userId: String): Result<UserPreferences?> =
+              Result.success(null)
+
+          override suspend fun savePreferences(preferences: UserPreferences): Result<Unit> =
+              Result.success(Unit)
+        },
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(EventPlanningUiState())
   val uiState: StateFlow<EventPlanningUiState> = _uiState.asStateFlow()
 
   private var currentUserId: String? = null
+  private var sessionLengthMinutes: Int = PreferenceDefaults.DEFAULT_SESSION_MINUTES
 
   /**
    * ID of the event being added. Generated on the first attempt and reused by retries, so that a
@@ -162,7 +181,16 @@ class EventPlanningViewModel(
     viewModelScope.launch {
       try {
         authRepository.currentUser
-            .onEach { user -> currentUserId = user?.uid }
+            .onEach { user ->
+              currentUserId = user?.uid
+              sessionLengthMinutes =
+                  if (user == null) {
+                    PreferenceDefaults.DEFAULT_SESSION_MINUTES
+                  } else {
+                    preferencesRepository.getPreferences(user.uid).getOrNull()?.sessionLengthMinutes
+                        ?: PreferenceDefaults.DEFAULT_SESSION_MINUTES
+                  }
+            }
             .flatMapLatest { user ->
               if (user == null) flowOf(Result.success(emptyList()))
               else eventsRepository.observeSubjects(user.uid)
@@ -212,22 +240,55 @@ class EventPlanningViewModel(
   fun setType(type: EventType) = updateForm { copy(type = type) }
 
   /** Updates the event subject. */
-  fun setSubject(subject: String) = updateForm { copy(subject = subject) }
+  fun setSubject(subject: String) = updateForm {
+    copy(
+        subject =
+            applyTextLimit(
+                current = this.subject,
+                newValue = subject,
+                limit = EventTextLimits.SUBJECT,
+            )
+    )
+  }
 
   /** Updates the event date. */
   fun setDate(date: LocalDate?) = updateForm { copy(date = date) }
 
-  /** Updates the start time of day. */
-  fun setStartTime(startTime: LocalTime?) = updateForm { copy(startTime = startTime) }
+  /**
+   * Updates the start time of day and automatically sets the end time to start time plus
+   * sessionLengthMinutes from user preferences unless a custom end time has already been set.
+   */
+  fun setStartTime(startTime: LocalTime?) {
+    updateForm {
+      val computedEndTime =
+          if (!hasSetCustomEndTime && startTime != null) {
+            startTime.plusMinutes(sessionLengthMinutes.toLong())
+          } else {
+            endTime
+          }
+      copy(startTime = startTime, endTime = computedEndTime)
+    }
+  }
 
   /** Updates the end time of day. */
-  fun setEndTime(endTime: LocalTime?) = updateForm { copy(endTime = endTime) }
+  fun setEndTime(endTime: LocalTime?) = updateForm {
+    copy(endTime = endTime, hasSetCustomEndTime = true)
+  }
 
   /** Updates the optional event location. */
   fun setLocation(location: String) = updateForm { copy(location = location) }
 
   /** Updates the optional event description. */
-  fun setDescription(description: String) = updateForm { copy(description = description) }
+  fun setDescription(description: String) = updateForm {
+    copy(
+        description =
+            applyTextLimit(
+                current = this.description,
+                newValue = description,
+                limit = EventTextLimits.DESCRIPTION,
+            )
+    )
+  }
 
   /** Replaces the event checklist. Forbidden for group sessions. */
   fun setTasks(tasks: List<EventTask>) {
@@ -239,7 +300,8 @@ class EventPlanningViewModel(
   fun addTask(text: String) {
     requirePersonalEvent()
     if (text.trim().isEmpty()) return
-    updateForm { copy(tasks = addTaskItem(tasks, text)) }
+    val limitedText = applyTextLimit(current = "", newValue = text, limit = EventTextLimits.TASK)
+    updateForm { copy(tasks = addTaskItem(tasks, limitedText)) }
   }
 
   /**
@@ -431,17 +493,33 @@ class EventPlanningViewModel(
   }
 
   /** Validates form inputs and builds [EventDetails], or sets the error and returns null. */
-  private fun validateAndBuildDetails(original: EventDetails?): EventDetails? {
+  private fun validateAndBuildDetails(original: EventDetails?, isEditing: Boolean): EventDetails? {
     val state = _uiState.value
     val date = state.date
     val startTime = state.startTime
     val endTime = state.endTime
-    if (date == null || startTime == null || endTime == null) {
-      fail(EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED)
+    if (
+        date == null ||
+            startTime == null ||
+            endTime == null ||
+            (state.type != EventType.OTHER && state.subject.isBlank())
+    ) {
+      fail(EventPlanningError.REQUIRED_FIELDS_MISSING)
       return null
     }
-
     val (startsAt, endsAt) = calculateStartAndEndInstants(date, startTime, endTime, clock, original)
+    if (startsAt == endsAt) {
+      fail(EventPlanningError.INVALID_TIME_RANGE)
+      return null
+    }
+    if (!isEditing && startsAt.isBefore(clock.instant())) {
+      fail(EventPlanningError.EVENT_IN_PAST)
+      return null
+    }
+    if (Duration.between(startsAt, endsAt) > EventDetails.MAX_DURATION) {
+      fail(EventPlanningError.EVENT_TOO_LONG)
+      return null
+    }
 
     return try {
       EventDetails(
@@ -472,7 +550,8 @@ class EventPlanningViewModel(
       return
     }
 
-    val details = validateAndBuildDetails(editingEvent?.details?.takeIf { isEditing }) ?: return
+    val details =
+        validateAndBuildDetails(editingEvent?.details?.takeIf { isEditing }, isEditing) ?: return
     val now = clock.instant()
     val defaultError =
         if (isEditing) EventPlanningError.FAILED_TO_EDIT_EVENT
@@ -586,6 +665,7 @@ class EventPlanningViewModel(
           date = start.toLocalDate(),
           startTime = start.toLocalTime(),
           endTime = end.toLocalTime(),
+          hasSetCustomEndTime = true,
           location = event.details.location.orEmpty(),
           description = event.details.description.orEmpty(),
           tasks = (event as? PersonalEvent)?.tasks.orEmpty(),
@@ -621,6 +701,8 @@ class EventPlanningViewModelFactory(
     private val eventsRepository: EventsRepository,
     private val campusLocationRepository: CampusLocationRepository,
     private val groupSessionsRepository: GroupSessionsRepository,
+    private val preferencesRepository: PreferencesRepository =
+        PreferencesRepositoryProvider.getRepository(),
 ) : ViewModelProvider.Factory {
   /**
    * Creates an EventsPlanningViewModel and rejects unrelated ViewModel types rather than casting
@@ -636,6 +718,8 @@ class EventPlanningViewModelFactory(
         eventsRepository,
         campusLocationRepository,
         groupSessionsRepository,
+        Clock.systemDefaultZone(),
+        preferencesRepository,
     )
         as T
   }
@@ -656,5 +740,6 @@ fun eventsPlanningViewModel(): EventPlanningViewModel =
                 campusLocationRepository =
                     CampusLocationRepositoryProvider.getRepository(LocalContext.current),
                 groupSessionsRepository = GroupSessionsRepositoryProvider.getRepository(),
+                preferencesRepository = PreferencesRepositoryProvider.getRepository(),
             )
     )

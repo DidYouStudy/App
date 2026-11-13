@@ -243,10 +243,15 @@ class CalendarEventNavigationTest {
     composeRule.onNodeWithTag(DetailsTags.EDIT_BUTTON).performClick()
     replaceDescription("Unsaved description")
 
+    composeRule.mainClock.autoAdvance = false
     composeRule.onNodeWithTag(EditTags.SAVE_BUTTON).performClick()
+    composeRule.mainClock.advanceTimeByFrame()
+    composeRule.waitForIdle()
     composeRule.onNodeWithTag(EditTags.ERROR_TEXT).assertIsDisplayed()
     assertEquals(1, events.saveAttempts)
     composeRule.onNodeWithTag(EditTags.DELETE_BUTTON).performClick()
+    composeRule.mainClock.advanceTimeByFrame()
+    composeRule.waitForIdle()
     composeRule.onNodeWithTag(EditTags.ERROR_TEXT).assertIsDisplayed()
     assertEquals(2, events.deleteAttempts)
 

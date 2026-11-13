@@ -1,6 +1,8 @@
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Gemini AI Agent
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample
 
 import android.content.Context
@@ -23,6 +25,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.printToLog
 import androidx.credentials.ClearCredentialStateRequest
@@ -41,6 +44,7 @@ import com.android.sample.testing.FakeGoogleCredentialManager
 import com.android.sample.testing.RepositoryOverridesRule
 import com.android.sample.ui.auth.SignInScreenTestTags
 import com.android.sample.ui.calendar.CalendarTestTags
+import com.android.sample.ui.dashboard.DashboardContentTestTags
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as EventTags
 import com.android.sample.ui.groupsession.GroupSessionScreenTestTags
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -57,7 +61,12 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
@@ -416,20 +425,30 @@ class EndToEndTest {
   @Test
   fun returningUser_createsEventFromCalendar_andItIsStoredInFirestore() {
     val uid = seedReturningUser { UserPreferences(userId = it) }.userId
+    val tomorrow = LocalDate.now(ZoneOffset.UTC).plusDays(1)
+    val tomorrowDescription =
+        DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)
+            .withLocale(Locale.getDefault())
+            .format(tomorrow)
     signInThroughUi()
     assertOnDashboard()
     assertTrue("No event stored yet", storedEvents(uid).isEmpty())
 
-    // The calendar's add button opens the event form.
+    // The calendar's add menu opens the event form via "Event".
     composeRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
     assertTopBarTitle(string(R.string.calendar_title))
     composeRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).performClick()
+    composeRule.onNodeWithTag(DashboardContentTestTags.FAB_MENU_EVENT_BUTTON).performClick()
     waitForTag(EventTags.SCREEN_CONTAINER)
 
-    // "Other" needs no subject. Date and start time keep the pickers' defaults (today, now).
+    // "Other" needs no subject. Date and start time keep the pickers' defaults (tomorrow, now).
     composeRule.onNodeWithTag(EventTags.TYPE_SELECTOR).performClick()
     composeRule.onNodeWithText(string(R.string.event_type_other)).performClick()
     composeRule.onNodeWithTag(EventTags.DATE_SELECTOR).performClick()
+    if (tomorrow.dayOfMonth == 1) {
+      composeRule.onNodeWithContentDescription("Next month").performClick()
+    }
+    composeRule.onNodeWithText(tomorrowDescription).performClick()
     composeRule.onNodeWithText(string(R.string.confirm)).performClick()
     composeRule.onNodeWithTag(EventTags.START_TIME_SELECTOR).performClick()
     composeRule.onNodeWithContentDescription("8 hours").performClick()
@@ -485,7 +504,11 @@ class EndToEndTest {
     assertEquals(listOf(hostId), storedMemberIds(session.id))
 
     // Joining adds the user to the session in Firestore and the card now offers Leave.
-    composeRule.onNodeWithText(string(R.string.group_session_action_join)).performClick()
+    val joinMatcher = hasText(string(R.string.group_session_action_join))
+    composeRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(joinMatcher)
+    composeRule.onNode(joinMatcher).assertIsDisplayed().performClick()
     composeRule.waitUntil(timeoutMillis = TIMEOUT_MILLIS) {
       composeRule
           .onAllNodesWithText(string(R.string.group_session_action_leave))
@@ -495,7 +518,11 @@ class EndToEndTest {
     assertEquals(listOf(hostId, uid), storedMemberIds(session.id))
 
     // Leaving removes the user again and the card goes back to Join.
-    composeRule.onNodeWithText(string(R.string.group_session_action_leave)).performClick()
+    val leaveMatcher = hasText(string(R.string.group_session_action_leave))
+    composeRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(leaveMatcher)
+    composeRule.onNode(leaveMatcher).assertIsDisplayed().performClick()
     composeRule.waitUntil(timeoutMillis = TIMEOUT_MILLIS) {
       composeRule
           .onAllNodesWithText(string(R.string.group_session_action_join))

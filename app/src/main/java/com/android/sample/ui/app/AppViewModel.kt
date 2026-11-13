@@ -1,6 +1,7 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.app
 
 import androidx.compose.runtime.Composable
@@ -11,6 +12,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
+import com.android.sample.model.preferences.OnboardingStore
+import com.android.sample.model.preferences.OnboardingStoreProvider
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.PreferencesRepositoryProvider
 import com.android.sample.ui.navigation.Screen
@@ -39,15 +42,60 @@ sealed interface AppUiState {
 class AppViewModel(
     private val authRepository: AuthRepository,
     private val preferencesRepository: PreferencesRepository,
+    private val onboardingStore: OnboardingStore = OnboardingStoreProvider.getStore(),
 ) : ViewModel() {
   companion object {
     private const val SIGN_IN_TIMEOUT_MILLIS = 10_000L
     private const val SIGN_IN_TIMEOUT_MESSAGE = "Timed out waiting for signed-in user"
+
+    /**
+     * Resolves the initial start destination for NavHost given a candidate [startDestination] and
+     * the current [appState].
+     */
+    fun resolveStartDestination(startDestination: Screen?, appState: AppUiState): Screen? =
+        startDestination
+            ?: when (appState) {
+              AppUiState.Dashboard -> Screen.Dashboard
+              AppUiState.FirstTimeSignIn,
+              is AppUiState.Error -> Screen.Preferences
+              AppUiState.SignIn,
+              AppUiState.LogOut -> Screen.Auth
+              else -> null
+            }
   }
 
   private val mutableUiState = MutableStateFlow<AppUiState>(AppUiState.Loading)
   val uiState: StateFlow<AppUiState> = mutableUiState.asStateFlow()
   private var hadSignedInUser = false
+
+  /**
+   * Initial start destination for NavHost.
+   *
+   * Authenticated users who have completed onboarding start on [Screen.Dashboard]. Authenticated
+   * users who have explicitly not completed onboarding start directly on [Screen.Preferences].
+   * Unauthenticated users start on [Screen.Auth]. When authenticated but the onboarding completion
+   * status is unknown (missing local flag), returns null so UI can display a loading state until
+   * preferences are fetched.
+   */
+  val startDestination: Screen? =
+      when {
+        !authRepository.isAuthenticated -> Screen.Auth
+        else ->
+            when (authRepository.currentUserId?.let(onboardingStore::hasCompletedOnboarding)) {
+              true -> Screen.Dashboard
+              false -> Screen.Preferences
+              null -> null
+            }
+      }
+
+  /**
+   * Resolves the initial start destination for the application NavHost.
+   *
+   * If [startDestination] is already known, it is returned immediately. Otherwise, the destination
+   * is resolved from the given [appState] once determined.
+   */
+  fun resolveStartDestination(appState: AppUiState = uiState.value): Screen? =
+      resolveStartDestination(startDestination, appState)
 
   init {
     viewModelScope.launch {
@@ -113,8 +161,13 @@ class AppViewModel(
     preferencesRepository
         .getPreferences(userId)
         .onSuccess { preferences ->
-          mutableUiState.value =
-              if (preferences == null) AppUiState.FirstTimeSignIn else AppUiState.Dashboard
+          if (preferences != null) {
+            onboardingStore.setCompletedOnboarding(userId, true)
+            mutableUiState.value = AppUiState.Dashboard
+          } else {
+            onboardingStore.setCompletedOnboarding(userId, false)
+            mutableUiState.value = AppUiState.FirstTimeSignIn
+          }
         }
         .onFailure { exception ->
           mutableUiState.value =
@@ -127,21 +180,30 @@ class AppViewModel(
 class AppViewModelFactory(
     private val authRepository: AuthRepository,
     private val preferencesRepository: PreferencesRepository,
+    private val onboardingStore: OnboardingStore? = null,
 ) : ViewModelProvider.Factory {
   override fun <T : ViewModel> create(modelClass: Class<T>): T {
     require(modelClass == AppViewModel::class.java) { "Unsupported ViewModel: ${modelClass.name}" }
     @Suppress("UNCHECKED_CAST")
-    return AppViewModel(authRepository, preferencesRepository) as T
+    return AppViewModel(
+        authRepository,
+        preferencesRepository,
+        onboardingStore ?: OnboardingStoreProvider.getStore(),
+    )
+        as T
   }
 }
 
 /** Returns the application ViewModel backed by the application's repositories. */
 @Composable
-fun appViewModel(): AppViewModel =
-    viewModel(
-        factory =
-            AppViewModelFactory(
-                AuthRepositoryProvider.getRepository(LocalContext.current),
-                PreferencesRepositoryProvider.getRepository(),
-            )
-    )
+fun appViewModel(): AppViewModel {
+  val context = LocalContext.current
+  return viewModel(
+      factory =
+          AppViewModelFactory(
+              AuthRepositoryProvider.getRepository(context),
+              PreferencesRepositoryProvider.getRepository(),
+              OnboardingStoreProvider.getStore(context),
+          )
+  )
+}

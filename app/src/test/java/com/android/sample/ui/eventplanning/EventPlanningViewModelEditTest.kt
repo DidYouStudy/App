@@ -1,4 +1,5 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Copilot
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
@@ -9,6 +10,7 @@ import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
 import com.android.sample.model.event.PersonalEvent
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -131,6 +133,24 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     assertTrue(state.isEditing)
     assertFalse(state.isLoading)
     assertNull(state.error)
+  }
+
+  /** Loading an over-limit description through the edit path keeps all 600 characters. */
+  @Test
+  fun loadEvent_keeps600CharacterDescription() = runTest {
+    val description = "a".repeat(600)
+    val viewModel = loadedViewModel(storedEvent(description = description))
+
+    assertEquals(description, viewModel.uiState.value.description)
+  }
+
+  /** Loading an over-limit subject through the edit path keeps all 150 characters. */
+  @Test
+  fun loadEvent_keeps150CharacterSubject() = runTest {
+    val subject = "a".repeat(150)
+    val viewModel = loadedViewModel(storedEvent(subject = subject))
+
+    assertEquals(subject, viewModel.uiState.value.subject)
   }
 
   @Test
@@ -308,6 +328,74 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     verify(eventsRepository, never()).newEventId()
   }
 
+  /** Typing into an over-limit description cannot discard or add existing text. */
+  @Test
+  fun setDescription_overLimitExistingTextCannotGrow() = runTest {
+    val description = "a".repeat(600)
+    val viewModel = loadedViewModel(storedEvent(description = description))
+    assertEquals(description, viewModel.uiState.value.description)
+
+    viewModel.setDescription(description + "x")
+
+    assertEquals(description, viewModel.uiState.value.description)
+  }
+
+  /** An over-limit description can shrink without being truncated to the new limit. */
+  @Test
+  fun setDescription_overLimitExistingTextCanShrink() = runTest {
+    val description = "a".repeat(600)
+    val viewModel = loadedViewModel(storedEvent(description = description))
+
+    viewModel.setDescription(description.dropLast(10))
+
+    assertEquals("a".repeat(590), viewModel.uiState.value.description)
+  }
+
+  /** Saving another field preserves an untouched 600-character description. */
+  @Test
+  fun editEvent_preservesUntouched600CharacterDescription() = runTest {
+    val description = "a".repeat(600)
+    val viewModel = loadedViewModel(storedEvent(description = description))
+    viewModel.setLocation("Room 2")
+
+    viewModel.editEvent()
+
+    assertEquals(description, savedEvents().single().details.description)
+  }
+
+  /** Typing into an over-limit subject cannot discard or add existing text. */
+  @Test
+  fun setSubject_overLimitExistingTextCannotGrow() = runTest {
+    val subject = "a".repeat(150)
+    val viewModel = loadedViewModel(storedEvent(subject = subject))
+    assertEquals(subject, viewModel.uiState.value.subject)
+
+    viewModel.setSubject(subject + "x")
+
+    assertEquals(subject, viewModel.uiState.value.subject)
+  }
+
+  /** An over-limit subject can shrink without being truncated to the new limit. */
+  @Test
+  fun setSubject_overLimitExistingTextCanShrink() = runTest {
+    val subject = "a".repeat(150)
+    val viewModel = loadedViewModel(storedEvent(subject = subject))
+
+    viewModel.setSubject(subject.dropLast(10))
+
+    assertEquals("a".repeat(140), viewModel.uiState.value.subject)
+  }
+
+  /** Truncating new text at 500 UTF-16 units does not leave half of an emoji. */
+  @Test
+  fun setDescription_newTextDoesNotSplitEmojiAt500Characters() = runTest {
+    val viewModel = createViewModel()
+
+    viewModel.setDescription("a".repeat(499) + "😀")
+
+    assertEquals("a".repeat(499), viewModel.uiState.value.description)
+  }
+
   /** A description-only edit preserves the exact schedule of a full-day event. */
   @Test
   fun editEvent_preservesUnchanged24HourSchedule() = runTest {
@@ -357,13 +445,13 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
   }
 
   @Test
-  fun editEvent_invalidForm_setsInvalidEventError() = runTest {
+  fun editEvent_blankRequiredSubject_reportsRequiredFieldsError() = runTest {
     val viewModel = loadedViewModel()
     viewModel.setSubject("   ")
 
     viewModel.editEvent()
 
-    assertEquals(EventPlanningError.INVALID_EVENT, viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.REQUIRED_FIELDS_MISSING, viewModel.uiState.value.error)
     assertNothingSaved()
   }
 
@@ -687,7 +775,7 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
 
     viewModel.addEvent()
 
-    assertEquals(EventPlanningError.INVALID_EVENT, viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.INVALID_TIME_RANGE, viewModel.uiState.value.error)
     assertNothingSaved()
   }
 
@@ -705,7 +793,8 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
 
   @Test
   fun addEvent_overnightAcrossTheEndOfSummerTime_usesLocalClockTimes() = runTest {
-    val viewModel = createViewModel()
+    val fallBackClock = Clock.fixed(Instant.parse("2026-10-24T18:00:00Z"), zone)
+    val viewModel = createViewModel(clk = fallBackClock)
     // Clocks go back from 03:00 to 02:00 on 25 October 2026: 22:00 is UTC+2, 04:00 is UTC+1.
     viewModel.fillValidForm(
         date = LocalDate.of(2026, 10, 24),
