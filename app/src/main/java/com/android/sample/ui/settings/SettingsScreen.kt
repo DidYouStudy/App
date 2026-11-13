@@ -1,6 +1,7 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.settings
 
 import androidx.compose.foundation.layout.Column
@@ -44,7 +45,6 @@ import com.android.sample.ui.theme.Spacing
  * @param onChangeProfilePictureClick Called when the user requests to change their profile picture.
  * @param onModifyPreferencesClick Called when the user opens preference settings.
  * @param onManageFriendsClick Called when the user opens friend management.
- * @param onLogoutSuccess Called after the user is successfully signed out.
  */
 @Composable
 fun SettingsScreen(
@@ -55,7 +55,6 @@ fun SettingsScreen(
     onChangeProfilePictureClick: () -> Unit = {},
     onModifyPreferencesClick: () -> Unit = {},
     onManageFriendsClick: () -> Unit = {},
-    onLogoutSuccess: () -> Unit = {},
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val snackbarHostState = remember { SnackbarHostState() }
@@ -83,7 +82,7 @@ fun SettingsScreen(
       onChangeProfilePictureClick = onChangeProfilePictureClick,
       onModifyPreferencesClick = onModifyPreferencesClick,
       onManageFriendsClick = onManageFriendsClick,
-      onLogoutClick = { viewModel.signOut(onLogoutSuccess) },
+      onLogoutClick = { viewModel.signOut() },
   )
 }
 

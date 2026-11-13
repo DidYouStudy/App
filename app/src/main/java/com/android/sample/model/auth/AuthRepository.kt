@@ -1,5 +1,6 @@
 // Co-authored-by: Codex AI Agent
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.model.auth
 
 import kotlinx.coroutines.flow.Flow
@@ -12,6 +13,19 @@ import kotlinx.coroutines.flow.Flow
  * the wrong order and leave the wrong account signed in (and later Firestore writes would use it).
  */
 interface AuthRepository {
+  /**
+   * Whether a user is currently authenticated. Synchronous check for immediate routing decisions
+   * without waiting for flow collection.
+   */
+  val isAuthenticated: Boolean
+
+  /**
+   * The unique ID of the currently authenticated user, or null when nobody is signed in.
+   * Synchronous check for immediate routing and local cache access without waiting for flow
+   * collection.
+   */
+  val currentUserId: String?
+
   /**
    * The signed-in account, or null when nobody is signed in. This is the single source of truth for
    * "who is signed in": the ViewModel observes it instead of keeping its own copy, and uses it for

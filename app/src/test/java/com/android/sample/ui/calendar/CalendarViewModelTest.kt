@@ -1,5 +1,6 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.calendar
 
 import com.android.sample.model.auth.AuthRepository
@@ -317,6 +318,12 @@ class CalendarViewModelTest {
 
   /** Supplies a session flow that fails immediately to exercise the outer observation handler. */
   private class FailingAuthRepository : AuthRepository {
+    override val isAuthenticated: Boolean
+      get() = false
+
+    override val currentUserId: String?
+      get() = null
+
     override val currentUser: Flow<UserAccount?> = flow {
       throw IllegalStateException("auth failed")
     }
