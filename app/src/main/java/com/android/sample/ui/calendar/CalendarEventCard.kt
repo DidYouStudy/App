@@ -51,11 +51,12 @@ object CalendarEventCardTestTags {
   const val SUBJECT = "calendar_eventCard_subject"
 }
 
-/** Displays an event with a type label, subject, and space-aware start-time label. */
+/** Displays an event's type, subject and start time, and invokes [onClick] when tapped. */
 @Composable
 fun CalendarEventCard(
     event: Event,
     modifier: Modifier = Modifier,
+    onClick: () -> Unit = {},
 ) {
   val color = eventColor(event.details.type)
   val colorDark = eventColor(event.details.type, true)
@@ -68,7 +69,7 @@ fun CalendarEventCard(
   // The surface provides one clickable, rounded container for the complete event card.
   Surface(
       modifier = modifier,
-      onClick = {}, // shows the event details screen
+      onClick = onClick,
       shape = cardShape,
       color = color,
   ) {

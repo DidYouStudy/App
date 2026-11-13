@@ -472,6 +472,65 @@ class FormContentHelperTests {
   }
 
   @Test
+  fun eventTimePickerDialogRendersInLandscapeModeAndConfirmsAndDismisses() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var selectedTime: LocalTime? = null
+    var dismissed = false
+    val expectedTime = LocalTime.of(9, 45)
+
+    val landscapeConfig =
+        Configuration(context.resources.configuration).apply {
+          orientation = Configuration.ORIENTATION_LANDSCAPE
+        }
+
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalConfiguration provides landscapeConfig) {
+        EventTimePickerDialog(
+            initialTime = expectedTime,
+            title = "Start Time",
+            onTimeSelected = { selectedTime = it },
+            onDismiss = { dismissed = true },
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithText("Start Time").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.confirm))
+        .assertIsDisplayed()
+        .performClick()
+    assertEquals(expectedTime, selectedTime)
+    assertTrue(dismissed)
+
+    dismissed = false
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.cancel))
+        .assertIsDisplayed()
+        .performClick()
+    assertTrue(dismissed)
+  }
+
+  @Test
+  fun eventTimePickerDialogHandlesNullInitialTime() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var selectedTime: LocalTime? = null
+    var dismissed = false
+
+    composeTestRule.setContent {
+      EventTimePickerDialog(
+          initialTime = null,
+          title = "End Time",
+          onTimeSelected = { selectedTime = it },
+          onDismiss = { dismissed = true },
+      )
+    }
+
+    composeTestRule.onNodeWithText(context.getString(R.string.confirm)).performClick()
+    assertNotNull(selectedTime)
+    assertTrue(dismissed)
+  }
+
+  @Test
   fun subjectPickerDialogContentFiltersAndConfirms() {
     var confirmedSubject = ""
     composeTestRule.setContent {

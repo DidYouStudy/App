@@ -20,6 +20,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
@@ -189,6 +190,20 @@ class GroupSessionScreenTest {
         .onNodeWithTag(GroupSessionScreenTestTags.sessionItem(3))
         .assert(hasAnyDescendant(hasText(context.getString(R.string.group_session_host_unknown))))
         .assert(!hasAnyDescendant(hasText("user-4", substring = true)))
+  }
+
+  /** Opens the filter sheet from the search field's filter button. */
+  @Test
+  fun filterButtonOpensFilterSessionsSheet() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
+
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.FILTER_BUTTON).performClick()
+
+    composeTestRule.onNodeWithText("Filter sessions").assertIsDisplayed()
+    pressBack()
+    composeTestRule.onNodeWithText("Filter sessions").assertDoesNotExist()
   }
 
   @Test

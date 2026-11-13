@@ -1,3 +1,4 @@
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Copilot
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
@@ -26,10 +27,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -47,6 +50,14 @@ import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 import java.time.LocalDate
 import java.time.LocalTime
+
+private const val ERROR_MESSAGE_DURATION_MILLIS = 4_000L
+private const val ERROR_MESSAGE_DURATION_NANOS = ERROR_MESSAGE_DURATION_MILLIS * 1_000_000
+
+private suspend fun waitForErrorMessageDuration() {
+  val expiresAtNanos = withFrameNanos { it } + ERROR_MESSAGE_DURATION_NANOS
+  while (withFrameNanos { it } < expiresAtNanos) {}
+}
 
 /**
  * Stateful shared event-planning UI used by the Add and Edit destinations.
@@ -71,6 +82,7 @@ import java.time.LocalTime
  * @param onToggleTask Called with the index of the task to toggle.
  * @param onDeleteTask Called with the index of the task to remove.
  * @param onSaveClick Invoked when Save is pressed.
+ * @param onErrorDismiss Invoked when the transient error message expires.
  * @param onDeleteClick Optional delete action. The Delete button is shown only in edit mode when
  *   this callback is supplied.
  * @param isEditing Whether the shared screen is being used to edit an existing event.
@@ -105,6 +117,7 @@ internal fun EventPlanningScreen(
     onToggleTask: (Int) -> Unit,
     onDeleteTask: (Int) -> Unit,
     onSaveClick: () -> Unit,
+    onErrorDismiss: () -> Unit,
     onDeleteClick: (() -> Unit)? = null,
     isEditing: Boolean = false,
     isLoading: Boolean = false,
@@ -114,6 +127,13 @@ internal fun EventPlanningScreen(
     onPickEndTimeClick: (() -> Unit)? = null,
     onPickSubjectClick: (() -> Unit)? = null,
 ) {
+  LaunchedEffect(uiState.error) {
+    if (uiState.error != null) {
+      waitForErrorMessageDuration()
+      onErrorDismiss()
+    }
+  }
+
   var showDatePicker by rememberSaveable { mutableStateOf(false) }
   var showStartTimePicker by rememberSaveable { mutableStateOf(false) }
   var showEndTimePicker by rememberSaveable { mutableStateOf(false) }
@@ -258,9 +278,7 @@ fun EventPlanningScreenStateless(
     onTypeClick: (() -> Unit)? = null,
     onLocationClear: (() -> Unit)? = null,
 ) {
-  val isValidationError: Boolean =
-      uiState.error == EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED ||
-          uiState.error == EventPlanningError.INVALID_EVENT
+  val isValidationError = uiState.error?.isInputValidationError == true
 
   val resolvedTitleRes =
       titleRes
@@ -285,7 +303,11 @@ fun EventPlanningScreenStateless(
               )
             },
             navigationIcon = {
-              IconButton(onClick = onBackClick, modifier = Modifier.testTag(Tags.BACK_BUTTON)) {
+              IconButton(
+                  onClick = onBackClick,
+                  enabled = !isEditing || uiState.canLeaveEdit,
+                  modifier = Modifier.testTag(Tags.BACK_BUTTON),
+              ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.button_go_back),
@@ -314,16 +336,8 @@ fun EventPlanningScreenStateless(
               horizontalAlignment = Alignment.CenterHorizontally,
           ) {
             uiState.error?.let {
-              // Map the error directly based on ViewModel error state
-              val errorMessageRes =
-                  if (isValidationError) {
-                    R.string.event_planning_error_required_fields
-                  } else {
-                    R.string.event_planning_error_save_failed
-                  }
-
               Text(
-                  text = stringResource(errorMessageRes),
+                  text = stringResource(it.stringResource),
                   color = MaterialTheme.colorScheme.error,
                   style = MaterialTheme.typography.bodyMedium,
                   modifier =

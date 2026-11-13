@@ -80,7 +80,7 @@ class AddButtonTest {
     var eventClicks = 0
     var groupSessionClicks = 0
     composeTestRule.setContent {
-      DashboardAddFabMenu(
+      AddFabMenu(
           onEventClick = { eventClicks++ },
           onGroupSessionClick = { groupSessionClicks++ },
       )
@@ -130,7 +130,7 @@ class AddButtonTest {
   fun dashboardAddFabMenuOptionsDisplayLocalizedContentAndIcons() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     composeTestRule.setContent {
-      DashboardAddFabMenu(
+      AddFabMenu(
           onEventClick = {},
           onGroupSessionClick = {},
       )
@@ -155,7 +155,7 @@ class AddButtonTest {
     val cancelDesc = context.getString(R.string.cancel)
 
     composeTestRule.setContent {
-      DashboardAddFabMenu(
+      AddFabMenu(
           onEventClick = {},
           onGroupSessionClick = {},
       )
@@ -192,6 +192,6 @@ class AddButtonTest {
 
   @Test
   fun dashboardAddFabMenuPreviewRenders() {
-    composeTestRule.setContent { DashboardAddFabMenuPreview() }
+    composeTestRule.setContent { AddFabMenuPreview() }
   }
 }

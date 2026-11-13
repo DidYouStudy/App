@@ -1,7 +1,10 @@
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Copilot
 // Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.eventplanning
 
 import com.android.sample.R
+import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
@@ -14,7 +17,10 @@ import java.time.LocalTime
 enum class EventPlanningError {
   FAILED_TO_OBSERVE_USER,
   NO_SIGNED_IN_USER,
-  EVENT_DATE_AND_TIMES_REQUIRED,
+  REQUIRED_FIELDS_MISSING,
+  INVALID_TIME_RANGE,
+  EVENT_IN_PAST,
+  EVENT_TOO_LONG,
   NO_EVENT_TO_EDIT,
   FAILED_TO_ADD_EVENT,
   FAILED_TO_EDIT_EVENT,
@@ -24,7 +30,19 @@ enum class EventPlanningError {
   EVENT_NOT_FOUND,
   PERMISSION_DENIED,
   INVALID_EVENT_DATA,
-  STORAGE_FAILURE,
+  STORAGE_FAILURE;
+
+  /** Whether this error came from validating fields entered in the event form. */
+  val isInputValidationError: Boolean
+    get() =
+        this in
+            setOf(
+                REQUIRED_FIELDS_MISSING,
+                INVALID_TIME_RANGE,
+                EVENT_IN_PAST,
+                EVENT_TOO_LONG,
+                INVALID_EVENT,
+            )
 }
 
 /** Maps an [EventPlanningError] to its localized string resource. */
@@ -34,8 +52,10 @@ val EventPlanningError.stringResource: Int
         EventPlanningError.FAILED_TO_OBSERVE_USER ->
             R.string.event_planning_error_failed_to_observe_user
         EventPlanningError.NO_SIGNED_IN_USER -> R.string.event_planning_error_no_signed_in_user
-        EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED ->
-            R.string.event_planning_error_date_and_times_required
+        EventPlanningError.REQUIRED_FIELDS_MISSING -> R.string.event_planning_error_required_fields
+        EventPlanningError.INVALID_TIME_RANGE -> R.string.event_planning_error_invalid_time_range
+        EventPlanningError.EVENT_IN_PAST -> R.string.event_planning_error_event_in_past
+        EventPlanningError.EVENT_TOO_LONG -> R.string.event_planning_error_event_too_long
         EventPlanningError.NO_EVENT_TO_EDIT -> R.string.event_planning_error_no_event_to_edit
         EventPlanningError.FAILED_TO_ADD_EVENT -> R.string.event_planning_error_failed_to_add_event
         EventPlanningError.FAILED_TO_EDIT_EVENT ->
@@ -96,14 +116,27 @@ fun addTaskItem(tasks: List<EventTask>, text: String): List<EventTask> {
 
 /**
  * Converts local [date], [startTime], and [endTime] into start and end [Instant]s with clock time
- * zone support, handling next-day midnight crossing when end time is before start time.
+ * zone support, handling next-day midnight crossing when end time is before start time. If the
+ * schedule fields match [original], preserves the original instants.
  */
 fun calculateStartAndEndInstants(
     date: LocalDate,
     startTime: LocalTime,
     endTime: LocalTime,
     clock: Clock,
+    original: EventDetails? = null,
 ): Pair<Instant, Instant> {
+  if (original != null) {
+    val originalStart = original.startsAt.atZone(clock.zone)
+    val originalEnd = original.endsAt.atZone(clock.zone)
+    if (
+        date == originalStart.toLocalDate() &&
+            startTime == originalStart.toLocalTime() &&
+            endTime == originalEnd.toLocalTime()
+    ) {
+      return original.startsAt to original.endsAt
+    }
+  }
   val endDate = if (endTime.isBefore(startTime)) date.plusDays(1) else date
   val startsAt = date.atTime(startTime).atZone(clock.zone).toInstant()
   val endsAt = endDate.atTime(endTime).atZone(clock.zone).toInstant()

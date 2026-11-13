@@ -1,3 +1,4 @@
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Copilot
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
@@ -81,9 +82,11 @@ fun EditEventScreen(
 
   // clears the form when exiting
   val handleBack: () -> Unit = {
-    focusManager.clearFocus()
-    viewModel.resetForm()
-    onBackClick()
+    if (viewModel.uiState.value.canLeaveEdit) {
+      focusManager.clearFocus()
+      viewModel.resetForm()
+      onBackClick()
+    }
   }
 
   BackHandler(onBack = handleBack)
@@ -113,6 +116,7 @@ fun EditEventScreen(
       onToggleTask = viewModel::toggleTask,
       onDeleteTask = viewModel::removeTask,
       onSaveClick = viewModel::editEvent,
+      onErrorDismiss = viewModel::clearError,
       onDeleteClick = { viewModel.deleteEvent(eventId) },
       isEditing = true,
       isLoading = uiState.isLoading,

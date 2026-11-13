@@ -1,7 +1,9 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.sample.ui.calendar
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -11,14 +13,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -26,8 +24,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -42,6 +49,7 @@ import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.profile.ProfileButton
+import com.android.sample.ui.sharedComponents.AddFabMenu
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
@@ -51,7 +59,13 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 
-/** Renders the calendar scaffold from the supplied state and action callbacks. */
+/**
+ * Renders the calendar scaffold from the supplied state and action callbacks.
+ *
+ * @param onAddEventClick invoked when the Event menu option is selected.
+ * @param onAddGroupSessionClick invoked when the Group Session menu option is selected; by default
+ *   navigates to [Screen.AddGroupSession] when [navigationActions] is available.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarScreen(
@@ -61,9 +75,30 @@ fun CalendarScreen(
     onNextWeek: () -> Unit,
     onRetry: () -> Unit,
     navigationActions: NavigationActions? = null,
-    onAddClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
+    onAddEventClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
+    onAddGroupSessionClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddGroupSession) },
+    onEventClick: (String) -> Unit = {},
 ) {
+  // The menu leaves composition while hidden, so it returns in its collapsed state.
+  var isAddMenuVisible by remember { mutableStateOf(true) }
+  // Restore the menu when an error replaces the grid, which can no longer scroll it back.
+  LaunchedEffect(uiState.error) { if (uiState.error != null) isAddMenuVisible = true }
+  // Observe user-driven nested scroll from the time grid without consuming its movement.
+  val scrollConnection = remember {
+    object : NestedScrollConnection {
+      override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+        if (available.y < 0f) {
+          isAddMenuVisible = false
+        } else if (available.y > 0f) {
+          isAddMenuVisible = true
+        }
+        return Offset.Zero
+      }
+    }
+  }
+
   Scaffold(
+      modifier = Modifier.nestedScroll(scrollConnection),
       topBar = {
         TopAppBar(
             title = {
@@ -111,11 +146,12 @@ fun CalendarScreen(
         )
       },
       floatingActionButton = {
-        FloatingActionButton(
-            onClick = onAddClick,
-            modifier = Modifier.testTag(CalendarTestTags.ADD_BUTTON),
-        ) {
-          Icon(imageVector = Icons.Default.Add, contentDescription = "Add calendar event")
+        AnimatedVisibility(visible = isAddMenuVisible) {
+          AddFabMenu(
+              onEventClick = onAddEventClick,
+              onGroupSessionClick = onAddGroupSessionClick,
+              modifier = Modifier.testTag(CalendarTestTags.ADD_BUTTON),
+          )
         }
       },
       content = { paddingValues ->
@@ -166,6 +202,7 @@ fun CalendarScreen(
               onPreviousWeek = onPreviousWeek,
               onNextWeek = onNextWeek,
               modifier = Modifier.padding(paddingValues),
+              onEventClick = onEventClick,
           )
         }
       },

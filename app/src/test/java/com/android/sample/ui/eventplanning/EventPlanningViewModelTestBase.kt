@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
@@ -12,6 +13,8 @@ import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.PersonalEvent
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.location.CampusLocationRepository
+import com.android.sample.model.preferences.PreferencesRepository
+import com.android.sample.model.preferences.UserPreferences
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -42,6 +45,16 @@ abstract class EventPlanningViewModelTestBase {
   protected lateinit var authRepository: AuthRepository
   protected lateinit var eventsRepository: EventsRepository
   protected lateinit var groupSessionsRepository: GroupSessionsRepository
+  protected val preferencesRepository: PreferencesRepository by lazy {
+    mock(PreferencesRepository::class.java).also {
+      runBlocking {
+        `when`(it.getPreferences(any()))
+            .thenReturn(
+                Result.success(UserPreferences(userId = "user123", sessionLengthMinutes = 60))
+            )
+      }
+    }
+  }
 
   /** Stubbed to return no locations by default; tests that need specific results re-stub it. */
   protected val campusLocationRepository: CampusLocationRepository by lazy {
@@ -51,7 +64,7 @@ abstract class EventPlanningViewModelTestBase {
   }
 
   protected val zone = ZoneId.of("Europe/Berlin")
-  protected val now = Instant.parse("2026-10-27T12:00:00Z")
+  protected val now = Instant.parse("2026-10-27T06:00:00Z")
   protected val clock = Clock.fixed(now, zone)
   protected val date = LocalDate.of(2026, 10, 27)
   protected val startTime = LocalTime.of(9, 0)
@@ -83,7 +96,16 @@ abstract class EventPlanningViewModelTestBase {
       campusLocationRepo: CampusLocationRepository = campusLocationRepository,
       groupSessionsRepo: GroupSessionsRepository = groupSessionsRepository,
       clk: Clock = clock,
-  ) = EventPlanningViewModel(authRepo, eventsRepo, campusLocationRepo, groupSessionsRepo, clk)
+      prefsRepo: PreferencesRepository = preferencesRepository,
+  ) =
+      EventPlanningViewModel(
+          authRepo,
+          eventsRepo,
+          campusLocationRepo,
+          groupSessionsRepo,
+          clk,
+          prefsRepo,
+      )
 
   /** Returns the sessions passed to saveSession after verifying the expected number of saves. */
   protected suspend fun savedSessions(count: Int = 1): List<GroupSession> {

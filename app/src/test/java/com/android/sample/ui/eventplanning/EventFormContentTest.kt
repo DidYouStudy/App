@@ -365,7 +365,7 @@ class EventFormContentTest {
             startTime = null,
             endTime = null,
             subject = "",
-            error = EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED,
+            error = EventPlanningError.REQUIRED_FIELDS_MISSING,
         )
 
     composeTestRule.setContent {

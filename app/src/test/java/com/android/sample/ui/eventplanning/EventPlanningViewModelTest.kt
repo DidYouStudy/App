@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
@@ -18,7 +19,11 @@ import com.android.sample.model.location.CampusLocation
 import com.android.sample.model.location.CampusLocationFilter
 import com.android.sample.model.location.CampusLocationType
 import com.android.sample.model.location.Location
+import com.android.sample.model.preferences.UserPreferences
+import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -76,6 +81,15 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
       `when`(groupSessionsRepository.saveSession(any(), any())).thenReturn(Result.success(Unit))
       `when`(eventsRepository.deleteEvent(any(), any())).thenReturn(Result.success(Unit))
       `when`(groupSessionsRepository.deleteSession(any(), any())).thenReturn(Result.success(Unit))
+      `when`(preferencesRepository.getPreferences(any()))
+          .thenReturn(
+              Result.success(
+                  UserPreferences(
+                      userId = "user123",
+                      sessionLengthMinutes = 60,
+                  )
+              )
+          )
     }
     currentUserFlow.value = account("user123")
   }
@@ -110,6 +124,17 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     assertEquals(EventPlanningError.NO_SIGNED_IN_USER, viewModel.uiState.value.error)
+    verify(eventsRepository, never()).saveEvent(any())
+  }
+
+  /** Multiple missing mandatory fields share one validation error. */
+  @Test
+  fun addEvent_multipleRequiredFieldsMissing_reportsOneErrorAndDoesNotSave() = runTest {
+    val viewModel = createViewModel()
+
+    viewModel.addEvent()
+
+    assertEquals(EventPlanningError.REQUIRED_FIELDS_MISSING, viewModel.uiState.value.error)
     verify(eventsRepository, never()).saveEvent(any())
   }
 
@@ -572,7 +597,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     assertEquals(
-        EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED,
+        EventPlanningError.REQUIRED_FIELDS_MISSING,
         viewModel.uiState.value.error,
     )
     verify(eventsRepository, never()).saveEvent(any())
@@ -588,7 +613,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     assertEquals(
-        EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED,
+        EventPlanningError.REQUIRED_FIELDS_MISSING,
         viewModel.uiState.value.error,
     )
     verify(eventsRepository, never()).saveEvent(any())
@@ -604,15 +629,15 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     assertEquals(
-        EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED,
+        EventPlanningError.REQUIRED_FIELDS_MISSING,
         viewModel.uiState.value.error,
     )
     verify(eventsRepository, never()).saveEvent(any())
   }
 
-  /** A blank subject is invalid for event types that require one. */
+  /** A blank mandatory subject reports the shared required-fields error. */
   @Test
-  fun addEvent_blankSubjectForNonOtherType_setsInvalidEventError() = runTest {
+  fun addEvent_blankSubjectForNonOtherType_reportsRequiredFieldsError() = runTest {
     val viewModel = createViewModel()
     viewModel.fillValidForm()
     viewModel.setSubject("   ")
@@ -620,7 +645,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.addEvent()
 
     val state = viewModel.uiState.value
-    assertEquals(EventPlanningError.INVALID_EVENT, state.error)
+    assertEquals(EventPlanningError.REQUIRED_FIELDS_MISSING, state.error)
     assertFalse(state.isEventAdded)
     assertFalse(state.isSaving)
     verify(eventsRepository, never()).saveEvent(any())
@@ -628,14 +653,43 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
 
   /** An event whose end time is not after its start time is rejected. */
   @Test
-  fun addEvent_endNotAfterStart_setsInvalidEventError() = runTest {
+  fun addEvent_endEqualsStart_reportsInvalidTimeRange() = runTest {
     val viewModel = createViewModel()
     viewModel.fillValidForm()
     viewModel.setEndTime(startTime)
 
     viewModel.addEvent()
 
-    assertEquals(EventPlanningError.INVALID_EVENT, viewModel.uiState.value.error)
+    assertEquals(EventPlanningError.INVALID_TIME_RANGE, viewModel.uiState.value.error)
+    verify(eventsRepository, never()).saveEvent(any())
+  }
+
+  /** An event with a start time before the current time is rejected before saving. */
+  @Test
+  fun addEvent_startInPast_reportsErrorAndDoesNotSave() = runTest {
+    val viewModel = createViewModel()
+    viewModel.fillValidForm(date = date.minusDays(1))
+
+    viewModel.addEvent()
+
+    assertEquals(EventPlanningError.EVENT_IN_PAST, viewModel.uiState.value.error)
+    verify(eventsRepository, never()).saveEvent(any())
+  }
+
+  /** Daylight-saving changes cannot turn an event into a duration longer than 24 hours. */
+  @Test
+  fun addEvent_durationOver24Hours_reportsErrorAndDoesNotSave() = runTest {
+    val fallBackClock = Clock.fixed(Instant.parse("2026-10-24T22:00:00Z"), zone)
+    val viewModel = createViewModel(clk = fallBackClock)
+    viewModel.fillValidForm(
+        date = LocalDate.of(2026, 10, 25),
+        start = LocalTime.of(0, 30),
+        end = LocalTime.MIDNIGHT,
+    )
+
+    viewModel.addEvent()
+
+    assertEquals(EventPlanningError.EVENT_TOO_LONG, viewModel.uiState.value.error)
     verify(eventsRepository, never()).saveEvent(any())
   }
 
@@ -949,6 +1003,65 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertFalse(state.isSaving)
   }
 
+  // ---------------------------------------------------------------- session length and start time
+
+  /**
+   * Setting start time automatically populates end time to start time plus sessionLengthMinutes.
+   */
+  @Test
+  fun setStartTime_automaticallySetsEndTimeBasedOnPreferencesSessionLength() = runTest {
+    runBlocking {
+      `when`(preferencesRepository.getPreferences("user123"))
+          .thenReturn(
+              Result.success(UserPreferences(userId = "user123", sessionLengthMinutes = 90))
+          )
+    }
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+
+    viewModel.setStartTime(LocalTime.of(14, 0))
+
+    assertEquals(LocalTime.of(14, 0), viewModel.uiState.value.startTime)
+    assertEquals(LocalTime.of(15, 30), viewModel.uiState.value.endTime)
+  }
+
+  /** When preferences fail to load, setting start time falls back to default session length. */
+  @Test
+  fun setStartTime_preferencesFailure_fallsBackToDefaultSessionLength() = runTest {
+    runBlocking {
+      `when`(preferencesRepository.getPreferences("user123"))
+          .thenReturn(Result.failure(RuntimeException("Network failure")))
+    }
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+
+    viewModel.setStartTime(LocalTime.of(10, 0))
+
+    assertEquals(LocalTime.of(10, 0), viewModel.uiState.value.startTime)
+    assertEquals(LocalTime.of(11, 0), viewModel.uiState.value.endTime)
+    assertNull(viewModel.uiState.value.error)
+  }
+
+  /** Setting start time does not overwrite end time if a custom end time was already set. */
+  @Test
+  fun setStartTime_doesNotOverwriteCustomEndTime_whenCustomEndTimeIsSet() = runTest {
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+
+    // User sets start time first -> auto fills 14:00 - 15:00
+    viewModel.setStartTime(LocalTime.of(14, 0))
+    assertEquals(LocalTime.of(15, 0), viewModel.uiState.value.endTime)
+
+    // User manually sets custom end time -> 18:00
+    viewModel.setEndTime(LocalTime.of(18, 0))
+    assertEquals(LocalTime.of(18, 0), viewModel.uiState.value.endTime)
+
+    // User changes start time to 15:00 -> custom end time 18:00 is preserved
+    viewModel.setStartTime(LocalTime.of(15, 0))
+    assertEquals(LocalTime.of(15, 0), viewModel.uiState.value.startTime)
+    assertEquals(LocalTime.of(18, 0), viewModel.uiState.value.endTime)
+  }
+
   // factory tests
 
   /** The factory creates an event-planning ViewModel for its supported type. */
@@ -960,6 +1073,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
             eventsRepository,
             campusLocationRepository,
             groupSessionsRepository,
+            preferencesRepository,
         )
 
     val viewModel = factory.create(EventPlanningViewModel::class.java)
@@ -976,6 +1090,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
             eventsRepository,
             campusLocationRepository,
             groupSessionsRepository,
+            preferencesRepository,
         )
 
     val exception =
@@ -983,7 +1098,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
           factory.create(OtherViewModel::class.java)
         }
 
-    assertTrue(exception.message!!.contains(OtherViewModel::class.java.name))
+    assertEquals("Unsupported ViewModel: ${OtherViewModel::class.java.name}", exception.message)
   }
 
   // ---------------------------------------------------------------- group sessions
@@ -1156,8 +1271,12 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
             EventPlanningError.FAILED_TO_OBSERVE_USER to
                 R.string.event_planning_error_failed_to_observe_user,
             EventPlanningError.NO_SIGNED_IN_USER to R.string.event_planning_error_no_signed_in_user,
-            EventPlanningError.EVENT_DATE_AND_TIMES_REQUIRED to
-                R.string.event_planning_error_date_and_times_required,
+            EventPlanningError.REQUIRED_FIELDS_MISSING to
+                R.string.event_planning_error_required_fields,
+            EventPlanningError.INVALID_TIME_RANGE to
+                R.string.event_planning_error_invalid_time_range,
+            EventPlanningError.EVENT_IN_PAST to R.string.event_planning_error_event_in_past,
+            EventPlanningError.EVENT_TOO_LONG to R.string.event_planning_error_event_too_long,
             EventPlanningError.NO_EVENT_TO_EDIT to R.string.event_planning_error_no_event_to_edit,
             EventPlanningError.FAILED_TO_ADD_EVENT to
                 R.string.event_planning_error_failed_to_add_event,
