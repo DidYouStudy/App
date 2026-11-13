@@ -47,6 +47,21 @@ class AppViewModel(
   companion object {
     private const val SIGN_IN_TIMEOUT_MILLIS = 10_000L
     private const val SIGN_IN_TIMEOUT_MESSAGE = "Timed out waiting for signed-in user"
+
+    /**
+     * Resolves the initial start destination for NavHost given a candidate [startDestination] and
+     * the current [appState].
+     */
+    fun resolveStartDestination(startDestination: Screen?, appState: AppUiState): Screen? =
+        startDestination
+            ?: when (appState) {
+              AppUiState.Dashboard -> Screen.Dashboard
+              AppUiState.FirstTimeSignIn,
+              is AppUiState.Error -> Screen.Preferences
+              AppUiState.SignIn,
+              AppUiState.LogOut -> Screen.Auth
+              else -> null
+            }
   }
 
   private val mutableUiState = MutableStateFlow<AppUiState>(AppUiState.Loading)
@@ -72,6 +87,15 @@ class AppViewModel(
               null -> null
             }
       }
+
+  /**
+   * Resolves the initial start destination for the application NavHost.
+   *
+   * If [startDestination] is already known, it is returned immediately. Otherwise, the destination
+   * is resolved from the given [appState] once determined.
+   */
+  fun resolveStartDestination(appState: AppUiState = uiState.value): Screen? =
+      resolveStartDestination(startDestination, appState)
 
   init {
     viewModelScope.launch {

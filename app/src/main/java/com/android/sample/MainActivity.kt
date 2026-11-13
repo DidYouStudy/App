@@ -18,7 +18,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -66,28 +68,20 @@ class MainActivity : ComponentActivity() {
   }
 }
 
-/**
- * Resolves the initial start destination for the application NavHost.
- *
- * If the synchronous [startDestination] is already known, it is returned immediately. Otherwise,
- * the destination is resolved from the asynchronous [appState] once determined.
- */
-internal fun resolveStartDestination(startDestination: Screen?, appState: AppUiState): Screen? =
-    startDestination
-        ?: when (appState) {
-          AppUiState.Dashboard -> Screen.Dashboard
-          AppUiState.FirstTimeSignIn,
-          is AppUiState.Error -> Screen.Preferences
-          else -> null
-        }
-
 @Composable
 fun DidYouStudyApp(
     applicationViewModel: AppViewModel = appViewModel(),
 ) {
   val appState by applicationViewModel.uiState.collectAsStateWithLifecycle()
 
-  val start = resolveStartDestination(applicationViewModel.startDestination, appState)
+  var initialDestination by remember {
+    mutableStateOf(applicationViewModel.resolveStartDestination(appState))
+  }
+  if (initialDestination == null) {
+    initialDestination = applicationViewModel.resolveStartDestination(appState)
+  }
+
+  val start = initialDestination
   if (start == null) {
     Box(
         modifier = Modifier.fillMaxSize(),

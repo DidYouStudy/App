@@ -39,6 +39,9 @@ class OnboardingStoreTest {
 
     store.setCompletedOnboarding("user-1", false)
     assertEquals(false, store.hasCompletedOnboarding("user-1"))
+
+    store.clearOnboarding("user-1")
+    assertNull(store.hasCompletedOnboarding("user-1"))
   }
 
   @Test

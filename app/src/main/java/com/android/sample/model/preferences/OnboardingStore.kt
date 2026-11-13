@@ -27,6 +27,13 @@ interface OnboardingStore {
    * @param completed Whether the onboarding flow is completed.
    */
   fun setCompletedOnboarding(userId: String, completed: Boolean)
+
+  /**
+   * Clears any recorded onboarding status for [userId], resetting it to unknown (null).
+   *
+   * @param userId The ID of the user to clear.
+   */
+  fun clearOnboarding(userId: String) {}
 }
 
 /** SharedPreferences-backed implementation of [OnboardingStore]. */
@@ -48,6 +55,11 @@ class SharedPreferencesOnboardingStore(
   override fun setCompletedOnboarding(userId: String, completed: Boolean) {
     if (userId.isBlank()) return
     sharedPreferences.edit { putBoolean(key(userId), completed) }
+  }
+
+  override fun clearOnboarding(userId: String) {
+    if (userId.isBlank()) return
+    sharedPreferences.edit { remove(key(userId)) }
   }
 
   private fun key(userId: String): String = "onboarding_completed_$userId"
@@ -74,6 +86,10 @@ object OnboardingStoreProvider {
 
             override fun setCompletedOnboarding(userId: String, completed: Boolean) {
               completedUsers[userId] = completed
+            }
+
+            override fun clearOnboarding(userId: String) {
+              completedUsers.remove(userId)
             }
           }
 

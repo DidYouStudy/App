@@ -7,7 +7,6 @@ import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.preferences.OnboardingStore
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.UserPreferences
-import com.android.sample.resolveStartDestination
 import com.android.sample.ui.auth.TestAuthRepository
 import com.android.sample.ui.navigation.Screen
 import kotlinx.coroutines.Dispatchers
@@ -94,37 +93,63 @@ class AppViewModelTest {
 
   @Test
   fun resolveStartDestination_preservesNonNullStartDestination() {
-    assertEquals(Screen.Auth, resolveStartDestination(Screen.Auth, AppUiState.Dashboard))
+    assertEquals(
+        Screen.Auth,
+        AppViewModel.resolveStartDestination(Screen.Auth, AppUiState.Dashboard),
+    )
     assertEquals(
         Screen.Dashboard,
-        resolveStartDestination(Screen.Dashboard, AppUiState.FirstTimeSignIn),
+        AppViewModel.resolveStartDestination(Screen.Dashboard, AppUiState.FirstTimeSignIn),
     )
     assertEquals(
         Screen.Preferences,
-        resolveStartDestination(Screen.Preferences, AppUiState.Dashboard),
+        AppViewModel.resolveStartDestination(Screen.Preferences, AppUiState.Dashboard),
     )
   }
 
   @Test
   fun resolveStartDestination_resolvesToDashboardWhenAppStateIsDashboard() {
-    assertEquals(Screen.Dashboard, resolveStartDestination(null, AppUiState.Dashboard))
+    assertEquals(
+        Screen.Dashboard,
+        AppViewModel.resolveStartDestination(null, AppUiState.Dashboard),
+    )
   }
 
   @Test
   fun resolveStartDestination_resolvesToPreferencesWhenAppStateIsFirstTimeSignIn() {
-    assertEquals(Screen.Preferences, resolveStartDestination(null, AppUiState.FirstTimeSignIn))
+    assertEquals(
+        Screen.Preferences,
+        AppViewModel.resolveStartDestination(null, AppUiState.FirstTimeSignIn),
+    )
   }
 
   @Test
   fun resolveStartDestination_resolvesToPreferencesWhenAppStateIsError() {
-    assertEquals(Screen.Preferences, resolveStartDestination(null, AppUiState.Error("offline")))
+    assertEquals(
+        Screen.Preferences,
+        AppViewModel.resolveStartDestination(null, AppUiState.Error("offline")),
+    )
   }
 
   @Test
-  fun resolveStartDestination_returnsNullWhenAppStateIsLoadingOrPending() {
-    assertNull(resolveStartDestination(null, AppUiState.Loading))
-    assertNull(resolveStartDestination(null, AppUiState.SignIn))
-    assertNull(resolveStartDestination(null, AppUiState.LogOut))
+  fun resolveStartDestination_returnsNullWhenAppStateIsLoading() {
+    assertNull(AppViewModel.resolveStartDestination(null, AppUiState.Loading))
+  }
+
+  @Test
+  fun resolveStartDestination_resolvesToAuthWhenAppStateIsSignInOrLogOut() {
+    assertEquals(Screen.Auth, AppViewModel.resolveStartDestination(null, AppUiState.SignIn))
+    assertEquals(Screen.Auth, AppViewModel.resolveStartDestination(null, AppUiState.LogOut))
+  }
+
+  @Test
+  fun resolveStartDestination_instanceMethodDelegatesWithCurrentStartDestination() {
+    val user = UserAccount("user-1", null, null, null)
+    authRepository.currentUser.value = user
+    onboardingStore.setCompletedOnboarding(user.uid, true)
+    val viewModel = AppViewModel(authRepository, preferencesRepository, onboardingStore)
+
+    assertEquals(Screen.Dashboard, viewModel.resolveStartDestination())
   }
 
   @Test
