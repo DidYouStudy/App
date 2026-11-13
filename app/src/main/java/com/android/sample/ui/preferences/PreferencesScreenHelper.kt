@@ -3,29 +3,22 @@
 // Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.preferences
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.CornerSize
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
+import com.android.sample.ui.sharedComponents.SegmentedChoiceRow
+import com.android.sample.ui.sharedComponents.segmentShape as sharedSegmentShape
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 
@@ -148,21 +141,8 @@ internal fun <T : PreferenceOption> SingleChoiceRow(
  * @return A circular shape for selected segments, or a shape with rounded outer corners otherwise.
  */
 @Composable
-internal fun segmentShape(index: Int, count: Int, selected: Boolean): Shape {
-  if (selected) return CircleShape
-
-  val full = CornerSize(50)
-  val small = CornerSize(Dimens.cornerExtraSmall)
-  val isFirst = index == 0
-  val isLast = index == count - 1
-
-  return RoundedCornerShape(
-      topStart = if (isFirst) full else small,
-      bottomStart = if (isFirst) full else small,
-      topEnd = if (isLast) full else small,
-      bottomEnd = if (isLast) full else small,
-  )
-}
+internal fun segmentShape(index: Int, count: Int, selected: Boolean): Shape =
+    sharedSegmentShape(index, count, selected)
 
 /**
  * Displays selectable options with selection semantics and a role.
@@ -181,38 +161,13 @@ internal fun <T : PreferenceOption> ChoiceRow(
     role: Role,
     modifier: Modifier = Modifier,
 ) {
-  Row(
-      modifier = modifier.fillMaxWidth(),
-      horizontalArrangement = Arrangement.spacedBy(Spacing.extraExtraSmall),
-  ) {
-    options.forEachIndexed { index, option ->
-      val selected = isSelected(option)
-      Box(
-          modifier =
-              Modifier.weight(1f)
-                  .height(Dimens.preferencesChoiceHeight)
-                  .clip(segmentShape(index, options.size, selected))
-                  .background(
-                      if (selected) MaterialTheme.colorScheme.secondary
-                      else MaterialTheme.colorScheme.secondaryContainer
-                  )
-                  .selectable(
-                      selected = selected,
-                      role = role,
-                      onClick = { onClick(option) },
-                  )
-                  .testTag(option.testTag),
-          contentAlignment = Alignment.Center,
-      ) {
-        Text(
-            text = option.label,
-            maxLines = 1,
-            style = MaterialTheme.typography.labelLarge,
-            color =
-                if (selected) MaterialTheme.colorScheme.onSecondary
-                else MaterialTheme.colorScheme.onSecondaryContainer,
-        )
-      }
-    }
-  }
+  SegmentedChoiceRow(
+      items = options,
+      isSelected = isSelected,
+      onClick = onClick,
+      label = { it.label },
+      testTag = { it.testTag },
+      role = role,
+      modifier = modifier,
+  )
 }
