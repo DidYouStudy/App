@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude AI Agent
 package com.android.sample.ui.sharedComponents
 
@@ -8,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -240,6 +242,24 @@ class FormContentHelperTests {
     assertEquals("Library", updatedText)
   }
 
+  /** Typing past 500 characters into the outlined description field is capped. */
+  @Test
+  fun outlinedInputFieldStopsAt500Characters() {
+    val input = mutableStateOf("a".repeat(499))
+    composeTestRule.setContent {
+      OutlinedInputField(
+          value = input.value,
+          onValueChange = { input.value = it },
+          placeholder = "Enter text",
+          testTag = "input_tag",
+      )
+    }
+
+    composeTestRule.onNodeWithTag("input_tag").performTextInput("aa")
+
+    assertEquals("a".repeat(500), input.value)
+  }
+
   @Test
   fun taskRowItemDisplaysTaskAndInvokesToggleAndDeleteCallbacks() {
     val context = ApplicationProvider.getApplicationContext<Context>()
@@ -301,6 +321,16 @@ class FormContentHelperTests {
     composeTestRule.onNodeWithTag("add_task_tag").performImeAction()
 
     assertFalse(invoked)
+  }
+
+  /** The add-task field refuses input beyond 200 characters. */
+  @Test
+  fun addTaskInputFieldStopsAt200Characters() {
+    composeTestRule.setContent { AddTaskInputField(onAddTask = {}, testTag = "add_task_tag") }
+
+    composeTestRule.onNodeWithTag("add_task_tag").performTextInput("a".repeat(201))
+
+    composeTestRule.onNodeWithTag("add_task_tag").assertTextEquals("a".repeat(200))
   }
 
   @Test
@@ -544,6 +574,23 @@ class FormContentHelperTests {
 
     composeTestRule.onNodeWithText("Calculus").assertIsDisplayed().performClick()
     assertEquals("Calculus", confirmedSubject)
+  }
+
+  /** Subject search and custom entry are limited to 100 characters. */
+  @Test
+  fun subjectPickerDialogContentStopsSearchAt100Characters() {
+    composeTestRule.setContent {
+      SubjectPickerDialogContent(
+          currentSelection = "",
+          allSubjects = emptyList(),
+          onDismiss = {},
+          onConfirm = {},
+      )
+    }
+
+    composeTestRule.onNode(hasSetTextAction()).performTextInput("a".repeat(101))
+
+    composeTestRule.onNode(hasSetTextAction()).assertTextEquals("a".repeat(100))
   }
 
   @Test
