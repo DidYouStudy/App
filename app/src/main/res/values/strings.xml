@@ -98,6 +98,7 @@
     <string name="event_planning_location_placeholder">Select location&#8230;</string>
     <string name="event_planning_description_optional_label">Description (optional)</string>
     <string name="event_planning_description_placeholder">Enter description&#8230;</string>
+    <string name="event_planning_character_count">%1$d/%2$d</string>
     <string name="event_planning_tasks_optional_label">Tasks (optional)</string>
     <string name="event_planning_add_task_placeholder">Add a task&#8230;</string>
     <string name="event_planning_delete_task_content_description">Delete task</string>

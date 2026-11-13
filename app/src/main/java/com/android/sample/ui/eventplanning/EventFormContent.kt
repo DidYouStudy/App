@@ -2,6 +2,7 @@
 // Co-authored-by: Codex AI Agent
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.sample.ui.eventplanning
 
 import androidx.compose.foundation.clickable
@@ -36,6 +37,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import com.android.sample.R
+import com.android.sample.model.event.EventTextLimits
 import com.android.sample.model.event.EventType
 import com.android.sample.ui.sharedComponents.AddTaskInputField
 import com.android.sample.ui.sharedComponents.EventTypeDropdownMenu
@@ -287,6 +289,26 @@ fun EventFormContent(
         placeholder = stringResource(R.string.event_planning_description_placeholder),
         testTag = FormContentTestTags.DESCRIPTION_INPUT,
     )
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = Spacing.extraSmall),
+        horizontalArrangement = Arrangement.End,
+    ) {
+      Text(
+          text =
+              stringResource(
+                  R.string.event_planning_character_count,
+                  uiState.description.length,
+                  EventTextLimits.DESCRIPTION,
+              ),
+          style = MaterialTheme.typography.labelSmall,
+          color =
+              if (uiState.description.length > EventTextLimits.DESCRIPTION) {
+                MaterialTheme.colorScheme.error
+              } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+              },
+      )
+    }
 
     // Tasks (optional, personal events only)
     if (uiState.showTasksSection) {

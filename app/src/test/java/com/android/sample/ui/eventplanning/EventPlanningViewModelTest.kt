@@ -348,6 +348,48 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertEquals(tasks, state.tasks)
   }
 
+  /** Descriptions within the 500-character limit remain unchanged. */
+  @Test
+  fun setDescription_keeps499And500Characters() = runTest {
+    val viewModel = createViewModel()
+
+    viewModel.setDescription("a".repeat(499))
+    assertEquals("a".repeat(499), viewModel.uiState.value.description)
+
+    viewModel.setDescription("a".repeat(500))
+    assertEquals("a".repeat(500), viewModel.uiState.value.description)
+  }
+
+  /** Descriptions longer than 500 characters are truncated. */
+  @Test
+  fun setDescription_truncatesAt500Characters() = runTest {
+    val viewModel = createViewModel()
+
+    viewModel.setDescription("a".repeat(501))
+
+    assertEquals("a".repeat(500), viewModel.uiState.value.description)
+  }
+
+  /** Subjects at the 100-character limit remain unchanged. */
+  @Test
+  fun setSubject_keeps100Characters() = runTest {
+    val viewModel = createViewModel()
+
+    viewModel.setSubject("a".repeat(100))
+
+    assertEquals("a".repeat(100), viewModel.uiState.value.subject)
+  }
+
+  /** Subjects longer than 100 characters are truncated. */
+  @Test
+  fun setSubject_truncatesAt100Characters() = runTest {
+    val viewModel = createViewModel()
+
+    viewModel.setSubject("a".repeat(101))
+
+    assertEquals("a".repeat(100), viewModel.uiState.value.subject)
+  }
+
   /** setEventKind updates eventKind and toggles showTasksSection. */
   @Test
   fun setEventKind_updatesEventKindAndShowTasksSection() = runTest {
@@ -448,6 +490,26 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
         listOf(EventTask("Solve exercises 12, 13"), EventTask("Read chapter 3")),
         viewModel.uiState.value.tasks,
     )
+  }
+
+  /** A 200-character task is stored without modification. */
+  @Test
+  fun addTask_keeps200Characters() = runTest {
+    val viewModel = createViewModel()
+
+    viewModel.addTask("a".repeat(200))
+
+    assertEquals(listOf(EventTask("a".repeat(200))), viewModel.uiState.value.tasks)
+  }
+
+  /** A task longer than 200 characters is truncated before storage. */
+  @Test
+  fun addTask_truncatesAt200Characters() = runTest {
+    val viewModel = createViewModel()
+
+    viewModel.addTask("a".repeat(201))
+
+    assertEquals(listOf(EventTask("a".repeat(200))), viewModel.uiState.value.tasks)
   }
 
   /** Blank task text is ignored and does not clear unrelated UI feedback. */
@@ -1127,6 +1189,17 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertEquals("Algebra", saved.details.subject)
     assertEquals("CM 3", saved.details.location)
     assertEquals("Chapter 5 prep", saved.details.description)
+  }
+
+  /** Group-session descriptions are limited to 500 characters as well. */
+  @Test
+  fun setDescription_groupSessionTruncatesAt500Characters() = runTest {
+    val viewModel = createViewModel()
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+
+    viewModel.setDescription("a".repeat(501))
+
+    assertEquals("a".repeat(500), viewModel.uiState.value.description)
   }
 
   /** Editing a group session preserves existing member list and creation time. */

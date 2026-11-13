@@ -1,5 +1,6 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: GitHub Copilot
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
@@ -15,11 +16,13 @@ import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
+import com.android.sample.model.event.EventTextLimits
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.EventsRepositoryProvider
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.PersonalEvent
+import com.android.sample.model.event.applyTextLimit
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
 import com.android.sample.model.location.CampusLocation
@@ -237,7 +240,16 @@ class EventPlanningViewModel(
   fun setType(type: EventType) = updateForm { copy(type = type) }
 
   /** Updates the event subject. */
-  fun setSubject(subject: String) = updateForm { copy(subject = subject) }
+  fun setSubject(subject: String) = updateForm {
+    copy(
+        subject =
+            applyTextLimit(
+                current = this.subject,
+                newValue = subject,
+                limit = EventTextLimits.SUBJECT,
+            )
+    )
+  }
 
   /** Updates the event date. */
   fun setDate(date: LocalDate?) = updateForm { copy(date = date) }
@@ -267,7 +279,16 @@ class EventPlanningViewModel(
   fun setLocation(location: String) = updateForm { copy(location = location) }
 
   /** Updates the optional event description. */
-  fun setDescription(description: String) = updateForm { copy(description = description) }
+  fun setDescription(description: String) = updateForm {
+    copy(
+        description =
+            applyTextLimit(
+                current = this.description,
+                newValue = description,
+                limit = EventTextLimits.DESCRIPTION,
+            )
+    )
+  }
 
   /** Replaces the event checklist. Forbidden for group sessions. */
   fun setTasks(tasks: List<EventTask>) {
@@ -279,7 +300,8 @@ class EventPlanningViewModel(
   fun addTask(text: String) {
     requirePersonalEvent()
     if (text.trim().isEmpty()) return
-    updateForm { copy(tasks = addTaskItem(tasks, text)) }
+    val limitedText = applyTextLimit(current = "", newValue = text, limit = EventTextLimits.TASK)
+    updateForm { copy(tasks = addTaskItem(tasks, limitedText)) }
   }
 
   /**

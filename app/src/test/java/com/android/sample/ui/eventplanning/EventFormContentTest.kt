@@ -1,9 +1,11 @@
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
 
 import android.content.Context
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -36,6 +38,56 @@ class EventFormContentTest {
   @get:Rule val composeTestRule = createComposeRule()
 
   private val defaultTaskActions = TaskActions(onAddTask = {}, onToggleTask = {}, onDeleteTask = {})
+
+  /** The shared form displays a character counter based on its description state. */
+  @Test
+  fun eventFormContentDisplaysDescriptionCharacterCount() {
+    val description = mutableStateOf("a".repeat(500))
+
+    composeTestRule.setContent {
+      EventFormContent(
+          uiState =
+              EventPlanningUiState(
+                  eventKind = EventKind.GROUP_SESSION,
+                  description = description.value,
+              ),
+          onTypeChange = {},
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationClick = {},
+          onDescriptionChange = {},
+      )
+    }
+
+    composeTestRule.onNodeWithText("500/500").assertIsDisplayed()
+    description.value = "abc"
+    composeTestRule.onNodeWithText("3/500").assertIsDisplayed()
+  }
+
+  /** An over-limit description displays its full length in the shared form counter. */
+  @Test
+  fun eventFormContentDisplays600CharacterDescriptionCount() {
+    composeTestRule.setContent {
+      EventFormContent(
+          uiState =
+              EventPlanningUiState(
+                  eventKind = EventKind.GROUP_SESSION,
+                  description = "a".repeat(600),
+              ),
+          onTypeChange = {},
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationClick = {},
+          onDescriptionChange = {},
+      )
+    }
+
+    composeTestRule.onNodeWithText("600/500", useUnmergedTree = true).assertIsDisplayed()
+  }
 
   @Test
   fun eventFormContentRendersPopulatedStateAndInteractions() {
