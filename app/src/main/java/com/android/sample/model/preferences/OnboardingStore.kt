@@ -33,7 +33,9 @@ interface OnboardingStore {
    *
    * @param userId The ID of the user to clear.
    */
-  fun clearOnboarding(userId: String) {}
+  fun clearOnboarding(userId: String) {
+    // Default no-op for stores that do not persist state or require explicit clearing.
+  }
 }
 
 /** SharedPreferences-backed implementation of [OnboardingStore]. */

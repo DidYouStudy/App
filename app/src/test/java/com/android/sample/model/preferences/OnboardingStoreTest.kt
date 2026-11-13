@@ -50,6 +50,38 @@ class OnboardingStoreTest {
     assertNull(store.hasCompletedOnboarding("   "))
     store.setCompletedOnboarding("", true)
     assertNull(store.hasCompletedOnboarding(""))
+    store.clearOnboarding("")
+    store.clearOnboarding("   ")
+  }
+
+  @Test
+  fun defaultClearOnboarding_doesNothingAndDoesNotThrow() {
+    val defaultStore =
+        object : OnboardingStore {
+          override fun hasCompletedOnboarding(userId: String): Boolean? = null
+
+          override fun setCompletedOnboarding(userId: String, completed: Boolean) {}
+        }
+    defaultStore.clearOnboarding("user-default")
+
+    // Exercise DefaultImpls bridge method generated for binary compatibility
+    val defaultImpls = runCatching {
+      Class.forName("com.android.sample.model.preferences.OnboardingStore\$DefaultImpls")
+    }
+        .getOrNull()
+    defaultImpls
+        ?.getMethod("clearOnboarding", OnboardingStore::class.java, String::class.java)
+        ?.invoke(null, defaultStore, "user-default")
+  }
+
+  @Test
+  fun providerFallback_clearOnboardingRemovesUser() {
+    val fallbackStore = OnboardingStoreProvider.getStore()
+    fallbackStore.setCompletedOnboarding("user-fallback", true)
+    assertEquals(true, fallbackStore.hasCompletedOnboarding("user-fallback"))
+
+    fallbackStore.clearOnboarding("user-fallback")
+    assertNull(fallbackStore.hasCompletedOnboarding("user-fallback"))
   }
 
   @Test
