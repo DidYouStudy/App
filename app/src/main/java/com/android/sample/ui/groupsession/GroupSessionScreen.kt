@@ -1,5 +1,6 @@
 // Co-authored-by: Codex AI Agent
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Copilot
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Gemini
@@ -96,6 +97,7 @@ import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.profile.ProfileButton
 import com.android.sample.ui.sharedComponents.AddButton
 import com.android.sample.ui.sharedComponents.EventTypeBadge
+import com.android.sample.ui.sharedComponents.rememberNotImplementedToast
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.ParticipantInitialTextStyle
 import com.android.sample.ui.theme.ParticipantOverflowTextStyle
@@ -133,6 +135,7 @@ object GroupSessionScreenTestTags {
   const val MAP_VIEW_BUTTON = "groupSessionMapViewButton"
   const val MAP_CONTENT = "groupSessionMapContent"
   const val LOCATION_PILL = "groupSessionLocationPill"
+  const val PARTICIPANTS_PILL = "groupSessionParticipantsPill"
 
   fun sessionItem(index: Int) = "$SESSION_ITEM_PREFIX$index"
 }
@@ -364,6 +367,8 @@ internal fun GroupSessionContent(
                         onLeave = onLeave,
                         onEdit = onEdit,
                         onLocationClick = onLocationClick,
+                        // Member list is not built yet.
+                        onParticipantsClick = rememberNotImplementedToast(),
                         modifier = Modifier.testTag(GroupSessionScreenTestTags.sessionItem(index)),
                     )
                   }
@@ -609,6 +614,7 @@ internal fun GroupSessionCard(
     onLeave: (String) -> Unit,
     onEdit: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onParticipantsClick: () -> Unit = {},
     onLocationClick: (GroupSessionItem) -> Unit = {},
 ) {
   val session = item.session
@@ -779,11 +785,14 @@ internal fun GroupSessionCard(
       ) {
         // Shortened Participants Pill (Avatars + Count + Chevron only)
         // TODO: make participants pill dynamically show first member pictures
-        // TODO: make pill clickable to show all group members
+        // TODO: show all group members when the pill is tapped (currently onParticipantsClick)
         Surface(
+            onClick = onParticipantsClick,
             shape = RoundedCornerShape(Dimens.cornerLarge),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            modifier = Modifier.height(Dimens.actionButtonHeight),
+            modifier =
+                Modifier.height(Dimens.actionButtonHeight)
+                    .testTag(GroupSessionScreenTestTags.PARTICIPANTS_PILL),
         ) {
           Row(
               modifier = Modifier.padding(horizontal = Spacing.mediumSmall),

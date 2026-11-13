@@ -13,6 +13,7 @@ import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -51,6 +52,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.shadows.ShadowToast
 
 @RunWith(AndroidJUnit4::class)
 class GroupSessionScreenTest {
@@ -161,6 +163,26 @@ class GroupSessionScreenTest {
         .performScrollToNode(hasText("Software Architecture"))
     composeTestRule.onNodeWithText("Software Architecture").assertIsDisplayed()
     composeTestRule.onNodeWithText("Capstone planning").assertDoesNotExist()
+  }
+
+  /** The member list is not built yet, so tapping the participants pill shows the toast. */
+  @Test
+  fun participants_pill_click_shows_not_implemented_toast() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) {
+      viewModel.uiState.value.sessions.isNotEmpty()
+    }
+
+    composeTestRule
+        .onAllNodesWithTag(GroupSessionScreenTestTags.PARTICIPANTS_PILL)[0]
+        .performClick()
+    composeTestRule.waitForIdle()
+
+    assertEquals(
+        context.getString(R.string.toast_not_implemented),
+        ShadowToast.getTextOfLatestToast(),
+    )
   }
 
   @Test

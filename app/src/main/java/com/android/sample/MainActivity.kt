@@ -53,6 +53,7 @@ import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.preferences.PreferencesScreen
 import com.android.sample.ui.preferences.rememberScheduleImportLauncher
 import com.android.sample.ui.settings.SettingsScreen
+import com.android.sample.ui.sharedComponents.rememberNotImplementedToast
 import com.android.sample.ui.theme.DidYouStudyTheme
 
 private const val EVENT_EDITED_RESULT = "eventEdited"
@@ -144,7 +145,8 @@ fun DidYouStudyApp(
         val isEditing = remember { navController.previousBackStackEntry != null }
         PreferencesScreen(
             onImportClick = rememberScheduleImportLauncher(),
-            onAddLocationClick = {},
+            // Study-location import is not built yet.
+            onAddLocationClick = rememberNotImplementedToast(),
             onSaved = {
               if (isEditing) {
                 // Only handle the save while its Preferences entry is current. goBack() separately
@@ -310,17 +312,19 @@ fun DidYouStudyApp(
         route = Screen.Settings.name,
     ) {
       composable(Screen.Settings.route) {
+        // Profile editing and friends management are not built yet.
+        val notImplemented = rememberNotImplementedToast()
         SettingsScreen(
             onBackClick = navigationActions::goBack,
-            onEditUsernameClick = { /* TODO */ },
-            onChangeProfilePictureClick = { /* TODO */ },
+            onEditUsernameClick = notImplemented,
+            onChangeProfilePictureClick = notImplemented,
             onModifyPreferencesClick = {
               navigationActions.navigateIfAllowed(
                   Screen.Preferences,
                   applicationViewModel::canNavigateTo,
               )
             },
-            onManageFriendsClick = { /* TODO */ },
+            onManageFriendsClick = notImplemented,
         )
       }
     }

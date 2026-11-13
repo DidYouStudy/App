@@ -26,6 +26,7 @@ import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.profile.ProfileButton
 import com.android.sample.ui.sharedComponents.AddFabMenu
+import com.android.sample.ui.sharedComponents.rememberNotImplementedToast
 import com.android.sample.ui.theme.Dimens
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,7 +81,16 @@ fun DashboardScreen(
         )
       },
       // Sessions will come from a ViewModel once the study-session backend exists.
-      content = { pd -> DashboardContent(sessions = emptyList(), modifier = Modifier.padding(pd)) },
+      content = { pd ->
+        // Card details are not built yet: tapping either card shows the "not implemented" toast.
+        val notImplemented = rememberNotImplementedToast()
+        DashboardContent(
+            sessions = emptyList(),
+            modifier = Modifier.padding(pd),
+            onDayCardClick = notImplemented,
+            onStatsCardClick = notImplemented,
+        )
+      },
   )
 }
 

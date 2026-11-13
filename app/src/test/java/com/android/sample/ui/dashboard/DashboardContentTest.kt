@@ -1,4 +1,5 @@
 // Co-authored-by: GitHub Copilot
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.dashboard
 
 import android.content.Context
@@ -17,6 +18,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.TextLayoutResult
@@ -57,6 +59,28 @@ class DashboardContentTest {
     composeTestRule
         .onNodeWithTag(DashboardContentTestTags.STATS_TITLE)
         .assertTextEquals(context.getString(R.string.dashboard_your_stats))
+  }
+
+  /** Each card reports its own taps, so the screen can route them independently. */
+  @Test
+  fun tappingEachCardInvokesOnlyItsOwnCallback() {
+    var dayClicks = 0
+    var statsClicks = 0
+    composeTestRule.setContent {
+      DashboardContent(
+          sessions = emptyList(),
+          onDayCardClick = { dayClicks++ },
+          onStatsCardClick = { statsClicks++ },
+      )
+    }
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.YOUR_DAY_CARD).performClick()
+    assertEquals(1, dayClicks)
+    assertEquals(0, statsClicks)
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.STATS_CARD).performClick()
+    assertEquals(1, dayClicks)
+    assertEquals(1, statsClicks)
   }
 
   @Test

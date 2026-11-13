@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: Claude Opus 5.5
 package com.android.sample.ui.groupsession
 
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +32,7 @@ import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.location.CampusLocationRepositoryProvider
 import com.android.sample.model.location.Location
+import com.android.sample.ui.sharedComponents.rememberNotImplementedToast
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
@@ -160,6 +162,8 @@ private fun SessionCardList(
             onLeave = onLeave,
             onEdit = onEdit,
             onLocationClick = onLocationClick,
+            // Member list is not built yet.
+            onParticipantsClick = rememberNotImplementedToast(),
         )
       }
     }
