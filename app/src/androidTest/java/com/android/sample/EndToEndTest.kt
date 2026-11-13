@@ -62,7 +62,6 @@ import java.net.URL
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -453,11 +452,10 @@ class EndToEndTest {
     composeRule.onNodeWithTag(EventTags.START_TIME_SELECTOR).performClick()
     composeRule.onNodeWithContentDescription("8 hours").performClick()
     composeRule.onNodeWithText(string(R.string.confirm)).performClick()
-    // The end time must differ from the start: tap the next hour on the picker's clock face
-    // (an end before the start is accepted too, it ends the next day).
+    // The end time must differ from the start (equal times are rejected), so use a fixed hour.
+    // Deriving it from the current hour made the test fail whenever CI ran between 7:00 and 7:59.
     composeRule.onNodeWithTag(EventTags.END_TIME_SELECTOR).performClick()
-    val nextHour = (LocalTime.now().hour + 1) % 24
-    composeRule.onNodeWithContentDescription("$nextHour hours").performClick()
+    composeRule.onNodeWithContentDescription("10 hours").performClick()
     composeRule.onNodeWithText(string(R.string.confirm)).performClick()
     // The location is picked from the campus locations: search, then tap the matching row.
     // Scroll first: on a small screen the selector is below the fold and a tap would be lost.
