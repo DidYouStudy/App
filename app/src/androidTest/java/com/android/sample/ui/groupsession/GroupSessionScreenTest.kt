@@ -1,6 +1,7 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini AI Agent
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
@@ -748,11 +749,16 @@ class GroupSessionScreenTest {
     }
   }
 
-  private class FakeAuthRepository(private val currentUserId: String) : AuthRepository {
-    override val currentUser = MutableStateFlow(UserAccount(currentUserId, null, "Alice", null))
+  private class FakeAuthRepository(private val userId: String) : AuthRepository {
+    override val currentUser = MutableStateFlow(UserAccount(userId, null, "Alice", null))
+    override val isAuthenticated: Boolean
+      get() = true
+
+    override val currentUserId: String
+      get() = userId
 
     override suspend fun signInWithGoogle(idToken: String): UserAccount =
-        UserAccount(currentUserId, null, "Alice", null)
+        UserAccount(userId, null, "Alice", null)
 
     override suspend fun signOut() = Unit
   }

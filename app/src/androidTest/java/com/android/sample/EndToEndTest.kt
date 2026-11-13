@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Gemini AI Agent
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample
 

@@ -352,6 +352,11 @@ class GroupSessionScreenFiltersTest {
   private class FakeAuthRepository : AuthRepository {
     override val currentUser =
         MutableStateFlow<UserAccount?>(UserAccount("filter-user", null, "Filter User", null))
+    override val isAuthenticated: Boolean
+      get() = true
+
+    override val currentUserId: String?
+      get() = "filter-user"
 
     override suspend fun signInWithGoogle(idToken: String) =
         UserAccount("filter-user", null, "Filter User", null)

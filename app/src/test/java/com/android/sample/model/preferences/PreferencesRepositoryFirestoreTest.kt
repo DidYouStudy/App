@@ -66,6 +66,23 @@ class PreferencesRepositoryFirestoreTest {
   }
 
   @Test
+  fun getPreferences_fallsBackToCache_whenRemoteFails() = runTest {
+    val documentSnapshot = mock(DocumentSnapshot::class.java)
+    val expectedPrefs = UserPreferences(userId = "user123", sessionLengthMinutes = 45)
+
+    `when`(documentSnapshot.exists()).thenReturn(true)
+    `when`(documentSnapshot.toObject(UserPreferences::class.java)).thenReturn(expectedPrefs)
+    `when`(documentReference.get()).thenReturn(Tasks.forException(RuntimeException("Offline")))
+    `when`(documentReference.get(com.google.firebase.firestore.Source.CACHE))
+        .thenReturn(Tasks.forResult(documentSnapshot))
+
+    val result = repository.getPreferences("user123")
+
+    assertTrue(result.isSuccess)
+    assertEquals(expectedPrefs, result.getOrNull())
+  }
+
+  @Test
   fun getPreferences_returnsFailure_onFirestoreError() = runTest {
     val exception = RuntimeException("Firestore error")
     `when`(documentReference.get()).thenReturn(Tasks.forException(exception))
