@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample
 
 import android.content.Context
@@ -23,6 +24,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.printToLog
 import androidx.credentials.ClearCredentialStateRequest
@@ -501,7 +503,11 @@ class EndToEndTest {
     assertEquals(listOf(hostId), storedMemberIds(session.id))
 
     // Joining adds the user to the session in Firestore and the card now offers Leave.
-    composeRule.onNodeWithText(string(R.string.group_session_action_join)).performClick()
+    val joinMatcher = hasText(string(R.string.group_session_action_join))
+    composeRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(joinMatcher)
+    composeRule.onNode(joinMatcher).assertIsDisplayed().performClick()
     composeRule.waitUntil(timeoutMillis = TIMEOUT_MILLIS) {
       composeRule
           .onAllNodesWithText(string(R.string.group_session_action_leave))
@@ -511,7 +517,11 @@ class EndToEndTest {
     assertEquals(listOf(hostId, uid), storedMemberIds(session.id))
 
     // Leaving removes the user again and the card goes back to Join.
-    composeRule.onNodeWithText(string(R.string.group_session_action_leave)).performClick()
+    val leaveMatcher = hasText(string(R.string.group_session_action_leave))
+    composeRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(leaveMatcher)
+    composeRule.onNode(leaveMatcher).assertIsDisplayed().performClick()
     composeRule.waitUntil(timeoutMillis = TIMEOUT_MILLIS) {
       composeRule
           .onAllNodesWithText(string(R.string.group_session_action_join))
