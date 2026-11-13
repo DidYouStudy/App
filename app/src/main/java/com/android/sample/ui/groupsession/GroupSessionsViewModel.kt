@@ -25,7 +25,6 @@ import com.android.sample.model.location.CampusLocationType
 import com.android.sample.model.location.DistanceCalculator
 import com.android.sample.model.location.Location
 import com.android.sample.model.location.LocationProvider
-import com.android.sample.model.location.SessionPlaceResolver
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.ProfileRepositoryProvider
 import java.time.Clock
@@ -542,11 +541,10 @@ class GroupSessionsViewModel(
                     (!state.hideFullSessions ||
                         item.session.memberIds.size < GroupSession.MAX_MEMBERS)
               }
-      val knownRooms =
-          (campusLocationsByName.values +
-                  matchingSessions.mapNotNull { it.proximity.campusLocation })
-              .distinctBy { normalizeRoomName(it.name) }
-      val rooms = groupByRoom(matchingSessions, SessionPlaceResolver(knownRooms))
+      val rooms =
+          matchingSessions
+              .groupBy { it.proximity.campusLocation }
+              .mapNotNull { (room, items) -> room?.let { RoomSessions(it, items) } }
       state.copy(sessions = matchingSessions, rooms = rooms)
     }
   }

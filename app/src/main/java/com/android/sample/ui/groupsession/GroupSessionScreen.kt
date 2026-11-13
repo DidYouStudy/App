@@ -308,7 +308,6 @@ internal fun GroupSessionContent(
     selectedRoom: String? = null,
     onSelectedRoomChange: (String?) -> Unit = {},
     onLocationClick: (GroupSessionItem) -> Unit = {},
-    rooms: List<RoomSessions> = state.rooms,
     onQueryChange: (String) -> Unit = {},
     onFilterChange: (GroupSessionFilter) -> Unit = {},
     onJoin: (String) -> Unit = {},
@@ -379,7 +378,7 @@ internal fun GroupSessionContent(
     GroupSessionViewMode.MAP -> {
       Box(modifier = modifier.fillMaxSize().testTag(GroupSessionScreenTestTags.MAP_CONTENT)) {
         GroupSessionMapContent(
-            rooms = rooms,
+            rooms = state.rooms,
             now = state.now,
             onJoin = onJoin,
             onLeave = onLeave,
@@ -405,11 +404,13 @@ internal fun GroupSessionContent(
               onFilterChange = onFilterChange,
           )
         }
-        GroupSessionViewSwitcher(
-            viewMode = viewMode,
-            onViewModeChange = onViewModeChange,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = Spacing.large),
-        )
+        if (selectedRoom == null) {
+          GroupSessionViewSwitcher(
+              viewMode = viewMode,
+              onViewModeChange = onViewModeChange,
+              modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = Spacing.large),
+          )
+        }
       }
     }
   }
