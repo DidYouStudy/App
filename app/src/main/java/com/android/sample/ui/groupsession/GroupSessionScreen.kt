@@ -63,7 +63,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -94,9 +93,9 @@ import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
-import com.android.sample.ui.profile.ProfileButton
 import com.android.sample.ui.sharedComponents.AddButton
 import com.android.sample.ui.sharedComponents.EventTypeBadge
+import com.android.sample.ui.sharedComponents.MainTopAppBar
 import com.android.sample.ui.sharedComponents.rememberNotImplementedToast
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.ParticipantInitialTextStyle
@@ -221,16 +220,9 @@ fun GroupSessionScreen(
         )
       },
       topBar = {
-        TopAppBar(
-            title = {
-              Text(
-                  stringResource(R.string.group_session_title),
-                  modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE),
-              )
-            },
-            actions = {
-              ProfileButton(onClick = { navigationActions?.navigateTo(Screen.Settings) })
-            },
+        MainTopAppBar(
+            title = stringResource(R.string.group_session_title),
+            navigationActions = navigationActions,
         )
       },
       bottomBar = {

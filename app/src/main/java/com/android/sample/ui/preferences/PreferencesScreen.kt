@@ -14,18 +14,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
+import com.android.sample.ui.sharedComponents.SecondaryMediumTopAppBar
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 
@@ -72,8 +67,8 @@ fun PreferencesScreen(
 ) {
   Scaffold(
       topBar = {
-        MediumTopAppBar(
-            title = {
+        SecondaryMediumTopAppBar(
+            titleContent = {
               PreferencesHeader(
                   title =
                       stringResource(
@@ -83,24 +78,7 @@ fun PreferencesScreen(
                       )
               )
             },
-            // Edit mode only: returns to Settings without saving.
-            navigationIcon = {
-              if (onBack != null) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier.testTag(NavigationTestTags.GO_BACK_BUTTON),
-                ) {
-                  Icon(
-                      imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                      contentDescription = stringResource(id = R.string.button_go_back),
-                  )
-                }
-              }
-            },
-            colors =
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                ),
+            onBackClick = onBack,
             modifier = modifier.testTag(NavigationTestTags.TOP_BAR_TITLE),
         )
       },

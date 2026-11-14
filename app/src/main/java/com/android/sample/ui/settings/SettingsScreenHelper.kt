@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Person
@@ -29,23 +28,19 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import com.android.sample.R
-import com.android.sample.ui.navigation.NavigationTestTags
+import com.android.sample.ui.sharedComponents.SecondaryMediumTopAppBar
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 
@@ -82,35 +77,9 @@ object SettingsScreenTestTags {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SettingsHeader(onBackClick: () -> Unit) {
-  MediumTopAppBar(
-      title = {
-        Text(
-            text = stringResource(id = R.string.settings_header),
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE),
-        )
-      },
-      navigationIcon = {
-        // Returns to the previous screen.
-        IconButton(
-            onClick = onBackClick,
-            modifier = Modifier.testTag(NavigationTestTags.GO_BACK_BUTTON),
-        ) {
-          Icon(
-              imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-              contentDescription = stringResource(id = R.string.button_go_back),
-          )
-        }
-      },
-      colors =
-          TopAppBarDefaults.topAppBarColors(
-              containerColor = MaterialTheme.colorScheme.surfaceContainer,
-              scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-              navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-              titleContentColor = MaterialTheme.colorScheme.onSurface,
-              actionIconContentColor = Color.Unspecified,
-          ),
+  SecondaryMediumTopAppBar(
+      title = stringResource(id = R.string.settings_header),
+      onBackClick = onBackClick,
   )
 }
 
