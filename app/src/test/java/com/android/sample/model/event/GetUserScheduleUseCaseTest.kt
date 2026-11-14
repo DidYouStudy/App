@@ -251,6 +251,75 @@ class GetUserScheduleUseCaseTest {
   }
 
   @Test
+  fun eventsWithSameStartTimes_sortedByEndTimeAndThenId() = runTest {
+    val eventLonger =
+        PersonalEvent(
+            id = "b-longer",
+            ownerId = studentId,
+            details =
+                EventDetails(
+                    type = EventType.STUDY_SESSION,
+                    subject = "Longer",
+                    startsAt = start1,
+                    endsAt = end2,
+                ),
+            createdAt = start1,
+        )
+
+    val eventShorter =
+        PersonalEvent(
+            id = "a-shorter",
+            ownerId = studentId,
+            details =
+                EventDetails(
+                    type = EventType.STUDY_SESSION,
+                    subject = "Shorter",
+                    startsAt = start1,
+                    endsAt = end1,
+                ),
+            createdAt = start1,
+        )
+
+    val eventZ =
+        PersonalEvent(
+            id = "z-id",
+            ownerId = studentId,
+            details =
+                EventDetails(
+                    type = EventType.STUDY_SESSION,
+                    subject = "Z Subject",
+                    startsAt = start1,
+                    endsAt = end1,
+                ),
+            createdAt = start1,
+        )
+
+    val eventA =
+        PersonalEvent(
+            id = "a-id",
+            ownerId = studentId,
+            details =
+                EventDetails(
+                    type = EventType.STUDY_SESSION,
+                    subject = "A Subject",
+                    startsAt = start1,
+                    endsAt = end1,
+                ),
+            createdAt = start1,
+        )
+
+    eventsRepository.saveEvents(listOf(eventLonger, eventZ, eventA, eventShorter))
+
+    val schedule = useCase(studentId, from, to).first().getOrThrow()
+    assertEquals(4, schedule.size)
+
+    assertEquals("a-id", schedule[0].id)
+    assertEquals("a-shorter", schedule[1].id)
+    assertEquals("z-id", schedule[2].id)
+    assertEquals("b-longer", schedule[3].id)
+  }
+
+  @Test
   fun worksWithInjectedClockInDifferentTimeZones() = runTest {
     val tokyoZone = ZoneId.of("Asia/Tokyo")
     val tokyoClock = Clock.fixed(start1, tokyoZone)
