@@ -73,8 +73,8 @@ fun MainTopAppBar(
  * Displays a medium top app bar with a back navigation button, surface colors, and headline title
  * styling or custom title content.
  *
- * @param title Optional title text displayed in the bar with default headline styling.
  * @param modifier Modifier applied to the top app bar.
+ * @param title Optional title text displayed in the bar with default headline styling.
  * @param onBackClick Called when the back button is clicked. If null, no back button is rendered.
  * @param backButtonEnabled Whether the back button is enabled for interaction.
  * @param backButtonDescription Content description for accessibility on the back button.
@@ -95,19 +95,23 @@ fun SecondaryMediumTopAppBar(
     backButtonTestTag: String = NavigationTestTags.GO_BACK_BUTTON,
     titleTestTag: String = NavigationTestTags.TOP_BAR_TITLE,
     actions: @Composable RowScope.() -> Unit = {},
-    titleContent: (@Composable () -> Unit)? = title?.let { text ->
-      {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.testTag(titleTestTag),
-        )
-      }
-    },
+    titleContent: (@Composable () -> Unit)? = null,
 ) {
+  val resolvedTitle: @Composable () -> Unit =
+      titleContent
+          ?: {
+            if (title != null) {
+              Text(
+                  text = title,
+                  style = MaterialTheme.typography.headlineLarge,
+                  fontWeight = FontWeight.Bold,
+                  modifier = Modifier.testTag(titleTestTag),
+              )
+            }
+          }
+
   MediumTopAppBar(
-      title = titleContent ?: {},
+      title = resolvedTitle,
       navigationIcon = {
         if (onBackClick != null) {
           IconButton(
