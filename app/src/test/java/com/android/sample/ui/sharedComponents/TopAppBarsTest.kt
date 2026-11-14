@@ -145,4 +145,38 @@ class TopAppBarsTest {
         .assertTextEquals("Custom Title")
     composeTestRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).assertIsDisplayed()
   }
+
+  @Test
+  fun secondaryMediumTopAppBarWithNoTitleOrTitleContentRendersEmptyTitle() {
+    composeTestRule.setContent {
+      // Exercises title = null (default), title?.let null branch, and titleContent ?: {} fallback
+      SecondaryMediumTopAppBar(
+          onBackClick = {},
+      )
+    }
+
+    composeTestRule.onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).assertIsDisplayed()
+  }
+
+  @Test
+  fun secondaryMediumTopAppBarUsesCustomTagsAndDescription() {
+    composeTestRule.setContent {
+      // Exercises non-default branches for backButtonDescription, backButtonTestTag, and
+      // titleTestTag
+      SecondaryMediumTopAppBar(
+          title = "Custom Tagged Title",
+          onBackClick = {},
+          backButtonDescription = "Navigate up",
+          backButtonTestTag = "customBackTag",
+          titleTestTag = "customTitleTag",
+      )
+    }
+
+    composeTestRule
+        .onNodeWithTag("customTitleTag")
+        .assertIsDisplayed()
+        .assertTextEquals("Custom Tagged Title")
+    composeTestRule.onNodeWithTag("customBackTag").assertIsDisplayed()
+  }
 }
