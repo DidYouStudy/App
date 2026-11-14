@@ -179,4 +179,19 @@ class TopAppBarsTest {
         .assertTextEquals("Custom Tagged Title")
     composeTestRule.onNodeWithTag("customBackTag").assertIsDisplayed()
   }
+
+  @Test
+  fun secondaryMediumTopAppBarCustomTitleContentOverridesTitleAndUnusedTitleTag() {
+    composeTestRule.setContent {
+      SecondaryMediumTopAppBar(
+          title = "Ignored Title",
+          titleTestTag = "unusedTitleTag",
+          titleContent = { Text("Override", modifier = Modifier.testTag("overrideTitle")) },
+          onBackClick = {},
+      )
+    }
+
+    composeTestRule.onNodeWithTag("overrideTitle").assertIsDisplayed()
+    composeTestRule.onNodeWithTag("unusedTitleTag").assertDoesNotExist()
+  }
 }
