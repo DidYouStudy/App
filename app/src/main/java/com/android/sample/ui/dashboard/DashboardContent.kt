@@ -4,7 +4,9 @@ package com.android.sample.ui.dashboard
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -23,8 +25,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -73,12 +78,22 @@ object DashboardContentTestTags {
   fun sessionItem(index: Int) = "dashboard_sessionItem_$index"
 }
 
-/** Displays today's planned sessions and study statistics. */
+/**
+ * Displays today's planned sessions and study statistics.
+ *
+ * @param sessions Sessions planned for today, in display order.
+ * @param modifier Modifier applied to the scrollable content column.
+ * @param stats Study statistics shown in the stats card.
+ * @param onDayCardClick Called when the user taps the "Your day" card.
+ * @param onStatsCardClick Called when the user taps the stats card.
+ */
 @Composable
 fun DashboardContent(
     sessions: List<DashboardSession>,
     modifier: Modifier = Modifier,
     stats: DashboardStats = DashboardStats(),
+    onDayCardClick: () -> Unit = {},
+    onStatsCardClick: () -> Unit = {},
 ) {
   Column(
       modifier =
@@ -92,16 +107,22 @@ fun DashboardContent(
               .testTag(DashboardContentTestTags.CONTENT),
       verticalArrangement = Arrangement.spacedBy(Spacing.large),
   ) {
-    DashboardDayCard(sessions)
-    DashboardStatsCard(stats)
+    DashboardDayCard(sessions, onClick = onDayCardClick)
+    DashboardStatsCard(stats, onClick = onStatsCardClick)
   }
 }
 
 /** Displays the planned sessions for the day. */
 @Composable
-private fun DashboardDayCard(sessions: List<DashboardSession>, modifier: Modifier = Modifier) {
+private fun DashboardDayCard(
+    sessions: List<DashboardSession>,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
   DashboardCard(
       testTag = DashboardContentTestTags.YOUR_DAY_CARD,
+      clickLabel = stringResource(R.string.dashboard_your_day),
+      onClick = onClick,
       modifier = modifier,
   ) {
     Text(
@@ -134,26 +155,45 @@ private fun DashboardDayCard(sessions: List<DashboardSession>, modifier: Modifie
   }
 }
 
-/** Applies the shared dashboard card surface and content spacing. */
+/**
+ * Applies the shared dashboard card surface and content spacing, and makes the whole card tappable.
+ *
+ * The tap target is a separate layer drawn over the content rather than a `clickable` on the
+ * column: `clickable` merges every descendant into one accessibility node, which would make
+ * TalkBack read the whole card (every session row) as a single button and hide the inner nodes.
+ *
+ * @param testTag Tag applied to the card container.
+ * @param clickLabel Accessibility label announced for the card's tap target.
+ * @param onClick Called when the user taps anywhere on the card.
+ */
 @Composable
 private fun DashboardCard(
     testTag: String,
+    clickLabel: String,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
     verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(Spacing.medium),
     content: @Composable ColumnScope.() -> Unit,
 ) {
   val cardShape = RoundedCornerShape(Dimens.cornerLarge)
-  Column(
-      modifier =
-          modifier
-              .fillMaxWidth()
-              .background(MaterialTheme.colorScheme.surfaceContainerLowest, cardShape)
-              .border(Dimens.borderThin, MaterialTheme.colorScheme.outlineVariant, cardShape)
-              .padding(Spacing.large)
-              .testTag(testTag),
-      verticalArrangement = verticalArrangement,
-      content = content,
-  )
+  Box(modifier = modifier.fillMaxWidth().testTag(testTag)) {
+    Column(
+        modifier =
+            Modifier.fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceContainerLowest, cardShape)
+                .border(Dimens.borderThin, MaterialTheme.colorScheme.outlineVariant, cardShape)
+                .padding(Spacing.large),
+        verticalArrangement = verticalArrangement,
+        content = content,
+    )
+    // Tap layer over the content; clipped so the ripple follows the rounded corners.
+    Box(
+        modifier =
+            Modifier.matchParentSize().clip(cardShape).clickable(onClick = onClick).semantics {
+              contentDescription = clickLabel
+            },
+    )
+  }
 }
 
 /** Shows one planned session with its times and subject. */
@@ -206,10 +246,16 @@ private fun DashboardSessionRow(
 
 /** Displays the dashboard's study statistics and placeholder hint. */
 @Composable
-private fun DashboardStatsCard(stats: DashboardStats, modifier: Modifier = Modifier) {
+private fun DashboardStatsCard(
+    stats: DashboardStats,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
   val emptyValue = stringResource(R.string.dashboard_stat_empty_value)
   DashboardCard(
       testTag = DashboardContentTestTags.STATS_CARD,
+      clickLabel = stringResource(R.string.dashboard_your_stats),
+      onClick = onClick,
       modifier = modifier,
       verticalArrangement = Arrangement.spacedBy(Spacing.large),
   ) {
