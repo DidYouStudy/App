@@ -14,18 +14,13 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import com.android.sample.R
 import com.android.sample.model.event.EventType
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
@@ -45,6 +39,7 @@ import com.android.sample.ui.sharedComponents.EventDatePickerDialog
 import com.android.sample.ui.sharedComponents.EventTimePickerDialog
 import com.android.sample.ui.sharedComponents.LocationPickerDialog
 import com.android.sample.ui.sharedComponents.PillActionButton
+import com.android.sample.ui.sharedComponents.SecondaryMediumTopAppBar
 import com.android.sample.ui.sharedComponents.SubjectPickerDialog
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
@@ -293,31 +288,12 @@ fun EventPlanningScreenStateless(
 
   Scaffold(
       topBar = {
-        MediumTopAppBar(
-            title = {
-              Text(
-                  text = stringResource(resolvedTitleRes),
-                  style = MaterialTheme.typography.headlineLarge,
-                  fontWeight = FontWeight.Bold,
-                  modifier = Modifier.testTag(Tags.TOP_BAR_TITLE),
-              )
-            },
-            navigationIcon = {
-              IconButton(
-                  onClick = onBackClick,
-                  enabled = !isEditing || uiState.canLeaveEdit,
-                  modifier = Modifier.testTag(Tags.BACK_BUTTON),
-              ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.button_go_back),
-                )
-              }
-            },
-            colors =
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                ),
+        SecondaryMediumTopAppBar(
+            title = stringResource(resolvedTitleRes),
+            onBackClick = onBackClick,
+            backButtonEnabled = !isEditing || uiState.canLeaveEdit,
+            backButtonTestTag = Tags.BACK_BUTTON,
+            titleTestTag = Tags.TOP_BAR_TITLE,
             modifier = Modifier.testTag(Tags.TOP_APP_BAR),
         )
       },

@@ -21,8 +21,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,8 +46,8 @@ import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
-import com.android.sample.ui.profile.ProfileButton
 import com.android.sample.ui.sharedComponents.AddFabMenu
+import com.android.sample.ui.sharedComponents.MainTopAppBar
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
@@ -100,20 +98,9 @@ fun CalendarScreen(
   Scaffold(
       modifier = Modifier.nestedScroll(scrollConnection),
       topBar = {
-        TopAppBar(
-            title = {
-              Text(
-                  text = stringResource(R.string.calendar_title),
-                  style = MaterialTheme.typography.headlineLarge,
-                  fontWeight = FontWeight.Bold,
-                  modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE),
-              )
-            },
-            colors =
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                ),
+        MainTopAppBar(
+            title = stringResource(R.string.calendar_title),
+            navigationActions = navigationActions,
             actions = {
               Surface(
                   onClick = onToday,
@@ -134,10 +121,6 @@ fun CalendarScreen(
                 )
               }
               Spacer(Modifier.width(Spacing.small))
-              ProfileButton(
-                  onClick = { navigationActions?.navigateTo(Screen.Settings) },
-                  modifier = Modifier.padding(end = Dimens.profileButtonPadding),
-              )
             },
         )
       },

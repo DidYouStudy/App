@@ -7,16 +7,11 @@ package com.android.sample.ui.dashboard
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.sample.R
 import com.android.sample.ui.navigation.BottomNavigationMenu
@@ -24,9 +19,8 @@ import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
-import com.android.sample.ui.profile.ProfileButton
 import com.android.sample.ui.sharedComponents.AddFabMenu
-import com.android.sample.ui.theme.Dimens
+import com.android.sample.ui.sharedComponents.MainTopAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,27 +36,9 @@ fun DashboardScreen(
 ) {
   Scaffold(
       topBar = {
-        TopAppBar(
-            title = {
-              Text(
-                  text = stringResource(R.string.dashboard_title),
-                  style = MaterialTheme.typography.headlineLarge,
-                  fontWeight = FontWeight.Bold,
-                  modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE),
-              )
-            },
-            // Mockup app bar: surfaceContainer band with a bold onSurface title.
-            colors =
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                ),
-            actions = {
-              ProfileButton(
-                  onClick = { navigationActions?.navigateTo(Screen.Settings) },
-                  modifier = Modifier.padding(end = Dimens.profileButtonPadding),
-              )
-            },
+        MainTopAppBar(
+            title = stringResource(R.string.dashboard_title),
+            navigationActions = navigationActions,
         )
       },
       bottomBar = {
