@@ -22,7 +22,6 @@ import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.sharedComponents.AddFabMenu
 import com.android.sample.ui.sharedComponents.MainTopAppBar
 import com.android.sample.ui.sharedComponents.rememberNotImplementedToast
-import com.android.sample.ui.theme.Dimens
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
