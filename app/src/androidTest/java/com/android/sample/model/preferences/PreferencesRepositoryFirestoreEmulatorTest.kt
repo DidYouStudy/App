@@ -10,6 +10,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Source
 import java.util.UUID
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
@@ -19,7 +20,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Real Auth/Firestore SDK tests for [PreferencesRepositoryFirestore]; they use the local emulators,
@@ -83,18 +83,15 @@ class PreferencesRepositoryFirestoreEmulatorTest {
   private suspend fun sync() = withTimeout(15000.milliseconds) { db.waitForPendingWrites().await() }
 
   /**
-   * Saving offline completes locally without waiting for the server, the new values can be read
+   * Saving offline completes locally without waiting for the server, the saved values can be read
    * back offline, and the queued write reaches the server after reconnecting.
    */
   @Test
   fun offlineSaveCompletesLocallyAndSyncs() = runBlocking {
-    // Online first, so the document is also in the local cache.
-    repository.savePreferences(prefs()).getOrThrow()
-    sync()
     db.disableNetwork().await()
 
     val edited = prefs(sessionLengthMinutes = 120, breakLengthMinutes = 15)
-    // A hang here (timeout) means the save waited for the server instead of the local cache.
+    // A hang here (timeout) means the save or the read waited for the server.
     withTimeout(5000.milliseconds) {
       repository.savePreferences(edited).getOrThrow()
       assertEquals(edited, repository.getPreferences(uid).getOrThrow())
