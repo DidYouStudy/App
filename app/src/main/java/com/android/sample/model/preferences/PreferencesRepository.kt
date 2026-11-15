@@ -17,9 +17,9 @@ interface PreferencesRepository {
   /**
    * Persists the provided user preferences.
    *
-   * Writes are local-first: success means the preferences are stored locally and queued for sync,
-   * not that the server has acknowledged them. This lets saving work while offline. A later
-   * server-side rejection of the queued write is not reported through this call.
+   * Writes are also saved while offline: success means the preferences are stored locally and
+   * queued for sync, which happens when online again. A later server-side rejection of the queued
+   * write is not reported through this call.
    *
    * @param preferences The [UserPreferences] instance to save. [UserPreferences.userId] must not be
    *   blank.

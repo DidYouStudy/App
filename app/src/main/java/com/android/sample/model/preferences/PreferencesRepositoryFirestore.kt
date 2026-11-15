@@ -102,12 +102,10 @@ class PreferencesRepositoryFirestore(private val firestore: FirebaseFirestore) :
   /**
    * Queues the write and returns once it has been applied to the local cache.
    *
-   * The `set()` Task only completes on server acknowledgement, so awaiting it hangs offline.
-   * Instead, a cache-only query queued right after `set()` acts as a local-write barrier on
-   * Firestore's serial worker queue: it completes after the write is applied locally, without
-   * waiting for the server. This mirrors `EventsRepositoryFirestore.commitLocally`. A query (rather
-   * than a document read) is used so a missing document yields an empty snapshot instead of
-   * throwing. Cancelling the caller does not undo an already queued write.
+   * A cache-only query queued right after `set()` acts as a local-write barrier on Firestore's
+   * serial worker queue: it completes after the write is applied locally, without waiting for the
+   * server. A query (rather than a document read) is used so a missing document yields an empty
+   * snapshot instead of throwing. Cancelling the caller does not undo an already queued write.
    *
    * @param preferences The preferences to write; [UserPreferences.userId] is the document ID.
    * @throws Exception the acknowledgement's exception if the write has already failed, or the
