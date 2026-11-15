@@ -2,6 +2,7 @@
 package com.android.sample.ui.navigation
 
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
@@ -22,6 +23,7 @@ import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.EventsRepositoryProvider
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.InMemoryEventsRepository
 import com.android.sample.model.event.PersonalEvent
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
@@ -67,6 +69,7 @@ class CalendarEventNavigationTest {
   private val selectedCardTag = CalendarTestTags.eventCard(selectedEvent.id, dayIndex = 1)
   private val otherCardTag = CalendarTestTags.eventCard(otherEvent.id, dayIndex = 0)
   private val events = TestEventsRepository(InMemoryEventsRepository())
+  private val groupSessions = InMemoryGroupSessionsRepository()
 
   /** Seeds two distinguishable cards and opens the week containing them. */
   @Before
@@ -83,7 +86,7 @@ class CalendarEventNavigationTest {
     PreferencesRepositoryProvider.setRepository(preferences)
     ProfileRepositoryProvider.setRepository(mock<ProfileRepository>())
     EventsRepositoryProvider.setRepository(events)
-    GroupSessionsRepositoryProvider.setRepository(InMemoryGroupSessionsRepository())
+    GroupSessionsRepositoryProvider.setRepository(groupSessions)
 
     composeRule.setContent { DidYouStudyApp() }
     composeRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
@@ -100,6 +103,43 @@ class CalendarEventNavigationTest {
     ProfileRepositoryProvider.setRepository(null)
     EventsRepositoryProvider.setRepository(null)
     GroupSessionsRepositoryProvider.setRepository(null)
+  }
+
+  /** Hosted and joined cards appear in the open week; leaving removes only the joined card. */
+  @Test
+  fun groupSessionsUpdateInTheOpenCalendarWeek() {
+    val hosted =
+        GroupSession(
+            id = "hosted-session",
+            createdBy = userId,
+            memberIds = listOf(userId),
+            details = otherEvent.details,
+            createdAt = otherEvent.createdAt,
+        )
+    val joined =
+        hosted.copy(
+            id = "joined-session",
+            createdBy = "another-student",
+            memberIds = listOf("another-student", userId),
+            details = selectedEvent.details,
+        )
+    runBlocking {
+      groupSessions.saveSession(userId, hosted).getOrThrow()
+      groupSessions.saveSession(joined.createdBy, joined).getOrThrow()
+    }
+
+    val hostedCard = composeRule.onNodeWithTag(CalendarTestTags.eventCard(hosted.id, 0))
+    val joinedCard = composeRule.onNodeWithTag(CalendarTestTags.eventCard(joined.id, 1))
+    hostedCard.assertIsDisplayed().assertHasNoClickAction()
+    joinedCard.assertIsDisplayed().assertHasNoClickAction()
+    composeRule.onNodeWithTag(selectedCardTag).assertIsDisplayed()
+
+    runBlocking { groupSessions.leaveSession(userId, joined.id).getOrThrow() }
+
+    joinedCard.assertDoesNotExist()
+    hostedCard.assertIsDisplayed()
+    composeRule.onNodeWithTag(selectedCardTag).assertIsDisplayed().performScrollTo().performClick()
+    composeRule.onNodeWithTag(DetailsTags.SUBJECT).assertTextContains("Operating systems")
   }
 
   /** Repeated card and Back taps still take a single trip to Details and back. */
