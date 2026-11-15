@@ -320,6 +320,63 @@ class GetUserScheduleUseCaseTest {
   }
 
   @Test
+  fun joinedGroupSessions_timeBoundariesAndCrossMidnightHandling() = runTest {
+    val endingAtFromSession =
+        GroupSession(
+            id = "session-ending-at-from",
+            createdBy = studentId,
+            memberIds = listOf(studentId),
+            details =
+                EventDetails(
+                    type = EventType.STUDY_SESSION,
+                    subject = "Ending At From",
+                    startsAt = Instant.parse("2026-10-09T23:00:00Z"),
+                    endsAt = from,
+                ),
+            createdAt = Instant.parse("2026-10-09T23:00:00Z"),
+        )
+
+    val startingAtToSession =
+        GroupSession(
+            id = "session-starting-at-to",
+            createdBy = studentId,
+            memberIds = listOf(studentId),
+            details =
+                EventDetails(
+                    type = EventType.STUDY_SESSION,
+                    subject = "Starting At To",
+                    startsAt = to,
+                    endsAt = Instant.parse("2026-10-11T01:00:00Z"),
+                ),
+            createdAt = to,
+        )
+
+    val crossMidnightSession =
+        GroupSession(
+            id = "session-cross-midnight",
+            createdBy = studentId,
+            memberIds = listOf(studentId),
+            details =
+                EventDetails(
+                    type = EventType.STUDY_SESSION,
+                    subject = "Cross Midnight",
+                    startsAt = Instant.parse("2026-10-10T23:00:00Z"),
+                    endsAt = Instant.parse("2026-10-11T01:00:00Z"),
+                ),
+            createdAt = Instant.parse("2026-10-10T23:00:00Z"),
+        )
+
+    groupSessionsRepository.saveSession(studentId, endingAtFromSession)
+    groupSessionsRepository.saveSession(studentId, startingAtToSession)
+    groupSessionsRepository.saveSession(studentId, crossMidnightSession)
+
+    val schedule = useCase(studentId, from, to).first().getOrThrow()
+
+    assertEquals(1, schedule.size)
+    assertEquals("session-cross-midnight", schedule[0].id)
+  }
+
+  @Test
   fun worksWithInjectedClockInDifferentTimeZones() = runTest {
     val tokyoZone = ZoneId.of("Asia/Tokyo")
     val tokyoClock = Clock.fixed(start1, tokyoZone)
