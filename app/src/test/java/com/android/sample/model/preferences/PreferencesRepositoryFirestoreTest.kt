@@ -29,6 +29,7 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import org.mockito.kotlin.inOrder
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -83,20 +84,68 @@ class PreferencesRepositoryFirestoreTest {
     assertNull(result.getOrNull())
   }
 
+  /** An unreachable server (offline) falls back to the cached document. */
   @Test
-  fun getPreferences_fallsBackToCache_whenRemoteFails() = runTest {
+  fun getPreferences_fallsBackToCache_whenUnavailable() = runTest {
     val documentSnapshot = mock(DocumentSnapshot::class.java)
     val expectedPrefs = UserPreferences(userId = "user123", sessionLengthMinutes = 45)
+    val offline = FirebaseFirestoreException("offline", FirebaseFirestoreException.Code.UNAVAILABLE)
 
     `when`(documentSnapshot.exists()).thenReturn(true)
     `when`(documentSnapshot.toObject(UserPreferences::class.java)).thenReturn(expectedPrefs)
-    `when`(documentReference.get()).thenReturn(Tasks.forException(RuntimeException("Offline")))
+    `when`(documentReference.get()).thenReturn(Tasks.forException(offline))
     `when`(documentReference.get(Source.CACHE)).thenReturn(Tasks.forResult(documentSnapshot))
 
     val result = repository.getPreferences("user123")
 
     assertTrue(result.isSuccess)
     assertEquals(expectedPrefs, result.getOrNull())
+  }
+
+  /** A permission error is returned as a failure instead of being hidden by cached data. */
+  @Test
+  fun getPreferences_doesNotFallBack_onPermissionDenied() = runTest {
+    val denied =
+        FirebaseFirestoreException("denied", FirebaseFirestoreException.Code.PERMISSION_DENIED)
+    `when`(documentReference.get()).thenReturn(Tasks.forException(denied))
+
+    val result = repository.getPreferences("user123")
+
+    assertTrue(result.isFailure)
+    assertSame(denied, result.exceptionOrNull())
+    verify(documentReference, never()).get(Source.CACHE)
+  }
+
+  /** When offline and nothing is cached, the original server error is returned. */
+  @Test
+  fun getPreferences_returnsServerError_whenCacheAlsoFails() = runTest {
+    val offline = FirebaseFirestoreException("offline", FirebaseFirestoreException.Code.UNAVAILABLE)
+    `when`(documentReference.get()).thenReturn(Tasks.forException(offline))
+    `when`(documentReference.get(Source.CACHE))
+        .thenReturn(Tasks.forException(RuntimeException("Cache miss")))
+
+    val result = repository.getPreferences("user123")
+
+    assertTrue(result.isFailure)
+    assertSame(offline, result.exceptionOrNull())
+  }
+
+  /**
+   * Cancellation during the cache fallback propagates instead of becoming the server error. It
+   * checks the exact instance thrown and that the cache was actually read, so it can only pass if
+   * the cancellation came through the cache branch.
+   */
+  @Test
+  fun getPreferences_rethrowsCancellationException_duringCacheFallback() = runTest {
+    val offline = FirebaseFirestoreException("offline", FirebaseFirestoreException.Code.UNAVAILABLE)
+    val cancellation = CancellationException("Job cancelled")
+    `when`(documentReference.get()).thenReturn(Tasks.forException(offline))
+    `when`(documentReference.get(Source.CACHE)).thenReturn(Tasks.forException(cancellation))
+
+    val thrown = runCatching { repository.getPreferences("user123") }.exceptionOrNull()
+
+    assertSame(cancellation, thrown)
+    verify(documentReference).get(Source.CACHE)
   }
 
   @Test
