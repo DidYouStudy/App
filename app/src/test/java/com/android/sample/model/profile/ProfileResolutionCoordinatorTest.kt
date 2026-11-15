@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot
 // Co-authored-by: Codex AI Agent
+// Co-authored-by: Claude Code
 package com.android.sample.model.profile
 
 import com.android.sample.model.auth.UserAccount
@@ -285,6 +286,20 @@ class ProfileResolutionCoordinatorTest {
   ) : ProfileRepository {
     val getProfileUserIds = mutableListOf<String>()
     val createProfileUserIds = mutableListOf<String>()
+
+    /** Usernames requested through [updateUsername], in call order. */
+    val requestedUsernames = mutableListOf<String>()
+
+    /** Outcomes returned by successive [updateUsername] calls; a generic failure when empty. */
+    val updateUsernameResults = ArrayDeque<Result<UserProfile>>()
+    var updateUsernameException: Throwable? = null
+
+    override suspend fun updateUsername(userId: String, username: String): Result<UserProfile> {
+      requestedUsernames += username
+      updateUsernameException?.let { throw it }
+      return updateUsernameResults.removeFirstOrNull()
+          ?: Result.failure(ProfileException(ProfileError.UNKNOWN))
+    }
 
     override suspend fun getProfile(userId: String): Result<UserProfile?> {
       getProfileUserIds += userId
