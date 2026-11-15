@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Code
 package com.android.sample.model.profile
 
 import androidx.test.core.app.ApplicationProvider
@@ -62,7 +63,7 @@ class ProfilesFirestoreRulesEmulatorTest {
   /** An owner can create and read a profile document under their authentication UID. */
   @Test
   fun ownerCanWriteAndReadOwnProfile() = runBlocking {
-    val expected = profileData(owner.uid, "Owner")
+    val expected = profileData(owner.uid, "")
 
     set(profileDocument(owner, owner.uid), expected)
 
@@ -72,8 +73,7 @@ class ProfilesFirestoreRulesEmulatorTest {
   /** A different signed-in user can get a profile document when they know its ID. */
   @Test
   fun anotherSignedInUserCanGetProfileById() = runBlocking {
-    val expected = profileData(owner.uid, "Owner")
-    set(profileDocument(owner, owner.uid), expected)
+    val expected = seedProfile(owner, "Owner")
 
     assertEquals(expected, readData(reader, owner.uid))
   }
@@ -81,7 +81,7 @@ class ProfilesFirestoreRulesEmulatorTest {
   /** ProfileRepositoryFirestore maps a permitted cross-user document to its username. */
   @Test
   fun profileRepositoryReadsAnotherUsersUsername() = runBlocking {
-    set(profileDocument(owner, owner.uid), profileData(owner.uid, "Owner"))
+    seedProfile(owner, "Owner")
     val result = ProfileRepositoryFirestore(reader.db).getProfile(owner.uid)
 
     assertEquals("Owner", result.getOrThrow()?.username)
@@ -90,7 +90,7 @@ class ProfilesFirestoreRulesEmulatorTest {
   /** A signed-in user cannot list the profiles collection. */
   @Test
   fun profilesCollectionQueryIsDenied() = runBlocking {
-    set(profileDocument(owner, owner.uid), profileData(owner.uid, "Owner"))
+    seedProfile(owner, "Owner")
 
     denied { timed { reader.db.collection("profiles").get(Source.SERVER).await() } }
   }
@@ -98,7 +98,7 @@ class ProfilesFirestoreRulesEmulatorTest {
   /** A signed-out client cannot read an existing profile document. */
   @Test
   fun signedOutUserCannotGetProfile() = runBlocking {
-    set(profileDocument(owner, owner.uid), profileData(owner.uid, "Owner"))
+    seedProfile(owner, "Owner")
 
     denied { timed { profileDocument(signedOut, owner.uid).get(Source.SERVER).await() } }
   }
@@ -106,8 +106,7 @@ class ProfilesFirestoreRulesEmulatorTest {
   /** A non-owner cannot replace, update or delete an existing profile document. */
   @Test
   fun anotherUserCannotWriteOrDeleteProfile() = runBlocking {
-    val original = profileData(owner.uid, "Owner")
-    set(profileDocument(owner, owner.uid), original)
+    val original = seedProfile(owner, "Owner")
 
     denied {
       timed { profileDocument(reader, owner.uid).set(profileData(owner.uid, "Changed")).await() }
@@ -125,6 +124,110 @@ class ProfilesFirestoreRulesEmulatorTest {
     timed { preferencesDocument(owner).set(expected).await() }
 
     denied { timed { preferencesDocument(reader).get(Source.SERVER).await() } }
+  }
+
+  /** The owner claims a username through the repository, which reserves it atomically. */
+  @Test
+  fun ownerCanClaimUsernameThroughRepository() = runBlocking {
+    seedProfile(owner, "Owner")
+
+    assertEquals("Owner", readData(owner, owner.uid)["username"])
+    assertEquals(mapOf("uid" to owner.uid), readReservation(reader, "owner"))
+  }
+
+  /** A second user cannot claim a username already owned, whatever its letter case. */
+  @Test
+  fun secondUserCannotClaimTakenUsername() = runBlocking {
+    seedProfile(owner, "Owner")
+    set(profileDocument(reader, reader.uid), profileData(reader.uid, ""))
+
+    val result = ProfileRepositoryFirestore(reader.db).updateUsername(reader.uid, "OWNER")
+
+    assertEquals(
+        ProfileError.USERNAME_TAKEN,
+        (result.exceptionOrNull() as ProfileException).error,
+    )
+    assertEquals("", readData(reader, reader.uid)["username"])
+  }
+
+  /** Renaming releases the old username so another user can claim it. */
+  @Test
+  fun renameFreesPreviousUsername() = runBlocking {
+    seedProfile(owner, "Owner")
+    set(profileDocument(reader, reader.uid), profileData(reader.uid, ""))
+
+    ProfileRepositoryFirestore(owner.db).updateUsername(owner.uid, "Owner2").getOrThrow()
+    val claimed = ProfileRepositoryFirestore(reader.db).updateUsername(reader.uid, "Owner")
+
+    assertEquals("Owner", claimed.getOrThrow().username)
+  }
+
+  /** Re-submitting the owned name, even with another letter case, succeeds. */
+  @Test
+  fun ownerCanChangeCaseOfOwnUsername() = runBlocking {
+    seedProfile(owner, "Owner")
+
+    val result = ProfileRepositoryFirestore(owner.db).updateUsername(owner.uid, "OWNER")
+
+    assertEquals("OWNER", result.getOrThrow().username)
+  }
+
+  /** A username cannot be written to a profile without reserving it first. */
+  @Test
+  fun profileUsernameWithoutReservationIsDenied() = runBlocking {
+    set(profileDocument(owner, owner.uid), profileData(owner.uid, ""))
+
+    denied { timed { profileDocument(owner, owner.uid).update("username", "Sneaky").await() } }
+    denied {
+      timed { profileDocument(owner, owner.uid).set(profileData(owner.uid, "Sneaky")).await() }
+    }
+  }
+
+  /** A user cannot adopt a username whose reservation belongs to someone else. */
+  @Test
+  fun profileCannotUseAnotherUsersReservation() = runBlocking {
+    seedProfile(owner, "Owner")
+    set(profileDocument(reader, reader.uid), profileData(reader.uid, ""))
+
+    denied { timed { profileDocument(reader, reader.uid).update("username", "Owner").await() } }
+  }
+
+  /** Other profile fields stay editable without touching the username reservation. */
+  @Test
+  fun ownerCanUpdateOtherFieldsWhenUsernameIsSet() = runBlocking {
+    seedProfile(owner, "Owner")
+
+    timed {
+      profileDocument(owner, owner.uid).update("profilePictureUrl", "https://x.test/a").await()
+    }
+
+    assertEquals("https://x.test/a", readData(owner, owner.uid)["profilePictureUrl"])
+  }
+
+  /** A reservation can only be created for the caller's own UID. */
+  @Test
+  fun cannotReserveUsernameForAnotherUid() = runBlocking {
+    denied { timed { reservation(reader, "stolen").set(mapOf("uid" to owner.uid)).await() } }
+  }
+
+  /** Another user can neither change nor release an existing reservation. */
+  @Test
+  fun anotherUserCannotUpdateOrDeleteReservation() = runBlocking {
+    seedProfile(owner, "Owner")
+
+    denied { timed { reservation(reader, "owner").set(mapOf("uid" to reader.uid)).await() } }
+    denied { timed { reservation(reader, "owner").delete().await() } }
+
+    assertEquals(mapOf("uid" to owner.uid), readReservation(owner, "owner"))
+  }
+
+  /** Reservations cannot be listed, and signed-out clients cannot read one. */
+  @Test
+  fun reservationsCannotBeListedOrReadSignedOut() = runBlocking {
+    seedProfile(owner, "Owner")
+
+    denied { timed { reader.db.collection("usernames").get(Source.SERVER).await() } }
+    denied { timed { reservation(signedOut, "owner").get(Source.SERVER).await() } }
   }
 
   private suspend fun newClient(label: String): Client {
@@ -165,6 +268,20 @@ class ProfilesFirestoreRulesEmulatorTest {
 
   private fun profileData(uid: String, username: String): Map<String, Any?> =
       mapOf("uid" to uid, "username" to username)
+
+  private fun reservation(client: Client, key: String): DocumentReference =
+      client.db.collection("usernames").document(key)
+
+  private suspend fun readReservation(client: Client, key: String): Map<String, Any?> = timed {
+    reservation(client, key).get(Source.SERVER).await().data!!
+  }
+
+  /** Creates a blank profile for [client] and claims [username] through the repository. */
+  private suspend fun seedProfile(client: Client, username: String): Map<String, Any?> {
+    set(profileDocument(client, client.uid), profileData(client.uid, ""))
+    ProfileRepositoryFirestore(client.db).updateUsername(client.uid, username).getOrThrow()
+    return readData(client, client.uid)
+  }
 
   private fun profileDocument(client: Client, uid: String): DocumentReference =
       client.db.collection("profiles").document(uid)
