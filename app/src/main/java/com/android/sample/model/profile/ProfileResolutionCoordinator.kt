@@ -1,5 +1,6 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Codex AI Agent
+// Co-authored-by: Claude Code
 package com.android.sample.model.profile
 
 import com.android.sample.model.auth.UserAccount
@@ -45,7 +46,7 @@ class ProfileResolutionCoordinator(private val repository: ProfileRepository) {
             return Result.failure(it)
           }
       if (existingProfile != null) {
-        return validateProfile(user, existingProfile)
+        return validateProfile(user, existingProfile).map { ensureUsername(user, it) }
       }
 
       // A null lookup result is the only path that creates a profile. The repository may find that
@@ -54,7 +55,7 @@ class ProfileResolutionCoordinator(private val repository: ProfileRepository) {
           repository.createProfile(user.uid).rethrowCancellation().getOrElse {
             return Result.failure(it)
           }
-      validateProfile(user, profile)
+      validateProfile(user, profile).map { ensureUsername(user, it) }
     } catch (exception: CancellationException) {
       // Repository calls can throw cancellation directly (rather than return it in Result); keep
       // coroutine cancellation observable instead of wrapping it as an unknown profile failure.
@@ -66,6 +67,39 @@ class ProfileResolutionCoordinator(private val repository: ProfileRepository) {
       // Convert unexpected implementation failures to an unknown error.
       Result.failure(ProfileException(ProfileError.UNKNOWN, exception))
     }
+  }
+
+  /**
+   * Gives a profile with a blank username a default one derived from the account display name.
+   *
+   * Candidates from [UsernamePolicy.defaultCandidate] are tried in order while the name is taken. A
+   * username must never block sign-in, so any other failure returns the profile unchanged and the
+   * next sign-in retries. Cancellation is still propagated.
+   *
+   * @param user authenticated account providing the display name and UID.
+   * @param profile validated profile of [user].
+   * @return the profile with its new username, or [profile] unchanged when it already has a
+   *   username or none could be claimed.
+   */
+  private suspend fun ensureUsername(user: UserAccount, profile: UserProfile): UserProfile {
+    if (profile.username.isNotBlank()) return profile
+    for (attempt in 0 until UsernamePolicy.DEFAULT_ATTEMPTS) {
+      val candidate = UsernamePolicy.defaultCandidate(user.displayName, user.uid, attempt)
+      val result =
+          try {
+            repository.updateUsername(user.uid, candidate).rethrowCancellation()
+          } catch (exception: CancellationException) {
+            throw exception
+          } catch (exception: Exception) {
+            return profile
+          }
+      result.getOrNull()?.let { updated ->
+        return if (updated.uid == user.uid) updated else profile
+      }
+      val error = (result.exceptionOrNull() as? ProfileException)?.error
+      if (error != ProfileError.USERNAME_TAKEN) return profile
+    }
+    return profile
   }
 
   /**

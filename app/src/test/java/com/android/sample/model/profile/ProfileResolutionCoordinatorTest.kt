@@ -278,6 +278,133 @@ class ProfileResolutionCoordinatorTest {
     }
   }
 
+  // Gives a new profile the sanitized display name as its default username.
+  @Test
+  fun resolve_claimsDefaultUsername_forNewProfile() = runTest {
+    val named = UserProfile("user123", "User")
+    val repository = FakeProfileRepository()
+    repository.updateUsernameResults += Result.success(named)
+
+    val result = ProfileResolutionCoordinator(repository).resolve(user)
+
+    assertEquals(named, result.getOrNull())
+    assertEquals(listOf("User"), repository.requestedUsernames)
+  }
+
+  // Existing profiles with an empty username get the default on sign-in.
+  @Test
+  fun resolve_claimsDefaultUsername_forExistingBlankProfile() = runTest {
+    val named = UserProfile("user123", "User")
+    val repository = FakeProfileRepository(getProfileResult = Result.success(existingProfile))
+    repository.updateUsernameResults += Result.success(named)
+
+    val result = ProfileResolutionCoordinator(repository).resolve(user)
+
+    assertEquals(named, result.getOrNull())
+    assertTrue(repository.createProfileUserIds.isEmpty())
+  }
+
+  // Profiles that already have a username are not touched.
+  @Test
+  fun resolve_keepsExistingUsername() = runTest {
+    val profile = UserProfile("user123", "Chosen")
+    val repository = FakeProfileRepository(getProfileResult = Result.success(profile))
+
+    val result = ProfileResolutionCoordinator(repository).resolve(user)
+
+    assertEquals(profile, result.getOrNull())
+    assertTrue(repository.requestedUsernames.isEmpty())
+  }
+
+  // A taken default moves on to the next candidate until one is free.
+  @Test
+  fun resolve_triesNextCandidate_whenDefaultIsTaken() = runTest {
+    val named = UserProfile("user123", "second")
+    val repository = FakeProfileRepository(getProfileResult = Result.success(existingProfile))
+    repository.updateUsernameResults +=
+        Result.failure(ProfileException(ProfileError.USERNAME_TAKEN))
+    repository.updateUsernameResults += Result.success(named)
+
+    val result = ProfileResolutionCoordinator(repository).resolve(user)
+
+    assertEquals(named, result.getOrNull())
+    assertEquals(2, repository.requestedUsernames.size)
+    assertEquals(
+        UsernamePolicy.defaultCandidate(user.displayName, user.uid, 1),
+        repository.requestedUsernames[1],
+    )
+  }
+
+  // Stops after the allowed attempts but still signs the user in with the blank profile.
+  @Test
+  fun resolve_returnsProfileUnchanged_whenEveryCandidateIsTaken() = runTest {
+    val repository = FakeProfileRepository(getProfileResult = Result.success(existingProfile))
+    repeat(UsernamePolicy.DEFAULT_ATTEMPTS + 2) {
+      repository.updateUsernameResults +=
+          Result.failure(ProfileException(ProfileError.USERNAME_TAKEN))
+    }
+
+    val result = ProfileResolutionCoordinator(repository).resolve(user)
+
+    assertEquals(existingProfile, result.getOrNull())
+    assertEquals(UsernamePolicy.DEFAULT_ATTEMPTS, repository.requestedUsernames.size)
+  }
+
+  // A storage failure while claiming the username never blocks sign-in and is not retried.
+  @Test
+  fun resolve_returnsProfileUnchanged_whenClaimFails() = runTest {
+    val repository = FakeProfileRepository(getProfileResult = Result.success(existingProfile))
+    repository.updateUsernameResults +=
+        Result.failure(ProfileException(ProfileError.FIRESTORE_FAILURE))
+
+    val result = ProfileResolutionCoordinator(repository).resolve(user)
+
+    assertEquals(existingProfile, result.getOrNull())
+    assertEquals(1, repository.requestedUsernames.size)
+  }
+
+  // An unexpected exception from the claim is swallowed the same way.
+  @Test
+  fun resolve_returnsProfileUnchanged_whenClaimThrows() = runTest {
+    val repository = FakeProfileRepository(getProfileResult = Result.success(existingProfile))
+    repository.updateUsernameException = IllegalStateException("boom")
+
+    val result = ProfileResolutionCoordinator(repository).resolve(user)
+
+    assertEquals(existingProfile, result.getOrNull())
+  }
+
+  // Ignores a claim result that belongs to a different user.
+  @Test
+  fun resolve_ignoresClaimResultForAnotherUser() = runTest {
+    val repository = FakeProfileRepository(getProfileResult = Result.success(existingProfile))
+    repository.updateUsernameResults += Result.success(UserProfile("other", "Name"))
+
+    val result = ProfileResolutionCoordinator(repository).resolve(user)
+
+    assertEquals(existingProfile, result.getOrNull())
+  }
+
+  // Cancellation during the claim propagates, thrown or stored in the result.
+  @Test
+  fun resolve_propagatesCancellationFromUsernameClaim() = runTest {
+    val thrown = CancellationException("thrown")
+    val thrownRepository = FakeProfileRepository(getProfileResult = Result.success(existingProfile))
+    thrownRepository.updateUsernameException = thrown
+    val stored = CancellationException("stored")
+    val storedRepository = FakeProfileRepository(getProfileResult = Result.success(existingProfile))
+    storedRepository.updateUsernameResults += Result.failure(stored)
+
+    for ((repository, expected) in listOf(thrownRepository to thrown, storedRepository to stored)) {
+      try {
+        ProfileResolutionCoordinator(repository).resolve(user)
+        fail("Expected cancellation to propagate")
+      } catch (exception: CancellationException) {
+        assertSame(expected, exception)
+      }
+    }
+  }
+
   private class FakeProfileRepository(
       private val getProfileResult: Result<UserProfile?> = Result.success(null),
       private val createProfileResult: Result<UserProfile> = Result.success(UserProfile("user123")),
