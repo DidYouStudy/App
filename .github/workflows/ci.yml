@@ -224,6 +224,7 @@ jobs:
 
       # Cache the Emulator, if the cache does not hit, create the emulator.
       # API 34 matches targetSdk. compileSdk 37 is only the compile platform.
+      # Cache key includes the profile name so changing profile invalidates the cache.
       - name: AVD cache
         uses: actions/cache@v6
         id: avd-cache
@@ -231,7 +232,7 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-34
+          key: avd-34-pixel_6
 
       - name: create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
@@ -240,6 +241,7 @@ jobs:
           api-level: 34
           target: google_apis
           arch: x86_64
+          profile: pixel_6
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
@@ -259,6 +261,7 @@ jobs:
           api-level: 34
           target: google_apis
           arch: x86_64
+          profile: pixel_6
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
