@@ -1,6 +1,8 @@
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.model.preferences
 
+import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
 import kotlin.coroutines.cancellation.CancellationException
@@ -56,7 +58,11 @@ class PreferencesRepositoryFirestore(private val firestore: FirebaseFirestore) :
       }
 
   /**
-   * Saves the provided user preferences to Firestore.
+   * Saves the provided user preferences, local-first.
+   *
+   * Success means the write is stored in the local Firestore cache and queued for sync; it does not
+   * wait for the server, so it also completes while offline. A server-side rejection of the queued
+   * write is not reported here (the same contract as the events repository).
    *
    * @param preferences The [UserPreferences] instance to persist. [UserPreferences.userId] must not
    *   be blank.
@@ -66,11 +72,36 @@ class PreferencesRepositoryFirestore(private val firestore: FirebaseFirestore) :
   override suspend fun savePreferences(preferences: UserPreferences): Result<Unit> =
       try {
         require(preferences.userId.isNotBlank()) { "User ID must not be blank" }
-        collection.document(preferences.userId).set(preferences).await()
+        commitLocally(preferences)
         Result.success(Unit)
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
         Result.failure(e)
       }
+
+  /**
+   * Queues the write and returns once it has been applied to the local cache.
+   *
+   * The `set()` Task only completes on server acknowledgement, so awaiting it hangs offline.
+   * Instead, a cache-only query queued right after `set()` acts as a local-write barrier on
+   * Firestore's serial worker queue: it completes after the write is applied locally, without
+   * waiting for the server. This mirrors `EventsRepositoryFirestore.commitLocally`. A query (rather
+   * than a document read) is used so a missing document yields an empty snapshot instead of
+   * throwing. Cancelling the caller does not undo an already queued write.
+   *
+   * @param preferences The preferences to write; [UserPreferences.userId] is the document ID.
+   * @throws Exception the acknowledgement's exception if the write has already failed, or the
+   *   barrier's exception if the cache read fails.
+   */
+  private suspend fun commitLocally(preferences: UserPreferences) {
+    val id = preferences.userId
+    // Not awaited: the Task completes only once the server acknowledges the write.
+    val acknowledgement = collection.document(id).set(preferences)
+    collection.whereEqualTo(FieldPath.documentId(), id).get(Source.CACHE).await()
+    // The write may already have been rejected by now; surface that instead of reporting success.
+    if (acknowledgement.isComplete && !acknowledgement.isSuccessful) {
+      throw acknowledgement.exception ?: IllegalStateException("Failed to save preferences")
+    }
+  }
 }
