@@ -138,8 +138,7 @@ class CalendarEventNavigationTest {
 
     joinedCard.assertDoesNotExist()
     hostedCard.assertIsDisplayed()
-    composeRule.onNodeWithTag(selectedCardTag).assertIsDisplayed().performScrollTo().performClick()
-    composeRule.onNodeWithTag(DetailsTags.SUBJECT).assertTextContains("Operating systems")
+    openDetails()
   }
 
   /** Repeated card and Back taps still take a single trip to Details and back. */

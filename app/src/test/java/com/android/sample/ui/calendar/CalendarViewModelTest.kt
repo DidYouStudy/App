@@ -8,8 +8,12 @@ import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsRepository
+import com.android.sample.model.event.GetUserScheduleUseCase
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.InMemoryEventsRepository
 import com.android.sample.model.event.PersonalEvent
+import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
 import com.android.sample.ui.auth.TestAuthRepository
 import java.time.Clock
 import java.time.Instant
@@ -19,6 +23,8 @@ import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -33,6 +39,9 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.mockito.kotlin.any
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 
 /** Tests selected-week navigation, event observation, authentication, and load failures. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -42,6 +51,7 @@ class CalendarViewModelTest {
   private val clock = Clock.fixed(Instant.parse("2026-10-28T12:00:00Z"), zone)
   private lateinit var authRepository: TestAuthRepository
   private lateinit var eventsRepository: RecordingEventsRepository
+  private lateinit var groupSessionsRepository: GroupSessionsRepository
 
   /** Installs the test dispatcher and fresh fake repositories for each test. */
   @Before
@@ -49,6 +59,7 @@ class CalendarViewModelTest {
     Dispatchers.setMain(testDispatcher)
     authRepository = TestAuthRepository()
     eventsRepository = RecordingEventsRepository()
+    groupSessionsRepository = InMemoryGroupSessionsRepository()
   }
 
   /** Restores the process main dispatcher after each test. */
@@ -117,7 +128,7 @@ class CalendarViewModelTest {
   fun updateTodayAfterMidnightKeepsSelectedWeekWithoutReloadingEvents() = runTest {
     authRepository.currentUser.value = account("alice")
     val mutableClock = MutableClock(Instant.parse("2026-10-28T22:59:00Z"), zone)
-    val viewModel = CalendarViewModel(authRepository, eventsRepository, mutableClock)
+    val viewModel = CalendarViewModel(authRepository, scheduleUseCase(), mutableClock)
     assertEquals(LocalDate.of(2026, 10, 28), viewModel.uiState.value.today)
 
     repeat(3) { viewModel.nextWeek() }
@@ -212,7 +223,7 @@ class CalendarViewModelTest {
   fun authenticationStreamExceptionSetsLoadError() = runTest {
     val failingAuthRepository = FailingAuthRepository()
 
-    val viewModel = CalendarViewModel(failingAuthRepository, eventsRepository, clock)
+    val viewModel = CalendarViewModel(failingAuthRepository, scheduleUseCase(), clock)
 
     assertTrue(viewModel.uiState.value.events.isEmpty())
     assertFalse(viewModel.uiState.value.isLoading)
@@ -222,7 +233,7 @@ class CalendarViewModelTest {
   /** Rejects unsupported ViewModel classes with the requested class name in the message. */
   @Test
   fun factoryRejectsUnsupportedViewModelClass() {
-    val factory = CalendarViewModelFactory(authRepository, eventsRepository, clock)
+    val factory = CalendarViewModelFactory(authRepository, scheduleUseCase(), clock)
 
     val exception =
         assertThrows(IllegalArgumentException::class.java) {
@@ -257,8 +268,41 @@ class CalendarViewModelTest {
     assertEquals(initialQuery, eventsRepository.queries.last())
   }
 
-  /** Creates a ViewModel with the test repositories and fixed clock. */
-  private fun createViewModel() = CalendarViewModel(authRepository, eventsRepository, clock)
+  /** Waits for both schedule sources and retries the same week if the session source fails. */
+  @Test
+  fun pendingGroupSourceCanFailAndRecoverOnRetry() = runTest {
+    authRepository.currentUser.value = account("alice")
+    val personalEvent = event("algebra", "alice", LocalDate.of(2026, 10, 28))
+    eventsRepository.saveEvent(personalEvent).getOrThrow()
+    val groupResults = MutableStateFlow<Result<List<GroupSession>>?>(null)
+    groupSessionsRepository =
+        mock<GroupSessionsRepository>().also {
+          whenever(it.observeSessions(any()))
+              .thenReturn(groupResults.filterNotNull(), flowOf(Result.success(emptyList())))
+        }
+
+    val viewModel = createViewModel()
+    assertTrue(viewModel.uiState.value.isLoading)
+    assertTrue(viewModel.uiState.value.events.isEmpty())
+    assertNull(viewModel.uiState.value.error)
+
+    groupResults.value = Result.failure(IllegalStateException("Group sessions unavailable"))
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertEquals(CalendarViewModelError.LOAD_EVENTS_FAILED, viewModel.uiState.value.error)
+    val initialQuery = eventsRepository.queries.single()
+
+    viewModel.retryEvents()
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertNull(viewModel.uiState.value.error)
+    assertEquals(listOf(personalEvent), viewModel.uiState.value.events)
+    assertEquals(listOf(initialQuery, initialQuery), eventsRepository.queries)
+  }
+
+  /** Creates the shared schedule use case over deterministic test repositories. */
+  private fun scheduleUseCase() = GetUserScheduleUseCase(eventsRepository, groupSessionsRepository)
+
+  /** Creates a ViewModel with the test schedule and fixed clock. */
+  private fun createViewModel() = CalendarViewModel(authRepository, scheduleUseCase(), clock)
 
   /** Creates a minimal authenticated account for observation tests. */
   private fun account(uid: String) = UserAccount(uid, null, null, null)

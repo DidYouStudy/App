@@ -11,9 +11,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.event.Event
-import com.android.sample.model.event.EventsRepository
-import com.android.sample.model.event.EventsRepositoryProvider
-import com.android.sample.model.event.PersonalEvent
+import com.android.sample.model.event.GetUserScheduleUseCase
 import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -55,7 +53,7 @@ data class CalendarUiState(
 @OptIn(ExperimentalCoroutinesApi::class)
 class CalendarViewModel(
     private val authRepository: AuthRepository,
-    private val eventsRepository: EventsRepository,
+    private val getUserSchedule: GetUserScheduleUseCase,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
   private val dateHelper = CalendarDateHelper()
@@ -175,14 +173,14 @@ class CalendarViewModel(
   private fun getWeekEvents(
       ownerId: String,
       weekStart: LocalDate,
-  ): Flow<Result<List<PersonalEvent>>> {
+  ): Flow<Result<List<Event>>> {
     val from = weekStart.atStartOfDay(clock.zone).toInstant()
     val to = weekStart.plusDays(DAYS_PER_WEEK).atStartOfDay(clock.zone).toInstant()
-    return eventsRepository.observeEvents(ownerId, from, to)
+    return getUserSchedule(ownerId, from, to)
   }
 
-  /** Updates the screen from one repository result, clearing events when the query fails. */
-  private fun updateEvents(result: Result<List<PersonalEvent>>) {
+  /** Updates the screen from one schedule result, clearing events when the query fails. */
+  private fun updateEvents(result: Result<List<Event>>) {
     result.fold(
         onSuccess = { events ->
           _uiState.update { it.copy(events = events, isLoading = false, error = null) }
@@ -203,10 +201,10 @@ class CalendarViewModel(
   }
 }
 
-/** Creates [CalendarViewModel] instances with the app's repository contracts. */
+/** Creates [CalendarViewModel] instances with the shared schedule use case. */
 class CalendarViewModelFactory(
     private val authRepository: AuthRepository,
-    private val eventsRepository: EventsRepository,
+    private val getUserSchedule: GetUserScheduleUseCase,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModelProvider.Factory {
   override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -216,20 +214,20 @@ class CalendarViewModelFactory(
     @Suppress("UNCHECKED_CAST")
     return CalendarViewModel(
         authRepository = authRepository,
-        eventsRepository = eventsRepository,
+        getUserSchedule = getUserSchedule,
         clock = clock,
     )
         as T
   }
 }
 
-/** Returns the calendar ViewModel backed by the app's shared authentication and event contracts. */
+/** Returns the calendar ViewModel backed by the app's authentication and schedule sources. */
 @Composable
 fun calendarViewModel(): CalendarViewModel =
     viewModel(
         factory =
             CalendarViewModelFactory(
                 authRepository = AuthRepositoryProvider.getRepository(LocalContext.current),
-                eventsRepository = EventsRepositoryProvider.getRepository(),
+                getUserSchedule = GetUserScheduleUseCase(),
             )
     )
