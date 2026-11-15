@@ -8,7 +8,10 @@ import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 
 /**
  * Combines a student's personal events and joined or created group sessions into a unified
@@ -28,6 +31,15 @@ class GetUserScheduleUseCase(
         GroupSessionsRepositoryProvider.getRepository(),
     private val clock: Clock = Clock.systemDefaultZone(),
 ) {
+  /** Internal tracking state for each repository source stream during combined observation. */
+  private sealed interface SourceState<out T> {
+    data object Pending : SourceState<Nothing>
+
+    data class Ready<T>(val values: T) : SourceState<T>
+
+    data class Failed(val error: Throwable) : SourceState<Nothing>
+  }
+
   /**
    * Observes personal events and group sessions created or joined by [studentId] overlapping
    * `[from, to)`.
@@ -50,27 +62,41 @@ class GetUserScheduleUseCase(
       return flowOf(Result.failure(EventsException(EventsError.INVALID_ARGUMENT)))
     }
 
-    val personalEventsFlow = eventsRepository.observeEvents(studentId, from, to)
-    val groupSessionsFlow = groupSessionsRepository.observeSessions(endingAfter = from)
+    val personalStateFlow = eventsRepository.observeEvents(studentId, from, to).toSourceStateFlow()
 
-    return combine(personalEventsFlow, groupSessionsFlow) { personalResult, groupResult ->
-      val personalEvents = personalResult.getOrElse {
-        return@combine Result.failure(it)
-      }
-      val groupSessions = groupResult.getOrElse {
-        return@combine Result.failure(it)
-      }
+    val groupStateFlow =
+        groupSessionsRepository.observeSessions(endingAfter = from).toSourceStateFlow()
 
-      val joinedSessions = groupSessions.filter { session ->
-        studentId in session.memberIds &&
-            session.details.startsAt.isBefore(to) &&
-            session.details.endsAt.isAfter(from)
-      }
+    return combine(personalStateFlow, groupStateFlow) { personalState, groupState ->
+          // Rule 1: If either source is Failed, emit the error immediately.
+          if (personalState is SourceState.Failed) {
+            return@combine Result.failure<List<Event>>(personalState.error)
+          }
+          if (groupState is SourceState.Failed) {
+            return@combine Result.failure<List<Event>>(groupState.error)
+          }
 
-      val combined: List<Event> = (personalEvents + joinedSessions).sortedWith(EVENT_COMPARATOR)
+          // Rule 2: If both sources are Ready, emit the combined schedule.
+          if (personalState is SourceState.Ready && groupState is SourceState.Ready) {
+            val personalEvents = personalState.values
+            val groupSessions = groupState.values
 
-      Result.success(combined)
-    }
+            val joinedSessions = groupSessions.filter { session ->
+              studentId in session.memberIds &&
+                  session.details.startsAt.isBefore(to) &&
+                  session.details.endsAt.isAfter(from)
+            }
+
+            val combined: List<Event> =
+                (personalEvents + joinedSessions).sortedWith(EVENT_COMPARATOR)
+
+            return@combine Result.success(combined)
+          }
+
+          // Rule 3: Otherwise, keep waiting (neither failed nor both ready).
+          null
+        }
+        .filterNotNull()
   }
 
   /**
@@ -98,5 +124,13 @@ class GetUserScheduleUseCase(
             { it.details.endsAt },
             { it.id },
         )
+
+    private fun <T> Flow<Result<T>>.toSourceStateFlow(): Flow<SourceState<T>> = map { result ->
+      result.fold(
+          onSuccess = { SourceState.Ready(it) },
+          onFailure = { SourceState.Failed(it) },
+      )
+    }
+        .onStart { emit(SourceState.Pending) }
   }
 }

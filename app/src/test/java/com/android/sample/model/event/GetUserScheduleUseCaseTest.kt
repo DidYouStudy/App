@@ -8,6 +8,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -244,6 +245,57 @@ class GetUserScheduleUseCaseTest {
 
     val failingUseCase = GetUserScheduleUseCase(eventsRepository, failingSessionsRepo, utcClock)
     val result = failingUseCase(studentId, from, to).first()
+
+    assertTrue(result.isFailure)
+    val exception = result.exceptionOrNull() as? EventsException
+    assertEquals(EventsError.NOT_FOUND, exception?.error)
+  }
+
+  @Test
+  fun reportsErrorImmediatelyWhenPersonalEventsFailsWhileGroupSessionsIsPending() = runTest {
+    val failingEventsRepo =
+        object : EventsRepository by eventsRepository {
+          override fun observeEvents(
+              ownerId: String,
+              from: Instant,
+              to: Instant,
+          ): Flow<Result<List<PersonalEvent>>> =
+              flowOf(Result.failure(EventsException(EventsError.PERMISSION_DENIED)))
+        }
+
+    val pendingSessionsRepo =
+        object : GroupSessionsRepository by groupSessionsRepository {
+          override fun observeSessions(endingAfter: Instant): Flow<Result<List<GroupSession>>> =
+              emptyFlow()
+        }
+
+    val testUseCase = GetUserScheduleUseCase(failingEventsRepo, pendingSessionsRepo, utcClock)
+    val result = testUseCase(studentId, from, to).first()
+
+    assertTrue(result.isFailure)
+    val exception = result.exceptionOrNull() as? EventsException
+    assertEquals(EventsError.PERMISSION_DENIED, exception?.error)
+  }
+
+  @Test
+  fun reportsErrorImmediatelyWhenGroupSessionsFailsWhilePersonalEventsIsPending() = runTest {
+    val pendingEventsRepo =
+        object : EventsRepository by eventsRepository {
+          override fun observeEvents(
+              ownerId: String,
+              from: Instant,
+              to: Instant,
+          ): Flow<Result<List<PersonalEvent>>> = emptyFlow()
+        }
+
+    val failingSessionsRepo =
+        object : GroupSessionsRepository by groupSessionsRepository {
+          override fun observeSessions(endingAfter: Instant): Flow<Result<List<GroupSession>>> =
+              flowOf(Result.failure(EventsException(EventsError.NOT_FOUND)))
+        }
+
+    val testUseCase = GetUserScheduleUseCase(pendingEventsRepo, failingSessionsRepo, utcClock)
+    val result = testUseCase(studentId, from, to).first()
 
     assertTrue(result.isFailure)
     val exception = result.exceptionOrNull() as? EventsException
