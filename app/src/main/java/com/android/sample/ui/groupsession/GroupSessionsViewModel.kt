@@ -525,31 +525,36 @@ class GroupSessionsViewModel(
     updateParticipantsSheet()
   }
 
-  /** Resolves each user's profile at most once concurrently in the current sign-in period. */
+  /** Schedules one profile read per uncached user with no lookup already in progress. */
   private fun lookupUsernames(userIds: List<String>) {
     if (currentUserId == null) return
     val requestGeneration = authGeneration
     for (userId in userIds) {
       if (userId in usernamesByUserId || !usernameLookupsInProgress.add(userId)) continue
-      viewModelScope.launch {
-        try {
-          val result = profileRepository.getProfile(userId)
-          if (requestGeneration != authGeneration) return@launch
-          val username = result.getOrNull()?.username?.takeIf { it.isNotBlank() }
-          if (username != null) {
-            usernamesByUserId[userId] = username
-            updateVisibleSessions()
-          } else if (selectedParticipantsSession()?.memberIds?.contains(userId) == true) {
-            participantNamesWithoutUsername[userId] =
-                if (result.isFailure) ParticipantNameStatus.UNAVAILABLE
-                else ParticipantNameStatus.UNKNOWN
-          }
-        } finally {
-          if (requestGeneration == authGeneration) {
-            usernameLookupsInProgress.remove(userId)
-            updateParticipantsSheet()
-          }
-        }
+      viewModelScope.launch { resolveUsername(userId, requestGeneration) }
+    }
+  }
+
+  /** Applies one profile result and releases its lookup slot for the same sign-in period. */
+  private suspend fun resolveUsername(userId: String, requestGeneration: Long) {
+    try {
+      val result = profileRepository.getProfile(userId)
+      if (requestGeneration != authGeneration) return
+
+      val username = result.getOrNull()?.username?.takeIf { it.isNotBlank() }
+      if (username != null) {
+        usernamesByUserId[userId] = username
+        updateVisibleSessions()
+        return
+      }
+
+      if (selectedParticipantsSession()?.memberIds?.contains(userId) != true) return
+      participantNamesWithoutUsername[userId] =
+          if (result.isFailure) ParticipantNameStatus.UNAVAILABLE else ParticipantNameStatus.UNKNOWN
+    } finally {
+      if (requestGeneration == authGeneration) {
+        usernameLookupsInProgress.remove(userId)
+        updateParticipantsSheet()
       }
     }
   }
