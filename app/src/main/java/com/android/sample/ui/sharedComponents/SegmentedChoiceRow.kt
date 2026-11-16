@@ -1,12 +1,16 @@
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.sample.ui.sharedComponents
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerSize
@@ -63,6 +67,7 @@ fun segmentShape(index: Int, count: Int, selected: Boolean): Shape {
  *   [Role.Checkbox]).
  * @param modifier Modifier applied to the row.
  * @param height Height of each segment choice.
+ * @param itemWidth Optional fixed width for each item. When set, the row scrolls horizontally.
  */
 @Composable
 fun <T> SegmentedChoiceRow(
@@ -77,14 +82,18 @@ fun <T> SegmentedChoiceRow(
     itemWidth: Dp? = null,
 ) {
   Row(
-      modifier = modifier.fillMaxWidth(),
+      modifier =
+          modifier.then(
+              if (itemWidth == null) Modifier.fillMaxWidth()
+              else Modifier.horizontalScroll(rememberScrollState())
+          ),
       horizontalArrangement = Arrangement.spacedBy(Spacing.extraExtraSmall),
   ) {
     items.forEachIndexed { index, item ->
       val selected = isSelected(item)
       Box(
           modifier =
-              Modifier.weight(1f)
+              (if (itemWidth == null) Modifier.weight(1f) else Modifier.width(itemWidth))
                   .height(height)
                   .clip(segmentShape(index, items.size, selected))
                   .background(
