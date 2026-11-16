@@ -4,9 +4,14 @@ package com.android.sample.ui.groupsession
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
@@ -14,6 +19,7 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -22,6 +28,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
+import com.android.sample.model.event.EventType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -38,31 +45,46 @@ class GroupSessionFilterSheetTest {
   /** Sets the composable content with the supplied filters and event callbacks. */
   private fun setSheet(
       filters: GroupSessionFilters = GroupSessionFilters(),
+      filtersState: MutableState<GroupSessionFilters>? = null,
       matchingSessionCount: Int = 4,
       zones: List<String> = availableZones,
       hasLocationPermission: Boolean = true,
       onRadiusSelected: (Int?) -> Unit = {},
       onZonesSelected: (Set<String>) -> Unit = {},
       onShowLabsChanged: (Boolean) -> Unit = {},
+      onSessionTypesSelected: (Set<EventType>) -> Unit = {},
+      onStartingTimeSelected: (GroupSessionTimeFilter) -> Unit = {},
+      onHideFullSessionsChange: (Boolean) -> Unit = {},
       onLocationPermissionNeeded: (Int) -> Unit = {},
       onResetAll: () -> Unit = {},
       onShowSessions: () -> Unit = {},
   ) {
     composeTestRule.setContent {
       GroupSessionFilterSheetContent(
-          filters = filters,
+          filters = filtersState?.value ?: filters,
           availableZones = zones,
           matchingSessionCount = matchingSessionCount,
           hasLocationPermission = hasLocationPermission,
           onRadiusSelected = onRadiusSelected,
           onZonesSelected = onZonesSelected,
           onShowLabsChanged = onShowLabsChanged,
+          onSessionTypesSelected = onSessionTypesSelected,
+          onStartingTimeSelected = onStartingTimeSelected,
+          onHideFullSessionsChange = onHideFullSessionsChange,
           onLocationPermissionNeeded = onLocationPermissionNeeded,
           onResetAll = onResetAll,
           onShowSessions = onShowSessions,
       )
     }
   }
+
+  /** Returns a type chip's semantics node. */
+  private fun typeChip(type: EventType) =
+      composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.sessionTypeChip(type))
+
+  /** Returns a starting-time chip's semantics node. */
+  private fun startingTimeChip(filter: GroupSessionTimeFilter) =
+      composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.startingTimeChip(filter))
 
   /** Shows every requested section, choice, and action on the sheet. */
   @Test
@@ -87,6 +109,239 @@ class GroupSessionFilterSheetTest {
         .forEach { composeTestRule.onNodeWithText(it).assertIsDisplayed() }
     composeTestRule.onAllNodesWithText("Any").assertCountEquals(2)
     composeTestRule.onNodeWithText("View more", substring = true).assertIsDisplayed()
+  }
+
+  /** Shows the added rows, checks their order and labels, and verifies choice semantics. */
+  @Test
+  fun showsSessionTypeStartingTimeAndAvailabilityRows() {
+    setSheet()
+
+    listOf("SESSION TYPE", "STARTING TIME", "AVAILABILITY", "Hide full sessions").forEach {
+      composeTestRule.onNodeWithText(it).assertIsDisplayed()
+    }
+    listOf(
+            GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.STUDY_SESSION) to "Study",
+            GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.COURSE) to "Course",
+            GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.EXERCISE_SESSION) to
+                "Exercise",
+            GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.LAB) to "Lab",
+            GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.PROJECT) to "Project",
+            GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.EXAM) to "Exam",
+            GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.OTHER) to "Other",
+        )
+        .forEach { (tag, label) ->
+          composeTestRule
+              .onNodeWithTag(tag)
+              .performScrollTo()
+              .assertIsDisplayed()
+              .assertTextEquals(label)
+        }
+    listOf(
+            GroupSessionFilterSheetTestTags.startingTimeChip(GroupSessionTimeFilter.ANYTIME) to
+                "Anytime",
+            GroupSessionFilterSheetTestTags.startingTimeChip(
+                GroupSessionTimeFilter.WITHIN_ONE_HOUR
+            ) to "In under 1h",
+            GroupSessionFilterSheetTestTags.startingTimeChip(GroupSessionTimeFilter.TODAY) to
+                "Today",
+            GroupSessionFilterSheetTestTags.startingTimeChip(GroupSessionTimeFilter.THIS_WEEK) to
+                "This week",
+        )
+        .forEach { (tag, label) ->
+          composeTestRule
+              .onNodeWithTag(tag)
+              .performScrollTo()
+              .assertIsDisplayed()
+              .assertTextEquals(label)
+        }
+    composeTestRule.onNodeWithText("Only show sessions with open spots").assertIsDisplayed()
+
+    val sessionTypeTop =
+        composeTestRule.onNodeWithText("SESSION TYPE").getUnclippedBoundsInRoot().top
+    val startingTimeTop =
+        composeTestRule.onNodeWithText("STARTING TIME").getUnclippedBoundsInRoot().top
+    val distanceTop =
+        composeTestRule.onNodeWithText("DISTANCE FROM ME").getUnclippedBoundsInRoot().top
+    val roomTypeTop = composeTestRule.onNodeWithText("ROOM TYPE").getUnclippedBoundsInRoot().top
+    val availabilityTop =
+        composeTestRule.onNodeWithText("AVAILABILITY").getUnclippedBoundsInRoot().top
+    val showSessionsTop =
+        composeTestRule
+            .onNodeWithTag(GroupSessionFilterSheetTestTags.SHOW_SESSIONS)
+            .getUnclippedBoundsInRoot()
+            .top
+
+    assertTrue(sessionTypeTop < startingTimeTop)
+    assertTrue(startingTimeTop < distanceTop)
+    assertTrue(roomTypeTop < availabilityTop)
+    assertTrue(availabilityTop < showSessionsTop)
+
+    typeChip(EventType.STUDY_SESSION)
+        .performScrollTo()
+        .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox))
+    composeTestRule
+        .onNodeWithTag(
+            GroupSessionFilterSheetTestTags.startingTimeChip(GroupSessionTimeFilter.ANYTIME)
+        )
+        .performScrollTo()
+        .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton))
+  }
+
+  /** Adds and removes multiple types, reporting the complete selected set after every tap. */
+  @Test
+  fun sessionTypeChipsToggleMultipleSelectionsAndReportFullSets() {
+    val reported = mutableListOf<Set<EventType>>()
+    val filters = mutableStateOf(GroupSessionFilters())
+    setSheet(
+        filtersState = filters,
+        onSessionTypesSelected = {
+          reported.add(it)
+          filters.value = filters.value.copy(sessionTypes = it)
+        },
+    )
+
+    typeChip(EventType.STUDY_SESSION).performScrollTo().performClick()
+    typeChip(EventType.STUDY_SESSION).assertIsSelected()
+    typeChip(EventType.EXAM).performScrollTo().performClick()
+    typeChip(EventType.STUDY_SESSION).assertIsSelected()
+    typeChip(EventType.EXAM).assertIsSelected()
+    typeChip(EventType.STUDY_SESSION).performScrollTo().performClick()
+    typeChip(EventType.STUDY_SESSION).assertIsNotSelected()
+    typeChip(EventType.EXAM).assertIsSelected()
+
+    composeTestRule.runOnIdle {
+      assertEquals(
+          listOf(
+              setOf(EventType.STUDY_SESSION),
+              setOf(EventType.STUDY_SESSION, EventType.EXAM),
+              setOf(EventType.EXAM),
+          ),
+          reported,
+      )
+    }
+  }
+
+  /** Renders exactly the supplied multi-select types, with no type selected by default. */
+  @Test
+  fun sessionTypeSelectionReflectsFiltersAndDefaultsToNone() {
+    setSheet(filters = GroupSessionFilters(sessionTypes = setOf(EventType.COURSE, EventType.LAB)))
+
+    typeChip(EventType.COURSE).performScrollTo().assertIsSelected()
+    typeChip(EventType.LAB).performScrollTo().assertIsSelected()
+    listOf(
+            EventType.STUDY_SESSION,
+            EventType.EXERCISE_SESSION,
+            EventType.PROJECT,
+            EventType.EXAM,
+            EventType.OTHER,
+        )
+        .forEach { type -> typeChip(type).performScrollTo().assertIsNotSelected() }
+
+    setSheet(filters = GroupSessionFilters())
+    listOf(
+            EventType.STUDY_SESSION,
+            EventType.COURSE,
+            EventType.EXERCISE_SESSION,
+            EventType.LAB,
+            EventType.PROJECT,
+            EventType.EXAM,
+            EventType.OTHER,
+        )
+        .forEach { type -> typeChip(type).performScrollTo().assertIsNotSelected() }
+  }
+
+  /** Scrolls to the final type chip, then back to Study and selects it. */
+  @Test
+  fun sessionTypeRowScrollsHorizontallyAndStudyRemainsSelectable() {
+    val reported = mutableListOf<Set<EventType>>()
+    val filters = mutableStateOf(GroupSessionFilters())
+    setSheet(
+        filtersState = filters,
+        onSessionTypesSelected = {
+          reported.add(it)
+          filters.value = filters.value.copy(sessionTypes = it)
+        },
+    )
+
+    typeChip(EventType.OTHER).assertIsNotDisplayed().performScrollTo().assertIsDisplayed()
+    typeChip(EventType.STUDY_SESSION).performScrollTo().assertIsDisplayed().performClick()
+    composeTestRule.runOnIdle { assertEquals(listOf(setOf(EventType.STUDY_SESSION)), reported) }
+  }
+
+  /** Tapping each time option reports its value and updates the exclusive selection. */
+  @Test
+  fun startingTimeChipsReportExclusiveSelections() {
+    val reported = mutableListOf<GroupSessionTimeFilter>()
+    val filters = mutableStateOf(GroupSessionFilters())
+    setSheet(
+        filtersState = filters,
+        onStartingTimeSelected = {
+          reported.add(it)
+          filters.value = filters.value.copy(startingTime = it)
+        },
+    )
+
+    startingTimeChip(GroupSessionTimeFilter.ANYTIME).performScrollTo().assertIsSelected()
+    startingTimeChip(GroupSessionTimeFilter.TODAY).performScrollTo().performClick()
+    startingTimeChip(GroupSessionTimeFilter.TODAY).assertIsSelected()
+    startingTimeChip(GroupSessionTimeFilter.ANYTIME).assertIsNotSelected()
+    listOf(
+            GroupSessionTimeFilter.THIS_WEEK,
+            GroupSessionTimeFilter.WITHIN_ONE_HOUR,
+            GroupSessionTimeFilter.ANYTIME,
+        )
+        .forEach { filter ->
+          startingTimeChip(filter).performScrollTo().performClick()
+          startingTimeChip(filter).assertIsSelected()
+        }
+    composeTestRule.runOnIdle {
+      assertEquals(
+          listOf(
+              GroupSessionTimeFilter.TODAY,
+              GroupSessionTimeFilter.THIS_WEEK,
+              GroupSessionTimeFilter.WITHIN_ONE_HOUR,
+              GroupSessionTimeFilter.ANYTIME,
+          ),
+          reported,
+      )
+    }
+    setSheet(filters = GroupSessionFilters(startingTime = GroupSessionTimeFilter.THIS_WEEK))
+
+    startingTimeChip(GroupSessionTimeFilter.THIS_WEEK).performScrollTo().assertIsSelected()
+    listOf(
+            GroupSessionTimeFilter.ANYTIME,
+            GroupSessionTimeFilter.WITHIN_ONE_HOUR,
+            GroupSessionTimeFilter.TODAY,
+        )
+        .forEach { filter -> startingTimeChip(filter).performScrollTo().assertIsNotSelected() }
+  }
+
+  /** Availability reflects the supplied value and reports both switch changes. */
+  @Test
+  fun hideFullSessionsSwitchStartsOffAndReportsChanges() {
+    val reported = mutableListOf<Boolean>()
+    val filters = mutableStateOf(GroupSessionFilters())
+    setSheet(
+        filtersState = filters,
+        onHideFullSessionsChange = {
+          reported.add(it)
+          filters.value = filters.value.copy(hideFullSessions = it)
+        },
+    )
+
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.HIDE_FULL_SWITCH).assertIsOff()
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.HIDE_FULL_SWITCH)
+        .performClick()
+        .assertIsOn()
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.HIDE_FULL_SWITCH)
+        .performClick()
+        .assertIsOff()
+
+    composeTestRule.runOnIdle { assertEquals(listOf(true, false), reported) }
+    setSheet(filters = GroupSessionFilters(hideFullSessions = true))
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.HIDE_FULL_SWITCH).assertIsOn()
   }
 
   /** Selects a stored radius and reports each of the available distance values. */
@@ -211,6 +466,9 @@ class GroupSessionFilterSheetTest {
             filters = filters.copy(zones = it)
           },
           onShowLabsChanged = {},
+          onSessionTypesSelected = {},
+          onStartingTimeSelected = {},
+          onHideFullSessionsChange = {},
           onLocationPermissionNeeded = {},
           onResetAll = {},
           onShowSessions = {},
@@ -259,6 +517,9 @@ class GroupSessionFilterSheetTest {
             filters = filters.copy(zones = it)
           },
           onShowLabsChanged = {},
+          onSessionTypesSelected = {},
+          onStartingTimeSelected = {},
+          onHideFullSessionsChange = {},
           onLocationPermissionNeeded = {},
           onResetAll = {},
           onShowSessions = {},
@@ -338,6 +599,9 @@ class GroupSessionFilterSheetTest {
           onRadiusSelected = {},
           onZonesSelected = { filters = filters.copy(zones = it) },
           onShowLabsChanged = {},
+          onSessionTypesSelected = {},
+          onStartingTimeSelected = {},
+          onHideFullSessionsChange = {},
           onLocationPermissionNeeded = {},
           onResetAll = {},
           onShowSessions = {},
@@ -368,6 +632,9 @@ class GroupSessionFilterSheetTest {
             values.add(it)
             filters = filters.copy(showLabs = it)
           },
+          onSessionTypesSelected = {},
+          onStartingTimeSelected = {},
+          onHideFullSessionsChange = {},
           onLocationPermissionNeeded = {},
           onResetAll = {},
           onShowSessions = {},

@@ -74,6 +74,7 @@ fun <T> SegmentedChoiceRow(
     role: Role,
     modifier: Modifier = Modifier,
     height: Dp = Dimens.preferencesChoiceHeight,
+    itemWidth: Dp? = null,
 ) {
   Row(
       modifier = modifier.fillMaxWidth(),

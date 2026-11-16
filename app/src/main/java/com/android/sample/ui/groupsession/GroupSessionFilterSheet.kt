@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.android.sample.R
+import com.android.sample.model.event.EventType
 import com.android.sample.ui.sharedComponents.SegmentedChoiceRow
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
@@ -54,6 +55,9 @@ import com.android.sample.ui.theme.Spacing
 
 /** Holds the filter values displayed by the group-session filter sheet. */
 data class GroupSessionFilters(
+    val sessionTypes: Set<EventType> = emptySet(),
+    val startingTime: GroupSessionTimeFilter = GroupSessionTimeFilter.ANYTIME,
+    val hideFullSessions: Boolean = false,
     val radiusMeters: Int? = null,
     val zones: Set<String> = emptySet(),
     val showLabs: Boolean = false,
@@ -70,6 +74,13 @@ object GroupSessionFilterSheetTestTags {
   fun zoneOption(zone: String): String = "groupSessionZoneOption_$zone"
 
   const val LAB_SWITCH = "groupSessionLabSwitch"
+
+  fun sessionTypeChip(type: EventType): String = "groupSessionType_${type.name}"
+
+  fun startingTimeChip(filter: GroupSessionTimeFilter): String =
+      "groupSessionStartingTime_${filter.name}"
+
+  const val HIDE_FULL_SWITCH = "groupSessionHideFullSwitch"
   const val RESET_ALL = "groupSessionResetAll"
   const val SHOW_SESSIONS = "groupSessionShowSessions"
   const val PERMISSION_RATIONALE = "groupSessionPermissionRationale"
@@ -87,6 +98,9 @@ fun GroupSessionFilterSheetContent(
     onRadiusSelected: (Int?) -> Unit,
     onZonesSelected: (Set<String>) -> Unit,
     onShowLabsChanged: (Boolean) -> Unit,
+    onSessionTypesSelected: (Set<EventType>) -> Unit,
+    onStartingTimeSelected: (GroupSessionTimeFilter) -> Unit,
+    onHideFullSessionsChange: (Boolean) -> Unit,
     onLocationPermissionNeeded: (Int) -> Unit,
     onResetAll: () -> Unit,
     onShowSessions: () -> Unit,
@@ -333,6 +347,9 @@ internal fun GroupSessionFilterSheetLightPreview() {
           onRadiusSelected = {},
           onZonesSelected = {},
           onShowLabsChanged = {},
+          onSessionTypesSelected = {},
+          onStartingTimeSelected = {},
+          onHideFullSessionsChange = {},
           onLocationPermissionNeeded = {},
           onResetAll = {},
           onShowSessions = {},
@@ -355,6 +372,9 @@ internal fun GroupSessionFilterSheetDarkPreview() {
           onRadiusSelected = {},
           onZonesSelected = {},
           onShowLabsChanged = {},
+          onSessionTypesSelected = {},
+          onStartingTimeSelected = {},
+          onHideFullSessionsChange = {},
           onLocationPermissionNeeded = {},
           onResetAll = {},
           onShowSessions = {},

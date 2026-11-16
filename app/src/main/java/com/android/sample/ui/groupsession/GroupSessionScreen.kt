@@ -286,6 +286,9 @@ fun GroupSessionScreen(
           onRadiusSelected = viewModel::onRadiusFilterSelected,
           onZonesSelected = viewModel::onZonesFilterSelected,
           onShowLabsChanged = viewModel::onShowLabRoomTypeChange,
+          onSessionTypesSelected = {},
+          onStartingTimeSelected = {},
+          onHideFullSessionsChange = {},
           onLocationPermissionNeeded = { radius ->
             pendingLocationRadius = radius
             locationPermissionLauncher.launch(
