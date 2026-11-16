@@ -180,6 +180,10 @@
     <string name="group_session_filter_my">My sessions</string>
     <string name="group_session_active_sessions_title">Active sessions</string>
     <string name="group_session_host_unknown">Unknown host</string>
+    <plurals name="group_session_view_participants">
+        <item quantity="one">View %1$d participant</item>
+        <item quantity="other">View %1$d participants</item>
+    </plurals>
     <string name="group_session_participants_title">Participants (%1$d)</string>
     <string name="group_session_participants_host">Host</string>
     <string name="group_session_participants_unknown">Unknown</string>

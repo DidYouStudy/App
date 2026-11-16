@@ -519,6 +519,8 @@ class GroupSessionsViewModel(
       clearParticipants()
       return
     }
+    // A member who rejoins can retry an unavailable or missing profile.
+    participantNamesWithoutUsername.keys.retainAll(session.memberIds.toSet())
     lookupUsernames(session.memberIds.filterNot { it in participantNamesWithoutUsername })
     updateParticipantsSheet()
   }

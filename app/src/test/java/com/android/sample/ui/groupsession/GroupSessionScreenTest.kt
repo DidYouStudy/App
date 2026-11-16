@@ -12,6 +12,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -183,6 +184,7 @@ class GroupSessionScreenTest {
 
     composeTestRule
         .onAllNodesWithTag(GroupSessionScreenTestTags.PARTICIPANTS_PILL)[0]
+        .assert(hasContentDescription("View 2 participants"))
         .performClick()
 
     composeTestRule.onNodeWithTag(GroupSessionParticipantsTestTags.SHEET).assertIsDisplayed()
@@ -219,6 +221,7 @@ class GroupSessionScreenTest {
         .onNodeWithTag(GroupSessionScreenTestTags.PARTICIPANTS_PILL)
         .performScrollTo()
         .assertIsDisplayed()
+        .assert(hasContentDescription("View 2 participants"))
         .performClick()
 
     composeTestRule.onNodeWithTag(GroupSessionParticipantsTestTags.SHEET).assertIsDisplayed()

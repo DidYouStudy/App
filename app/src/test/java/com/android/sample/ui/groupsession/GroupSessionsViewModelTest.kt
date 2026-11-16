@@ -1398,6 +1398,34 @@ class GroupSessionsViewModelTest {
     assertNull(viewModel.uiState.value.participantsSheet)
   }
 
+  /** A member who rejoins can recover from a failed profile read in the same open roster. */
+  @Test
+  fun participantsRetryFailedProfileWhenMemberRejoins() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    profileRepository.enqueue(BOB, Result.success(UserProfile(BOB, "Bob")))
+    profileRepository.enqueue("member", Result.failure(IllegalStateException("Unavailable")))
+    profileRepository.enqueue("member", Result.success(UserProfile("member", "Member")))
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val session = session("roster", BOB, listOf(BOB, "member"))
+    emissions.emit(Result.success(listOf(session)))
+    runCurrent()
+    viewModel.openParticipants(session.id)
+    runCurrent()
+    assertTrue(requireNotNull(viewModel.uiState.value.participantsSheet).hasError)
+
+    emissions.emit(Result.success(listOf(session.copy(memberIds = listOf(BOB)))))
+    runCurrent()
+    assertFalse(requireNotNull(viewModel.uiState.value.participantsSheet).hasError)
+    emissions.emit(Result.success(listOf(session)))
+    runCurrent()
+
+    val sheet = requireNotNull(viewModel.uiState.value.participantsSheet)
+    assertEquals(2, profileRepository.getProfileUserIds.count { it == "member" })
+    assertEquals(listOf("Bob", "Member"), sheet.rows.map { it.username })
+    assertFalse(sheet.hasError)
+  }
+
   /** Switching or dismissing the roster prevents late results from changing the selected sheet. */
   @Test
   fun lateParticipantReadCannotReplaceAnotherRosterOrReopenIt() = runTest {

@@ -82,6 +82,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -790,16 +795,27 @@ internal fun GroupSessionCard(
       ) {
         // Shortened Participants Pill (Avatars + Count + Chevron only)
         // TODO: make participants pill dynamically show first member pictures
+        val participantCount = session.memberIds.size
+        val participantsDescription =
+            pluralStringResource(
+                R.plurals.group_session_view_participants,
+                participantCount,
+                participantCount,
+            )
         Surface(
             onClick = onParticipantsClick,
             shape = RoundedCornerShape(Dimens.cornerLarge),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             modifier =
                 Modifier.height(Dimens.actionButtonHeight)
-                    .testTag(GroupSessionScreenTestTags.PARTICIPANTS_PILL),
+                    .testTag(GroupSessionScreenTestTags.PARTICIPANTS_PILL)
+                    .semantics {
+                      contentDescription = participantsDescription
+                      role = Role.Button
+                    },
         ) {
           Row(
-              modifier = Modifier.padding(horizontal = Spacing.mediumSmall),
+              modifier = Modifier.padding(horizontal = Spacing.mediumSmall).clearAndSetSemantics {},
               verticalAlignment = Alignment.CenterVertically,
               horizontalArrangement = Arrangement.spacedBy(Spacing.extraSmall),
           ) {
@@ -831,7 +847,7 @@ internal fun GroupSessionCard(
                   color = MaterialTheme.colorScheme.onSecondaryContainer,
               )
             }
-            val extraCount = session.memberIds.size - 2
+            val extraCount = participantCount - 2
             if (extraCount > 0) {
               Surface(
                   shape = CircleShape,
