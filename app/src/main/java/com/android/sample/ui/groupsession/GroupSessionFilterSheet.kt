@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -311,22 +312,34 @@ fun GroupSessionFilterSheetContent(
     }
 
     FilterSectionLabel(R.string.group_session_filter_room_type_title)
+    // Keep the label and switch in one TalkBack node and make the whole row tappable.
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier =
+            Modifier.fillMaxWidth()
+                .toggleable(
+                    value = filters.showLabs,
+                    role = Role.Switch,
+                    onValueChange = onShowLabsChanged,
+                )
+                .testTag(GroupSessionFilterSheetTestTags.LAB_SWITCH),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
       Text(stringResource(R.string.group_session_filter_show_labs))
-      Switch(
-          modifier = Modifier.testTag(GroupSessionFilterSheetTestTags.LAB_SWITCH),
-          checked = filters.showLabs,
-          onCheckedChange = onShowLabsChanged,
-      )
+      Switch(checked = filters.showLabs, onCheckedChange = null)
     }
 
     FilterSectionLabel(R.string.group_session_filter_availability_title)
+    // Keep the label and switch in one TalkBack node and make the whole row tappable.
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier =
+            Modifier.fillMaxWidth()
+                .toggleable(
+                    value = filters.hideFullSessions,
+                    role = Role.Switch,
+                    onValueChange = onHideFullSessionsChange,
+                )
+                .testTag(GroupSessionFilterSheetTestTags.HIDE_FULL_SWITCH),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -338,11 +351,7 @@ fun GroupSessionFilterSheetContent(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
       }
-      Switch(
-          modifier = Modifier.testTag(GroupSessionFilterSheetTestTags.HIDE_FULL_SWITCH),
-          checked = filters.hideFullSessions,
-          onCheckedChange = onHideFullSessionsChange,
-      )
+      Switch(checked = filters.hideFullSessions, onCheckedChange = null)
     }
 
     Button(
