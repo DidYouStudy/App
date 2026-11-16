@@ -2,15 +2,21 @@
 package com.android.sample.ui.navigation
 
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -166,14 +172,21 @@ class CalendarEventNavigationTest {
 
     val sundayCard = composeRule.onNodeWithTag(CalendarTestTags.eventCard(session.id, dayIndex = 6))
     val mondayCard = composeRule.onNodeWithTag(CalendarTestTags.eventCard(session.id, dayIndex = 0))
+    val timeline =
+        composeRule.onNode(
+            hasScrollAction() and hasAnyAncestor(hasTestTag(CalendarTestTags.TIME_GRID))
+        )
+    val range = timeline.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
     composeRule.onNodeWithTag(CalendarTestTags.dayNumber(sunday)).assertIsDisplayed()
-    sundayCard.performScrollTo().assertIsDisplayed()
+    timeline.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, range.maxValue()) }
+    sundayCard.assertIsDisplayed()
     mondayCard.assertDoesNotExist()
 
     composeRule.onNodeWithTag(CalendarTestTags.NEXT_WEEK).performClick()
 
     composeRule.onNodeWithTag(CalendarTestTags.dayNumber(monday)).assertIsDisplayed()
-    mondayCard.performScrollTo().assertIsDisplayed()
+    timeline.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, -range.maxValue()) }
+    mondayCard.assertIsDisplayed()
     sundayCard.assertDoesNotExist()
   }
 
