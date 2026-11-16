@@ -1161,6 +1161,7 @@ class GroupSessionsViewModelTest {
     val sessions =
         listOf(
             session("blank", "blank-host"),
+            session("same-blank-host", "blank-host"),
             session("failed", "failed-host"),
             session("missing", "missing-host"),
         )
@@ -1173,6 +1174,7 @@ class GroupSessionsViewModelTest {
         setOf("blank-host", "failed-host", "missing-host"),
         profileRepository.getProfileUserIds.toSet(),
     )
+    assertEquals(1, profileRepository.getProfileUserIds.count { it == "blank-host" })
     assertTrue(viewModel.uiState.value.sessions.all { it.hostName == null })
     assertNull(viewModel.uiState.value.error)
     assertFalse(viewModel.uiState.value.isLoading)

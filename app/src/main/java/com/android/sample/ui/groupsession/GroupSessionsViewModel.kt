@@ -508,7 +508,7 @@ class GroupSessionsViewModel(
 
   /** Prefetches other hosts for the session cards without waiting for their profiles. */
   private fun lookupHostNames(sessions: List<GroupSession>) {
-    lookupUsernames(sessions.map { it.createdBy }.filter { it != currentUserId })
+    lookupUsernames(sessions.map { it.createdBy }.distinct().filter { it != currentUserId })
   }
 
   /** Loads newly visible participants and reuses any usernames or requests shared with cards. */

@@ -19,6 +19,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
@@ -213,9 +214,13 @@ class GroupSessionScreenTest {
     // The room link takes the test to the same map cards shown after a room pin is selected.
     composeTestRule.onNodeWithText("BC 01").performClick()
     composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.PARTICIPANTS_PILL).performClick()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.PARTICIPANTS_PILL)
+        .performScrollTo()
+        .assertIsDisplayed()
+        .performClick()
 
-    // The map stand-in uses inspection mode, so verify the sheet semantics in this test.
+    composeTestRule.onNodeWithTag(GroupSessionParticipantsTestTags.SHEET).assertIsDisplayed()
     assertRosterContent()
     composeTestRule.onNodeWithTag(GroupSessionParticipantsTestTags.CLOSE).performClick()
     composeTestRule.onNodeWithTag(GroupSessionParticipantsTestTags.SHEET).assertDoesNotExist()
