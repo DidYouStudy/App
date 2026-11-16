@@ -221,9 +221,9 @@ class GroupSessionFilterSheetTest {
     }
   }
 
-  /** Renders exactly the supplied multi-select types, with no type selected by default. */
+  /** Renders the supplied multi-select types and leaves the other types unselected. */
   @Test
-  fun sessionTypeSelectionReflectsFiltersAndDefaultsToNone() {
+  fun sessionTypeSelectionReflectsFilters() {
     setSheet(filters = GroupSessionFilters(sessionTypes = setOf(EventType.COURSE, EventType.LAB)))
 
     typeChip(EventType.COURSE).performScrollTo().assertIsSelected()
@@ -236,7 +236,11 @@ class GroupSessionFilterSheetTest {
             EventType.OTHER,
         )
         .forEach { type -> typeChip(type).performScrollTo().assertIsNotSelected() }
+  }
 
+  /** Leaves all session types unselected when the filter set is empty. */
+  @Test
+  fun sessionTypeSelectionDefaultsToNone() {
     setSheet(filters = GroupSessionFilters())
     listOf(
             EventType.STUDY_SESSION,
@@ -305,6 +309,11 @@ class GroupSessionFilterSheetTest {
           reported,
       )
     }
+  }
+
+  /** Selects only the stored starting-time option. */
+  @Test
+  fun storedStartingTimeIsTheOnlySelectedChip() {
     setSheet(filters = GroupSessionFilters(startingTime = GroupSessionTimeFilter.THIS_WEEK))
 
     startingTimeChip(GroupSessionTimeFilter.THIS_WEEK).performScrollTo().assertIsSelected()
@@ -340,6 +349,11 @@ class GroupSessionFilterSheetTest {
         .assertIsOff()
 
     composeTestRule.runOnIdle { assertEquals(listOf(true, false), reported) }
+  }
+
+  /** Shows the stored availability value as enabled. */
+  @Test
+  fun storedHideFullSessionsShowsSwitchOn() {
     setSheet(filters = GroupSessionFilters(hideFullSessions = true))
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.HIDE_FULL_SWITCH).assertIsOn()
   }
