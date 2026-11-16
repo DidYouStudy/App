@@ -3,6 +3,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: OpenAI Codex
 package com.android.sample.ui.groupsession
 
 import android.content.Context
@@ -10,6 +11,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -370,6 +372,10 @@ class GroupSessionScreenTest {
         .assert(
             hasAnyDescendant(hasText(context.getString(R.string.group_session_location_fallback)))
         )
+        .assert(hasAnyDescendant(hasContentDescription("View 3 participants")))
+    // The overflow badge is visible but omitted from the button's accessibility label.
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.sessionItem(3), useUnmergedTree = true)
         .assert(hasAnyDescendant(hasText("+1")))
   }
 
