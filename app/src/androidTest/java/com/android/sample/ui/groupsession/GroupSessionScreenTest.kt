@@ -373,10 +373,10 @@ class GroupSessionScreenTest {
             hasAnyDescendant(hasText(context.getString(R.string.group_session_location_fallback)))
         )
         .assert(hasAnyDescendant(hasContentDescription("View 3 participants")))
-    // The overflow badge is visible but omitted from the button's accessibility label.
+    // Verify the total also appears visually inside the button.
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.sessionItem(3), useUnmergedTree = true)
-        .assert(hasAnyDescendant(hasText("+1")))
+        .assert(hasAnyDescendant(hasText("3")))
   }
 
   @Test

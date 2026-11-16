@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Tune
@@ -104,8 +105,6 @@ import com.android.sample.ui.profile.ProfileButton
 import com.android.sample.ui.sharedComponents.AddButton
 import com.android.sample.ui.sharedComponents.EventTypeBadge
 import com.android.sample.ui.theme.Dimens
-import com.android.sample.ui.theme.ParticipantInitialTextStyle
-import com.android.sample.ui.theme.ParticipantOverflowTextStyle
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.color
 import com.android.sample.ui.theme.label
@@ -793,8 +792,6 @@ internal fun GroupSessionCard(
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.SpaceBetween,
       ) {
-        // Shortened Participants Pill (Avatars + Count + Chevron only)
-        // TODO: make participants pill dynamically show first member pictures
         val participantCount = session.memberIds.size
         val participantsDescription =
             pluralStringResource(
@@ -819,51 +816,15 @@ internal fun GroupSessionCard(
               verticalAlignment = Alignment.CenterVertically,
               horizontalArrangement = Arrangement.spacedBy(Spacing.extraSmall),
           ) {
-            Box(
-                modifier =
-                    Modifier.size(Dimens.avatarSizeSmall)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-              Text(
-                  "M",
-                  fontWeight = FontWeight.Bold,
-                  fontSize = ParticipantInitialTextStyle.fontSize,
-                  color = MaterialTheme.colorScheme.onPrimaryContainer,
-              )
-            }
-            Box(
-                modifier =
-                    Modifier.size(Dimens.avatarSizeSmall)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.secondaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-              Text(
-                  "A",
-                  fontWeight = FontWeight.Bold,
-                  fontSize = ParticipantInitialTextStyle.fontSize,
-                  color = MaterialTheme.colorScheme.onSecondaryContainer,
-              )
-            }
-            val extraCount = participantCount - 2
-            if (extraCount > 0) {
-              Surface(
-                  shape = CircleShape,
-                  color = MaterialTheme.colorScheme.tertiaryContainer,
-                  modifier = Modifier.size(Dimens.avatarSizeSmall),
-              ) {
-                Box(contentAlignment = Alignment.Center) {
-                  Text(
-                      stringResource(R.string.group_session_extra_members, extraCount),
-                      fontSize = ParticipantOverflowTextStyle.fontSize,
-                      fontWeight = FontWeight.Bold,
-                      color = MaterialTheme.colorScheme.onTertiaryContainer,
-                  )
-                }
-              }
-            }
+            Icon(
+                Icons.Outlined.Groups,
+                contentDescription = null,
+                modifier = Modifier.size(Dimens.iconSizeMedium),
+            )
+            Text(
+                stringResource(R.string.group_session_participant_count, participantCount),
+                style = MaterialTheme.typography.labelMedium,
+            )
             Spacer(Modifier.width(Spacing.extraExtraSmall))
             Icon(
                 Icons.Default.ChevronRight,

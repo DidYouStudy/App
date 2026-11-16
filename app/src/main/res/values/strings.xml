@@ -223,8 +223,7 @@
     <string name="group_session_action_join">Join</string>
     <!-- %1$s: day ("Today" or a weekday), %2$s: start time, %3$s: end time -->
     <string name="group_session_date_time_range">%1$s · %2$s – %3$s</string>
-    <!-- Number of members not shown as an avatar in the participants pill -->
-    <string name="group_session_extra_members">+%1$d</string>
+    <string name="group_session_participant_count">%1$d</string>
     <string name="group_session_view_mode_list">List view</string>
     <string name="group_session_view_mode_map">Map view</string>
     <!-- %1$s: location room name, %2$s: formatted distance from user -->
