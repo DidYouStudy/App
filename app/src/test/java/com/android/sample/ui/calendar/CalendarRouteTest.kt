@@ -13,7 +13,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
-import com.android.sample.model.event.EventsRepository
+import com.android.sample.model.event.GetUserScheduleUseCase
+import com.android.sample.model.event.InMemoryEventsRepository
+import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
 import com.android.sample.ui.dashboard.DashboardContentTestTags
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.Screen
@@ -45,7 +47,7 @@ class CalendarRouteTest {
     var groupClicks = 0
     val authRepository = mock<AuthRepository>()
     whenever(authRepository.currentUser).thenReturn(MutableStateFlow<UserAccount?>(null))
-    val viewModel = CalendarViewModel(authRepository, mock<EventsRepository>(), Clock.systemUTC())
+    val viewModel = createViewModel(authRepository)
     val lifecycleOwner = TestLifecycleOwner()
     composeTestRule.runOnUiThread { lifecycleOwner.registry.currentState = Lifecycle.State.RESUMED }
 
@@ -82,7 +84,7 @@ class CalendarRouteTest {
     val navigationActions = mock<NavigationActions>()
     val authRepository = mock<AuthRepository>()
     whenever(authRepository.currentUser).thenReturn(MutableStateFlow<UserAccount?>(null))
-    val viewModel = CalendarViewModel(authRepository, mock<EventsRepository>(), Clock.systemUTC())
+    val viewModel = createViewModel(authRepository)
     val lifecycleOwner = TestLifecycleOwner()
     composeTestRule.runOnUiThread { lifecycleOwner.registry.currentState = Lifecycle.State.RESUMED }
 
@@ -104,7 +106,7 @@ class CalendarRouteTest {
     val navigationActions = mock<NavigationActions>()
     val authRepository = mock<AuthRepository>()
     whenever(authRepository.currentUser).thenReturn(MutableStateFlow<UserAccount?>(null))
-    val viewModel = CalendarViewModel(authRepository, mock<EventsRepository>(), Clock.systemUTC())
+    val viewModel = createViewModel(authRepository)
     val lifecycleOwner = TestLifecycleOwner()
     composeTestRule.runOnUiThread { lifecycleOwner.registry.currentState = Lifecycle.State.RESUMED }
 
@@ -127,7 +129,7 @@ class CalendarRouteTest {
   fun routeDefaultEventOptionWithoutNavigationDoesNothing() {
     val authRepository = mock<AuthRepository>()
     whenever(authRepository.currentUser).thenReturn(MutableStateFlow<UserAccount?>(null))
-    val viewModel = CalendarViewModel(authRepository, mock<EventsRepository>(), Clock.systemUTC())
+    val viewModel = createViewModel(authRepository)
     val lifecycleOwner = TestLifecycleOwner()
     composeTestRule.runOnUiThread { lifecycleOwner.registry.currentState = Lifecycle.State.RESUMED }
 
@@ -153,7 +155,7 @@ class CalendarRouteTest {
     val clock = MutableClock(Instant.parse("2026-10-28T23:59:59Z"))
     val authRepository = mock<AuthRepository>()
     whenever(authRepository.currentUser).thenReturn(MutableStateFlow<UserAccount?>(null))
-    val viewModel = CalendarViewModel(authRepository, mock<EventsRepository>(), clock)
+    val viewModel = createViewModel(authRepository, clock)
     val lifecycleOwner = TestLifecycleOwner()
     composeTestRule.runOnUiThread { lifecycleOwner.registry.currentState = Lifecycle.State.RESUMED }
 
@@ -172,6 +174,14 @@ class CalendarRouteTest {
       assertEquals(LocalDate.of(2026, 10, 29), viewModel.uiState.value.today)
     }
   }
+
+  /** Creates a calendar backed by in-memory schedule sources. */
+  private fun createViewModel(authRepository: AuthRepository, clock: Clock = Clock.systemUTC()) =
+      CalendarViewModel(
+          authRepository,
+          GetUserScheduleUseCase(InMemoryEventsRepository(), InMemoryGroupSessionsRepository()),
+          clock,
+      )
 
   /** A clock whose instant can be moved across midnight while the route is running. */
   private class MutableClock(

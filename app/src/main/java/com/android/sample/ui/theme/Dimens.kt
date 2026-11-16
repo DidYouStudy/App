@@ -98,6 +98,7 @@ object Dimens {
   val calendarRetryButtonHeight = 48.dp
   val calendarEventCardCorner = 6.dp
   val calendarEventCardMinHeight = 34.dp
+  val calendarGroupIconSize = 10.dp
   val calendarMinHourRowHeight = 48.dp
   // Event planning & form dimensions
   val borderMedium = 1.5.dp
