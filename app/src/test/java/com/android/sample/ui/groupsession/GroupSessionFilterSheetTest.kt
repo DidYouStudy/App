@@ -21,6 +21,7 @@ import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -162,6 +163,12 @@ class GroupSessionFilterSheetTest {
         composeTestRule.onNodeWithText("STARTING TIME").getUnclippedBoundsInRoot().top
     val distanceTop =
         composeTestRule.onNodeWithText("DISTANCE FROM ME").getUnclippedBoundsInRoot().top
+    val zoneTop = composeTestRule.onNodeWithText("ZONE").getUnclippedBoundsInRoot().top
+    val viewMoreTop =
+        composeTestRule
+            .onNodeWithTag(GroupSessionFilterSheetTestTags.VIEW_MORE)
+            .getUnclippedBoundsInRoot()
+            .top
     val roomTypeTop = composeTestRule.onNodeWithText("ROOM TYPE").getUnclippedBoundsInRoot().top
     val availabilityTop =
         composeTestRule.onNodeWithText("AVAILABILITY").getUnclippedBoundsInRoot().top
@@ -173,6 +180,9 @@ class GroupSessionFilterSheetTest {
 
     assertTrue(sessionTypeTop < startingTimeTop)
     assertTrue(startingTimeTop < distanceTop)
+    assertTrue(distanceTop < zoneTop)
+    assertTrue(zoneTop < viewMoreTop)
+    assertTrue(viewMoreTop < roomTypeTop)
     assertTrue(roomTypeTop < availabilityTop)
     assertTrue(availabilityTop < showSessionsTop)
 
@@ -349,6 +359,48 @@ class GroupSessionFilterSheetTest {
         .assertIsOff()
 
     composeTestRule.runOnIdle { assertEquals(listOf(true, false), reported) }
+  }
+
+  /** Exposes the availability switch as a labeled switch in the semantics tree. */
+  @Test
+  fun availabilitySwitchIsAnnouncedWithItsLabel() {
+    setSheet()
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.HIDE_FULL_SWITCH)
+        .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch))
+        .assert(hasText("Hide full sessions", substring = true))
+        .assertIsOff()
+  }
+
+  /** Exposes the Lab switch as a labeled switch in the semantics tree. */
+  @Test
+  fun labSwitchIsAnnouncedWithItsLabel() {
+    setSheet()
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.LAB_SWITCH)
+        .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch))
+        .assert(hasText("Show “Lab” room type", substring = true))
+        .assertIsOff()
+  }
+
+  /** Toggles availability by clicking its label and reports the enabled state. */
+  @Test
+  fun tappingTheAvailabilityLabelTogglesIt() {
+    val reported = mutableListOf<Boolean>()
+    val filters = mutableStateOf(GroupSessionFilters())
+    setSheet(
+        filtersState = filters,
+        onHideFullSessionsChange = {
+          reported.add(it)
+          filters.value = filters.value.copy(hideFullSessions = it)
+        },
+    )
+
+    composeTestRule.onNodeWithText("Hide full sessions").performScrollTo().performClick()
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.HIDE_FULL_SWITCH).assertIsOn()
+    composeTestRule.runOnIdle { assertEquals(listOf(true), reported) }
   }
 
   /** Shows the stored availability value as enabled. */
