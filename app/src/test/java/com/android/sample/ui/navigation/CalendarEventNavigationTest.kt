@@ -141,6 +141,42 @@ class CalendarEventNavigationTest {
     openDetails()
   }
 
+  /** Renders both halves of a joined session that crosses the selected week's boundary. */
+  @Test
+  fun joinedGroupSessionAppearsInBothWeeksWhenItCrossesSundayMidnight() {
+    val sunday = previousMonday.plusDays(6)
+    val monday = sunday.plusDays(1)
+    val zone = ZoneId.systemDefault()
+    val startsAt = sunday.atTime(23, 0).atZone(zone).toInstant()
+    val session =
+        GroupSession(
+            id = "overnight-group-session",
+            createdBy = "another-student",
+            memberIds = listOf("another-student", userId),
+            details =
+                EventDetails(
+                    type = EventType.STUDY_SESSION,
+                    subject = "Overnight study",
+                    startsAt = startsAt,
+                    endsAt = monday.atTime(1, 0).atZone(zone).toInstant(),
+                ),
+            createdAt = startsAt,
+        )
+    runBlocking { groupSessions.saveSession(session.createdBy, session).getOrThrow() }
+
+    val sundayCard = composeRule.onNodeWithTag(CalendarTestTags.eventCard(session.id, dayIndex = 6))
+    val mondayCard = composeRule.onNodeWithTag(CalendarTestTags.eventCard(session.id, dayIndex = 0))
+    composeRule.onNodeWithTag(CalendarTestTags.dayNumber(sunday)).assertIsDisplayed()
+    sundayCard.performScrollTo().assertIsDisplayed()
+    mondayCard.assertDoesNotExist()
+
+    composeRule.onNodeWithTag(CalendarTestTags.NEXT_WEEK).performClick()
+
+    composeRule.onNodeWithTag(CalendarTestTags.dayNumber(monday)).assertIsDisplayed()
+    mondayCard.performScrollTo().assertIsDisplayed()
+    sundayCard.assertDoesNotExist()
+  }
+
   /** Repeated card and Back taps still take a single trip to Details and back. */
   @Test
   fun repeatedCardAndBackTapsReturnToTheSelectedCalendarWeek() {
