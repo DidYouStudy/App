@@ -9,6 +9,7 @@ import android.content.Context
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
@@ -227,11 +228,13 @@ class GroupSessionScreenTest {
     composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST).assertIsDisplayed()
   }
 
-  /** Finds the stored host name and unknown member within the sheet. */
+  /** Finds the stored host name, its initial, and both roster avatars. */
   private fun assertRosterContent() {
+    composeTestRule.onAllNodesWithTag(GroupSessionParticipantsTestTags.AVATAR).assertCountEquals(2)
     composeTestRule
         .onNodeWithTag(GroupSessionParticipantsTestTags.SHEET)
         .assert(hasAnyDescendant(hasText("Alice")))
+        .assert(hasAnyDescendant(hasText("A")))
         .assert(
             hasAnyDescendant(hasText(context.getString(R.string.group_session_participants_host)))
         )
