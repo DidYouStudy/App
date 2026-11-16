@@ -6,6 +6,7 @@
 // Co-authored-by: Gemini
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: OpenAI Codex
 package com.android.sample.ui.groupsession
 
 import android.Manifest
@@ -97,7 +98,6 @@ import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.profile.ProfileButton
 import com.android.sample.ui.sharedComponents.AddButton
 import com.android.sample.ui.sharedComponents.EventTypeBadge
-import com.android.sample.ui.sharedComponents.rememberNotImplementedToast
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.ParticipantInitialTextStyle
 import com.android.sample.ui.theme.ParticipantOverflowTextStyle
@@ -265,9 +265,13 @@ fun GroupSessionScreen(
             onLeave = viewModel::leave,
             onEdit = onEditSessionClick,
             onOpenFilters = { showFilterSheet = true },
+            onParticipantsClick = viewModel::openParticipants,
         )
       },
   )
+  uiState.participantsSheet?.let { sheet ->
+    GroupSessionParticipantsSheet(state = sheet, onDismiss = viewModel::dismissParticipants)
+  }
   if (showFilterSheet) {
     ModalBottomSheet(
         sheetState = filterSheetState,
@@ -317,6 +321,7 @@ internal fun GroupSessionContent(
     onLeave: (String) -> Unit = {},
     onEdit: (String) -> Unit = {},
     onOpenFilters: () -> Unit = {},
+    onParticipantsClick: (String) -> Unit = {},
 ) {
   when (viewMode) {
     GroupSessionViewMode.LIST -> {
@@ -367,8 +372,7 @@ internal fun GroupSessionContent(
                         onLeave = onLeave,
                         onEdit = onEdit,
                         onLocationClick = onLocationClick,
-                        // Member list is not built yet.
-                        onParticipantsClick = rememberNotImplementedToast(),
+                        onParticipantsClick = { onParticipantsClick(item.session.id) },
                         modifier = Modifier.testTag(GroupSessionScreenTestTags.sessionItem(index)),
                     )
                   }
@@ -393,6 +397,7 @@ internal fun GroupSessionContent(
             selectedRoom = selectedRoom,
             onSelectedRoomChange = onSelectedRoomChange,
             onLocationClick = onLocationClick,
+            onParticipantsClick = onParticipantsClick,
         )
         Column(
             modifier =
@@ -785,7 +790,6 @@ internal fun GroupSessionCard(
       ) {
         // Shortened Participants Pill (Avatars + Count + Chevron only)
         // TODO: make participants pill dynamically show first member pictures
-        // TODO: show all group members when the pill is tapped (currently onParticipantsClick)
         Surface(
             onClick = onParticipantsClick,
             shape = RoundedCornerShape(Dimens.cornerLarge),

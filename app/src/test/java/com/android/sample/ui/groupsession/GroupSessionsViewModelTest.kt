@@ -1,6 +1,7 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: OpenAI Codex
 package com.android.sample.ui.groupsession
 
 import androidx.lifecycle.viewModelScope
@@ -1328,6 +1329,101 @@ class GroupSessionsViewModelTest {
     runCurrent()
 
     assertEquals(signedOutState, viewModel.uiState.value)
+  }
+
+  /** The roster shares the pending host read and loads only the selected session's members. */
+  @Test
+  fun participantsShowHostFirstAndDistinguishUnknownFromFailedReads() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val host = CompletableDeferred<Result<UserProfile?>>()
+    profileRepository.hold(BOB, host)
+    profileRepository.enqueue(ALICE, Result.success(UserProfile(ALICE, "Alice")))
+    profileRepository.enqueue("blank", Result.success(UserProfile("blank", "  ")))
+    profileRepository.enqueue("failed", Result.failure(IllegalStateException("Unavailable")))
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val session = session("roster", BOB, listOf(ALICE, BOB, "blank", "missing", "failed"))
+    emissions.emit(Result.success(listOf(session)))
+    runCurrent()
+    assertEquals(listOf(BOB), profileRepository.getProfileUserIds)
+
+    viewModel.openParticipants(session.id)
+    runCurrent()
+    assertTrue(requireNotNull(viewModel.uiState.value.participantsSheet).isLoading)
+    assertEquals(1, profileRepository.getProfileUserIds.count { it == BOB })
+
+    host.complete(Result.success(UserProfile(BOB, "Bob")))
+    runCurrent()
+    val sheet = requireNotNull(viewModel.uiState.value.participantsSheet)
+    assertFalse(sheet.isLoading)
+    assertTrue(sheet.hasError)
+    assertEquals(listOf(BOB, ALICE, "blank", "missing", "failed"), sheet.rows.map { it.userId })
+    assertEquals(listOf("Bob", "Alice", null, null, null), sheet.rows.map { it.username })
+    assertTrue(sheet.rows.first().isHost)
+    assertEquals(listOf("failed"), sheet.rows.filter { it.isUnavailable }.map { it.userId })
+    assertEquals("Bob", viewModel.uiState.value.sessions.single().hostName)
+  }
+
+  /** New membership snapshots drive an open roster and ignore late reads for departed members. */
+  @Test
+  fun participantsFollowMembershipAndCloseWhenSessionDisappears() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    profileRepository.enqueue(BOB, Result.success(UserProfile(BOB, "Bob")))
+    val departing = CompletableDeferred<Result<UserProfile?>>()
+    profileRepository.hold("departing", departing)
+    profileRepository.enqueue("joining", Result.success(UserProfile("joining", "Joining")))
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val session = session("roster", BOB, listOf(BOB, "departing"))
+    emissions.emit(Result.success(listOf(session)))
+    runCurrent()
+    viewModel.openParticipants(session.id)
+    runCurrent()
+    assertTrue(requireNotNull(viewModel.uiState.value.participantsSheet).isLoading)
+
+    emissions.emit(Result.success(listOf(session.copy(memberIds = listOf(BOB, "joining")))))
+    runCurrent()
+    departing.complete(Result.failure(IllegalStateException("Late error")))
+    runCurrent()
+    val sheet = requireNotNull(viewModel.uiState.value.participantsSheet)
+    assertFalse(sheet.isLoading)
+    assertFalse(sheet.hasError)
+    assertEquals(listOf("Bob", "Joining"), sheet.rows.map { it.username })
+    assertEquals(1, profileRepository.getProfileUserIds.count { it == BOB })
+
+    emissions.emit(Result.success(emptyList()))
+    runCurrent()
+    assertNull(viewModel.uiState.value.participantsSheet)
+  }
+
+  /** Switching or dismissing the roster prevents late results from changing the selected sheet. */
+  @Test
+  fun lateParticipantReadCannotReplaceAnotherRosterOrReopenIt() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val departing = CompletableDeferred<Result<UserProfile?>>()
+    profileRepository.hold("departing", departing)
+    profileRepository.enqueue(BOB, Result.success(UserProfile(BOB, "Bob")))
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val first = session("first", BOB, listOf(BOB, "departing"))
+    val second = session("second", BOB)
+    emissions.emit(Result.success(listOf(first, second)))
+    runCurrent()
+    viewModel.openParticipants(first.id)
+    runCurrent()
+    viewModel.openParticipants(second.id)
+    runCurrent()
+
+    departing.complete(Result.success(UserProfile("departing", "Departing")))
+    runCurrent()
+    assertEquals(
+        listOf("Bob"),
+        viewModel.uiState.value.participantsSheet?.rows?.map { it.username },
+    )
+
+    viewModel.dismissParticipants()
+    runCurrent()
+    assertNull(viewModel.uiState.value.participantsSheet)
   }
 
   /** Collects the state like a visible screen does, until the test ends or the job is cancelled. */

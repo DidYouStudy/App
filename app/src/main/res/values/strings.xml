@@ -180,6 +180,13 @@
     <string name="group_session_filter_my">My sessions</string>
     <string name="group_session_active_sessions_title">Active sessions</string>
     <string name="group_session_host_unknown">Unknown host</string>
+    <string name="group_session_participants_title">Participants (%1$d)</string>
+    <string name="group_session_participants_host">Host</string>
+    <string name="group_session_participants_unknown">Unknown</string>
+    <string name="group_session_participants_unavailable">Unavailable</string>
+    <string name="group_session_participants_loading">Loading participants&#8230;</string>
+    <string name="group_session_participants_error">Some usernames could not be loaded.</string>
+    <string name="group_session_participants_close">Close participants</string>
     <string name="group_session_loading">Loading sessions&#8230;</string>
     <string name="group_session_empty">No active sessions</string>
     <string name="group_session_subject_fallback">Other</string>

@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Gemini <noreply@google.com>
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: OpenAI Codex
 package com.android.sample.ui.groupsession
 
 import androidx.compose.foundation.layout.Arrangement
@@ -32,7 +33,6 @@ import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.location.CampusLocationRepositoryProvider
 import com.android.sample.model.location.Location
-import com.android.sample.ui.sharedComponents.rememberNotImplementedToast
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
@@ -59,6 +59,7 @@ object GroupSessionMapTestTags {
  * @param onJoin Called with the session ID when a card's join button is pressed.
  * @param onLeave Called with the session ID when a card's leave button is pressed.
  * @param onEdit Called with the session ID when the creator of a session presses its edit button.
+ * @param onParticipantsClick Called with the session ID when its participants pill is pressed.
  * @param initialSelectedRoom Name of the room selected when the map first appears, or null for
  *   none. Mainly for tests of the cards, which cannot tap a pin on the stand-in map.
  * @param cameraPositionState Camera of the map, passed on to [GroupSessionMapView] for a caller
@@ -77,6 +78,7 @@ fun GroupSessionMapContent(
     onSelectedRoomChange: ((String?) -> Unit)? = null,
     onLocationClick: (GroupSessionItem) -> Unit = {},
     cameraPositionState: CameraPositionState? = null,
+    onParticipantsClick: (String) -> Unit = {},
 ) {
   // Supports both state hosting (controlled by parent via selectedRoom/onSelectedRoomChange)
   // and self-contained state (uncontrolled, falling back to internalSelectedRoom initialized with
@@ -124,6 +126,7 @@ fun GroupSessionMapContent(
           onLeave = onLeave,
           onEdit = onEdit,
           onLocationClick = onLocationClick,
+          onParticipantsClick = onParticipantsClick,
           modifier =
               Modifier.align(Alignment.BottomCenter)
                   .heightIn(max = maxHeight * maxListHeightFraction),
@@ -142,6 +145,7 @@ private fun SessionCardList(
     onEdit: (String) -> Unit,
     modifier: Modifier = Modifier,
     onLocationClick: (GroupSessionItem) -> Unit = {},
+    onParticipantsClick: (String) -> Unit,
 ) {
   Surface(
       modifier = modifier.fillMaxWidth(),
@@ -162,8 +166,7 @@ private fun SessionCardList(
             onLeave = onLeave,
             onEdit = onEdit,
             onLocationClick = onLocationClick,
-            // Member list is not built yet.
-            onParticipantsClick = rememberNotImplementedToast(),
+            onParticipantsClick = { onParticipantsClick(item.session.id) },
         )
       }
     }

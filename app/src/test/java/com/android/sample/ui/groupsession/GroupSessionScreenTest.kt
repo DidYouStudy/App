@@ -2,6 +2,7 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: OpenAI Codex
 package com.android.sample.ui.groupsession
 
 import android.content.Context
@@ -52,7 +53,6 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.shadows.ShadowToast
 
 @RunWith(AndroidJUnit4::class)
 class GroupSessionScreenTest {
@@ -128,7 +128,12 @@ class GroupSessionScreenTest {
 
   private val authRepository = FakeAuthRepository("user-1")
   private val profileRepository =
-      FakeProfileRepository(mapOf("user-3" to UserProfile(uid = "user-3", username = "Bob")))
+      FakeProfileRepository(
+          mapOf(
+              "user-1" to UserProfile(uid = "user-1", username = "Alice"),
+              "user-3" to UserProfile(uid = "user-3", username = "Bob"),
+          )
+      )
 
   @Before
   fun resetRepo() {
@@ -165,9 +170,9 @@ class GroupSessionScreenTest {
     composeTestRule.onNodeWithText("Capstone planning").assertDoesNotExist()
   }
 
-  /** The member list is not built yet, so tapping the participants pill shows the toast. */
+  /** The list pill opens the roster and the close button returns to the list. */
   @Test
-  fun participants_pill_click_shows_not_implemented_toast() {
+  fun participants_pill_in_list_opens_and_closes_roster() {
     val viewModel = createViewModel()
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) {
@@ -177,12 +182,59 @@ class GroupSessionScreenTest {
     composeTestRule
         .onAllNodesWithTag(GroupSessionScreenTestTags.PARTICIPANTS_PILL)[0]
         .performClick()
-    composeTestRule.waitForIdle()
 
-    assertEquals(
-        context.getString(R.string.toast_not_implemented),
-        ShadowToast.getTextOfLatestToast(),
-    )
+    composeTestRule.onNodeWithTag(GroupSessionParticipantsTestTags.SHEET).assertIsDisplayed()
+    assertRosterContent()
+    composeTestRule.onNodeWithTag(GroupSessionParticipantsTestTags.CLOSE).performClick()
+    composeTestRule.onNodeWithTag(GroupSessionParticipantsTestTags.SHEET).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST).assertIsDisplayed()
+  }
+
+  /** Both card paths present the same roster for the selected session. */
+  @Test
+  fun participants_pill_in_map_room_opens_roster() {
+    val room =
+        CampusLocation(
+            name = "BC 01",
+            zone = "BC",
+            type = CampusLocationType.LECTURE_ROOM,
+            floor = 0,
+            location = Location(46.519, 6.565),
+        )
+    val viewModel =
+        createViewModel(campusLocationRepository = FakeCampusLocationRepository(listOf(room)))
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalInspectionMode provides true) {
+        GroupSessionScreen(viewModel = viewModel)
+      }
+    }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.rooms.isNotEmpty() }
+
+    // The room link takes the test to the same map cards shown after a room pin is selected.
+    composeTestRule.onNodeWithText("BC 01").performClick()
+    composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.PARTICIPANTS_PILL).performClick()
+
+    // The map stand-in uses inspection mode, so verify the sheet semantics in this test.
+    assertRosterContent()
+    composeTestRule.onNodeWithTag(GroupSessionParticipantsTestTags.CLOSE).performClick()
+    composeTestRule.onNodeWithTag(GroupSessionParticipantsTestTags.SHEET).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST).assertIsDisplayed()
+  }
+
+  /** Finds the stored host name and unknown member within the sheet. */
+  private fun assertRosterContent() {
+    composeTestRule
+        .onNodeWithTag(GroupSessionParticipantsTestTags.SHEET)
+        .assert(hasAnyDescendant(hasText("Alice")))
+        .assert(
+            hasAnyDescendant(hasText(context.getString(R.string.group_session_participants_host)))
+        )
+        .assert(
+            hasAnyDescendant(
+                hasText(context.getString(R.string.group_session_participants_unknown))
+            )
+        )
   }
 
   @Test
