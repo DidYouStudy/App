@@ -1034,11 +1034,11 @@ private fun sessionDateLabel(start: Instant, now: Instant): String {
 private fun sessionTimeLabel(instant: Instant): String =
     DateTimeFormatter.ofPattern("h:mm a").withZone(ZoneId.systemDefault()).format(instant)
 
- @Preview(showBackground = true)
- @Composable
- fun GroupSessionScreenPreview() {
-    GroupSessionScreen()
- }
+@Preview(showBackground = true)
+@Composable
+fun GroupSessionScreenPreview() {
+  GroupSessionScreen()
+}
 
 @Preview(showBackground = true)
 @Composable
