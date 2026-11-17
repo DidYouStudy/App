@@ -29,18 +29,18 @@ data class RoomSessions(val room: CampusLocation, val items: List<GroupSessionIt
  */
 fun groupByRoom(items: List<GroupSessionItem>, resolver: SessionPlaceResolver): List<RoomSessions> {
 
-    // fake CampusLocation object used to filter noLoc sessions
-    val noLoc =
-        CampusLocation(
-            "",
-            "",
-            CampusLocationType.CONFERENCE_ROOM,
-            0,
-            Location(0.0, 0.0),
-        )
+  // fake CampusLocation object used to filter noLoc sessions
+  val noLoc =
+      CampusLocation(
+          "",
+          "",
+          CampusLocationType.CONFERENCE_ROOM,
+          0,
+          Location(0.0, 0.0),
+      )
 
-    return items
-        .groupBy { item -> resolver.resolve(item.session.details.location) ?: noLoc }
-        .filter { (key, list) -> key != noLoc }
-        .map { (room, grouped) -> RoomSessions(room, grouped.toList()) }
+  return items
+      .groupBy { item -> resolver.resolve(item.session.details.location) ?: noLoc }
+      .filter { (key, list) -> key != noLoc }
+      .map { (room, grouped) -> RoomSessions(room, grouped.toList()) }
 }
