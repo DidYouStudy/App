@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot
+// Co-authored-by: Claude Code
 package com.android.sample.model.profile
 
 /**
@@ -16,6 +17,12 @@ enum class ProfileError {
 
   /** An existing Firestore document could not be converted to [UserProfile]. */
   INVALID_PROFILE_DATA,
+
+  /** The requested username does not follow [UsernamePolicy]. */
+  INVALID_USERNAME,
+
+  /** Another user already owns the requested username (compared case-insensitively). */
+  USERNAME_TAKEN,
 
   /** The operation failed for an unexpected reason. */
   UNKNOWN,
