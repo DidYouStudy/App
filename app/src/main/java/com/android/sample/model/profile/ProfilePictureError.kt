@@ -14,6 +14,9 @@ enum class ProfilePictureError {
   /** The image to upload has no bytes. */
   EMPTY_IMAGE,
 
+  /** The picked image cannot be opened or decoded, so it cannot be prepared for upload. */
+  INVALID_IMAGE,
+
   /** Cloud Storage rejected, failed, or could not complete the upload or the URL lookup. */
   STORAGE_FAILURE,
 
