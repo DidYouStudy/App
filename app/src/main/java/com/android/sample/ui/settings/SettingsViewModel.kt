@@ -11,6 +11,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
+import com.android.sample.model.profile.AndroidImageCompressor
+import com.android.sample.model.profile.ImageCompressor
+import com.android.sample.model.profile.ProfilePictureRepository
+import com.android.sample.model.profile.ProfilePictureRepositoryProvider
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.ProfileRepositoryProvider
 import kotlinx.coroutines.CancellationException
@@ -27,12 +31,15 @@ import kotlinx.coroutines.launch
  *   the translated default name.
  * @property profilePictureUrl URL of the user's profile picture, if any.
  * @property isLoading Whether the profile is still loading.
+ * @property isUploadingPicture Whether a newly picked profile picture is being prepared, uploaded
+ *   and saved.
  * @property error Failure to report to the user, or null when there is none.
  */
 data class SettingsUiState(
     val username: String? = null,
     val profilePictureUrl: String? = null,
     val isLoading: Boolean = false,
+    val isUploadingPicture: Boolean = false,
     val error: SettingsError? = null,
 )
 
@@ -40,11 +47,18 @@ data class SettingsUiState(
  * Manages Settings screen state by observing the authenticated user and fetching their profile.
  *
  * Exposes profile information (resolving custom Firestore profile values with Google Auth fallback
- * defaults) and actions like signing out.
+ * defaults) and actions like signing out and changing the profile picture.
+ *
+ * @param authRepository source of the signed-in user.
+ * @param profileRepository reads the profile and saves the new picture URL in it.
+ * @param profilePictureRepository stores the picture and returns the URL it can be loaded from.
+ * @param imageCompressor turns a picked image into a small JPEG before the upload.
  */
 class SettingsViewModel(
     private val authRepository: AuthRepository,
     private val profileRepository: ProfileRepository,
+    private val profilePictureRepository: ProfilePictureRepository,
+    private val imageCompressor: ImageCompressor,
 ) : ViewModel() {
 
   private val _uiState = MutableStateFlow(SettingsUiState(isLoading = true))
@@ -106,6 +120,60 @@ class SettingsViewModel(
     }
   }
 
+  /**
+   * Replaces the signed-in user's profile picture with the image at [uri].
+   *
+   * The image is compressed, uploaded, and its URL saved in the profile, in that order; the state's
+   * [SettingsUiState.profilePictureUrl] changes only once all three steps have succeeded. Does
+   * nothing when [uri] is null (the user closed the picker without choosing), or while a previous
+   * picture is still uploading. Any failure is reported as [SettingsError.UPLOAD_PICTURE_FAILED]
+   * and the previous URL is kept.
+   *
+   * @param uri location of the picked image, or null when nothing was picked.
+   */
+  fun onPictureSelected(uri: String?) {
+    if (uri == null || _uiState.value.isUploadingPicture) return
+    val userId = authRepository.currentUserId
+    if (userId == null) {
+      _uiState.update { it.copy(error = SettingsError.UPLOAD_PICTURE_FAILED) }
+      return
+    }
+    _uiState.update { it.copy(isUploadingPicture = true) }
+    viewModelScope.launch {
+      uploadPicture(userId, uri)
+          .onSuccess { url ->
+            _uiState.update {
+              it.copy(profilePictureUrl = url, isUploadingPicture = false, error = null)
+            }
+          }
+          .onFailure {
+            _uiState.update {
+              it.copy(isUploadingPicture = false, error = SettingsError.UPLOAD_PICTURE_FAILED)
+            }
+          }
+    }
+  }
+
+  /**
+   * Compresses the image, uploads it and saves its URL in the profile, stopping at the first
+   * failure.
+   *
+   * @param userId authentication ID of the user whose picture is replaced.
+   * @param uri location of the picked image.
+   * @return the URL the new picture can be loaded from, or the failure of the step that failed.
+   */
+  private suspend fun uploadPicture(userId: String, uri: String): Result<String> {
+    val jpegBytes =
+        imageCompressor.compress(uri).getOrElse {
+          return Result.failure(it)
+        }
+    val url =
+        profilePictureRepository.uploadProfilePicture(userId, jpegBytes).getOrElse {
+          return Result.failure(it)
+        }
+    return profileRepository.updateProfilePictureUrl(userId, url).map { url }
+  }
+
   /** Clears any active error message. */
   fun clearError() {
     _uiState.update { it.copy(error = null) }
@@ -120,6 +188,8 @@ class SettingsViewModel(
 class SettingsViewModelFactory(
     private val authRepository: AuthRepository,
     private val profileRepository: ProfileRepository,
+    private val profilePictureRepository: ProfilePictureRepository,
+    private val imageCompressor: ImageCompressor,
 ) : ViewModelProvider.Factory {
   /**
    * Creates a SettingsViewModel and rejects unrelated ViewModel types rather than casting blindly.
@@ -129,7 +199,13 @@ class SettingsViewModelFactory(
       "Unsupported ViewModel: ${modelClass.name}"
     }
     @Suppress("UNCHECKED_CAST")
-    return SettingsViewModel(authRepository, profileRepository) as T
+    return SettingsViewModel(
+        authRepository,
+        profileRepository,
+        profilePictureRepository,
+        imageCompressor,
+    )
+        as T
   }
 }
 
@@ -138,11 +214,16 @@ class SettingsViewModelFactory(
  * backed by the app's shared repository. The SettingsScreen uses this as their default.
  */
 @Composable
-fun settingsViewModel(): SettingsViewModel =
-    viewModel(
-        factory =
-            SettingsViewModelFactory(
-                authRepository = AuthRepositoryProvider.getRepository(LocalContext.current),
-                profileRepository = ProfileRepositoryProvider.getRepository(),
-            )
-    )
+fun settingsViewModel(): SettingsViewModel {
+  // The application context lives as long as the process, so the ViewModel never holds an Activity.
+  val context = LocalContext.current.applicationContext
+  return viewModel(
+      factory =
+          SettingsViewModelFactory(
+              authRepository = AuthRepositoryProvider.getRepository(context),
+              profileRepository = ProfileRepositoryProvider.getRepository(),
+              profilePictureRepository = ProfilePictureRepositoryProvider.getRepository(context),
+              imageCompressor = AndroidImageCompressor(context),
+          )
+  )
+}
