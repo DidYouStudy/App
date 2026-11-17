@@ -109,6 +109,7 @@ data class GroupSessionItem(
     val isCreator: Boolean,
     val hostName: String? = null,
     val proximity: SessionWithProximity = SessionWithProximity(session, null, null, null),
+    val isActionInProgress: Boolean = false,
 )
 
 /** A session enriched with its resolved room and optional distance from the user. */

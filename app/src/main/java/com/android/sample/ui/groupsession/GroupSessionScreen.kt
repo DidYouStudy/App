@@ -138,6 +138,12 @@ object GroupSessionScreenTestTags {
   const val PARTICIPANTS_PILL = "groupSessionParticipantsPill"
 
   fun sessionItem(index: Int) = "$SESSION_ITEM_PREFIX$index"
+
+  fun joinButton(sessionId: String) = "groupSessionJoin_$sessionId"
+
+  fun leaveButton(sessionId: String) = "groupSessionLeave_$sessionId"
+
+  fun actionProgress(sessionId: String) = "groupSessionActionProgress_$sessionId"
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
