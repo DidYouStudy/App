@@ -1040,6 +1040,10 @@ class GroupSessionsViewModelOfflineTest {
 
     override suspend fun createProfile(userId: String): Result<UserProfile> =
         Result.success(UserProfile(uid = userId))
+
+    /** Username updates are outside the scope of these offline ViewModel tests. */
+    override suspend fun updateUsername(userId: String, username: String): Result<UserProfile> =
+        Result.failure(UnsupportedOperationException("Not needed in this test"))
   }
 
   private companion object {
