@@ -2,6 +2,7 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.groupsession
 
 import androidx.compose.runtime.Composable
@@ -13,6 +14,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
+import com.android.sample.model.connectivity.AndroidConnectivityObserver
+import com.android.sample.model.connectivity.ConnectivityObserver
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
@@ -125,7 +128,9 @@ data class SessionWithProximity(
  * The query retains the user's typed text while matching ignores case and surrounding whitespace.
  * [now] is the reference time every card uses for its relative labels, so they all agree. It has no
  * default value, so that every new state has to supply the current time. Laboratory rooms are
- * hidden by default and shown only when [showLabRoomType] is enabled.
+ * hidden by default and shown only when [showLabRoomType] is enabled. [isOffline] is true while the
+ * device has no internet connection; [sessions] then holds the sessions already loaded and saved on
+ * the device, and the screen shows an offline indication.
  */
 data class GroupSessionsUiState(
     val now: Instant,
@@ -143,6 +148,7 @@ data class GroupSessionsUiState(
     val hideFullSessions: Boolean = false,
     val userLocation: Location? = null,
     val error: GroupSessionsError? = null,
+    val isOffline: Boolean = false,
 )
 
 /**
@@ -158,6 +164,12 @@ data class GroupSessionsUiState(
  * asynchronously through [profileRepository], so profile lookups never delay the session list.
  * [GroupSessionsUiState.now] is refreshed from [clock] while [uiState] has a collector, immediately
  * when a collector returns, and when the list is observed again.
+ *
+ * Offline, the repository keeps serving the sessions it already loaded from its local cache, so the
+ * list, search, and filters keep working without a connection. [connectivityObserver] drives
+ * [GroupSessionsUiState.isOffline] while [uiState] has a collector, which is what the screen shows
+ * and what group session actions can check. It is null when connectivity is not tracked, in which
+ * case the state never reports offline.
  */
 class GroupSessionsViewModel(
     private val authRepository: AuthRepository,
@@ -166,6 +178,7 @@ class GroupSessionsViewModel(
     private val clock: Clock = Clock.systemUTC(),
     private val locationProvider: LocationProvider,
     private val campusLocationRepository: CampusLocationRepository? = null,
+    private val connectivityObserver: ConnectivityObserver? = null,
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(GroupSessionsUiState(now = clock.instant()))
   /** The current loading, list, search, filter, and categorized-error state. */
@@ -183,6 +196,7 @@ class GroupSessionsViewModel(
   init {
     refreshNowWhileObserved()
     observeLocationWhileObserved()
+    observeConnectivityWhileObserved()
     loadCampusLocations()
     viewModelScope.launch {
       combine(authRepository.currentUser, refreshVersion) { user, _ -> user }
@@ -202,6 +216,8 @@ class GroupSessionsViewModel(
                       now = clock.instant(),
                       isLoading = false,
                       availableZones = _uiState.value.availableZones,
+                      // Connectivity belongs to the device, not to the signed-in user.
+                      isOffline = _uiState.value.isOffline,
                   )
             } else {
               val observedFrom = clock.instant()
@@ -429,6 +445,26 @@ class GroupSessionsViewModel(
     }
   }
 
+  /**
+   * Tracks whether the device is offline, only while the UI state has an active observer.
+   *
+   * The observer emits the current connectivity as soon as collection starts, so returning to the
+   * screen never shows an outdated indication, and the indication disappears when the connection
+   * returns. Nothing is collected when no [connectivityObserver] was provided.
+   */
+  private fun observeConnectivityWhileObserved() {
+    val observer = connectivityObserver ?: return
+    viewModelScope.launch {
+      _uiState.subscriptionCount
+          .map { it > 0 }
+          .distinctUntilChanged()
+          .collectLatest { isObserved ->
+            val connectivity = if (isObserved) observer.observeIsOnline() else emptyFlow()
+            connectivity.collect { isOnline -> _uiState.update { it.copy(isOffline = !isOnline) } }
+          }
+    }
+  }
+
   /** Loads campus room metadata once so later GPS updates never re-fetch session data. */
   private fun loadCampusLocations() {
     val locationRepository = campusLocationRepository ?: return
@@ -602,6 +638,7 @@ class GroupSessionsViewModelFactory(
     private val profileRepository: ProfileRepository,
     private val locationProvider: LocationProvider,
     private val campusLocationRepository: CampusLocationRepository? = null,
+    private val connectivityObserver: ConnectivityObserver? = null,
 ) : ViewModelProvider.Factory {
   /**
    * Creates the requested ViewModel and rejects unsupported classes with their class name.
@@ -619,6 +656,7 @@ class GroupSessionsViewModelFactory(
         profileRepository = profileRepository,
         locationProvider = locationProvider,
         campusLocationRepository = campusLocationRepository,
+        connectivityObserver = connectivityObserver,
     )
         as T
   }
@@ -633,6 +671,7 @@ class GroupSessionsViewModelFactory(
 fun groupSessionsViewModel(): GroupSessionsViewModel {
   val context = LocalContext.current
   val locationProvider = remember(context) { AndroidLocationProvider.create(context) }
+  val connectivityObserver = remember(context) { AndroidConnectivityObserver.create(context) }
   return viewModel(
       factory =
           GroupSessionsViewModelFactory(
@@ -641,6 +680,7 @@ fun groupSessionsViewModel(): GroupSessionsViewModel {
               campusLocationRepository = CampusLocationRepositoryProvider.getRepository(context),
               profileRepository = ProfileRepositoryProvider.getRepository(),
               locationProvider = locationProvider,
+              connectivityObserver = connectivityObserver,
           )
   )
 }
