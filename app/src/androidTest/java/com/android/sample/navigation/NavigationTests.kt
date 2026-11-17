@@ -873,4 +873,7 @@ private class FakeProfileRepository : ProfileRepository {
 
   override suspend fun createProfile(userId: String): Result<UserProfile> =
       Result.failure(UnsupportedOperationException("Profiles are not created in navigation tests"))
+
+  override suspend fun updateProfilePictureUrl(userId: String, url: String): Result<Unit> =
+      Result.failure(UnsupportedOperationException("Not needed in this test"))
 }
