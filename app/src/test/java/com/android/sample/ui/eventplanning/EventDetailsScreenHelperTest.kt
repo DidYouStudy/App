@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Copilot
 package com.android.sample.ui.eventplanning
@@ -123,5 +124,22 @@ class EventDetailsScreenHelperTest {
     val display = samplePersonalEvent().toDisplay()
 
     assertEquals("Algebra", display.title)
+  }
+
+  /** A group session maps its shared details and has no checklist. */
+  @Test
+  fun groupSession_mapsDetailsAndHasEmptyTasks() {
+    val session = sampleGroupSession(subject = "Algebra", location = "CM5", description = "Week 8")
+
+    val display = session.toDisplay(zone = berlin, locale = Locale.US)
+
+    assertEquals(session.details.type, display.type)
+    assertEquals("Algebra", display.title)
+    assertEquals("CM5", display.location)
+    assertEquals("Week 8", display.description)
+    assertEquals("Nov 2, 2026", display.dateLabel)
+    assertEquals("10:15", display.startTimeLabel)
+    assertEquals("12:00", display.endTimeLabel)
+    assertTrue(display.tasks.isEmpty())
   }
 }

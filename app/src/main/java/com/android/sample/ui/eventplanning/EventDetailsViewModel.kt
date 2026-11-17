@@ -1,5 +1,7 @@
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.eventplanning
 
 import androidx.compose.runtime.Composable
@@ -10,11 +12,21 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
+import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.EventsRepositoryProvider
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.PersonalEvent
+import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
+import com.android.sample.model.profile.ProfileRepository
+import com.android.sample.model.profile.ProfileRepositoryProvider
+import com.android.sample.model.profile.findUsername
 import java.time.Clock
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,9 +36,22 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
+ * One member of a group session shown on the Event Details screen.
+ *
+ * @property userId authentication ID of the member.
+ * @property username the member's username, or null when the profile is missing, blank, or failed
+ *   to load.
+ * @property isHost true for the session's creator, who is always listed first.
+ */
+data class EventMember(val userId: String, val username: String?, val isHost: Boolean)
+
+/**
  * UI state for the Event Details screen.
  *
- * @property event the [PersonalEvent] loaded for display, or null if not yet loaded or on error.
+ * @property event the [PersonalEvent] or [com.android.sample.model.event.GroupSession] loaded for
+ *   display, or null if not yet loaded or on error.
+ * @property members members of a loaded group session, host first then in stored order; empty for a
+ *   personal event.
  * @property isLoading true while an event is being loaded from the repository.
  * @property isDeleting true while the event is being deleted.
  * @property isUpdatingTasks true while a checklist update is being saved.
@@ -35,7 +60,8 @@ import kotlinx.coroutines.launch
  * @property error failure category to display to the user, or null when there is none.
  */
 data class EventDetailsUiState(
-    val event: PersonalEvent? = null,
+    val event: Event? = null,
+    val members: List<EventMember> = emptyList(),
     val isLoading: Boolean = false,
     val isDeleting: Boolean = false,
     val isEventDeleted: Boolean = false,
@@ -55,11 +81,15 @@ data class EventDetailsUiState(
  *
  * @param authRepository source of the currently authenticated user.
  * @param eventsRepository repository storing personal events.
+ * @param groupSessionsRepository repository storing shared group sessions.
+ * @param profileRepository source of member usernames for group sessions.
  * @param clock provider for current time and time zone.
  */
 class EventDetailsViewModel(
     private val authRepository: AuthRepository,
     private val eventsRepository: EventsRepository,
+    private val groupSessionsRepository: GroupSessionsRepository,
+    private val profileRepository: ProfileRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
 
@@ -83,14 +113,19 @@ class EventDetailsViewModel(
   }
 
   /**
-   * Loads the [PersonalEvent] with [eventId] for the signed-in user.
+   * Loads the event of [kind] with [eventId] for the signed-in user.
+   *
+   * A personal event is read from [EventsRepository]. A group session is read from
+   * [GroupSessionsRepository] and published together with its [EventDetailsUiState.members].
    *
    * @param eventId ID of the event to load.
+   * @param kind which repository the event lives in.
    * @param refresh Fetch the event again even if it is already displayed.
    */
-  fun loadEvent(eventId: String, refresh: Boolean = false) {
+  fun loadEvent(eventId: String, kind: EventKind = EventKind.PERSONAL, refresh: Boolean = false) {
     if (eventId.isBlank() || _uiState.value.isBusy) return
-    if (!refresh && _uiState.value.event?.id == eventId) return
+    val displayed = _uiState.value.event
+    if (!refresh && displayed?.id == eventId && displayed.kind() == kind) return
 
     _uiState.update { it.copy(isLoading = true, error = null) }
     viewModelScope.launch {
@@ -102,33 +137,73 @@ class EventDetailsViewModel(
           }
           return@launch
         }
-        eventsRepository
-            .getEvent(ownerId, eventId)
-            .onSuccess { event ->
-              _uiState.update { it.copy(event = event, isLoading = false, error = null) }
-            }
-            .onFailure { exception ->
-              _uiState.update {
-                it.copy(
-                    event = null,
-                    isLoading = false,
-                    error = exception.toUserError(EventPlanningError.FAILED_TO_LOAD_EVENT),
-                )
-              }
-            }
+        when (kind) {
+          EventKind.PERSONAL -> loadPersonalEvent(ownerId, eventId)
+          EventKind.GROUP_SESSION -> loadGroupSession(eventId)
+        }
       } catch (exception: CancellationException) {
         throw exception
       } catch (exception: Exception) {
-        _uiState.update {
-          it.copy(
-              event = null,
-              isLoading = false,
-              error = exception.toUserError(EventPlanningError.FAILED_TO_LOAD_EVENT),
-          )
-        }
+        publishLoadFailure(exception)
       }
     }
   }
+
+  /** Reads a personal event of [ownerId] and publishes it with no members. */
+  private suspend fun loadPersonalEvent(ownerId: String, eventId: String) {
+    eventsRepository
+        .getEvent(ownerId, eventId)
+        .onSuccess { event ->
+          _uiState.update {
+            it.copy(event = event, members = emptyList(), isLoading = false, error = null)
+          }
+        }
+        .onFailure { exception -> publishLoadFailure(exception) }
+  }
+
+  /** Reads a group session, resolves its member usernames, and publishes both in one update. */
+  private suspend fun loadGroupSession(eventId: String) {
+    groupSessionsRepository
+        .getSession(eventId)
+        .onSuccess { session ->
+          val members = resolveMembers(session)
+          _uiState.update {
+            it.copy(event = session, members = members, isLoading = false, error = null)
+          }
+        }
+        .onFailure { exception -> publishLoadFailure(exception) }
+  }
+
+  /** Looks up the members of [session] concurrently, host first, keeping that order. */
+  private suspend fun resolveMembers(session: GroupSession): List<EventMember> = coroutineScope {
+    session
+        .orderedMemberIds()
+        .map { id ->
+          async {
+            EventMember(id, profileRepository.findUsername(id), isHost = id == session.createdBy)
+          }
+        }
+        .awaitAll()
+  }
+
+  /** Clears the displayed event and members and shows the error mapped from [exception]. */
+  private fun publishLoadFailure(exception: Throwable) {
+    _uiState.update {
+      it.copy(
+          event = null,
+          members = emptyList(),
+          isLoading = false,
+          error = exception.toUserError(EventPlanningError.FAILED_TO_LOAD_EVENT),
+      )
+    }
+  }
+
+  /** The [EventKind] this event is loaded as. */
+  private fun Event.kind(): EventKind =
+      when (this) {
+        is PersonalEvent -> EventKind.PERSONAL
+        is GroupSession -> EventKind.GROUP_SESSION
+      }
 
   /**
    * Deletes the currently loaded event for the signed-in user. On success, sets
@@ -141,6 +216,7 @@ class EventDetailsViewModel(
       return
     }
 
+    if (currentEvent !is PersonalEvent) return
     if (_uiState.value.isBusy) return
 
     _uiState.update { it.copy(isDeleting = true, error = null) }
@@ -200,7 +276,7 @@ class EventDetailsViewModel(
   fun toggleTask(index: Int) {
     val state = _uiState.value
     if (state.isBusy) return
-    val currentEvent = state.event ?: return
+    val currentEvent = state.event as? PersonalEvent ?: return
     if (index !in currentEvent.tasks.indices) return
 
     val now = clock.instant()
@@ -250,6 +326,8 @@ class EventDetailsViewModel(
 class EventDetailsViewModelFactory(
     private val authRepository: AuthRepository,
     private val eventsRepository: EventsRepository,
+    private val groupSessionsRepository: GroupSessionsRepository,
+    private val profileRepository: ProfileRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModelProvider.Factory {
   /**
@@ -261,7 +339,14 @@ class EventDetailsViewModelFactory(
       "Unsupported ViewModel: ${modelClass.name}"
     }
     @Suppress("UNCHECKED_CAST")
-    return EventDetailsViewModel(authRepository, eventsRepository, clock) as T
+    return EventDetailsViewModel(
+        authRepository,
+        eventsRepository,
+        groupSessionsRepository,
+        profileRepository,
+        clock,
+    )
+        as T
   }
 }
 
@@ -276,5 +361,7 @@ fun eventDetailsViewModel(): EventDetailsViewModel =
             EventDetailsViewModelFactory(
                 authRepository = AuthRepositoryProvider.getRepository(LocalContext.current),
                 eventsRepository = EventsRepositoryProvider.getRepository(),
+                groupSessionsRepository = GroupSessionsRepositoryProvider.getRepository(),
+                profileRepository = ProfileRepositoryProvider.getRepository(),
             )
     )
