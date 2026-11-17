@@ -11,9 +11,13 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.assertWidthIsEqualTo
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -107,5 +111,63 @@ class SegmentedChoiceRowTest {
       val shape = segmentShape(index = 0, count = 3, selected = true)
       assertEquals(CircleShape, shape)
     }
+  }
+
+  /** Gives each fixed-width item its requested width and allows scrolling to later items. */
+  @Test
+  fun fixedWidthItemsHaveRequestedWidthAndCanScrollIntoView() {
+    val manyOptions = (1..20).map { TestOption("$it", "Option $it") }
+    composeTestRule.setContent {
+      MaterialTheme {
+        SegmentedChoiceRow(
+            items = manyOptions,
+            isSelected = { false },
+            onClick = {},
+            label = { it.label },
+            testTag = { "tag_${it.id}" },
+            role = Role.RadioButton,
+            itemWidth = 80.dp,
+        )
+      }
+    }
+
+    manyOptions.forEach { option ->
+      composeTestRule
+          .onNodeWithTag("tag_${option.id}")
+          .performScrollTo()
+          .assertWidthIsEqualTo(80.dp)
+    }
+    composeTestRule
+        .onNodeWithTag("tag_20")
+        .performScrollTo()
+        .assertIsDisplayed()
+        .assertWidthIsEqualTo(80.dp)
+  }
+
+  /** Keeps default-width segments equally weighted when no fixed width is supplied. */
+  @Test
+  fun itemsWithoutFixedWidthRemainEqualWidth() {
+    composeTestRule.setContent {
+      MaterialTheme {
+        SegmentedChoiceRow(
+            items = testOptions,
+            isSelected = { false },
+            onClick = {},
+            label = { it.label },
+            testTag = { "tag_${it.id}" },
+            role = Role.RadioButton,
+        )
+      }
+    }
+
+    val firstWidth =
+        composeTestRule.onNodeWithTag("tag_1").getUnclippedBoundsInRoot().let { it.right - it.left }
+    val secondWidth =
+        composeTestRule.onNodeWithTag("tag_2").getUnclippedBoundsInRoot().let { it.right - it.left }
+    val thirdWidth =
+        composeTestRule.onNodeWithTag("tag_3").getUnclippedBoundsInRoot().let { it.right - it.left }
+
+    assertEquals(firstWidth.value, secondWidth.value, 1f)
+    assertEquals(firstWidth.value, thirdWidth.value, 1f)
   }
 }

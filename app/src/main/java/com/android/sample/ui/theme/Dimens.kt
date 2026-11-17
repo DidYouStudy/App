@@ -72,6 +72,7 @@ object Dimens {
 
   // Height for group-session filter choices.
   val filterChoiceButtonHeight = 48.dp
+  val groupSessionFilterTypeChipWidth = 85.dp
   // Height for the group-session filter action.
   val filterActionButtonHeight = 56.dp
   val groupSessionZoneMenuMaxHeight = 392.dp
@@ -98,6 +99,7 @@ object Dimens {
   val calendarRetryButtonHeight = 48.dp
   val calendarEventCardCorner = 6.dp
   val calendarEventCardMinHeight = 34.dp
+  val calendarGroupIconSize = 10.dp
   val calendarMinHourRowHeight = 48.dp
   // Event planning & form dimensions
   val borderMedium = 1.5.dp

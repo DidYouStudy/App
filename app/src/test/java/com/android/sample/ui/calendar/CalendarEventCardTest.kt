@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.dp
@@ -17,6 +19,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.PersonalEvent
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
@@ -149,6 +152,36 @@ class CalendarEventCardTest {
     }
 
     composeTestRule.onNodeWithText("Exam").assertHasClickAction()
+    composeTestRule.onNodeWithContentDescription("Group session").assertDoesNotExist()
+  }
+
+  /** Keeps the group icon at the end of the time row on a compact weekly card. */
+  @Test
+  fun compactGroupCardShowsIconBesideStartTime() {
+    val event = previewEvent(type = EventType.STUDY_SESSION, subject = "Linear Algebra")
+    composeTestRule.setContent {
+      DidYouStudyTheme {
+        CalendarEventCard(
+            modifier = Modifier.width(48.dp).height(Dimens.calendarEventCardMinHeight),
+            event =
+                GroupSession(
+                    id = "group-study",
+                    createdBy = event.ownerId,
+                    memberIds = listOf(event.ownerId),
+                    details = event.details,
+                    createdAt = event.createdAt,
+                ),
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithText("Study session", useUnmergedTree = true).assertIsDisplayed()
+    val time = composeTestRule.onNodeWithText(expectedStartTime(), useUnmergedTree = true)
+    val icon = composeTestRule.onNodeWithContentDescription("Group session", useUnmergedTree = true)
+    val timeBounds = time.assertIsDisplayed().getUnclippedBoundsInRoot()
+    val iconBounds = icon.assertIsDisplayed().getUnclippedBoundsInRoot()
+    assertTrue(iconBounds.left >= timeBounds.right)
+    assertTrue(iconBounds.top < timeBounds.bottom && timeBounds.top < iconBounds.bottom)
   }
 
   private fun previewEvent(type: EventType, subject: String?): PersonalEvent {
