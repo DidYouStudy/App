@@ -34,11 +34,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import coil3.compose.SubcomposeAsyncImage
 import com.android.sample.R
 import com.android.sample.ui.sharedComponents.SecondaryMediumTopAppBar
 import com.android.sample.ui.theme.Dimens
@@ -88,7 +92,8 @@ internal fun SettingsHeader(onBackClick: () -> Unit) {
  * Displays the user's profile summary and profile-related actions.
  *
  * @param username Name shown in the greeting.
- * @param profilePictureUrl URL of the user's profile picture, if available; currently not rendered.
+ * @param profilePictureUrl URL of the user's profile picture, if available; the avatar shows the
+ *   default icon when it is blank, while the picture loads, and if it cannot be loaded.
  * @param isLoading Whether the profile information is loading.
  * @param isUploadingPicture Whether a new picture is being uploaded: the avatar then shows a
  *   progress indicator and the profile-picture action is disabled.
@@ -164,7 +169,7 @@ internal fun ProfileCard(
       }
     }
 
-    // Displays the generic avatar placeholder. The profile picture URL is not rendered yet.
+    // Displays the user's profile picture, or the generic avatar icon when there is none.
     Box(
         modifier =
             Modifier.size(avatarSize)
@@ -173,7 +178,19 @@ internal fun ProfileCard(
                 .testTag(SettingsScreenTestTags.AVATAR),
         contentAlignment = Alignment.Center,
     ) {
-      DefaultAvatarIcon()
+      if (profilePictureUrl.isNullOrBlank()) {
+        DefaultAvatarIcon()
+      } else {
+        SubcomposeAsyncImage(
+            model = profilePictureUrl,
+            contentDescription = stringResource(R.string.settings_profile_picture),
+            modifier = Modifier.fillMaxSize().clip(CircleShape),
+            contentScale = ContentScale.Crop,
+            // The default icon stands in while the picture loads and if it cannot be loaded.
+            loading = { DefaultAvatarIcon() },
+            error = { DefaultAvatarIcon() },
+        )
+      }
 
       // A ring around the avatar while the new picture is prepared, uploaded and saved.
       if (isUploadingPicture) {
@@ -183,25 +200,6 @@ internal fun ProfileCard(
             strokeWidth = Dimens.progressIndicatorStrokeWidth,
         )
       }
-
-      // currently, the actual profile picture of the user is not displayed
-      // the following code should take care of that but it is dependent on the coil library
-      // which is not yet imported into the build gradle file: the artifact has not yet
-      // been verified
-      //            if (profilePictureUrl.isNullOrBlank()) {
-      //                DefaultAvatarIcon()
-      //            } else {
-      //                SubcomposeAsyncImage(
-      //                    model = profilePictureUrl,
-      //                    contentDescription = stringResource(R.string.settings_profile_picture),
-      //                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-      //                    contentScale = ContentScale.Crop,
-      //                    // Fall back to the default icon while loading and if the image fails to
-      // load
-      //                    loading = { DefaultAvatarIcon() },
-      //                    error = { DefaultAvatarIcon() },
-      //                )
-      //            }
     }
   }
 }
