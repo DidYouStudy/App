@@ -91,6 +91,22 @@ class ProfilesFirestoreRulesEmulatorTest {
     assertEquals(ownerName, result.getOrThrow()?.username)
   }
 
+  /** The owner's repository call changes only the picture URL, and another user's call fails. */
+  @Test
+  fun profileRepositoryUpdatesOnlyThePictureUrlOfOwnProfile() = runBlocking {
+    val seeded = seedProfile(owner, ownerName)
+
+    val saved = ProfileRepositoryFirestore(owner.db).updateProfilePictureUrl(owner.uid, PICTURE_URL)
+    val rejected = ProfileRepositoryFirestore(reader.db).updateProfilePictureUrl(owner.uid, "other")
+
+    assertEquals(Unit, saved.getOrThrow())
+    assertEquals(
+        ProfileError.FIRESTORE_FAILURE,
+        (rejected.exceptionOrNull() as ProfileException).error,
+    )
+    assertEquals(seeded + ("profilePictureUrl" to PICTURE_URL), readData(owner, owner.uid))
+  }
+
   /** A signed-in user cannot list the profiles collection. */
   @Test
   fun profilesCollectionQueryIsDenied() = runBlocking {
@@ -313,4 +329,9 @@ class ProfilesFirestoreRulesEmulatorTest {
   }
 
   private suspend fun <T> timed(action: suspend () -> T): T = withTimeout(15_000) { action() }
+
+  private companion object {
+    /** Picture URL saved by the repository test. */
+    const val PICTURE_URL = "https://example.test/avatar.jpg"
+  }
 }
