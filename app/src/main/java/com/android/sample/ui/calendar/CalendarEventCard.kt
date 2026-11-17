@@ -2,6 +2,7 @@
 package com.android.sample.ui.calendar
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -9,9 +10,14 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -20,14 +26,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
+import com.android.sample.R
 import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.PersonalEvent
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
@@ -51,7 +60,7 @@ object CalendarEventCardTestTags {
   const val SUBJECT = "calendar_eventCard_subject"
 }
 
-/** Displays an event's type, subject and start time, and invokes [onClick] when tapped. */
+/** Displays an event's type, subject and start time, with [onClick] for personal events. */
 @Composable
 fun CalendarEventCard(
     event: Event,
@@ -65,14 +74,9 @@ fun CalendarEventCard(
   val subject = event.details.subject
   val startingTime = EVENT_TIME_FORMAT.format(event.details.startsAt)
   val cardShape = RoundedCornerShape(Dimens.calendarEventCardCorner)
+  val isGroupSession = event is GroupSession
 
-  // The surface provides one clickable, rounded container for the complete event card.
-  Surface(
-      modifier = modifier,
-      onClick = onClick,
-      shape = cardShape,
-      color = color,
-  ) {
+  val content: @Composable () -> Unit = {
     // Keep the dark event-type accent separate from the text content.
     Box(modifier = Modifier.fillMaxSize()) {
       Row(modifier = Modifier.fillMaxSize()) {
@@ -105,17 +109,42 @@ fun CalendarEventCard(
           if (subject != null) {
             FittingSubject(text = subject, style = calendarEventSubjectStyle, color = contentColor)
           }
-          // The time is always displayed.
-          Text(
-              text = startingTime,
-              style = calendarEventTimeStyle,
-              color = contentColor,
-              maxLines = EVENT_TIME_MAX_LINES,
-              overflow = TextOverflow.Ellipsis,
-          )
+          Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Text(
+                text = startingTime,
+                modifier = Modifier.weight(1f, fill = false),
+                style = calendarEventTimeStyle,
+                color = contentColor,
+                maxLines = EVENT_TIME_MAX_LINES,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (isGroupSession) {
+              Icon(
+                  imageVector = Icons.Outlined.Groups,
+                  contentDescription = stringResource(R.string.calendar_group_session_description),
+                  modifier = Modifier.size(Dimens.calendarGroupIconSize),
+                  tint = contentColor,
+              )
+            }
+          }
         }
       }
     }
+  }
+  if (isGroupSession) {
+    Surface(modifier = modifier, shape = cardShape, color = color, content = content)
+  } else {
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = cardShape,
+        color = color,
+        content = content,
+    )
   }
 }
 

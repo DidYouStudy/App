@@ -17,8 +17,10 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -151,6 +153,17 @@ class EndToEndTest {
   /** Returns the app's string resource [id], so tests follow the UI texts instead of literals. */
   private fun string(@StringRes id: Int): String =
       ApplicationProvider.getApplicationContext<Context>().getString(id)
+
+  /**
+   * Taps [hour] on the open time picker's clock face.
+   *
+   * The picker opens on the current time. When [hour] is also the current hour, the dial exposes
+   * two nodes with the same "N hours" description, so `onNodeWithContentDescription` fails with
+   * "found 2 nodes" whenever CI runs during that hour. Tapping the first match works in both cases.
+   */
+  private fun clickPickerHour(hour: Int) {
+    composeRule.onAllNodesWithContentDescription("$hour hours").onFirst().performClick()
+  }
 
   /** Waits until a node with [tag] exists; on timeout logs the UI tree (tag `E2EDUMP`). */
   private fun waitForTag(tag: String) {
@@ -461,12 +474,12 @@ class EndToEndTest {
     composeRule.onNodeWithText(tomorrowDescription).performClick()
     composeRule.onNodeWithText(string(R.string.confirm)).performClick()
     composeRule.onNodeWithTag(EventTags.START_TIME_SELECTOR).performClick()
-    composeRule.onNodeWithContentDescription("8 hours").performClick()
+    clickPickerHour(8)
     composeRule.onNodeWithText(string(R.string.confirm)).performClick()
     // The end time must differ from the start (equal times are rejected), so use a fixed hour.
     // Deriving it from the current hour made the test fail whenever CI ran between 7:00 and 7:59.
     composeRule.onNodeWithTag(EventTags.END_TIME_SELECTOR).performClick()
-    composeRule.onNodeWithContentDescription("10 hours").performClick()
+    clickPickerHour(10)
     composeRule.onNodeWithText(string(R.string.confirm)).performClick()
     // The location is picked from the campus locations: search, then tap the matching row.
     // Scroll first: on a small screen the selector is below the fold and a tap would be lost.

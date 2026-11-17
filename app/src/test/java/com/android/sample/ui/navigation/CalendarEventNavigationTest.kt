@@ -2,14 +2,21 @@
 package com.android.sample.ui.navigation
 
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -22,6 +29,7 @@ import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.EventsRepositoryProvider
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.InMemoryEventsRepository
 import com.android.sample.model.event.PersonalEvent
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
@@ -67,6 +75,7 @@ class CalendarEventNavigationTest {
   private val selectedCardTag = CalendarTestTags.eventCard(selectedEvent.id, dayIndex = 1)
   private val otherCardTag = CalendarTestTags.eventCard(otherEvent.id, dayIndex = 0)
   private val events = TestEventsRepository(InMemoryEventsRepository())
+  private val groupSessions = InMemoryGroupSessionsRepository()
 
   /** Seeds two distinguishable cards and opens the week containing them. */
   @Before
@@ -83,7 +92,7 @@ class CalendarEventNavigationTest {
     PreferencesRepositoryProvider.setRepository(preferences)
     ProfileRepositoryProvider.setRepository(mock<ProfileRepository>())
     EventsRepositoryProvider.setRepository(events)
-    GroupSessionsRepositoryProvider.setRepository(InMemoryGroupSessionsRepository())
+    GroupSessionsRepositoryProvider.setRepository(groupSessions)
 
     composeRule.setContent { DidYouStudyApp() }
     composeRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
@@ -100,6 +109,85 @@ class CalendarEventNavigationTest {
     ProfileRepositoryProvider.setRepository(null)
     EventsRepositoryProvider.setRepository(null)
     GroupSessionsRepositoryProvider.setRepository(null)
+  }
+
+  /** Hosted and joined cards appear in the open week; leaving removes only the joined card. */
+  @Test
+  fun groupSessionsUpdateInTheOpenCalendarWeek() {
+    val hosted =
+        GroupSession(
+            id = "hosted-session",
+            createdBy = userId,
+            memberIds = listOf(userId),
+            details = otherEvent.details,
+            createdAt = otherEvent.createdAt,
+        )
+    val joined =
+        hosted.copy(
+            id = "joined-session",
+            createdBy = "another-student",
+            memberIds = listOf("another-student", userId),
+            details = selectedEvent.details,
+        )
+    runBlocking {
+      groupSessions.saveSession(userId, hosted).getOrThrow()
+      groupSessions.saveSession(joined.createdBy, joined).getOrThrow()
+    }
+
+    val hostedCard = composeRule.onNodeWithTag(CalendarTestTags.eventCard(hosted.id, 0))
+    val joinedCard = composeRule.onNodeWithTag(CalendarTestTags.eventCard(joined.id, 1))
+    hostedCard.assertIsDisplayed().assertHasNoClickAction()
+    joinedCard.assertIsDisplayed().assertHasNoClickAction()
+    composeRule.onNodeWithTag(selectedCardTag).assertIsDisplayed()
+
+    runBlocking { groupSessions.leaveSession(userId, joined.id).getOrThrow() }
+
+    joinedCard.assertDoesNotExist()
+    hostedCard.assertIsDisplayed()
+    openDetails()
+  }
+
+  /** Renders both halves of a joined session that crosses the selected week's boundary. */
+  @Test
+  fun joinedGroupSessionAppearsInBothWeeksWhenItCrossesSundayMidnight() {
+    val sunday = previousMonday.plusDays(6)
+    val monday = sunday.plusDays(1)
+    val zone = ZoneId.systemDefault()
+    val startsAt = sunday.atTime(23, 0).atZone(zone).toInstant()
+    val session =
+        GroupSession(
+            id = "overnight-group-session",
+            createdBy = "another-student",
+            memberIds = listOf("another-student", userId),
+            details =
+                EventDetails(
+                    type = EventType.STUDY_SESSION,
+                    subject = "Overnight study",
+                    startsAt = startsAt,
+                    endsAt = monday.atTime(1, 0).atZone(zone).toInstant(),
+                ),
+            createdAt = startsAt,
+        )
+    runBlocking { groupSessions.saveSession(session.createdBy, session).getOrThrow() }
+
+    val sundayCard = composeRule.onNodeWithTag(CalendarTestTags.eventCard(session.id, dayIndex = 6))
+    val mondayCard = composeRule.onNodeWithTag(CalendarTestTags.eventCard(session.id, dayIndex = 0))
+    val timeline =
+        composeRule.onNode(
+            hasScrollAction() and hasAnyAncestor(hasTestTag(CalendarTestTags.TIME_GRID))
+        )
+    val range = timeline.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
+    composeRule.onNodeWithTag(CalendarTestTags.dayNumber(sunday)).assertIsDisplayed()
+    timeline.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, range.maxValue()) }
+    sundayCard.assertIsDisplayed()
+    mondayCard.assertDoesNotExist()
+
+    composeRule.onNodeWithTag(CalendarTestTags.NEXT_WEEK).performClick()
+
+    composeRule.onNodeWithTag(CalendarTestTags.dayNumber(monday)).assertIsDisplayed()
+    timeline.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, -range.maxValue()) }
+    mondayCard.assertIsDisplayed()
+    sundayCard.assertDoesNotExist()
   }
 
   /** Repeated card and Back taps still take a single trip to Details and back. */

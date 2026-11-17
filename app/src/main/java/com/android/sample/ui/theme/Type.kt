@@ -1,5 +1,6 @@
 // Co-authored-by: Codex AI Agent
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: OpenAI Codex
 package com.android.sample.ui.theme
 
 import androidx.compose.material3.Typography
@@ -56,9 +57,3 @@ val calendarEventTitleStyle: TextStyle =
     TextStyle(fontSize = 9.sp, lineHeight = 11.sp, fontWeight = FontWeight.Bold)
 val calendarEventSubjectStyle: TextStyle = TextStyle(fontSize = 9.sp, lineHeight = 11.sp)
 val calendarEventTimeStyle: TextStyle = TextStyle(fontSize = 8.sp, lineHeight = 11.sp)
-
-/** Initial drawn inside a small participant avatar of the group-session participants pill. */
-val ParticipantInitialTextStyle: TextStyle = TextStyle(fontSize = 10.sp)
-
-/** "+N" count of members without an avatar in the participants pill, slightly smaller. */
-val ParticipantOverflowTextStyle: TextStyle = TextStyle(fontSize = 9.sp)
