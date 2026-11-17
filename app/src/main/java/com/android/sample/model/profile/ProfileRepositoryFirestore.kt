@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot
+// Co-authored-by: Claude Code
 package com.android.sample.model.profile
 
 import com.google.firebase.firestore.DocumentSnapshot
@@ -19,6 +20,9 @@ class ProfileRepositoryFirestore(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) : ProfileRepository {
   private val collection = firestore.collection("profiles")
+
+  /** Username reservations stored in `usernames/{lowercase username}` as `{uid}`. */
+  private val usernames by lazy { firestore.collection("usernames") }
 
   /**
    * Reads a profile document without creating one.
@@ -71,6 +75,58 @@ class ProfileRepositoryFirestore(
               transaction.set(document, profile)
               profile
             }
+          }
+          .await()
+    }
+  }
+
+  /**
+   * Changes a profile's username while keeping usernames unique.
+   *
+   * Each username is reserved by a `usernames/{lowercase name}` document holding the owner's UID.
+   * One transaction checks the reservation, frees the previous one, claims the new one and updates
+   * the profile, so two users can never hold the same name.
+   *
+   * @param userId stable authentication identifier and profile document ID.
+   * @param username requested username; validated with [UsernamePolicy.validate].
+   * @return [Result.success] containing the updated profile; [Result.failure] containing
+   *   [ProfileException] with [ProfileError.INVALID_USER_ID], [ProfileError.INVALID_USERNAME],
+   *   [ProfileError.USERNAME_TAKEN] or a storage failure category.
+   * @throws CancellationException when the coroutine is cancelled.
+   */
+  override suspend fun updateUsername(userId: String, username: String): Result<UserProfile> {
+    if (userId.isBlank()) {
+      return Result.failure(ProfileException(ProfileError.INVALID_USER_ID))
+    }
+    val validName =
+        UsernamePolicy.validate(username)
+            ?: return Result.failure(ProfileException(ProfileError.INVALID_USERNAME))
+    return execute {
+      val profileDocument = collection.document(userId)
+      val newKey = UsernamePolicy.key(validName)
+      val newReservation = usernames.document(newKey)
+      firestore
+          .runTransaction { transaction ->
+            // Firestore requires every read before the first write.
+            val profileSnapshot = transaction.get(profileDocument)
+            val reservationSnapshot = transaction.get(newReservation)
+            if (!profileSnapshot.exists()) {
+              throw ProfileException(ProfileError.INVALID_PROFILE_DATA)
+            }
+            val profile = profileSnapshot.toUserProfile(userId)
+            val reservationExists = reservationSnapshot.exists()
+            if (reservationExists && reservationSnapshot.getString("uid") != userId) {
+              throw ProfileException(ProfileError.USERNAME_TAKEN)
+            }
+            val oldKey = profile.username.takeIf { it.isNotBlank() }?.let(UsernamePolicy::key)
+            if (oldKey != null && oldKey != newKey) {
+              transaction.delete(usernames.document(oldKey))
+            }
+            if (!reservationExists) {
+              transaction.set(newReservation, mapOf("uid" to userId))
+            }
+            transaction.update(profileDocument, "username", validName)
+            profile.copy(username = validName)
           }
           .await()
     }
