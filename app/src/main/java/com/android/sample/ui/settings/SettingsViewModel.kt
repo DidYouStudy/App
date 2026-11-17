@@ -1,5 +1,6 @@
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.settings
 
 import android.util.Log
@@ -11,8 +12,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
+import com.android.sample.model.profile.ProfileException
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.ProfileRepositoryProvider
+import com.android.sample.model.profile.UsernamePolicy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,12 +31,14 @@ import kotlinx.coroutines.launch
  * @property profilePictureUrl URL of the user's profile picture, if any.
  * @property isLoading Whether the profile is still loading.
  * @property error Failure to report to the user, or null when there is none.
+ * @property usernameEdit State of the "Edit username" dialog, or null while it is closed.
  */
 data class SettingsUiState(
     val username: String? = null,
     val profilePictureUrl: String? = null,
     val isLoading: Boolean = false,
     val error: SettingsError? = null,
+    val usernameEdit: UsernameEditState? = null,
 )
 
 /**
@@ -50,11 +55,15 @@ class SettingsViewModel(
   private val _uiState = MutableStateFlow(SettingsUiState(isLoading = true))
   val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
+  /** ID of the signed-in user, or null when nobody is signed in; target of username changes. */
+  private var currentUserId: String? = null
+
   init {
     viewModelScope.launch {
       try {
         authRepository.currentUser.collect { userAccount ->
           // safely prevent null pointer exception and stops the loading state
+          currentUserId = userAccount?.uid
           if (userAccount == null) {
             _uiState.value = SettingsUiState(isLoading = false)
             return@collect
@@ -104,6 +113,88 @@ class SettingsViewModel(
         _uiState.update { it.copy(error = SettingsError.SIGN_OUT_FAILED) }
       }
     }
+  }
+
+  /** Opens the "Edit username" dialog pre-filled with the current username. */
+  fun openUsernameEditor() {
+    val state = _uiState.value
+    if (currentUserId == null || state.isLoading) return
+    _uiState.update { it.copy(usernameEdit = editState(state.username.orEmpty(), state.username)) }
+  }
+
+  /** Closes the "Edit username" dialog without saving, unless a save is in progress. */
+  fun dismissUsernameEditor() {
+    _uiState.update { state ->
+      if (state.usernameEdit?.isSaving == true) state else state.copy(usernameEdit = null)
+    }
+  }
+
+  /**
+   * Updates the text typed in the dialog, capped at [UsernamePolicy.MAX_LENGTH], and re-validates
+   * it. Ignored while a save is running.
+   */
+  fun onUsernameInputChange(input: String) {
+    _uiState.update { state ->
+      val edit = state.usernameEdit
+      if (edit == null || edit.isSaving) state
+      else
+          state.copy(
+              usernameEdit = editState(input.take(UsernamePolicy.MAX_LENGTH), state.username)
+          )
+    }
+  }
+
+  /**
+   * Saves the typed username through [ProfileRepository.updateUsername].
+   *
+   * On success Settings shows the returned username and the dialog closes; on failure the dialog
+   * stays open with the matching [UsernameError]. Does nothing when [UsernameEditState.canSave] is
+   * false.
+   */
+  fun saveUsername() {
+    val userId = currentUserId ?: return
+    val edit = _uiState.value.usernameEdit ?: return
+    if (!edit.canSave) return
+    _uiState.update { it.copy(usernameEdit = edit.copy(isSaving = true, canSave = false)) }
+    viewModelScope.launch {
+      val result =
+          try {
+            profileRepository.updateUsername(userId, edit.input.trim())
+          } catch (exception: CancellationException) {
+            throw exception
+          } catch (exception: Exception) {
+            Result.failure(exception)
+          }
+      result
+          .onSuccess { profile ->
+            _uiState.update { it.copy(username = profile.username, usernameEdit = null) }
+          }
+          .onFailure { exception ->
+            Log.w(TAG, "Failed to update the username", exception)
+            val error = (exception as? ProfileException)?.error?.toUsernameError()
+            _uiState.update {
+              it.copy(
+                  usernameEdit =
+                      edit.copy(
+                          isSaving = false,
+                          error = error ?: UsernameError.FAILURE,
+                          canSave = false,
+                      )
+              )
+            }
+          }
+    }
+  }
+
+  /** Builds the dialog state for [input]: local validation error and whether Save is enabled. */
+  private fun editState(input: String, currentUsername: String?): UsernameEditState {
+    val error = validateUsernameInput(input)
+    val trimmed = input.trim()
+    return UsernameEditState(
+        input = input,
+        error = error,
+        canSave = error == null && trimmed.isNotEmpty() && trimmed != currentUsername,
+    )
   }
 
   /** Clears any active error message. */
