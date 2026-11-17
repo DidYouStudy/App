@@ -90,14 +90,13 @@ class NotImplementedToastNavigationTest {
     tapAndExpectToast(DashboardContentTestTags.STATS_CARD, expectedCount = 2)
   }
 
-  /** Username, profile picture and friends actions in Settings show the toast. */
+  /** Profile picture and friends actions in Settings show the toast. */
   @Test
   fun settingsPlaceholderActionsShowNotImplementedToast() {
     openSettings()
 
-    tapAndExpectToast(SettingsScreenTestTags.EDIT_USERNAME_BUTTON, expectedCount = 1)
-    tapAndExpectToast(SettingsScreenTestTags.CHANGE_PROFILE_PICTURE_BUTTON, expectedCount = 2)
-    tapAndExpectToast(SettingsScreenTestTags.FRIENDS_BUTTON, expectedCount = 3)
+    tapAndExpectToast(SettingsScreenTestTags.CHANGE_PROFILE_PICTURE_BUTTON, expectedCount = 1)
+    tapAndExpectToast(SettingsScreenTestTags.FRIENDS_BUTTON, expectedCount = 2)
   }
 
   /** Adding study locations in Preferences (opened from Settings) shows the toast. */
