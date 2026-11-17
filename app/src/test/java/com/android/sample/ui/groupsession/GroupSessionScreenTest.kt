@@ -9,6 +9,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
@@ -501,6 +503,46 @@ class GroupSessionScreenTest {
         .onNodeWithText(context.getString(R.string.group_session_action_leave))
         .assertDoesNotExist()
     assertEquals(emptyList<String>(), left)
+  }
+
+  /** A pending join button exposes its disabled state to accessibility services. */
+  @Test
+  fun card_pendingJoinIsDisabledForAccessibility() {
+    setCardContent(items = listOf(screenItem("busy-join", isActionInProgress = true)))
+    val sessionList = composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+    val joinButton = GroupSessionScreenTestTags.joinButton("busy-join")
+    sessionList.performScrollToNode(hasTestTag(joinButton))
+
+    composeTestRule.onNodeWithTag(joinButton).assertIsNotEnabled()
+  }
+
+  /** A pending leave button exposes its disabled state to accessibility services. */
+  @Test
+  fun card_pendingLeaveIsDisabledForAccessibility() {
+    setCardContent(
+        items = listOf(screenItem("busy-leave", isMember = true, isActionInProgress = true)),
+    )
+    val sessionList = composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+    val leaveButton = GroupSessionScreenTestTags.leaveButton("busy-leave")
+    sessionList.performScrollToNode(hasTestTag(leaveButton))
+
+    composeTestRule.onNodeWithTag(leaveButton).assertIsNotEnabled()
+  }
+
+  /** Idle Join and Leave buttons remain enabled. */
+  @Test
+  fun card_idleButtonsAreEnabled() {
+    setCardContent(
+        items = listOf(screenItem("idle-join"), screenItem("idle-leave", isMember = true))
+    )
+    val sessionList = composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+    val joinButton = GroupSessionScreenTestTags.joinButton("idle-join")
+    sessionList.performScrollToNode(hasTestTag(joinButton))
+    composeTestRule.onNodeWithTag(joinButton).assertIsEnabled()
+
+    val leaveButton = GroupSessionScreenTestTags.leaveButton("idle-leave")
+    sessionList.performScrollToNode(hasTestTag(leaveButton))
+    composeTestRule.onNodeWithTag(leaveButton).assertIsEnabled()
   }
 
   /** The other card remains actionable while one card is showing leave progress. */
