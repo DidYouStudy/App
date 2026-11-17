@@ -32,6 +32,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.LocalContentColor
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
 import androidx.compose.material.icons.filled.AccessTime
@@ -45,6 +46,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -81,10 +83,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
@@ -204,7 +207,7 @@ fun GroupSessionScreen(
       viewModel.clearError()
     }
   }
-  // TODO: Have the ViewModel expose a retry/loading state after join or leave failures.
+  // Join/leave progress is stored per session in GroupSessionsViewModel.
   Scaffold(
       modifier = Modifier.testTag(GroupSessionScreenTestTags.SCREEN),
       snackbarHost = {
@@ -641,6 +644,8 @@ internal fun GroupSessionCard(
   val actionJoinedLabel = stringResource(R.string.group_session_action_joined)
   val actionJoinLabel = stringResource(R.string.group_session_action_join)
   val actionLeaveLabel = stringResource(R.string.group_session_action_leave)
+  val actionJoiningDescription = stringResource(R.string.group_session_action_joining)
+  val actionLeavingDescription = stringResource(R.string.group_session_action_leaving)
   val actionLabel =
       if (shouldShowHost) actionEditLabel
       else if (item.isMember) actionJoinedLabel else actionJoinLabel
@@ -650,7 +655,7 @@ internal fun GroupSessionCard(
       shape = RoundedCornerShape(Dimens.cornerExtraLarge),
       colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
       border = BorderStroke(Dimens.borderThin, MaterialTheme.colorScheme.outlineVariant),
-      elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+      elevation = CardDefaults.cardElevation(defaultElevation = Dimens.groupSessionCardElevation),
   ) {
     Column(modifier = Modifier.fillMaxWidth().padding(Dimens.cardPadding)) {
       // Top Row: Avatar + Title/Host + Status Badge
@@ -885,7 +890,7 @@ internal fun GroupSessionCard(
         } else if (item.isMember) {
           Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
             OutlinedButton(
-                onClick = { onLeave(session.id) },
+                onClick = { if (!item.isActionInProgress) onLeave(session.id) },
                 shape = RoundedCornerShape(Dimens.cornerLarge),
                 border = BorderStroke(Dimens.borderThin, MaterialTheme.colorScheme.error),
                 colors =
@@ -894,9 +899,21 @@ internal fun GroupSessionCard(
                     ),
                 contentPadding = PaddingValues(horizontal = Spacing.extraSmall),
                 modifier =
-                    Modifier.height(Dimens.actionButtonHeight).width(Dimens.actionButtonWidth),
+                    Modifier.height(Dimens.actionButtonHeight)
+                        .width(Dimens.actionButtonWidth)
+                        .testTag(GroupSessionScreenTestTags.leaveButton(session.id)),
             ) {
-              Text(actionLeaveLabel, fontWeight = FontWeight.Medium)
+              if (item.isActionInProgress) {
+                CircularProgressIndicator(
+                    modifier =
+                        Modifier.size(Dimens.groupSessionActionProgressSize)
+                            .semantics { contentDescription = actionLeavingDescription }
+                            .testTag(GroupSessionScreenTestTags.actionProgress(session.id)),
+                    color = LocalContentColor.current,
+                )
+              } else {
+                Text(actionLeaveLabel, fontWeight = FontWeight.Medium)
+              }
             }
             Button(
                 onClick = {},
@@ -917,7 +934,7 @@ internal fun GroupSessionCard(
           }
         } else {
           Button(
-              onClick = { onJoin(session.id) },
+              onClick = { if (!item.isActionInProgress) onJoin(session.id) },
               shape = RoundedCornerShape(Dimens.cornerLarge),
               colors =
                   ButtonDefaults.buttonColors(
@@ -925,9 +942,22 @@ internal fun GroupSessionCard(
                       contentColor = MaterialTheme.colorScheme.onPrimary,
                   ),
               contentPadding = PaddingValues(horizontal = Spacing.extraSmall),
-              modifier = Modifier.height(Dimens.actionButtonHeight).width(Dimens.actionButtonWidth),
+              modifier =
+                  Modifier.height(Dimens.actionButtonHeight)
+                      .width(Dimens.actionButtonWidth)
+                      .testTag(GroupSessionScreenTestTags.joinButton(session.id)),
           ) {
-            Text(actionJoinLabel, fontWeight = FontWeight.Medium)
+            if (item.isActionInProgress) {
+              CircularProgressIndicator(
+                  modifier =
+                      Modifier.size(Dimens.groupSessionActionProgressSize)
+                          .semantics { contentDescription = actionJoiningDescription }
+                          .testTag(GroupSessionScreenTestTags.actionProgress(session.id)),
+                  color = LocalContentColor.current,
+              )
+            } else {
+              Text(actionJoinLabel, fontWeight = FontWeight.Medium)
+            }
           }
         }
       }
