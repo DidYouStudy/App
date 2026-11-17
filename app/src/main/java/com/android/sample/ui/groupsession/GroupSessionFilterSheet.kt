@@ -110,7 +110,7 @@ fun GroupSessionFilterSheetContent(
 ) {
   var showMoreZones by remember { mutableStateOf(false) }
   var showPermissionRationale by remember { mutableStateOf(false) }
-    var viewMoreButtonWidthPx by remember { mutableIntStateOf(0) }
+  var viewMoreButtonWidthPx by remember { mutableIntStateOf(0) }
   val density = LocalDensity.current
   val zoneChoices =
       listOf(
@@ -147,10 +147,7 @@ fun GroupSessionFilterSheetContent(
 
   Column(
       modifier =
-          modifier
-              .fillMaxWidth()
-              .verticalScroll(rememberScrollState())
-              .padding(Spacing.large),
+          modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(Spacing.large),
       verticalArrangement = Arrangement.spacedBy(Spacing.medium),
   ) {
     Row(
@@ -244,8 +241,7 @@ fun GroupSessionFilterSheetContent(
     Box(modifier = Modifier.fillMaxWidth()) {
       FilledTonalButton(
           modifier =
-              Modifier
-                  .fillMaxWidth()
+              Modifier.fillMaxWidth()
                   .onSizeChanged { viewMoreButtonWidthPx = it.width }
                   .testTag(GroupSessionFilterSheetTestTags.VIEW_MORE),
           onClick = { showMoreZones = true },
@@ -274,31 +270,27 @@ fun GroupSessionFilterSheetContent(
         ) {
           Surface(
               modifier =
-                  Modifier
-                      .width(with(density) { viewMoreButtonWidthPx.toDp() })
+                  Modifier.width(with(density) { viewMoreButtonWidthPx.toDp() })
                       .heightIn(max = Dimens.groupSessionZoneMenuMaxHeight),
               shape = MaterialTheme.shapes.large,
               color = MaterialTheme.colorScheme.surfaceContainerLow,
               shadowElevation = Dimens.groupSessionZoneMenuShadowElevation,
           ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
             ) {
               availableZones.forEachIndexed { index, zone ->
                 val isSelected = zone in filters.zones
                 Row(
                     modifier =
-                        Modifier
-                            .fillMaxWidth()
+                        Modifier.fillMaxWidth()
                             .height(Dimens.groupSessionZoneMenuItemHeight)
                             .semantics { selected = isSelected }
                             .testTag(GroupSessionFilterSheetTestTags.zoneOption(zone))
                             .clickable {
-                                onZonesSelected(
-                                    if (isSelected) filters.zones - zone else filters.zones + zone
-                                )
+                              onZonesSelected(
+                                  if (isSelected) filters.zones - zone else filters.zones + zone
+                              )
                             }
                             .padding(horizontal = Spacing.large),
                     verticalAlignment = Alignment.CenterVertically,
@@ -324,8 +316,7 @@ fun GroupSessionFilterSheetContent(
     // Keep the label and switch in one TalkBack node and make the whole row tappable.
     Row(
         modifier =
-            Modifier
-                .fillMaxWidth()
+            Modifier.fillMaxWidth()
                 .toggleable(
                     value = filters.showLabs,
                     role = Role.Switch,
@@ -343,8 +334,7 @@ fun GroupSessionFilterSheetContent(
     // Keep the label and switch in one TalkBack node and make the whole row tappable.
     Row(
         modifier =
-            Modifier
-                .fillMaxWidth()
+            Modifier.fillMaxWidth()
                 .toggleable(
                     value = filters.hideFullSessions,
                     role = Role.Switch,
@@ -367,8 +357,7 @@ fun GroupSessionFilterSheetContent(
 
     Button(
         modifier =
-            Modifier
-                .fillMaxWidth()
+            Modifier.fillMaxWidth()
                 .height(Dimens.filterActionButtonHeight)
                 .testTag(GroupSessionFilterSheetTestTags.SHOW_SESSIONS),
         onClick = onShowSessions,
