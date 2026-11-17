@@ -84,6 +84,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -871,7 +872,7 @@ internal fun GroupSessionCard(
           }
         }
 
-        // Action Buttons (Host Edit vs Member Leave/Joined vs Join)
+        // Keep buttons enabled for their colors; semantics communicates busy state to TalkBack.
         if (shouldShowHost) {
           Button(
               onClick = { onEdit(session.id) },
@@ -901,7 +902,8 @@ internal fun GroupSessionCard(
                 modifier =
                     Modifier.height(Dimens.actionButtonHeight)
                         .width(Dimens.actionButtonWidth)
-                        .testTag(GroupSessionScreenTestTags.leaveButton(session.id)),
+                        .testTag(GroupSessionScreenTestTags.leaveButton(session.id))
+                        .semantics { if (item.isActionInProgress) disabled() },
             ) {
               if (item.isActionInProgress) {
                 CircularProgressIndicator(
@@ -945,7 +947,8 @@ internal fun GroupSessionCard(
               modifier =
                   Modifier.height(Dimens.actionButtonHeight)
                       .width(Dimens.actionButtonWidth)
-                      .testTag(GroupSessionScreenTestTags.joinButton(session.id)),
+                      .testTag(GroupSessionScreenTestTags.joinButton(session.id))
+                      .semantics { if (item.isActionInProgress) disabled() },
           ) {
             if (item.isActionInProgress) {
               CircularProgressIndicator(
