@@ -59,6 +59,7 @@ object SettingsScreenTestTags {
   const val AVATAR = "settings_avatar"
   const val GREETING = "settings_greeting"
   const val LOADING_INDICATOR = "settings_loading_indicator"
+  const val PICTURE_UPLOADING_INDICATOR = "settings_picture_uploading_indicator"
   const val EDIT_USERNAME_BUTTON = "settings_edit_username_button"
   const val CHANGE_PROFILE_PICTURE_BUTTON = "settings_change_profile_picture_button"
 
@@ -97,6 +98,8 @@ internal fun SettingsHeader(onBackClick: () -> Unit) {
  * @param username Name shown in the greeting.
  * @param profilePictureUrl URL of the user's profile picture, if available; currently not rendered.
  * @param isLoading Whether the profile information is loading.
+ * @param isUploadingPicture Whether a new picture is being uploaded: the avatar then shows a
+ *   progress indicator and the profile-picture action is disabled.
  * @param onEditUsernameClick Called when the username edit action is tapped.
  * @param onChangeProfilePictureClick Called when the profile-picture action is tapped.
  */
@@ -105,6 +108,7 @@ internal fun ProfileCard(
     username: String,
     profilePictureUrl: String?,
     isLoading: Boolean,
+    isUploadingPicture: Boolean,
     onEditUsernameClick: () -> Unit,
     onChangeProfilePictureClick: () -> Unit,
 ) {
@@ -158,11 +162,7 @@ internal fun ProfileCard(
             text = stringResource(R.string.settings_change_profile_picture),
             onClick = onChangeProfilePictureClick,
             testTag = SettingsScreenTestTags.CHANGE_PROFILE_PICTURE_BUTTON,
-        )
-        Text(
-            text = stringResource(R.string.not_implemented),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            enabled = !isUploadingPicture,
         )
       }
     }
@@ -177,6 +177,15 @@ internal fun ProfileCard(
         contentAlignment = Alignment.Center,
     ) {
       DefaultAvatarIcon()
+
+      // A ring around the avatar while the new picture is prepared, uploaded and saved.
+      if (isUploadingPicture) {
+        CircularProgressIndicator(
+            modifier =
+                Modifier.fillMaxSize().testTag(SettingsScreenTestTags.PICTURE_UPLOADING_INDICATOR),
+            strokeWidth = Dimens.progressIndicatorStrokeWidth,
+        )
+      }
 
       // currently, the actual profile picture of the user is not displayed
       // the following code should take care of that but it is dependent on the coil library
@@ -219,14 +228,21 @@ internal fun DefaultAvatarIcon() {
  * @param text Text describing the action.
  * @param onClick Action invoked when tapped.
  * @param testTag Test tag applied for UI tests.
+ * @param enabled Whether the action can be tapped; when false it is greyed out.
  */
 @Composable
-internal fun SmallEditButton(text: String, onClick: () -> Unit, testTag: String) {
-  val color = MaterialTheme.colorScheme.primary
+internal fun SmallEditButton(
+    text: String,
+    onClick: () -> Unit,
+    testTag: String,
+    enabled: Boolean = true,
+) {
+  val color =
+      if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
   Row(
       modifier =
           Modifier.testTag(testTag)
-              .clickable(role = Role.Button, onClick = onClick)
+              .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
               .padding(
                   horizontal = Spacing.medium,
                   vertical = Dimens.settingsEditButtonVerticalPadding,

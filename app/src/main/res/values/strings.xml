@@ -40,6 +40,7 @@
     <string name="default_username">User</string>
     <string name="settings_error_failed_to_load_profile">Failed to load user profile.</string>
     <string name="settings_error_failed_to_sign_out">Failed to sign out.</string>
+    <string name="settings_error_failed_to_upload_picture">Failed to update your profile picture.</string>
     <string name="profile_button_description">Open profile</string>
     <string name="calendar_title">Calendar</string>
     <string name="calendar_today_label">Today</string>
