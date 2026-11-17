@@ -821,6 +821,49 @@ class GroupSessionsViewModelTest {
     assertEquals(1, sessionsRepository.observationCount)
   }
 
+  /** Re-observes after leave failure and keeps loading until the refreshed list arrives. */
+  @Test
+  fun failedLeave_reobservesUntilRefreshedListArrives() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(listOf(session("a", BOB, listOf(BOB, ALICE))))
+    val viewModel = createViewModel(sessionsRepository)
+    runCurrent()
+    assertEquals(1, sessionsRepository.observationCount)
+
+    viewModel.leave("a")
+    runCurrent()
+    sessionsRepository.leaveResult.complete(Result.failure(IllegalStateException()))
+    runCurrent()
+
+    assertEquals(2, sessionsRepository.observationCount)
+    assertTrue(viewModel.uiState.value.isLoading)
+
+    sessionsRepository.refreshedSessions.complete(
+        Result.success(listOf(session("a", BOB, listOf(BOB, ALICE)))),
+    )
+    runCurrent()
+
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  /** A successful leave leaves the existing session observation intact. */
+  @Test
+  fun successfulLeave_doesNotReobserveSessions() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(listOf(session("a", BOB, listOf(BOB, ALICE))))
+    val viewModel = createViewModel(sessionsRepository)
+    runCurrent()
+
+    viewModel.leave("a")
+    runCurrent()
+    sessionsRepository.leaveResult.complete(Result.success(Unit))
+    runCurrent()
+
+    assertEquals(1, sessionsRepository.observationCount)
+  }
+
   /** A pending join failure after sign-out leaves no error or progress state. */
   @Test
   fun pendingJoinFailureAfterSignOut_doesNotChangeState() = runTest {

@@ -443,7 +443,7 @@ class GroupSessionScreenTest {
         .performClick()
     assertEquals(listOf("join"), joined)
 
-    sessionList.performScrollToNode(hasText("Subject leave"))
+    sessionList.performScrollToNode(hasTestTag(GroupSessionScreenTestTags.leaveButton("leave")))
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.leaveButton("leave"))
         .assert(hasText(leaveText))
@@ -516,9 +516,11 @@ class GroupSessionScreenTest {
         onJoin = joined::add,
     )
     val sessionList = composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
-    sessionList.performScrollToNode(hasText("Subject available-join"))
+    sessionList.performScrollToNode(
+        hasTestTag(GroupSessionScreenTestTags.joinButton("available-join")),
+    )
     composeTestRule
-        .onNodeWithText(context.getString(R.string.group_session_action_join))
+        .onNodeWithTag(GroupSessionScreenTestTags.joinButton("available-join"))
         .performClick()
     assertEquals(listOf("available-join"), joined)
 
