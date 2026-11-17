@@ -194,4 +194,52 @@ class TopAppBarsTest {
     composeTestRule.onNodeWithTag("overrideTitle").assertIsDisplayed()
     composeTestRule.onNodeWithTag("unusedTitleTag").assertDoesNotExist()
   }
+
+  @Test
+  fun mainTopAppBarHidesOfflineBannerByDefault() {
+    composeTestRule.setContent {
+      MainTopAppBar(
+          title = "Test Title",
+          isOffline = false,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(OfflineBannerTestTags.OFFLINE_BANNER).assertDoesNotExist()
+  }
+
+  @Test
+  fun mainTopAppBarShowsOfflineBannerWhenOffline() {
+    composeTestRule.setContent {
+      MainTopAppBar(
+          title = "Test Title",
+          isOffline = true,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(OfflineBannerTestTags.OFFLINE_BANNER).assertIsDisplayed()
+  }
+
+  @Test
+  fun secondaryMediumTopAppBarHidesOfflineBannerByDefault() {
+    composeTestRule.setContent {
+      SecondaryMediumTopAppBar(
+          title = "Settings",
+          isOffline = false,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(OfflineBannerTestTags.OFFLINE_BANNER).assertDoesNotExist()
+  }
+
+  @Test
+  fun secondaryMediumTopAppBarShowsOfflineBannerWhenOffline() {
+    composeTestRule.setContent {
+      SecondaryMediumTopAppBar(
+          title = "Settings",
+          isOffline = true,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(OfflineBannerTestTags.OFFLINE_BANNER).assertIsDisplayed()
+  }
 }
