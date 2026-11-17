@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -52,6 +54,7 @@ object GroupSessionParticipantsTestTags {
   const val CLOSE = "groupSessionParticipantsClose"
   const val AVATAR = "groupSessionParticipantAvatar"
   const val SEARCH = "groupSessionParticipantsSearch"
+  const val DRAG_HANDLE = "groupSessionParticipantsDragHandle"
 }
 
 /** Presents the live roster above either group sessions view. */
@@ -71,8 +74,14 @@ internal fun GroupSessionParticipantsSheet(
             (participant.isCurrentUser && youLabel.contains(search, ignoreCase = true))
       }
   ModalBottomSheet(
-      sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+      modifier = Modifier.fillMaxHeight(),
+      sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
       onDismissRequest = onDismiss,
+      dragHandle = {
+        BottomSheetDefaults.DragHandle(
+            modifier = Modifier.testTag(GroupSessionParticipantsTestTags.DRAG_HANDLE)
+        )
+      },
   ) {
     Column(
         modifier =

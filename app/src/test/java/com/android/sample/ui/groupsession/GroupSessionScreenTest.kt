@@ -8,6 +8,8 @@ package com.android.sample.ui.groupsession
 import android.content.Context
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -24,6 +26,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
@@ -245,6 +248,7 @@ class GroupSessionScreenTest {
         .onNode(hasTestTag(GroupSessionScreenTestTags.PARTICIPANTS_PILL) and hasAnyAncestor(card))
         .performClick()
 
+    expandParticipantsSheet()
     val sheet = hasAnyAncestor(hasTestTag(GroupSessionParticipantsTestTags.SHEET))
     val bob = composeTestRule.onNode(hasText("Bob") and sheet)
     val you = composeTestRule.onNode(hasText("You") and sheet)
@@ -273,8 +277,16 @@ class GroupSessionScreenTest {
     you.assertIsDisplayed()
   }
 
+  /** Opens the expanded sheet so roster assertions do not depend on available screen height. */
+  private fun expandParticipantsSheet() {
+    composeTestRule
+        .onNode(SemanticsMatcher.keyIsDefined(SemanticsActions.Expand), useUnmergedTree = true)
+        .performSemanticsAction(SemanticsActions.Expand)
+  }
+
   /** Verifies the session subject and the signed-in host’s label and avatar. */
   private fun assertRosterContent() {
+    expandParticipantsSheet()
     composeTestRule.onAllNodesWithTag(GroupSessionParticipantsTestTags.AVATAR).assertCountEquals(2)
     composeTestRule
         .onNodeWithTag(GroupSessionParticipantsTestTags.SHEET)
