@@ -174,6 +174,9 @@ class SettingsViewModelFactoryTest {
       ProfileRepository {
     override suspend fun getProfile(userId: String): Result<UserProfile?> = Result.success(profile)
 
+    override suspend fun updateUsername(userId: String, username: String): Result<UserProfile> =
+        Result.failure(UnsupportedOperationException("Not needed in this test"))
+
     override suspend fun createProfile(userId: String): Result<UserProfile> =
         Result.success(UserProfile(uid = userId))
   }
