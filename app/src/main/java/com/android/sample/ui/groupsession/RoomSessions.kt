@@ -41,6 +41,6 @@ fun groupByRoom(items: List<GroupSessionItem>, resolver: SessionPlaceResolver): 
 
   return items
       .groupBy { item -> resolver.resolve(item.session.details.location) ?: noLoc }
-      .filter { (key, list) -> key != noLoc }
+      .filter { (key, _) -> key != noLoc }
       .map { (room, grouped) -> RoomSessions(room, grouped.toList()) }
 }
