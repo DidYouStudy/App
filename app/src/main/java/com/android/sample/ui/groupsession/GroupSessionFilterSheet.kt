@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -47,6 +48,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.android.sample.R
+import com.android.sample.model.event.EventType
 import com.android.sample.ui.sharedComponents.SegmentedChoiceRow
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
@@ -54,6 +56,9 @@ import com.android.sample.ui.theme.Spacing
 
 /** Holds the filter values displayed by the group-session filter sheet. */
 data class GroupSessionFilters(
+    val sessionTypes: Set<EventType> = emptySet(),
+    val startingTime: GroupSessionTimeFilter = GroupSessionTimeFilter.ANYTIME,
+    val hideFullSessions: Boolean = false,
     val radiusMeters: Int? = null,
     val zones: Set<String> = emptySet(),
     val showLabs: Boolean = false,
@@ -70,6 +75,13 @@ object GroupSessionFilterSheetTestTags {
   fun zoneOption(zone: String): String = "groupSessionZoneOption_$zone"
 
   const val LAB_SWITCH = "groupSessionLabSwitch"
+
+  fun sessionTypeChip(type: EventType): String = "groupSessionType_${type.name}"
+
+  fun startingTimeChip(filter: GroupSessionTimeFilter): String =
+      "groupSessionStartingTime_${filter.name}"
+
+  const val HIDE_FULL_SWITCH = "groupSessionHideFullSwitch"
   const val RESET_ALL = "groupSessionResetAll"
   const val SHOW_SESSIONS = "groupSessionShowSessions"
   const val PERMISSION_RATIONALE = "groupSessionPermissionRationale"
@@ -87,6 +99,9 @@ fun GroupSessionFilterSheetContent(
     onRadiusSelected: (Int?) -> Unit,
     onZonesSelected: (Set<String>) -> Unit,
     onShowLabsChanged: (Boolean) -> Unit,
+    onSessionTypesSelected: (Set<EventType>) -> Unit,
+    onStartingTimeSelected: (GroupSessionTimeFilter) -> Unit,
+    onHideFullSessionsChange: (Boolean) -> Unit,
     onLocationPermissionNeeded: (Int) -> Unit,
     onResetAll: () -> Unit,
     onShowSessions: () -> Unit,
@@ -109,6 +124,24 @@ fun GroupSessionFilterSheetContent(
           FilterChoice(R.string.group_session_filter_radius_250, "250"),
           FilterChoice(R.string.group_session_filter_radius_500, "500"),
           FilterChoice(R.string.group_session_filter_radius_1000, "1000"),
+      )
+  val sessionTypeChoices =
+      listOf(
+          EventType.STUDY_SESSION to R.string.group_session_filter_type_study,
+          EventType.COURSE to R.string.group_session_filter_type_course,
+          EventType.EXERCISE_SESSION to R.string.group_session_filter_type_exercise,
+          EventType.LAB to R.string.group_session_filter_type_lab,
+          EventType.PROJECT to R.string.group_session_filter_type_project,
+          EventType.EXAM to R.string.group_session_filter_type_exam,
+          EventType.OTHER to R.string.group_session_filter_type_other,
+      )
+  val startingTimeChoices =
+      listOf(
+          GroupSessionTimeFilter.ANYTIME to R.string.group_session_filter_time_anytime,
+          GroupSessionTimeFilter.WITHIN_ONE_HOUR to
+              R.string.group_session_filter_time_within_one_hour,
+          GroupSessionTimeFilter.TODAY to R.string.group_session_filter_time_today,
+          GroupSessionTimeFilter.THIS_WEEK to R.string.group_session_filter_time_this_week,
       )
 
   Column(
@@ -137,6 +170,32 @@ fun GroupSessionFilterSheetContent(
       }
     }
     HorizontalDivider()
+
+    FilterSectionLabel(R.string.group_session_filter_session_type_title)
+    SegmentedChoiceRow(
+        items = sessionTypeChoices,
+        isSelected = { (type, _) -> type in filters.sessionTypes },
+        onClick = { (type, _) ->
+          onSessionTypesSelected(
+              if (type in filters.sessionTypes) filters.sessionTypes - type
+              else filters.sessionTypes + type
+          )
+        },
+        label = { (_, labelRes) -> stringResource(labelRes) },
+        testTag = { (type, _) -> GroupSessionFilterSheetTestTags.sessionTypeChip(type) },
+        role = Role.Checkbox,
+        itemWidth = Dimens.groupSessionFilterTypeChipWidth,
+    )
+
+    FilterSectionLabel(R.string.group_session_filter_starting_time_title)
+    SegmentedChoiceRow(
+        items = startingTimeChoices,
+        isSelected = { (filter, _) -> filter == filters.startingTime },
+        onClick = { (filter, _) -> onStartingTimeSelected(filter) },
+        label = { (_, labelRes) -> stringResource(labelRes) },
+        testTag = { (filter, _) -> GroupSessionFilterSheetTestTags.startingTimeChip(filter) },
+        role = Role.RadioButton,
+    )
 
     FilterSectionLabel(R.string.group_session_filter_distance_title)
     FilterSegmentRow(
@@ -253,17 +312,46 @@ fun GroupSessionFilterSheetContent(
     }
 
     FilterSectionLabel(R.string.group_session_filter_room_type_title)
+    // Keep the label and switch in one TalkBack node and make the whole row tappable.
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier =
+            Modifier.fillMaxWidth()
+                .toggleable(
+                    value = filters.showLabs,
+                    role = Role.Switch,
+                    onValueChange = onShowLabsChanged,
+                )
+                .testTag(GroupSessionFilterSheetTestTags.LAB_SWITCH),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
       Text(stringResource(R.string.group_session_filter_show_labs))
-      Switch(
-          modifier = Modifier.testTag(GroupSessionFilterSheetTestTags.LAB_SWITCH),
-          checked = filters.showLabs,
-          onCheckedChange = onShowLabsChanged,
-      )
+      Switch(checked = filters.showLabs, onCheckedChange = null)
+    }
+
+    FilterSectionLabel(R.string.group_session_filter_availability_title)
+    // Keep the label and switch in one TalkBack node and make the whole row tappable.
+    Row(
+        modifier =
+            Modifier.fillMaxWidth()
+                .toggleable(
+                    value = filters.hideFullSessions,
+                    role = Role.Switch,
+                    onValueChange = onHideFullSessionsChange,
+                )
+                .testTag(GroupSessionFilterSheetTestTags.HIDE_FULL_SWITCH),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+      Column {
+        Text(stringResource(R.string.group_session_filter_hide_full_sessions))
+        Text(
+            text = stringResource(R.string.group_session_filter_hide_full_sessions_subtitle),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+      Switch(checked = filters.hideFullSessions, onCheckedChange = null)
     }
 
     Button(
@@ -326,13 +414,20 @@ internal fun GroupSessionFilterSheetLightPreview() {
   DidYouStudyTheme {
     Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
       GroupSessionFilterSheetContent(
-          filters = GroupSessionFilters(),
+          filters =
+              GroupSessionFilters(
+                  sessionTypes = setOf(EventType.STUDY_SESSION, EventType.COURSE),
+                  hideFullSessions = true,
+              ),
           availableZones = listOf("AI", "BC", "CM", "CO", "GC"),
           matchingSessionCount = 4,
           hasLocationPermission = true,
           onRadiusSelected = {},
           onZonesSelected = {},
           onShowLabsChanged = {},
+          onSessionTypesSelected = {},
+          onStartingTimeSelected = {},
+          onHideFullSessionsChange = {},
           onLocationPermissionNeeded = {},
           onResetAll = {},
           onShowSessions = {},
@@ -348,13 +443,20 @@ internal fun GroupSessionFilterSheetDarkPreview() {
   DidYouStudyTheme {
     Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
       GroupSessionFilterSheetContent(
-          filters = GroupSessionFilters(),
+          filters =
+              GroupSessionFilters(
+                  sessionTypes = setOf(EventType.STUDY_SESSION, EventType.COURSE),
+                  hideFullSessions = true,
+              ),
           availableZones = listOf("AI", "BC", "CM", "CO", "GC"),
           matchingSessionCount = 4,
           hasLocationPermission = true,
           onRadiusSelected = {},
           onZonesSelected = {},
           onShowLabsChanged = {},
+          onSessionTypesSelected = {},
+          onStartingTimeSelected = {},
+          onHideFullSessionsChange = {},
           onLocationPermissionNeeded = {},
           onResetAll = {},
           onShowSessions = {},
