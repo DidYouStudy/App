@@ -284,6 +284,9 @@ fun GroupSessionScreen(
       GroupSessionFilterSheetContent(
           filters =
               GroupSessionFilters(
+                  sessionTypes = uiState.selectedSessionTypes,
+                  startingTime = uiState.startingTimeFilter,
+                  hideFullSessions = uiState.hideFullSessions,
                   radiusMeters = uiState.selectedRadiusMeters,
                   zones = uiState.selectedZones,
                   showLabs = uiState.showLabRoomType,
@@ -294,6 +297,9 @@ fun GroupSessionScreen(
           onRadiusSelected = viewModel::onRadiusFilterSelected,
           onZonesSelected = viewModel::onZonesFilterSelected,
           onShowLabsChanged = viewModel::onShowLabRoomTypeChange,
+          onSessionTypesSelected = viewModel::onSessionTypesSelected,
+          onStartingTimeSelected = viewModel::onStartingTimeFilterSelected,
+          onHideFullSessionsChange = viewModel::onHideFullSessionsChange,
           onLocationPermissionNeeded = { radius ->
             pendingLocationRadius = radius
             locationPermissionLauncher.launch(

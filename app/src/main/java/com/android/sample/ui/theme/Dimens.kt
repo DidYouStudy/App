@@ -74,6 +74,7 @@ object Dimens {
 
   // Height for group-session filter choices.
   val filterChoiceButtonHeight = 48.dp
+  val groupSessionFilterTypeChipWidth = 85.dp
   // Height for the group-session filter action.
   val filterActionButtonHeight = 56.dp
   val groupSessionZoneMenuMaxHeight = 392.dp
