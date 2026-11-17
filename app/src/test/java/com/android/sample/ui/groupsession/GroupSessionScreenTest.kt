@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
@@ -24,6 +25,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
@@ -229,6 +231,46 @@ class GroupSessionScreenTest {
     composeTestRule.onNodeWithTag(GroupSessionParticipantsTestTags.CLOSE).performClick()
     composeTestRule.onNodeWithTag(GroupSessionParticipantsTestTags.SHEET).assertDoesNotExist()
     composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST).assertIsDisplayed()
+  }
+
+  /** Search matches names without case or outer whitespace and can restore the whole roster. */
+  @Test
+  fun participants_search_filters_the_open_roster() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
+    val card = hasTestTag(GroupSessionScreenTestTags.sessionItem(2))
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST).performScrollToNode(card)
+    composeTestRule
+        .onNode(hasTestTag(GroupSessionScreenTestTags.PARTICIPANTS_PILL) and hasAnyAncestor(card))
+        .performClick()
+
+    val sheet = hasAnyAncestor(hasTestTag(GroupSessionParticipantsTestTags.SHEET))
+    val bob = composeTestRule.onNode(hasText("Bob") and sheet)
+    val you = composeTestRule.onNode(hasText("You") and sheet)
+    val search = composeTestRule.onNodeWithTag(GroupSessionParticipantsTestTags.SEARCH)
+    bob.assertIsDisplayed()
+    you.assertIsDisplayed()
+
+    search.performTextReplacement("  bOB  ")
+    bob.assertIsDisplayed()
+    you.assertDoesNotExist()
+    composeTestRule.onNode(hasText("Participants (2)") and sheet).assertIsDisplayed()
+
+    search.performTextReplacement("you")
+    you.assertIsDisplayed()
+    bob.assertDoesNotExist()
+
+    search.performTextReplacement("missing")
+    composeTestRule
+        .onNode(
+            hasText(context.getString(R.string.group_session_participants_no_matches)) and sheet
+        )
+        .assertIsDisplayed()
+
+    search.performTextReplacement("")
+    bob.assertIsDisplayed()
+    you.assertIsDisplayed()
   }
 
   /** Verifies the session subject and the signed-in host’s label and avatar. */

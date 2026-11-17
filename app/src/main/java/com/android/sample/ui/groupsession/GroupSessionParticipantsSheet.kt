@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -22,14 +23,22 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,6 +51,7 @@ object GroupSessionParticipantsTestTags {
   const val SHEET = "groupSessionParticipantsSheet"
   const val CLOSE = "groupSessionParticipantsClose"
   const val AVATAR = "groupSessionParticipantAvatar"
+  const val SEARCH = "groupSessionParticipantsSearch"
 }
 
 /** Presents the live roster above either group sessions view. */
@@ -51,6 +61,15 @@ internal fun GroupSessionParticipantsSheet(
     state: GroupSessionParticipantsSheet,
     onDismiss: () -> Unit,
 ) {
+  var query by rememberSaveable { mutableStateOf("") }
+  val search = query.trim()
+  val youLabel = stringResource(R.string.group_session_participants_you)
+  val matchingParticipants =
+      state.rows.filter { participant ->
+        search.isEmpty() ||
+            participant.username?.contains(search, ignoreCase = true) == true ||
+            (participant.isCurrentUser && youLabel.contains(search, ignoreCase = true))
+      }
   ModalBottomSheet(
       sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
       onDismissRequest = onDismiss,
@@ -92,6 +111,7 @@ internal fun GroupSessionParticipantsSheet(
           maxLines = 2,
           overflow = TextOverflow.Ellipsis,
       )
+      ParticipantSearchField(query = query, onQueryChange = { query = it })
       if (state.isLoading) {
         Text(stringResource(R.string.group_session_participants_loading))
       }
@@ -101,14 +121,42 @@ internal fun GroupSessionParticipantsSheet(
             color = MaterialTheme.colorScheme.error,
         )
       }
+      if (search.isNotEmpty() && matchingParticipants.isEmpty() && !state.isLoading) {
+        Text(stringResource(R.string.group_session_participants_no_matches))
+      }
       LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
-        items(state.rows, key = { it.userId }) { participant ->
+        items(matchingParticipants, key = { it.userId }) { participant ->
           HorizontalDivider()
           ParticipantRow(participant)
         }
       }
     }
   }
+}
+
+/** Filters the loaded roster as the user types. */
+@Composable
+private fun ParticipantSearchField(query: String, onQueryChange: (String) -> Unit) {
+  val searchLabel = stringResource(R.string.group_session_participants_search)
+  OutlinedTextField(
+      value = query,
+      onValueChange = onQueryChange,
+      modifier =
+          Modifier.fillMaxWidth().testTag(GroupSessionParticipantsTestTags.SEARCH).semantics {
+            contentDescription = searchLabel
+          },
+      singleLine = true,
+      shape = RoundedCornerShape(Dimens.cornerFull),
+      leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+      placeholder = { Text(searchLabel) },
+      colors =
+          OutlinedTextFieldDefaults.colors(
+              unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+              focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+              unfocusedBorderColor = Color.Transparent,
+              focusedBorderColor = Color.Transparent,
+          ),
+  )
 }
 
 /** Renders a username or its fallback beside an avatar, with a badge for the host. */
