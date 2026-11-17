@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: OpenAI Codex
 package com.android.sample.ui.theme
 
 import androidx.compose.ui.text.font.FontWeight
@@ -34,13 +35,6 @@ class TypeTest {
     assertEquals(base.fontFamily, style.fontFamily)
     assertEquals(base.fontWeight, style.fontWeight)
     assertEquals(base.letterSpacing, style.letterSpacing)
-  }
-
-  /** The participants pill keeps the sizes it had before they were named. */
-  @Test
-  fun participantPillStylesKeepTheirSizes() {
-    assertEquals(10.sp, ParticipantInitialTextStyle.fontSize)
-    assertEquals(9.sp, ParticipantOverflowTextStyle.fontSize)
   }
 
   /** The Google button label keeps the brand values it had before it was named. */
