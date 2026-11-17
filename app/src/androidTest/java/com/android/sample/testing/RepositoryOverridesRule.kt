@@ -12,6 +12,8 @@ import com.android.sample.model.preferences.OnboardingStore
 import com.android.sample.model.preferences.OnboardingStoreProvider
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.PreferencesRepositoryProvider
+import com.android.sample.model.profile.ProfilePictureRepository
+import com.android.sample.model.profile.ProfilePictureRepositoryProvider
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.ProfileRepositoryProvider
 import org.junit.rules.ExternalResource
@@ -34,6 +36,7 @@ class RepositoryOverridesRule(
     private val auth: AuthRepository,
     private val preferences: PreferencesRepository,
     private val profile: ProfileRepository,
+    private val profilePicture: ProfilePictureRepository,
     private val events: EventsRepository,
     private val groupSessions: GroupSessionsRepository,
     private val credentialManager: CredentialManager? = null,
@@ -46,6 +49,7 @@ class RepositoryOverridesRule(
     AuthRepositoryProvider.setRepository(auth)
     PreferencesRepositoryProvider.setRepository(preferences)
     ProfileRepositoryProvider.setRepository(profile)
+    ProfilePictureRepositoryProvider.setRepository(profilePicture)
     EventsRepositoryProvider.setRepository(events)
     GroupSessionsRepositoryProvider.setRepository(groupSessions)
     OnboardingStoreProvider.setStore(onboardingStore)
@@ -57,6 +61,7 @@ class RepositoryOverridesRule(
     AuthRepositoryProvider.setCredentialManager(null)
     PreferencesRepositoryProvider.setRepository(null)
     ProfileRepositoryProvider.setRepository(null)
+    ProfilePictureRepositoryProvider.setRepository(null)
     EventsRepositoryProvider.setRepository(null)
     GroupSessionsRepositoryProvider.setRepository(null)
     OnboardingStoreProvider.setStore(null)

@@ -4,6 +4,8 @@ package com.android.sample.ui.settings
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.model.auth.AuthRepository
+import com.android.sample.model.profile.ImageCompressor
+import com.android.sample.model.profile.ProfilePictureRepository
 import com.android.sample.model.profile.ProfileRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -31,6 +33,8 @@ import org.robolectric.shadows.ShadowLog
 class SettingsViewModelLoggingTest {
   private val authRepository = mock(AuthRepository::class.java)
   private val profileRepository = mock(ProfileRepository::class.java)
+  private val profilePictureRepository = mock(ProfilePictureRepository::class.java)
+  private val imageCompressor = mock(ImageCompressor::class.java)
 
   @Before
   fun setUp() {
@@ -49,7 +53,12 @@ class SettingsViewModelLoggingTest {
     val cause = RuntimeException("Flow error")
     `when`(authRepository.currentUser).thenReturn(flow { throw cause })
 
-    SettingsViewModel(authRepository, profileRepository)
+    SettingsViewModel(
+        authRepository,
+        profileRepository,
+        profilePictureRepository,
+        imageCompressor,
+    )
 
     assertWarningLogged(cause)
   }
@@ -61,7 +70,13 @@ class SettingsViewModelLoggingTest {
     `when`(authRepository.currentUser).thenReturn(MutableStateFlow(null))
     `when`(authRepository.signOut()).thenThrow(cause)
 
-    SettingsViewModel(authRepository, profileRepository).signOut()
+    SettingsViewModel(
+            authRepository,
+            profileRepository,
+            profilePictureRepository,
+            imageCompressor,
+        )
+        .signOut()
 
     assertWarningLogged(cause)
   }
