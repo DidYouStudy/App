@@ -231,12 +231,15 @@ class GroupSessionScreenTest {
     composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST).assertIsDisplayed()
   }
 
-  /** Finds the stored host name, its initial, and both roster avatars. */
+  /** Verifies the session subject and the signed-in host’s label and avatar. */
   private fun assertRosterContent() {
     composeTestRule.onAllNodesWithTag(GroupSessionParticipantsTestTags.AVATAR).assertCountEquals(2)
     composeTestRule
         .onNodeWithTag(GroupSessionParticipantsTestTags.SHEET)
-        .assert(hasAnyDescendant(hasText("Alice")))
+        .assert(hasAnyDescendant(hasText("Software Architecture")))
+        .assert(
+            hasAnyDescendant(hasText(context.getString(R.string.group_session_participants_you)))
+        )
         .assert(hasAnyDescendant(hasText("A")))
         .assert(
             hasAnyDescendant(hasText(context.getString(R.string.group_session_participants_host)))

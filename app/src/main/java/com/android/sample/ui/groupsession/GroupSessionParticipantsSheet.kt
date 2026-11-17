@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import com.android.sample.R
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
@@ -82,6 +83,15 @@ internal fun GroupSessionParticipantsSheet(
           )
         }
       }
+      Text(
+          text =
+              state.sessionSubject?.takeIf { it.isNotBlank() }
+                  ?: stringResource(R.string.group_session_subject_fallback),
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          maxLines = 2,
+          overflow = TextOverflow.Ellipsis,
+      )
       if (state.isLoading) {
         Text(stringResource(R.string.group_session_participants_loading))
       }
@@ -117,7 +127,9 @@ private fun ParticipantRow(participant: GroupSessionParticipant) {
   ) {
     ParticipantAvatar(participant)
     Text(
-        text = username,
+        text =
+            if (participant.isCurrentUser) stringResource(R.string.group_session_participants_you)
+            else username,
         style = MaterialTheme.typography.bodyLarge,
         modifier = Modifier.weight(1f),
     )

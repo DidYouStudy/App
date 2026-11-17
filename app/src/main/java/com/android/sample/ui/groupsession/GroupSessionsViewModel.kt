@@ -125,11 +125,13 @@ data class GroupSessionParticipant(
     val userId: String,
     val username: String?,
     val isHost: Boolean,
+    val isCurrentUser: Boolean,
     val isUnavailable: Boolean = false,
 )
 
 /** The open roster, including the full count while individual profiles are loading. */
 data class GroupSessionParticipantsSheet(
+    val sessionSubject: String?,
     val participantCount: Int,
     val rows: List<GroupSessionParticipant>,
     val isLoading: Boolean,
@@ -579,6 +581,7 @@ class GroupSessionsViewModel(
           userId = userId,
           username = username,
           isHost = userId == session.createdBy,
+          isCurrentUser = userId == currentUserId,
           isUnavailable = username == null && status == ParticipantNameStatus.UNAVAILABLE,
       )
     }
@@ -586,6 +589,7 @@ class GroupSessionsViewModel(
       it.copy(
           participantsSheet =
               GroupSessionParticipantsSheet(
+                  sessionSubject = session.details.subject,
                   participantCount = orderedIds.size,
                   rows = rows,
                   isLoading = rows.size < orderedIds.size,

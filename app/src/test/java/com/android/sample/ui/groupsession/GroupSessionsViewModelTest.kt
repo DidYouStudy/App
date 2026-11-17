@@ -1362,6 +1362,8 @@ class GroupSessionsViewModelTest {
     assertEquals(listOf(BOB, ALICE, "blank", "missing", "failed"), sheet.rows.map { it.userId })
     assertEquals(listOf("Bob", "Alice", null, null, null), sheet.rows.map { it.username })
     assertTrue(sheet.rows.first().isHost)
+    assertEquals("Biology", sheet.sessionSubject)
+    assertEquals(listOf(ALICE), sheet.rows.filter { it.isCurrentUser }.map { it.userId })
     assertEquals(listOf("failed"), sheet.rows.filter { it.isUnavailable }.map { it.userId })
     assertEquals("Bob", viewModel.uiState.value.sessions.single().hostName)
   }

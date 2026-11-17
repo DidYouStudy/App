@@ -203,6 +203,7 @@
     </plurals>
     <string name="group_session_participants_title">Participants (%1$d)</string>
     <string name="group_session_participants_host">Host</string>
+    <string name="group_session_participants_you">You</string>
     <string name="group_session_participants_unknown">Unknown</string>
     <string name="group_session_participants_unavailable">Unavailable</string>
     <string name="group_session_participants_loading">Loading participants&#8230;</string>
