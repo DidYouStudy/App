@@ -228,5 +228,8 @@ class DidYouStudyAppTest {
 
     override suspend fun createProfile(userId: String): Result<UserProfile> =
         Result.failure(UnsupportedOperationException("Not needed in navigation tests"))
+
+    override suspend fun updateProfilePictureUrl(userId: String, url: String): Result<Unit> =
+        Result.failure(UnsupportedOperationException("Not needed in this test"))
   }
 }

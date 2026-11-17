@@ -1044,6 +1044,10 @@ class GroupSessionsViewModelOfflineTest {
     /** Username updates are outside the scope of these offline ViewModel tests. */
     override suspend fun updateUsername(userId: String, username: String): Result<UserProfile> =
         Result.failure(UnsupportedOperationException("Not needed in this test"))
+
+    /** Picture updates are outside the scope of these offline ViewModel tests. */
+    override suspend fun updateProfilePictureUrl(userId: String, url: String): Result<Unit> =
+        Result.failure(UnsupportedOperationException("Not needed in this test"))
   }
 
   private companion object {
