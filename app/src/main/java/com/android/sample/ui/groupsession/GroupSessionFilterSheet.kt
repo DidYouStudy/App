@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -109,7 +110,7 @@ fun GroupSessionFilterSheetContent(
 ) {
   var showMoreZones by remember { mutableStateOf(false) }
   var showPermissionRationale by remember { mutableStateOf(false) }
-  var viewMoreButtonWidthPx by remember { mutableStateOf(0) }
+  var viewMoreButtonWidthPx by remember { mutableIntStateOf(0) }
   val density = LocalDensity.current
   val zoneChoices =
       listOf(

@@ -7,7 +7,9 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -21,25 +23,23 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import com.android.sample.R
-import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
-import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.profile.ProfileButton
 import com.android.sample.ui.theme.Dimens
+import com.android.sample.ui.theme.Spacing
 
 /**
  * Displays the standard top app bar for top-level screens.
  *
  * @param title Title text displayed in the top bar.
- * @param modifier Modifier applied to the top app bar container.
- * @param navigationActions Navigation actions used to navigate to the Settings screen.
- * @param onProfileClick Called when the profile button is clicked. Defaults to navigating to
- *   Settings if [navigationActions] is provided.
+ * @param modifier Modifier applied to the [TopAppBar].
+ * @param onProfileClick Called when the profile button is clicked.
  * @param actions Extra action composables displayed before the profile button.
  * @param isOffline Whether to display the offline status banner under the top bar.
  */
@@ -48,8 +48,7 @@ import com.android.sample.ui.theme.Dimens
 fun MainTopAppBar(
     title: String,
     modifier: Modifier = Modifier,
-    navigationActions: NavigationActions? = null,
-    onProfileClick: () -> Unit = { navigationActions?.navigateTo(Screen.Settings) },
+    onProfileClick: () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     isOffline: Boolean = false,
 ) {
@@ -69,11 +68,16 @@ fun MainTopAppBar(
                 titleContentColor = MaterialTheme.colorScheme.onSurface,
             ),
         actions = {
-          actions()
-          ProfileButton(
-              onClick = onProfileClick,
-              modifier = Modifier.padding(end = Dimens.profileButtonPadding),
-          )
+          Row(
+              horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+              verticalAlignment = Alignment.CenterVertically,
+          ) {
+            actions()
+            ProfileButton(
+                onClick = onProfileClick,
+                modifier = Modifier.padding(end = Dimens.profileButtonPadding),
+            )
+          }
         },
     )
     AnimatedVisibility(
@@ -87,16 +91,16 @@ fun MainTopAppBar(
 }
 
 /**
- * Displays a medium top app bar with a back navigation button, surface colors, and headline title
- * styling or custom title content.
+ * Displays a medium top app bar with a title, back navigation button, surface colors, and headline
+ * title styling.
  *
- * @param modifier Modifier applied to the top app bar container.
- * @param title Optional title text displayed in the bar with default headline styling.
+ * @param title Title text displayed in the bar.
+ * @param modifier Modifier applied to the top app bar.
  * @param onBackClick Called when the back button is clicked. If null, no back button is rendered.
  * @param backButtonEnabled Whether the back button is enabled for interaction.
  * @param backButtonDescription Content description for accessibility on the back button.
  * @param backButtonTestTag Test tag applied to the back icon button.
- * @param titleTestTag Test tag applied to the default title text.
+ * @param titleTestTag Test tag applied to the title text.
  * @param actions Extra action composables displayed on the right.
  * @param titleContent Optional custom composable lambda for rendering the title content instead of
  *   [title].
@@ -105,8 +109,8 @@ fun MainTopAppBar(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SecondaryMediumTopAppBar(
+    title: String,
     modifier: Modifier = Modifier,
-    title: String? = null,
     onBackClick: (() -> Unit)? = null,
     backButtonEnabled: Boolean = true,
     backButtonDescription: String = stringResource(id = R.string.button_go_back),
@@ -116,22 +120,16 @@ fun SecondaryMediumTopAppBar(
     titleContent: (@Composable () -> Unit)? = null,
     isOffline: Boolean = false,
 ) {
-  val resolvedTitle: @Composable () -> Unit =
-      titleContent
-          ?: {
-            if (title != null) {
-              Text(
-                  text = title,
-                  style = MaterialTheme.typography.headlineLarge,
-                  fontWeight = FontWeight.Bold,
-                  modifier = Modifier.testTag(titleTestTag),
-              )
-            }
-          }
-
   Column(modifier = modifier) {
     MediumTopAppBar(
-        title = resolvedTitle,
+        title = {
+          Text(
+              text = title,
+              style = MaterialTheme.typography.headlineLarge,
+              fontWeight = FontWeight.Bold,
+              modifier = Modifier.testTag(titleTestTag),
+          )
+        },
         navigationIcon = {
           if (onBackClick != null) {
             IconButton(
