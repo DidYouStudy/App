@@ -401,9 +401,25 @@ class SettingsViewModelTest {
     verify(profileRepository, Mockito.never()).updateProfilePictureUrl(any(), any())
   }
 
-  /** If saving the URL fails, an error is reported and the state keeps the previous URL. */
+  /** A failed save is retried once, so a short-lived failure does not leave a dead URL behind. */
   @Test
-  fun onPictureSelected_saveFailure_keepsThePreviousPictureUrl() = runTest {
+  fun onPictureSelected_saveFailsOnce_retriesAndShowsTheNewPicture() = runTest {
+    stubPictureSteps()
+    `when`(profileRepository.updateProfilePictureUrl(USER_ID, PICTURE_URL))
+        .thenReturn(Result.failure(ProfileException(ProfileError.FIRESTORE_FAILURE)))
+        .thenReturn(Result.success(Unit))
+    val viewModel = createViewModel()
+
+    viewModel.onPictureSelected(PICKED_URI)
+
+    verify(profileRepository, Mockito.times(2)).updateProfilePictureUrl(USER_ID, PICTURE_URL)
+    assertNull(viewModel.uiState.value.error)
+    assertEquals(PICTURE_URL, viewModel.uiState.value.profilePictureUrl)
+  }
+
+  /** If the save fails twice, an error is reported and the state keeps the previous URL. */
+  @Test
+  fun onPictureSelected_saveFailsTwice_reportsErrorAndKeepsThePreviousPictureUrl() = runTest {
     stubPictureSteps(saved = Result.failure(ProfileException(ProfileError.FIRESTORE_FAILURE)))
     `when`(profileRepository.getProfile(USER_ID)).thenReturn(Result.success(null))
     currentUserFlow.value =
@@ -412,6 +428,8 @@ class SettingsViewModelTest {
 
     viewModel.onPictureSelected(PICKED_URI)
 
+    // One retry only: the save is attempted twice, not forever.
+    verify(profileRepository, Mockito.times(2)).updateProfilePictureUrl(USER_ID, PICTURE_URL)
     assertEquals(SettingsError.UPLOAD_PICTURE_FAILED, viewModel.uiState.value.error)
     assertEquals(OLD_PICTURE_URL, viewModel.uiState.value.profilePictureUrl)
   }

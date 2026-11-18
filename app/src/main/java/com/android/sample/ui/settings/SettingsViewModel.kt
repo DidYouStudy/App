@@ -158,6 +158,12 @@ class SettingsViewModel(
    * Compresses the image, uploads it and saves its URL in the profile, stopping at the first
    * failure.
    *
+   * Saving the URL is attempted twice. A new upload replaces the file at the same path and gets a
+   * new download token, so the URL already stored in the profile stops working as soon as the
+   * upload succeeds. If saving failed for good, the profile would keep that dead URL, so one retry
+   * is made to cover a short-lived failure. If both attempts fail, the profile is repaired by the
+   * user's next successful upload.
+   *
    * @param userId authentication ID of the user whose picture is replaced.
    * @param uri location of the picked image.
    * @return the URL the new picture can be loaded from, or the failure of the step that failed.
@@ -171,6 +177,9 @@ class SettingsViewModel(
         profilePictureRepository.uploadProfilePicture(userId, jpegBytes).getOrElse {
           return Result.failure(it)
         }
+    val firstAttempt = profileRepository.updateProfilePictureUrl(userId, url)
+    if (firstAttempt.isSuccess) return Result.success(url)
+    Log.w(TAG, "Failed to save the picture URL, retrying once", firstAttempt.exceptionOrNull())
     return profileRepository.updateProfilePictureUrl(userId, url).map { url }
   }
 
