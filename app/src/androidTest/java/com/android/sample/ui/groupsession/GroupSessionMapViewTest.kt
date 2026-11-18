@@ -2,6 +2,7 @@
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
+import android.Manifest
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
@@ -9,6 +10,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.core.content.res.ResourcesCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.rule.GrantPermissionRule
 import com.android.sample.R
 import com.android.sample.model.location.Location
 import com.google.android.gms.maps.model.CameraPosition
@@ -30,7 +32,14 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class GroupSessionMapViewTest {
 
-  @get:Rule val composeTestRule = createComposeRule()
+  @get:Rule(order = 0)
+  val permissionRule: GrantPermissionRule =
+      GrantPermissionRule.grant(
+          Manifest.permission.ACCESS_FINE_LOCATION,
+          Manifest.permission.ACCESS_COARSE_LOCATION,
+      )
+
+  @get:Rule(order = 1) val composeTestRule = createComposeRule()
 
   private val resources = InstrumentationRegistry.getInstrumentation().targetContext.resources
   private val campusCenter = Location(46.5191, 6.5668)
