@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.model.location
 
 import android.Manifest
@@ -77,6 +78,9 @@ class AndroidLocationProvider(
         }
 
     try {
+      // immediately emit cached device coordinates without waiting for the 10-second polling
+      // interval.
+      client.lastLocation.addOnSuccessListener { it?.toDomainLocation()?.let(::trySend) }
       client
           .requestLocationUpdates(LOCATION_REQUEST, callback, Looper.getMainLooper())
           .addOnFailureListener { close() }

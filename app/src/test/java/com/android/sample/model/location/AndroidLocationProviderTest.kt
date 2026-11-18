@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.model.location
 
 import android.Manifest
@@ -48,6 +49,7 @@ class AndroidLocationProviderTest {
   private val rolex = Location(latitude = 46.5183, longitude = 6.5681)
 
   private val client: FusedLocationProviderClient = mock {
+    on { lastLocation }.doReturn(Tasks.forResult(null))
     on { requestLocationUpdates(any<LocationRequest>(), any<LocationCallback>(), any<Looper>()) }
         .doReturn(Tasks.forResult(null))
     on { removeLocationUpdates(any<LocationCallback>()) }.doReturn(Tasks.forResult(null))
@@ -94,6 +96,17 @@ class AndroidLocationProviderTest {
     val collection = collect(providerWithPermission())
 
     assertEquals(listOf<Location?>(null), collection.emissions)
+  }
+
+  @Test
+  fun emitsLastKnownLocationImmediatelyWhenAvailable() = runTest {
+    whenever(client.lastLocation)
+        .doReturn(Tasks.forResult(platformLocation(rolex.latitude, rolex.longitude)))
+
+    val collection = collect(providerWithPermission())
+    shadowOf(Looper.getMainLooper()).idle()
+
+    assertEquals(listOf(null, rolex), collection.emissions)
   }
 
   @Test
