@@ -118,7 +118,7 @@ jobs:
           key: ${{ steps.configuration-cache.outputs.cache-primary-key }}
 
       - name: Upload build and unit verification results
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: build-analysis
           retention-days: 1
@@ -288,7 +288,7 @@ jobs:
           key: ${{ steps.configuration-cache.outputs.cache-primary-key }}
 
       - name: Upload emulator coverage
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: connected-coverage
           retention-days: 1
@@ -335,13 +335,13 @@ jobs:
           cache-read-only: true
 
       - name: Download build and unit verification results
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: build-analysis
           path: app/build
 
       - name: Download emulator coverage
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: connected-coverage
           path: app/build/outputs/code_coverage
@@ -363,7 +363,7 @@ jobs:
         run: ./gradlew sonar -x :app:testDebugUnitTest --parallel --build-cache
 
       - name: Upload combined coverage report
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: combined-coverage-report
           retention-days: 1
@@ -393,7 +393,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download verified build
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: build-analysis
           path: verified-build
@@ -409,7 +409,7 @@ jobs:
           printf 'Source commit: %s\nVariant: debug\nMinimum Android API: 28\n' "$SOURCE_COMMIT" > apk-artifact/BUILD.txt
 
       - name: Upload installable debug APK
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: DidYouStudy-debug-apk-${{ github.run_number }}
           path: apk-artifact/
