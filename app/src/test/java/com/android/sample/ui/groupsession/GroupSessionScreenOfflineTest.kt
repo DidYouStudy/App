@@ -71,7 +71,7 @@ class GroupSessionScreenOfflineTest {
 
   @Test
   fun offlineMessageTellsTheStudentTheSessionsAreSaved() {
-    assertEquals("You are offline. Showing saved sessions.", offlineMessage)
+    assertEquals("No internet connection. Showing only saved sessions.", offlineMessage)
   }
 
   // ---------------------------------------------------------------------------------------------
