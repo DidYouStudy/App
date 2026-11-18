@@ -7,7 +7,7 @@ package com.android.sample.model.profile
  * ViewModels depend on this interface instead of `android.graphics`, so they can be tested with a
  * fake and never touch bitmaps.
  */
-interface ImageCompressor {
+fun interface ImageCompressor {
   /**
    * Reads the image at [uri], shrinks it if it is large, and encodes it as JPEG.
    *
