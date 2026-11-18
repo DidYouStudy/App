@@ -214,7 +214,7 @@
     <string name="group_session_loading">Loading sessions&#8230;</string>
     <string name="group_session_empty">No active sessions</string>
     <!-- Shown on the Group sessions screen while the device has no internet connection -->
-    <string name="group_session_offline_indicator">You are offline. Showing saved sessions.</string>
+    <string name="group_session_offline_indicator">No internet connection. Showing only saved sessions.</string>
     <string name="group_session_subject_fallback">Other</string>
     <string name="group_session_host_self">Your session (Host)</string>
     <!-- %1$s: display name of the session host -->
