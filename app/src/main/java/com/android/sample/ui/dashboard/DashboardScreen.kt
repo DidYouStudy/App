@@ -39,7 +39,7 @@ fun DashboardScreen(
       topBar = {
         MainTopAppBar(
             title = stringResource(R.string.dashboard_title),
-            navigationActions = navigationActions,
+            onProfileClick = { navigationActions?.navigateTo(Screen.Settings) },
         )
       },
       bottomBar = {

@@ -100,7 +100,7 @@ fun CalendarScreen(
       topBar = {
         MainTopAppBar(
             title = stringResource(R.string.calendar_title),
-            navigationActions = navigationActions,
+            onProfileClick = { navigationActions?.navigateTo(Screen.Settings) },
             actions = {
               Surface(
                   onClick = onToday,

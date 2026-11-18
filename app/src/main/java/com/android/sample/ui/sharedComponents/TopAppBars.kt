@@ -19,9 +19,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import com.android.sample.R
-import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
-import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.profile.ProfileButton
 import com.android.sample.ui.theme.Dimens
 
@@ -30,9 +28,7 @@ import com.android.sample.ui.theme.Dimens
  *
  * @param title Title text displayed in the top bar.
  * @param modifier Modifier applied to the [TopAppBar].
- * @param navigationActions Navigation actions used to navigate to the Settings screen.
- * @param onProfileClick Called when the profile button is clicked. Defaults to navigating to
- *   Settings if [navigationActions] is provided.
+ * @param onProfileClick Called when the profile button is clicked.
  * @param actions Extra action composables displayed before the profile button.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,8 +36,7 @@ import com.android.sample.ui.theme.Dimens
 fun MainTopAppBar(
     title: String,
     modifier: Modifier = Modifier,
-    navigationActions: NavigationActions? = null,
-    onProfileClick: () -> Unit = { navigationActions?.navigateTo(Screen.Settings) },
+    onProfileClick: () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
 ) {
   TopAppBar(

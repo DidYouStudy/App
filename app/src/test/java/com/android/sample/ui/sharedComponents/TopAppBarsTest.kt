@@ -62,7 +62,7 @@ class TopAppBarsTest {
     composeTestRule.setContent {
       MainTopAppBar(
           title = "Group Sessions",
-          navigationActions = navigationActions,
+          onProfileClick = { navigationActions.navigateTo(Screen.Settings) },
       )
     }
 

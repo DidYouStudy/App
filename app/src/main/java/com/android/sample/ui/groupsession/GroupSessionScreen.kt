@@ -226,7 +226,7 @@ fun GroupSessionScreen(
       topBar = {
         MainTopAppBar(
             title = stringResource(R.string.group_session_title),
-            navigationActions = navigationActions,
+            onProfileClick = { navigationActions?.navigateTo(Screen.Settings) },
         )
       },
       bottomBar = {
