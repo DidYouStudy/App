@@ -4,6 +4,7 @@ package com.android.sample.ui.sharedComponents
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
@@ -131,45 +132,15 @@ class TopAppBarsTest {
   }
 
   @Test
-  fun secondaryMediumTopAppBarSupportsCustomTitleContent() {
+  fun secondaryMediumTopAppBarUsesCustomTagsAndDescriptionAndActions() {
     composeTestRule.setContent {
-      SecondaryMediumTopAppBar(
-          titleContent = { Text("Custom Title", modifier = Modifier.testTag("customTitle")) },
-          onBackClick = {},
-      )
-    }
-
-    composeTestRule
-        .onNodeWithTag("customTitle")
-        .assertIsDisplayed()
-        .assertTextEquals("Custom Title")
-    composeTestRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).assertIsDisplayed()
-  }
-
-  @Test
-  fun secondaryMediumTopAppBarWithNoTitleOrTitleContentRendersEmptyTitle() {
-    composeTestRule.setContent {
-      // Exercises title = null (default), title?.let null branch, and titleContent ?: {} fallback
-      SecondaryMediumTopAppBar(
-          onBackClick = {},
-      )
-    }
-
-    composeTestRule.onNodeWithTag(NavigationTestTags.TOP_BAR_TITLE).assertDoesNotExist()
-    composeTestRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).assertIsDisplayed()
-  }
-
-  @Test
-  fun secondaryMediumTopAppBarUsesCustomTagsAndDescription() {
-    composeTestRule.setContent {
-      // Exercises non-default branches for backButtonDescription, backButtonTestTag, and
-      // titleTestTag
       SecondaryMediumTopAppBar(
           title = "Custom Tagged Title",
           onBackClick = {},
           backButtonDescription = "Navigate up",
           backButtonTestTag = "customBackTag",
           titleTestTag = "customTitleTag",
+          actions = { Text("Save", modifier = Modifier.testTag("actionSave")) },
       )
     }
 
@@ -177,21 +148,10 @@ class TopAppBarsTest {
         .onNodeWithTag("customTitleTag")
         .assertIsDisplayed()
         .assertTextEquals("Custom Tagged Title")
-    composeTestRule.onNodeWithTag("customBackTag").assertIsDisplayed()
-  }
-
-  @Test
-  fun secondaryMediumTopAppBarCustomTitleContentOverridesTitleAndUnusedTitleTag() {
-    composeTestRule.setContent {
-      SecondaryMediumTopAppBar(
-          title = "Ignored Title",
-          titleTestTag = "unusedTitleTag",
-          titleContent = { Text("Override", modifier = Modifier.testTag("overrideTitle")) },
-          onBackClick = {},
-      )
-    }
-
-    composeTestRule.onNodeWithTag("overrideTitle").assertIsDisplayed()
-    composeTestRule.onNodeWithTag("unusedTitleTag").assertDoesNotExist()
+    composeTestRule
+        .onNodeWithTag("customBackTag")
+        .assertIsDisplayed()
+        .assertContentDescriptionEquals("Navigate up")
+    composeTestRule.onNodeWithTag("actionSave").assertIsDisplayed().assertTextEquals("Save")
   }
 }

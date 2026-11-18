@@ -74,48 +74,39 @@ fun MainTopAppBar(
 }
 
 /**
- * Displays a medium top app bar with a back navigation button, surface colors, and headline title
- * styling or custom title content.
+ * Displays a medium top app bar with a title, back navigation button, surface colors, and headline
+ * title styling.
  *
+ * @param title Title text displayed in the bar.
  * @param modifier Modifier applied to the top app bar.
- * @param title Optional title text displayed in the bar with default headline styling.
  * @param onBackClick Called when the back button is clicked. If null, no back button is rendered.
  * @param backButtonEnabled Whether the back button is enabled for interaction.
  * @param backButtonDescription Content description for accessibility on the back button.
  * @param backButtonTestTag Test tag applied to the back icon button.
- * @param titleTestTag Test tag applied to the default title text.
+ * @param titleTestTag Test tag applied to the title text.
  * @param actions Extra action composables displayed on the right.
- * @param titleContent Optional custom composable lambda for rendering the title content instead of
- *   [title].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SecondaryMediumTopAppBar(
+    title: String,
     modifier: Modifier = Modifier,
-    title: String? = null,
     onBackClick: (() -> Unit)? = null,
     backButtonEnabled: Boolean = true,
     backButtonDescription: String = stringResource(id = R.string.button_go_back),
     backButtonTestTag: String = NavigationTestTags.GO_BACK_BUTTON,
     titleTestTag: String = NavigationTestTags.TOP_BAR_TITLE,
     actions: @Composable RowScope.() -> Unit = {},
-    titleContent: (@Composable () -> Unit)? = null,
 ) {
-  val resolvedTitle: @Composable () -> Unit =
-      titleContent
-          ?: {
-            if (title != null) {
-              Text(
-                  text = title,
-                  style = MaterialTheme.typography.headlineLarge,
-                  fontWeight = FontWeight.Bold,
-                  modifier = Modifier.testTag(titleTestTag),
-              )
-            }
-          }
-
   MediumTopAppBar(
-      title = resolvedTitle,
+      title = {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.testTag(titleTestTag),
+        )
+      },
       navigationIcon = {
         if (onBackClick != null) {
           IconButton(

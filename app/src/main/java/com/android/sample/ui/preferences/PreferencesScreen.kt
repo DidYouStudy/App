@@ -32,7 +32,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
-import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
 import com.android.sample.ui.sharedComponents.SecondaryMediumTopAppBar
 import com.android.sample.ui.theme.Dimens
@@ -68,18 +67,14 @@ fun PreferencesScreen(
   Scaffold(
       topBar = {
         SecondaryMediumTopAppBar(
-            titleContent = {
-              PreferencesHeader(
-                  title =
-                      stringResource(
-                          id =
-                              if (onBack == null) R.string.preferences_header
-                              else R.string.preferences_edit_header
-                      )
-              )
-            },
+            title =
+                stringResource(
+                    id =
+                        if (onBack == null) R.string.preferences_header
+                        else R.string.preferences_edit_header
+                ),
+            titleTestTag = Tags.PREFERENCE_TITLE,
             onBackClick = onBack,
-            modifier = modifier.testTag(NavigationTestTags.TOP_BAR_TITLE),
         )
       },
       modifier = modifier.fillMaxSize(),

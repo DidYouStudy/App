@@ -16,7 +16,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
 import com.android.sample.ui.sharedComponents.SegmentedChoiceRow
 import com.android.sample.ui.sharedComponents.segmentShape as sharedSegmentShape
 import com.android.sample.ui.theme.Dimens
@@ -25,22 +24,6 @@ import com.android.sample.ui.theme.Spacing
 // ---------------------------------------------------------------------------
 // Building blocks / Helper methods
 // ---------------------------------------------------------------------------
-
-/**
- * Displays the preferences screen title.
- *
- * @param modifier Modifier applied to the title.
- * @param title Text of the title (onboarding or edit-mode wording).
- */
-@Composable
-internal fun PreferencesHeader(title: String, modifier: Modifier = Modifier) {
-  Text(
-      text = title,
-      style = MaterialTheme.typography.displaySmall,
-      fontWeight = FontWeight.Bold,
-      modifier = modifier.fillMaxWidth().testTag(Tags.PREFERENCE_TITLE),
-  )
-}
 
 /**
  * Displays a bold label for a preference section.
