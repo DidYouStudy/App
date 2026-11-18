@@ -493,7 +493,7 @@ class GroupSessionScreenOfflineTest {
         Result.failure(UnsupportedOperationException("Not needed in this test"))
 
     override suspend fun updateProfilePictureUrl(userId: String, url: String): Result<Unit> =
-      Result.failure(UnsupportedOperationException("Not needed in this test"))
+        Result.failure(UnsupportedOperationException("Not needed in this test"))
   }
 
   private companion object {
