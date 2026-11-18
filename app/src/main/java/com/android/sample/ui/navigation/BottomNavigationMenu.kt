@@ -28,7 +28,11 @@ import com.android.sample.R
  * @property icon Icon drawn for the tab.
  * @property destination Screen opened when the tab is selected.
  */
-sealed class Tab(@StringRes val labelRes: Int, val icon: ImageVector, val destination: Screen) {
+sealed class Tab(
+    @param:StringRes val labelRes: Int,
+    val icon: ImageVector,
+    val destination: Screen,
+) {
   object Dashboard : Tab(R.string.nav_tab_dashboard, Icons.Outlined.Timeline, Screen.Dashboard)
 
   object Calendar : Tab(R.string.nav_tab_calendar, Icons.Outlined.CalendarMonth, Screen.Calendar)
