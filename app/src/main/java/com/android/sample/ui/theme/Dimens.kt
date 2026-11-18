@@ -4,6 +4,7 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: OpenAI Codex
 package com.android.sample.ui.theme
 
 import androidx.compose.ui.unit.dp
@@ -31,6 +32,7 @@ object Dimens {
   val cornerFull = 32.dp
   val cardPadding = 18.dp
   val avatarSizeLarge = 56.dp
+  val avatarSizeMedium = 40.dp
   val avatarSizeSmall = 20.dp
   val iconSizeSmall = 16.dp
   val actionButtonHeight = 40.dp
@@ -72,6 +74,7 @@ object Dimens {
 
   // Height for group-session filter choices.
   val filterChoiceButtonHeight = 48.dp
+  val groupSessionFilterTypeChipWidth = 85.dp
   // Height for the group-session filter action.
   val filterActionButtonHeight = 56.dp
   val groupSessionZoneMenuMaxHeight = 392.dp
@@ -98,6 +101,7 @@ object Dimens {
   val calendarRetryButtonHeight = 48.dp
   val calendarEventCardCorner = 6.dp
   val calendarEventCardMinHeight = 34.dp
+  val calendarGroupIconSize = 10.dp
   val calendarMinHourRowHeight = 48.dp
   // Event planning & form dimensions
   val borderMedium = 1.5.dp

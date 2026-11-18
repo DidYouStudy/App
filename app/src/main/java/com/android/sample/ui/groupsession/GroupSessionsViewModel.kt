@@ -2,6 +2,8 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: OpenAI Codex
 package com.android.sample.ui.groupsession
 
 import androidx.compose.runtime.Composable
@@ -13,6 +15,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
+import com.android.sample.model.connectivity.AndroidConnectivityObserver
+import com.android.sample.model.connectivity.ConnectivityObserver
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
@@ -119,13 +123,35 @@ data class SessionWithProximity(
     val formattedDistance: String?,
 )
 
+/** A visible roster row and the outcome of looking up its profile username. */
+data class GroupSessionParticipant(
+    val userId: String,
+    val username: String?,
+    val isHost: Boolean,
+    val isCurrentUser: Boolean,
+    val isUnavailable: Boolean = false,
+)
+
+/** The open roster, including the full count while individual profiles are loading. */
+data class GroupSessionParticipantsSheet(
+    val sessionSubject: String?,
+    val participantCount: Int,
+    val rows: List<GroupSessionParticipant>,
+    val isLoading: Boolean,
+) {
+  val hasError: Boolean
+    get() = rows.any { it.isUnavailable }
+}
+
 /**
  * State of the Group sessions screen; [sessions] is already searched and filtered.
  *
  * The query retains the user's typed text while matching ignores case and surrounding whitespace.
  * [now] is the reference time every card uses for its relative labels, so they all agree. It has no
  * default value, so that every new state has to supply the current time. Laboratory rooms are
- * hidden by default and shown only when [showLabRoomType] is enabled.
+ * hidden by default and shown only when [showLabRoomType] is enabled. [isOffline] is true while the
+ * device has no internet connection; [sessions] then holds the sessions already loaded and saved on
+ * the device, and the screen shows an offline indication.
  */
 data class GroupSessionsUiState(
     val now: Instant,
@@ -143,6 +169,8 @@ data class GroupSessionsUiState(
     val hideFullSessions: Boolean = false,
     val userLocation: Location? = null,
     val error: GroupSessionsError? = null,
+    val isOffline: Boolean = false,
+    val participantsSheet: GroupSessionParticipantsSheet? = null,
 )
 
 /**
@@ -158,6 +186,12 @@ data class GroupSessionsUiState(
  * asynchronously through [profileRepository], so profile lookups never delay the session list.
  * [GroupSessionsUiState.now] is refreshed from [clock] while [uiState] has a collector, immediately
  * when a collector returns, and when the list is observed again.
+ *
+ * Offline, the repository keeps serving the sessions it already loaded from its local cache, so the
+ * list, search, and filters keep working without a connection. [connectivityObserver] drives
+ * [GroupSessionsUiState.isOffline] while [uiState] has a collector, which is what the screen shows
+ * and what group session actions can check. It is null when connectivity is not tracked, in which
+ * case the state never reports offline.
  */
 class GroupSessionsViewModel(
     private val authRepository: AuthRepository,
@@ -166,6 +200,7 @@ class GroupSessionsViewModel(
     private val clock: Clock = Clock.systemUTC(),
     private val locationProvider: LocationProvider,
     private val campusLocationRepository: CampusLocationRepository? = null,
+    private val connectivityObserver: ConnectivityObserver? = null,
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(GroupSessionsUiState(now = clock.instant()))
   /** The current loading, list, search, filter, and categorized-error state. */
@@ -178,12 +213,20 @@ class GroupSessionsViewModel(
   private var authGeneration = 0L
   private var observedSessions: List<GroupSession> = emptyList()
   private var campusLocationsByName: Map<String, CampusLocation> = emptyMap()
-  private val hostNamesByUserId = mutableMapOf<String, String>()
-  private val hostLookupsInProgress = mutableSetOf<String>()
+  private val usernamesByUserId = mutableMapOf<String, String>()
+  private val usernameLookupsInProgress = mutableSetOf<String>()
+  private var participantsSessionId: String? = null
+  private val participantNamesWithoutUsername = mutableMapOf<String, ParticipantNameStatus>()
+
+  private enum class ParticipantNameStatus {
+    UNKNOWN,
+    UNAVAILABLE,
+  }
 
   init {
     refreshNowWhileObserved()
     observeLocationWhileObserved()
+    observeConnectivityWhileObserved()
     loadCampusLocations()
     viewModelScope.launch {
       combine(authRepository.currentUser, refreshVersion) { user, _ -> user }
@@ -193,8 +236,9 @@ class GroupSessionsViewModel(
             if (userChanged) {
               currentUserId = userId
               authGeneration += 1
-              hostNamesByUserId.clear()
-              hostLookupsInProgress.clear()
+              usernamesByUserId.clear()
+              usernameLookupsInProgress.clear()
+              clearParticipants()
             }
             if (user == null) {
               observedSessions = emptyList()
@@ -206,6 +250,8 @@ class GroupSessionsViewModel(
                       // Preserve user location if authRepository emits null after a location
                       // already emitted.
                       userLocation = _uiState.value.userLocation,
+                      // Connectivity belongs to the device, not to the signed-in user.
+                      isOffline = _uiState.value.isOffline,
                   )
             } else {
               val observedFrom = clock.instant()
@@ -237,6 +283,7 @@ class GroupSessionsViewModel(
                         )
                       }
                       lookupHostNames(sessions)
+                      loadParticipantNames()
                     },
                     onFailure = {
                       _uiState.update {
@@ -383,7 +430,7 @@ class GroupSessionsViewModel(
    */
   fun refresh() {
     viewModelScope.launch {
-      hostNamesByUserId.clear()
+      usernamesByUserId.clear()
       refreshVersion.update { it + 1 }
     }
   }
@@ -394,6 +441,21 @@ class GroupSessionsViewModel(
    */
   fun refreshLocation() {
     viewModelScope.launch { locationRefreshTrigger.update { it + 1 } }
+  }
+
+  /** Opens the roster for a session in the latest repository snapshot. */
+  fun openParticipants(sessionId: String) {
+    viewModelScope.launch {
+      if (observedSessions.none { it.id == sessionId }) return@launch
+      participantsSessionId = sessionId
+      participantNamesWithoutUsername.clear()
+      loadParticipantNames()
+    }
+  }
+
+  /** Closes the roster and discards its missing or failed profile results. */
+  fun dismissParticipants() {
+    viewModelScope.launch { clearParticipants() }
   }
 
   /** Clears the categorized error without changing the rest of the screen state. */
@@ -444,6 +506,26 @@ class GroupSessionsViewModel(
     }
   }
 
+  /**
+   * Tracks whether the device is offline, only while the UI state has an active observer.
+   *
+   * The observer emits the current connectivity as soon as collection starts, so returning to the
+   * screen never shows an outdated indication, and the indication disappears when the connection
+   * returns. Nothing is collected when no [connectivityObserver] was provided.
+   */
+  private fun observeConnectivityWhileObserved() {
+    val observer = connectivityObserver ?: return
+    viewModelScope.launch {
+      _uiState.subscriptionCount
+          .map { it > 0 }
+          .distinctUntilChanged()
+          .collectLatest { isObserved ->
+            val connectivity = if (isObserved) observer.observeIsOnline() else emptyFlow()
+            connectivity.collect { isOnline -> _uiState.update { it.copy(isOffline = !isOnline) } }
+          }
+    }
+  }
+
   /** Loads campus room metadata once so later GPS updates never re-fetch session data. */
   private fun loadCampusLocations() {
     val locationRepository = campusLocationRepository ?: return
@@ -477,43 +559,101 @@ class GroupSessionsViewModel(
     }
   }
 
-  /** Starts non-blocking lookups for distinct session hosts whose names are not yet known. */
+  /** Prefetches other hosts for the session cards without waiting for their profiles. */
   private fun lookupHostNames(sessions: List<GroupSession>) {
-    val currentUser = currentUserId ?: return
+    lookupUsernames(sessions.map { it.createdBy }.distinct().filter { it != currentUserId })
+  }
+
+  /** Loads newly visible participants and reuses any usernames or requests shared with cards. */
+  private fun loadParticipantNames() {
+    if (participantsSessionId == null) return
+    val session = selectedParticipantsSession()
+    if (session == null) {
+      clearParticipants()
+      return
+    }
+    // A member who rejoins can retry an unavailable or missing profile.
+    participantNamesWithoutUsername.keys.retainAll(session.memberIds.toSet())
+    lookupUsernames(session.memberIds.filterNot { it in participantNamesWithoutUsername })
+    updateParticipantsSheet()
+  }
+
+  /** Schedules one profile read per uncached user with no lookup already in progress. */
+  private fun lookupUsernames(userIds: List<String>) {
+    if (currentUserId == null) return
     val requestGeneration = authGeneration
-    sessions
-        .asSequence()
-        .map { it.createdBy }
-        .distinct()
-        // Skip the current user, hosts whose names are known, and hosts already being looked up.
-        .filter { hostUserId ->
-          hostUserId != currentUser &&
-              hostUserId !in hostNamesByUserId &&
-              hostUserId !in hostLookupsInProgress
-        }
-        .forEach { hostUserId ->
-          hostLookupsInProgress += hostUserId
-          viewModelScope.launch {
-            try {
-              // Ignore results from earlier auth generations so a prior user's lookup can't apply.
-              val result = profileRepository.getProfile(hostUserId)
-              if (requestGeneration == authGeneration) {
-                // getProfile reports failures as Result; missing, blank, or failed profiles stay
-                // null, so the next list update can retry this host.
-                val hostName = result.getOrNull()?.username?.takeIf { it.isNotBlank() }
-                if (hostName != null) {
-                  hostNamesByUserId[hostUserId] = hostName
-                  updateVisibleSessions()
-                }
-              }
-            } finally {
-              if (requestGeneration == authGeneration) {
-                // Remove the in-progress mark so a later list update can retry this host.
-                hostLookupsInProgress.remove(hostUserId)
-              }
-            }
-          }
-        }
+    for (userId in userIds) {
+      if (userId in usernamesByUserId || !usernameLookupsInProgress.add(userId)) continue
+      viewModelScope.launch { resolveUsername(userId, requestGeneration) }
+    }
+  }
+
+  /** Applies one profile result and releases its lookup slot for the same sign-in period. */
+  private suspend fun resolveUsername(userId: String, requestGeneration: Long) {
+    try {
+      val result = profileRepository.getProfile(userId)
+      if (requestGeneration != authGeneration) return
+
+      val username = result.getOrNull()?.username?.takeIf { it.isNotBlank() }
+      if (username != null) {
+        usernamesByUserId[userId] = username
+        updateVisibleSessions()
+        return
+      }
+
+      if (selectedParticipantsSession()?.memberIds?.contains(userId) != true) return
+      participantNamesWithoutUsername[userId] =
+          if (result.isFailure) ParticipantNameStatus.UNAVAILABLE else ParticipantNameStatus.UNKNOWN
+    } finally {
+      if (requestGeneration == authGeneration) {
+        usernameLookupsInProgress.remove(userId)
+        updateParticipantsSheet()
+      }
+    }
+  }
+
+  /**
+   * Resolves the selection against unfiltered sessions so joins and leaves reach the open sheet.
+   */
+  private fun selectedParticipantsSession(): GroupSession? = participantsSessionId?.let { id ->
+    observedSessions.firstOrNull { it.id == id }
+  }
+
+  /** Publishes resolved rows in membership order with the host pinned to the top. */
+  private fun updateParticipantsSheet() {
+    val session = selectedParticipantsSession() ?: return
+    val orderedIds =
+        listOf(session.createdBy) + session.memberIds.filter { it != session.createdBy }
+    val rows = orderedIds.mapNotNull { userId ->
+      val username = usernamesByUserId[userId]
+      val status = participantNamesWithoutUsername[userId]
+      if (username == null && status == null) return@mapNotNull null
+      GroupSessionParticipant(
+          userId = userId,
+          username = username,
+          isHost = userId == session.createdBy,
+          isCurrentUser = userId == currentUserId,
+          isUnavailable = username == null && status == ParticipantNameStatus.UNAVAILABLE,
+      )
+    }
+    _uiState.update {
+      it.copy(
+          participantsSheet =
+              GroupSessionParticipantsSheet(
+                  sessionSubject = session.details.subject,
+                  participantCount = orderedIds.size,
+                  rows = rows,
+                  isLoading = rows.size < orderedIds.size,
+              )
+      )
+    }
+  }
+
+  /** Removes the active selection and any results scoped to that sheet. */
+  private fun clearParticipants() {
+    participantsSessionId = null
+    participantNamesWithoutUsername.clear()
+    _uiState.update { it.copy(participantsSheet = null) }
   }
 
   private fun updateVisibleSessions() {
@@ -528,7 +668,10 @@ class GroupSessionsViewModel(
                     isMember = userId in session.memberIds,
                     isCreator = userId == session.createdBy,
                     proximity = session.proximity(state.userLocation),
-                    hostName = hostNamesByUserId[session.createdBy],
+                    hostName =
+                        usernamesByUserId[session.createdBy].takeUnless {
+                          session.createdBy == userId
+                        },
                 )
               }
               .filter { item ->
@@ -617,6 +760,7 @@ class GroupSessionsViewModelFactory(
     private val profileRepository: ProfileRepository,
     private val locationProvider: LocationProvider,
     private val campusLocationRepository: CampusLocationRepository? = null,
+    private val connectivityObserver: ConnectivityObserver? = null,
 ) : ViewModelProvider.Factory {
   /**
    * Creates the requested ViewModel and rejects unsupported classes with their class name.
@@ -634,6 +778,7 @@ class GroupSessionsViewModelFactory(
         profileRepository = profileRepository,
         locationProvider = locationProvider,
         campusLocationRepository = campusLocationRepository,
+        connectivityObserver = connectivityObserver,
     )
         as T
   }
@@ -648,6 +793,7 @@ class GroupSessionsViewModelFactory(
 fun groupSessionsViewModel(): GroupSessionsViewModel {
   val context = LocalContext.current
   val locationProvider = remember(context) { AndroidLocationProvider.create(context) }
+  val connectivityObserver = remember(context) { AndroidConnectivityObserver.create(context) }
   return viewModel(
       factory =
           GroupSessionsViewModelFactory(
@@ -656,6 +802,7 @@ fun groupSessionsViewModel(): GroupSessionsViewModel {
               campusLocationRepository = CampusLocationRepositoryProvider.getRepository(context),
               profileRepository = ProfileRepositoryProvider.getRepository(),
               locationProvider = locationProvider,
+              connectivityObserver = connectivityObserver,
           )
   )
 }

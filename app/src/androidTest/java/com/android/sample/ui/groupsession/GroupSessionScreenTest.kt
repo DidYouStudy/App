@@ -3,6 +3,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: OpenAI Codex
 package com.android.sample.ui.groupsession
 
 import android.Manifest
@@ -11,6 +12,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -379,7 +381,11 @@ class GroupSessionScreenTest {
         .assert(
             hasAnyDescendant(hasText(context.getString(R.string.group_session_location_fallback)))
         )
-        .assert(hasAnyDescendant(hasText("+1")))
+        .assert(hasAnyDescendant(hasContentDescription("View 3 participants")))
+    // Verify the total also appears visually inside the button.
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.sessionItem(3), useUnmergedTree = true)
+        .assert(hasAnyDescendant(hasText("3")))
   }
 
   @Test
@@ -779,6 +785,9 @@ class GroupSessionScreenTest {
       ProfileRepository {
     override suspend fun getProfile(userId: String): Result<UserProfile?> =
         Result.success(profiles[userId])
+
+    override suspend fun updateUsername(userId: String, username: String): Result<UserProfile> =
+        Result.failure(UnsupportedOperationException("Not needed in this test"))
 
     override suspend fun createProfile(userId: String): Result<UserProfile> =
         Result.success(UserProfile(uid = userId))

@@ -10,6 +10,7 @@ import androidx.activity.result.ActivityResultRegistryOwner
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
@@ -19,10 +20,12 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.core.app.ActivityOptionsCompat
 import androidx.test.core.app.ApplicationProvider
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.location.CampusLocation
@@ -190,6 +193,131 @@ class GroupSessionScreenFiltersTest {
     assertEquals(false, viewModel.uiState.value.showLabRoomType)
   }
 
+  /** Applies session type chip taps to the ViewModel's complete selected set. */
+  @Test
+  fun selectingSessionTypesUpdatesViewModel() {
+    val viewModel = newViewModel()
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+
+    openFilterSheet()
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.COURSE))
+        .performScrollTo()
+        .performClick()
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.EXAM))
+        .performScrollTo()
+        .performClick()
+    composeTestRule.waitForIdle()
+
+    assertEquals(
+        setOf(EventType.COURSE, EventType.EXAM),
+        viewModel.uiState.value.selectedSessionTypes,
+    )
+  }
+
+  /** Applies a starting-time choice to the ViewModel. */
+  @Test
+  fun selectingStartingTimeUpdatesViewModel() {
+    val viewModel = newViewModel()
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+
+    openFilterSheet()
+    composeTestRule
+        .onNodeWithTag(
+            GroupSessionFilterSheetTestTags.startingTimeChip(GroupSessionTimeFilter.TODAY)
+        )
+        .performScrollTo()
+        .performClick()
+    composeTestRule.waitForIdle()
+
+    assertEquals(GroupSessionTimeFilter.TODAY, viewModel.uiState.value.startingTimeFilter)
+  }
+
+  /** Applies the availability switch state to the ViewModel. */
+  @Test
+  fun hidingFullSessionsUpdatesViewModel() {
+    val viewModel = newViewModel()
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+
+    openFilterSheet()
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.HIDE_FULL_SWITCH)
+        .performScrollTo()
+        .performClick()
+    composeTestRule.waitForIdle()
+
+    assertEquals(true, viewModel.uiState.value.hideFullSessions)
+  }
+
+  /** Reset all restores the new ViewModel filters and their visible control defaults. */
+  @Test
+  fun resetAllRestoresSessionTypeStartingTimeAndAvailabilityDefaults() {
+    val viewModel = newViewModel()
+    viewModel.onSessionTypesSelected(setOf(EventType.COURSE, EventType.EXAM))
+    viewModel.onStartingTimeFilterSelected(GroupSessionTimeFilter.TODAY)
+    viewModel.onHideFullSessionsChange(true)
+    composeTestRule.waitForIdle()
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+
+    openFilterSheet()
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.RESET_ALL)
+        .performScrollTo()
+        .performClick()
+    composeTestRule.waitForIdle()
+
+    assertEquals(emptySet<EventType>(), viewModel.uiState.value.selectedSessionTypes)
+    assertEquals(GroupSessionTimeFilter.ANYTIME, viewModel.uiState.value.startingTimeFilter)
+    assertEquals(false, viewModel.uiState.value.hideFullSessions)
+    composeTestRule
+        .onNodeWithTag(
+            GroupSessionFilterSheetTestTags.startingTimeChip(GroupSessionTimeFilter.ANYTIME)
+        )
+        .performScrollTo()
+        .assertIsSelected()
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.COURSE))
+        .performScrollTo()
+        .assertIsNotSelected()
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.HIDE_FULL_SWITCH)
+        .performScrollTo()
+        .assertIsOff()
+  }
+
+  /** Displays type, time, and availability selections made before opening the sheet. */
+  @Test
+  fun selectionsMadeBeforeOpeningSheetAreVisible() {
+    val viewModel = newViewModel()
+    viewModel.onSessionTypesSelected(setOf(EventType.COURSE, EventType.LAB))
+    viewModel.onStartingTimeFilterSelected(GroupSessionTimeFilter.THIS_WEEK)
+    viewModel.onHideFullSessionsChange(true)
+    composeTestRule.waitForIdle()
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+
+    openFilterSheet()
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.COURSE))
+        .performScrollTo()
+        .assertIsSelected()
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.LAB))
+        .performScrollTo()
+        .assertIsSelected()
+    composeTestRule
+        .onNodeWithTag(
+            GroupSessionFilterSheetTestTags.startingTimeChip(GroupSessionTimeFilter.THIS_WEEK)
+        )
+        .performScrollTo()
+        .assertIsSelected()
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.HIDE_FULL_SWITCH)
+        .performScrollTo()
+        .assertIsOn()
+  }
+
   /** Applies a granted fine-location result to the pending distance selection. */
   @Test
   fun fineLocationPermissionResultSelectsPendingRadius() {
@@ -324,6 +452,12 @@ class GroupSessionScreenFiltersTest {
           profileRepository =
               object : ProfileRepository {
                 override suspend fun getProfile(userId: String) = Result.success<UserProfile?>(null)
+
+                override suspend fun updateUsername(
+                    userId: String,
+                    username: String,
+                ): Result<UserProfile> =
+                    Result.failure(UnsupportedOperationException("Not needed in this test"))
 
                 override suspend fun createProfile(userId: String) =
                     Result.failure<UserProfile>(UnsupportedOperationException())

@@ -1,6 +1,6 @@
 <!-- Co-authored-by: GitHub Copilot -->
-<!-- Co-authored-by: Claude AI Agent -->
 <!-- Co-authored-by: Claude Opus 5.5 -->
+<!-- Co-authored-by: Claude Sonnet 5.5 -->
 <!-- Co-authored-by: OpenAI Codex <noreply@openai.com> -->
 <resources>
     <string name="app_name">DidYouStudy</string>
@@ -41,6 +41,7 @@
     <string name="calendar_next_week_description">Next week</string>
     <string name="calendar_load_events_error">Could not load calendar events.</string>
     <string name="calendar_retry_button">Retry</string>
+    <string name="calendar_group_session_description">Group session</string>
     <string name="preferences_header">Complete your profile</string>
     <string name="preferences_edit_header">Modify your preferences</string>
     <string name="preferences_retry_button_on_error">Retry</string>
@@ -159,9 +160,23 @@
     <string name="group_session_search_placeholder">Search group sessions</string>
     <string name="group_session_filter_title">Filter sessions</string>
     <string name="group_session_filter_reset_all">Reset all</string>
+    <string name="group_session_filter_session_type_title">SESSION TYPE</string>
+    <string name="group_session_filter_starting_time_title">STARTING TIME</string>
     <string name="group_session_filter_distance_title">DISTANCE FROM ME</string>
     <string name="group_session_filter_zone_title">ZONE</string>
     <string name="group_session_filter_room_type_title">ROOM TYPE</string>
+    <string name="group_session_filter_availability_title">AVAILABILITY</string>
+    <string name="group_session_filter_type_study">Study</string>
+    <string name="group_session_filter_type_course">Course</string>
+    <string name="group_session_filter_type_exercise">Exercise</string>
+    <string name="group_session_filter_type_lab">Lab</string>
+    <string name="group_session_filter_type_project">Project</string>
+    <string name="group_session_filter_type_exam">Exam</string>
+    <string name="group_session_filter_type_other">Other</string>
+    <string name="group_session_filter_time_anytime">Anytime</string>
+    <string name="group_session_filter_time_within_one_hour">In under 1h</string>
+    <string name="group_session_filter_time_today">Today</string>
+    <string name="group_session_filter_time_this_week">This week</string>
     <string name="group_session_filter_any">Any</string>
     <string name="group_session_filter_radius_250">&lt; 250m</string>
     <string name="group_session_filter_radius_500">&lt; 500m</string>
@@ -171,6 +186,8 @@
     <string name="group_session_filter_zone_bc">BC</string>
     <string name="group_session_filter_view_more">View more…</string>
     <string name="group_session_filter_show_labs">Show “Lab” room type</string>
+    <string name="group_session_filter_hide_full_sessions">Hide full sessions</string>
+    <string name="group_session_filter_hide_full_sessions_subtitle">Only show sessions with open spots</string>
     <string name="group_session_filter_permission_rationale">Allow location access to filter by distance</string>
     <plurals name="group_session_filter_show_sessions">
         <item quantity="one">Show %d session</item>
@@ -180,8 +197,24 @@
     <string name="group_session_filter_my">My sessions</string>
     <string name="group_session_active_sessions_title">Active sessions</string>
     <string name="group_session_host_unknown">Unknown host</string>
+    <plurals name="group_session_view_participants">
+        <item quantity="one">View %1$d participant</item>
+        <item quantity="other">View %1$d participants</item>
+    </plurals>
+    <string name="group_session_participants_title">Participants (%1$d)</string>
+    <string name="group_session_participants_host">Host</string>
+    <string name="group_session_participants_you">You</string>
+    <string name="group_session_participants_search">Search participants</string>
+    <string name="group_session_participants_no_matches">No matching participants</string>
+    <string name="group_session_participants_unknown">Unknown</string>
+    <string name="group_session_participants_unavailable">Unavailable</string>
+    <string name="group_session_participants_loading">Loading participants&#8230;</string>
+    <string name="group_session_participants_error">Some usernames could not be loaded.</string>
+    <string name="group_session_participants_close">Close participants</string>
     <string name="group_session_loading">Loading sessions&#8230;</string>
     <string name="group_session_empty">No active sessions</string>
+    <!-- Shown on the Group sessions screen while the device has no internet connection -->
+    <string name="group_session_offline_indicator">No internet connection. Showing only saved sessions.</string>
     <string name="group_session_subject_fallback">Other</string>
     <string name="group_session_host_self">Your session (Host)</string>
     <!-- %1$s: display name of the session host -->
@@ -211,8 +244,7 @@
     <string name="group_session_action_join">Join</string>
     <!-- %1$s: day ("Today" or a weekday), %2$s: start time, %3$s: end time -->
     <string name="group_session_date_time_range">%1$s · %2$s – %3$s</string>
-    <!-- Number of members not shown as an avatar in the participants pill -->
-    <string name="group_session_extra_members">+%1$d</string>
+    <string name="group_session_participant_count">%1$d</string>
     <string name="group_session_view_mode_list">List view</string>
     <string name="group_session_view_mode_map">Map view</string>
     <string name="group_session_center_location_description">Center on user location</string>
