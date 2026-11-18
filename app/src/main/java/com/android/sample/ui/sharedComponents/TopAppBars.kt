@@ -102,8 +102,6 @@ fun MainTopAppBar(
  * @param backButtonTestTag Test tag applied to the back icon button.
  * @param titleTestTag Test tag applied to the title text.
  * @param actions Extra action composables displayed on the right.
- * @param titleContent Optional custom composable lambda for rendering the title content instead of
- *   [title].
  * @param isOffline Whether to display the offline status banner under the top bar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -117,7 +115,6 @@ fun SecondaryMediumTopAppBar(
     backButtonTestTag: String = NavigationTestTags.GO_BACK_BUTTON,
     titleTestTag: String = NavigationTestTags.TOP_BAR_TITLE,
     actions: @Composable RowScope.() -> Unit = {},
-    titleContent: (@Composable () -> Unit)? = null,
     isOffline: Boolean = false,
 ) {
   Column(modifier = modifier) {
