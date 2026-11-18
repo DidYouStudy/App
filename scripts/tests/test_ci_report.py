@@ -55,6 +55,22 @@ class RenderTest(unittest.TestCase):
         self.assertIn("| Build | success | 1m 00s |", table)
         self.assertNotIn("CI report", table)
 
+    def test_skipped_job_has_no_duration_and_rows_follow_start_order(self):
+        payload = {
+            "jobs": [
+                {"name": "Late", "conclusion": "success",
+                 "started_at": "2026-01-01T10:05:00Z", "completed_at": "2026-01-01T10:06:00Z"},
+                {"name": "Skipped", "conclusion": "skipped",
+                 "started_at": "2026-01-01T10:10:00Z", "completed_at": "2026-01-01T10:08:00Z"},
+                {"name": "Early", "conclusion": "success",
+                 "started_at": "2026-01-01T10:00:00Z", "completed_at": "2026-01-01T10:01:00Z"},
+            ]
+        }
+        table = ci_report.render_jobs(payload)
+        self.assertIn("| Skipped | skipped | - |", table)
+        self.assertLess(table.index("Early"), table.index("Late"))
+        self.assertLess(table.index("Late"), table.index("Skipped"))
+
     def test_failures_are_capped(self):
         totals = {"tests": 20, "failures": 12, "skipped": 0,
                   "failed": [(f"t{i}", "boom") for i in range(12)]}
