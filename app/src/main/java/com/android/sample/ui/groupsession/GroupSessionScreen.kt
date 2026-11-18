@@ -37,6 +37,7 @@ import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Map
@@ -68,6 +69,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -88,6 +90,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
+import com.android.sample.model.location.Location
 import com.android.sample.ui.eventplanning.EventKind
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
@@ -136,6 +139,7 @@ object GroupSessionScreenTestTags {
   const val MAP_CONTENT = "groupSessionMapContent"
   const val LOCATION_PILL = "groupSessionLocationPill"
   const val PARTICIPANTS_PILL = "groupSessionParticipantsPill"
+  const val CENTER_LOCATION_BUTTON = "groupSessionCenterLocationButton"
 
   fun sessionItem(index: Int) = "$SESSION_ITEM_PREFIX$index"
 }
@@ -159,21 +163,62 @@ fun GroupSessionScreen(
   val filterSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   val coroutineScope = rememberCoroutineScope()
   val context = LocalContext.current
-  val hasLocationPermission =
+  fun checkPermission(): Boolean =
       ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
           PackageManager.PERMISSION_GRANTED ||
           ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
               PackageManager.PERMISSION_GRANTED
+
+  var hasLocationPermission by remember { mutableStateOf(checkPermission()) }
   val locationPermissionLauncher =
       rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
           results ->
-        if (isLocationPermissionGranted(results)) {
-          viewModel.onRadiusFilterSelected(pendingLocationRadius)
-        } else {
-          viewModel.onRadiusFilterSelected(null)
+        val granted = isLocationPermissionGranted(results)
+        hasLocationPermission = granted || checkPermission()
+        if (granted) {
+          viewModel.refreshLocation()
         }
-        pendingLocationRadius = null
+        if (pendingLocationRadius != null) {
+          viewModel.onRadiusFilterSelected(if (granted) pendingLocationRadius else null)
+          pendingLocationRadius = null
+        }
       }
+
+  LaunchedEffect(viewMode) {
+    if (viewMode == GroupSessionViewMode.MAP) {
+      val granted = checkPermission()
+      hasLocationPermission = granted
+      if (granted) {
+        // Ensure location flow is active when entering MAP mode
+        viewModel.refreshLocation()
+      } else {
+        locationPermissionLauncher.launch(
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+            )
+        )
+      }
+    }
+  }
+
+  val campusCenter =
+      Location(
+          floatResource(R.dimen.map_campus_center_latitude).toDouble(),
+          floatResource(R.dimen.map_campus_center_longitude).toDouble(),
+      )
+  var cameraTarget by remember { mutableStateOf<Location?>(null) }
+  var cameraTargetKey by remember { mutableIntStateOf(0) }
+
+  val onCenterLocationClick: () -> Unit = {
+    cameraTarget =
+        if (hasLocationPermission && uiState.userLocation != null) {
+          uiState.userLocation
+        } else {
+          campusCenter
+        }
+    cameraTargetKey++
+  }
   fun closeFilterSheet() {
     coroutineScope.launch {
       if (filterSheetState.isVisible) filterSheetState.hide()
@@ -265,6 +310,9 @@ fun GroupSessionScreen(
             onLeave = viewModel::leave,
             onEdit = onEditSessionClick,
             onOpenFilters = { showFilterSheet = true },
+            onCenterLocationClick = onCenterLocationClick,
+            cameraTarget = cameraTarget,
+            cameraTargetKey = cameraTargetKey,
         )
       },
   )
@@ -317,6 +365,9 @@ internal fun GroupSessionContent(
     onLeave: (String) -> Unit = {},
     onEdit: (String) -> Unit = {},
     onOpenFilters: () -> Unit = {},
+    onCenterLocationClick: (() -> Unit)? = null,
+    cameraTarget: Location? = null,
+    cameraTargetKey: Any? = null,
 ) {
   when (viewMode) {
     GroupSessionViewMode.LIST -> {
@@ -393,6 +444,9 @@ internal fun GroupSessionContent(
             selectedRoom = selectedRoom,
             onSelectedRoomChange = onSelectedRoomChange,
             onLocationClick = onLocationClick,
+            userLocation = state.userLocation,
+            cameraTarget = cameraTarget,
+            cameraTargetKey = cameraTargetKey,
         )
         Column(
             modifier =
@@ -409,6 +463,7 @@ internal fun GroupSessionContent(
           GroupSessionFilterRow(
               filter = state.filter,
               onFilterChange = onFilterChange,
+              onCenterLocationClick = onCenterLocationClick,
           )
         }
         if (selectedRoom == null) {
@@ -429,6 +484,7 @@ internal fun GroupSessionFilterRow(
     filter: GroupSessionFilter,
     onFilterChange: (GroupSessionFilter) -> Unit,
     modifier: Modifier = Modifier,
+    onCenterLocationClick: (() -> Unit)? = null,
 ) {
   val chipColors =
       FilterChipDefaults.filterChipColors(
@@ -437,55 +493,73 @@ internal fun GroupSessionFilterRow(
       )
 
   Row(
-      modifier = modifier,
-      horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+      modifier = modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
   ) {
-    FilterChip(
-        modifier = Modifier.testTag(GroupSessionScreenTestTags.ALL_SESSIONS_FILTER),
-        selected = filter == GroupSessionFilter.ALL,
-        onClick = { onFilterChange(GroupSessionFilter.ALL) },
-        label = { Text(stringResource(R.string.group_session_filter_all)) },
-        leadingIcon =
-            if (filter == GroupSessionFilter.ALL) {
-              {
-                Icon(
-                    Icons.Default.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(Dimens.iconSizeSmall),
-                )
-              }
-            } else null,
-        shape = RoundedCornerShape(Dimens.cornerMedium),
-        colors = chipColors,
-        border =
-            FilterChipDefaults.filterChipBorder(
-                enabled = true,
-                selected = filter == GroupSessionFilter.ALL,
-            ),
-    )
-    FilterChip(
-        modifier = Modifier.testTag(GroupSessionScreenTestTags.MY_SESSIONS_FILTER),
-        selected = filter == GroupSessionFilter.JOINED,
-        onClick = { onFilterChange(GroupSessionFilter.JOINED) },
-        label = { Text(stringResource(R.string.group_session_filter_my)) },
-        leadingIcon =
-            if (filter == GroupSessionFilter.JOINED) {
-              {
-                Icon(
-                    Icons.Default.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(Dimens.iconSizeSmall),
-                )
-              }
-            } else null,
-        shape = RoundedCornerShape(Dimens.cornerMedium),
-        colors = chipColors,
-        border =
-            FilterChipDefaults.filterChipBorder(
-                enabled = true,
-                selected = filter == GroupSessionFilter.JOINED,
-            ),
-    )
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+      FilterChip(
+          modifier = Modifier.testTag(GroupSessionScreenTestTags.ALL_SESSIONS_FILTER),
+          selected = filter == GroupSessionFilter.ALL,
+          onClick = { onFilterChange(GroupSessionFilter.ALL) },
+          label = { Text(stringResource(R.string.group_session_filter_all)) },
+          leadingIcon =
+              if (filter == GroupSessionFilter.ALL) {
+                {
+                  Icon(
+                      Icons.Default.Check,
+                      contentDescription = null,
+                      modifier = Modifier.size(Dimens.iconSizeSmall),
+                  )
+                }
+              } else null,
+          shape = RoundedCornerShape(Dimens.cornerMedium),
+          colors = chipColors,
+          border =
+              FilterChipDefaults.filterChipBorder(
+                  enabled = true,
+                  selected = filter == GroupSessionFilter.ALL,
+              ),
+      )
+      FilterChip(
+          modifier = Modifier.testTag(GroupSessionScreenTestTags.MY_SESSIONS_FILTER),
+          selected = filter == GroupSessionFilter.JOINED,
+          onClick = { onFilterChange(GroupSessionFilter.JOINED) },
+          label = { Text(stringResource(R.string.group_session_filter_my)) },
+          leadingIcon =
+              if (filter == GroupSessionFilter.JOINED) {
+                {
+                  Icon(
+                      Icons.Default.Check,
+                      contentDescription = null,
+                      modifier = Modifier.size(Dimens.iconSizeSmall),
+                  )
+                }
+              } else null,
+          shape = RoundedCornerShape(Dimens.cornerMedium),
+          colors = chipColors,
+          border =
+              FilterChipDefaults.filterChipBorder(
+                  enabled = true,
+                  selected = filter == GroupSessionFilter.JOINED,
+              ),
+      )
+    }
+    if (onCenterLocationClick != null) {
+      IconButton(
+          onClick = onCenterLocationClick,
+          modifier = Modifier.testTag(GroupSessionScreenTestTags.CENTER_LOCATION_BUTTON),
+      ) {
+        Icon(
+            Icons.Default.MyLocation,
+            contentDescription = stringResource(R.string.group_session_center_location_description),
+            tint = MaterialTheme.colorScheme.primary,
+        )
+      }
+    }
   }
 }
 
