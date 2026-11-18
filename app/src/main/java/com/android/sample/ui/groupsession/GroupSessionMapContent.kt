@@ -83,6 +83,7 @@ fun GroupSessionMapContent(
     userLocation: Location? = null,
     cameraTarget: Location? = null,
     cameraTargetKey: Any? = null,
+    hasLocationPermission: Boolean = false,
 ) {
   // Supports both state hosting (controlled by parent via selectedRoom/onSelectedRoomChange)
   // and self-contained state (uncontrolled, falling back to internalSelectedRoom initialized with
@@ -128,6 +129,7 @@ fun GroupSessionMapContent(
         onMapClick = { updateSelectedRoom(null) },
         cameraPositionState = cameraPositionState,
         userLocation = userLocation,
+        hasLocationPermission = hasLocationPermission,
     )
     if (selected != null) {
       SessionCardList(

@@ -28,7 +28,6 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.integerResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.core.content.res.ResourcesCompat
 import com.android.sample.R
 import com.android.sample.model.location.CampusLocation
@@ -40,6 +39,7 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.rememberCameraPositionState
@@ -69,6 +69,8 @@ import kotlinx.coroutines.withTimeoutOrNull
  * @param cameraPositionState Camera of the map, for a caller that needs to read or move it, such as
  *   instrumented tests; by default a camera on the campus centre at the default zoom.
  * @param userLocation Current device location of the user, or null if not available or shared.
+ * @param hasLocationPermission Whether location permission is granted, enabling the native Google
+ *   Maps blue dot for user location.
  */
 @Composable
 fun GroupSessionMapView(
@@ -79,10 +81,11 @@ fun GroupSessionMapView(
     onMapClick: () -> Unit = {},
     cameraPositionState: CameraPositionState? = null,
     userLocation: Location? = null,
+    hasLocationPermission: Boolean = false,
 ) {
   // The real map cannot load in the IDE preview, so it shows a stand-in.
   if (LocalInspectionMode.current) {
-    MapPlaceholder(onMapClick, modifier, userLocation)
+    MapPlaceholder(onMapClick, modifier, userLocation, hasLocationPermission)
     return
   }
 
@@ -130,23 +133,17 @@ fun GroupSessionMapView(
   val uiSettings = remember {
     MapUiSettings(zoomControlsEnabled = false, myLocationButtonEnabled = false)
   }
+  val mapProperties =
+      remember(hasLocationPermission) { MapProperties(isMyLocationEnabled = hasLocationPermission) }
 
   Box(modifier = modifier.fillMaxSize()) {
     GoogleMap(
         modifier = Modifier.fillMaxSize(),
         cameraPositionState = cameraPositionState,
+        properties = mapProperties,
         uiSettings = uiSettings,
         onMapClick = { onMapClick() },
     ) {
-      userLocation?.let { location ->
-        MarkerComposable(
-            keys = arrayOf("UserLocation", location),
-            state = rememberUpdatedMarkerState(position = location.toLatLng()),
-            title = stringResource(R.string.group_session_user_location_title),
-        ) {
-          UserLocationPin()
-        }
-      }
       rooms.forEach { room ->
         MarkerComposable(
             room.name,
@@ -217,23 +214,6 @@ internal fun dropletPath(size: Size, quarterTurn: Float, fullTurn: Float): Path 
   }
 }
 
-/** Pin drawn for the user's current location: a solid circle with a white border. */
-@Composable
-private fun UserLocationPin() {
-  val diameter = Dimens.mapMarkerWidth
-  val innerColor = MaterialTheme.colorScheme.primary
-  Canvas(modifier = Modifier.size(diameter)) {
-    drawCircle(
-        Color.White,
-        radius = size.minDimension / 2,
-    )
-    drawCircle(
-        innerColor,
-        radius = (size.minDimension / 2) - 2.dp.toPx(),
-    )
-  }
-}
-
 /**
  * Stand-in for the map where the real one cannot load, in the IDE preview and in unit tests.
  * Tapping it reports a map click, like the real map.
@@ -243,6 +223,7 @@ private fun MapPlaceholder(
     onMapClick: () -> Unit,
     modifier: Modifier = Modifier,
     userLocation: Location? = null,
+    hasLocationPermission: Boolean = false,
 ) {
   Box(
       modifier =
@@ -257,7 +238,7 @@ private fun MapPlaceholder(
           text = stringResource(R.string.group_session_map_preview_placeholder),
           style = MaterialTheme.typography.titleMedium,
       )
-      if (userLocation != null) {
+      if (hasLocationPermission || userLocation != null) {
         Text(
             text = stringResource(R.string.group_session_user_location_placeholder),
             style = MaterialTheme.typography.bodyMedium,

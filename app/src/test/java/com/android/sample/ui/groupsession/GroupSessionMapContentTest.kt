@@ -90,6 +90,7 @@ class GroupSessionMapContentTest {
       userLocation: Location? = null,
       cameraTarget: Location? = null,
       cameraTargetKey: Any? = null,
+      hasLocationPermission: Boolean = false,
   ) {
     composeTestRule.setContent {
       // The real Google map cannot load in a unit test; in inspection mode the map view shows a
@@ -105,9 +106,19 @@ class GroupSessionMapContentTest {
             userLocation = userLocation,
             cameraTarget = cameraTarget,
             cameraTargetKey = cameraTargetKey,
+            hasLocationPermission = hasLocationPermission,
         )
       }
     }
+  }
+
+  @Test
+  fun content_withLocationPermission_displaysUserLocationMarker() {
+    setContent(hasLocationPermission = true)
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionMapTestTags.USER_LOCATION_MARKER, useUnmergedTree = true)
+        .assertExists()
   }
 
   @Test
@@ -121,7 +132,7 @@ class GroupSessionMapContentTest {
 
   @Test
   fun content_withoutUserLocation_doesNotDisplayUserLocationMarker() {
-    setContent(userLocation = null)
+    setContent(userLocation = null, hasLocationPermission = false)
 
     composeTestRule
         .onNodeWithTag(GroupSessionMapTestTags.USER_LOCATION_MARKER, useUnmergedTree = true)

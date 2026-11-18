@@ -313,6 +313,7 @@ fun GroupSessionScreen(
             onCenterLocationClick = onCenterLocationClick,
             cameraTarget = cameraTarget,
             cameraTargetKey = cameraTargetKey,
+            hasLocationPermission = hasLocationPermission,
         )
       },
   )
@@ -368,6 +369,7 @@ internal fun GroupSessionContent(
     onCenterLocationClick: (() -> Unit)? = null,
     cameraTarget: Location? = null,
     cameraTargetKey: Any? = null,
+    hasLocationPermission: Boolean = false,
 ) {
   when (viewMode) {
     GroupSessionViewMode.LIST -> {
@@ -447,6 +449,7 @@ internal fun GroupSessionContent(
             userLocation = state.userLocation,
             cameraTarget = cameraTarget,
             cameraTargetKey = cameraTargetKey,
+            hasLocationPermission = hasLocationPermission,
         )
         Column(
             modifier =
