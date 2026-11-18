@@ -1,6 +1,8 @@
 // Co-authored-by: Claude AI Agent
 package com.android.sample.ui.sharedComponents
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -14,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -22,6 +25,7 @@ import com.android.sample.R
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.profile.ProfileButton
 import com.android.sample.ui.theme.Dimens
+import com.android.sample.ui.theme.Spacing
 
 /**
  * Displays the standard top app bar for top-level screens.
@@ -54,11 +58,16 @@ fun MainTopAppBar(
               titleContentColor = MaterialTheme.colorScheme.onSurface,
           ),
       actions = {
-        actions()
-        ProfileButton(
-            onClick = onProfileClick,
-            modifier = Modifier.padding(end = Dimens.profileButtonPadding),
-        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+          actions()
+          ProfileButton(
+              onClick = onProfileClick,
+              modifier = Modifier.padding(end = Dimens.profileButtonPadding),
+          )
+        }
       },
       modifier = modifier,
   )

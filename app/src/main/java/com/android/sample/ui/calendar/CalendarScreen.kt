@@ -120,7 +120,6 @@ fun CalendarScreen(
                     fontWeight = FontWeight.Bold,
                 )
               }
-              Spacer(Modifier.width(Spacing.small))
             },
         )
       },
