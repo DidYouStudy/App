@@ -172,6 +172,7 @@ class GroupSessionsViewModel(
   val uiState: StateFlow<GroupSessionsUiState> = _uiState.asStateFlow()
 
   private val refreshVersion = MutableStateFlow(0)
+  private val locationRefreshTrigger = MutableStateFlow(0)
   private var currentUserId: String? = null
   /** Distinguishes action requests made during different observed sign-in periods. */
   private var authGeneration = 0L
@@ -202,6 +203,9 @@ class GroupSessionsViewModel(
                       now = clock.instant(),
                       isLoading = false,
                       availableZones = _uiState.value.availableZones,
+                      // Preserve user location if authRepository emits null after a location
+                      // already emitted.
+                      userLocation = _uiState.value.userLocation,
                   )
             } else {
               val observedFrom = clock.instant()
@@ -384,6 +388,14 @@ class GroupSessionsViewModel(
     }
   }
 
+  /**
+   * Re-evaluates location collection from [locationProvider], for example after runtime location
+   * permissions have been granted.
+   */
+  fun refreshLocation() {
+    viewModelScope.launch { locationRefreshTrigger.update { it + 1 } }
+  }
+
   /** Clears the categorized error without changing the rest of the screen state. */
   fun clearError() {
     viewModelScope.launch { _uiState.update { it.copy(error = null) } }
@@ -415,9 +427,12 @@ class GroupSessionsViewModel(
   /** Collects device location only while the UI state has an active observer. */
   private fun observeLocationWhileObserved() {
     viewModelScope.launch {
-      _uiState.subscriptionCount
-          .map { it > 0 }
-          .distinctUntilChanged()
+      combine(
+              _uiState.subscriptionCount.map { it > 0 }.distinctUntilChanged(),
+              locationRefreshTrigger,
+          ) { isObserved, _ ->
+            isObserved
+          }
           .collectLatest { isObserved ->
             val locations =
                 if (isObserved) locationProvider.observeCurrentLocation() else emptyFlow()

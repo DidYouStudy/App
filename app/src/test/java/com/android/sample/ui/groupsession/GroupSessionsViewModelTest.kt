@@ -1330,6 +1330,44 @@ class GroupSessionsViewModelTest {
     assertEquals(signedOutState, viewModel.uiState.value)
   }
 
+  /** When currentUser becomes null, userLocation is preserved in uiState. */
+  @Test
+  fun currentUserBecomesNull_preservesUserLocation() = runTest {
+    val location = Location(46.52, 6.56)
+    val customProvider = LocationProvider { flowOf(location) }
+    val viewModel = createViewModel(locationProvider = customProvider)
+    val collector = observe(viewModel)
+    runCurrent()
+
+    assertEquals(location, viewModel.uiState.value.userLocation)
+
+    authRepository.currentUser.value = null
+    runCurrent()
+
+    assertEquals(location, viewModel.uiState.value.userLocation)
+    collector.cancel()
+  }
+
+  /** Calling refreshLocation restarts observing the location provider. */
+  @Test
+  fun refreshLocation_restartsCollectionOnLocationProvider() = runTest {
+    var collectionCount = 0
+    val customProvider = LocationProvider {
+      collectionCount++
+      flowOf(Location(46.52, 6.56))
+    }
+    val viewModel = createViewModel(locationProvider = customProvider)
+    observe(viewModel)
+    runCurrent()
+    val initialCollections = collectionCount
+    assertTrue(initialCollections >= 1)
+
+    viewModel.refreshLocation()
+    runCurrent()
+
+    assertTrue(collectionCount > initialCollections)
+  }
+
   /** Collects the state like a visible screen does, until the test ends or the job is cancelled. */
   private fun TestScope.observe(viewModel: GroupSessionsViewModel) =
       backgroundScope.launch(testDispatcher) { viewModel.uiState.collect {} }
