@@ -75,6 +75,36 @@ class GroupSessionScreenOfflineTest {
   }
 
   // ---------------------------------------------------------------------------------------------
+  // Offline previews
+  // ---------------------------------------------------------------------------------------------
+
+  /** The list preview renders the offline indicator and empty state. */
+  @Test
+  fun listOfflinePreviewShowsTheOfflineIndicator() {
+    composeTestRule.setContent { GroupSessionContentOfflinePreview() }
+
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.OFFLINE_INDICATOR).assertIsDisplayed()
+    composeTestRule.onNodeWithText(offlineMessage).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.group_session_empty))
+        .assertIsDisplayed()
+  }
+
+  /** The map preview renders the offline indicator in inspection mode. */
+  @Test
+  fun mapOfflinePreviewShowsTheOfflineIndicator() {
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalInspectionMode provides true) {
+        GroupSessionMapContentOfflinePreview()
+      }
+    }
+
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.MAP_CONTENT).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.OFFLINE_INDICATOR).assertIsDisplayed()
+    composeTestRule.onNodeWithText(offlineMessage).assertIsDisplayed()
+  }
+
+  // ---------------------------------------------------------------------------------------------
   // List view
   // ---------------------------------------------------------------------------------------------
 
