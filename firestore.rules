@@ -14,10 +14,44 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
 
+    // A username is valid when it follows UsernamePolicy.kt (keep both in sync).
+    function validUsername(name) {
+      return name is string && name.matches('[A-Za-z0-9][A-Za-z0-9_.-]{2,19}');
+    }
+
+    // True when, after the write, usernames/{lowercase name} exists and belongs to userId. Used
+    // so a profile can only carry a username its owner has reserved.
+    function ownsUsernameAfter(userId, name) {
+      return validUsername(name)
+        && existsAfter(/databases/$(database)/documents/usernames/$(name.lower()))
+        && getAfter(/databases/$(database)/documents/usernames/$(name.lower())).data.uid == userId;
+    }
+
     match /profiles/{userId} {
       // Everything in a profile is readable by signed-in users; do not store private data here.
       allow get: if request.auth != null;
-      allow write: if isOwner(userId);
+      // A profile may start without a username; a non-blank one must be reserved by its owner.
+      allow create: if isOwner(userId)
+        && (request.resource.data.get('username', '') == ''
+            || ownsUsernameAfter(userId, request.resource.data.username));
+      // Other fields (for example the avatar) can change freely; a changed username must be
+      // reserved by its owner in the same transaction.
+      allow update: if isOwner(userId)
+        && (request.resource.data.get('username', '') == resource.data.get('username', '')
+            || ownsUsernameAfter(userId, request.resource.data.get('username', '')));
+      allow delete: if isOwner(userId);
+    }
+
+    // One reservation per lowercase username, created and released by its owner in the same
+    // transaction as the profile update. Reservations are never updated, and can be fetched by
+    // name but not listed.
+    match /usernames/{key} {
+      allow get: if request.auth != null;
+      allow create: if request.auth != null
+        && key.matches('[a-z0-9][a-z0-9_.-]{2,19}')
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
     }
 
     match /preferences/{userId} {

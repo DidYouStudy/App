@@ -2,17 +2,23 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: OpenAI Codex
 package com.android.sample.ui.groupsession
 
 import android.content.Context
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -21,8 +27,11 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -56,7 +65,6 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.shadows.ShadowToast
 
 @RunWith(AndroidJUnit4::class)
 class GroupSessionScreenTest {
@@ -132,7 +140,12 @@ class GroupSessionScreenTest {
 
   private val authRepository = FakeAuthRepository("user-1")
   private val profileRepository =
-      FakeProfileRepository(mapOf("user-3" to UserProfile(uid = "user-3", username = "Bob")))
+      FakeProfileRepository(
+          mapOf(
+              "user-1" to UserProfile(uid = "user-1", username = "Alice"),
+              "user-3" to UserProfile(uid = "user-3", username = "Bob"),
+          )
+      )
 
   @Before
   fun resetRepo() {
@@ -169,9 +182,9 @@ class GroupSessionScreenTest {
     composeTestRule.onNodeWithText("Capstone planning").assertDoesNotExist()
   }
 
-  /** The member list is not built yet, so tapping the participants pill shows the toast. */
+  /** The list pill opens the roster and the close button returns to the list. */
   @Test
-  fun participants_pill_click_shows_not_implemented_toast() {
+  fun participants_pill_in_list_opens_and_closes_roster() {
     val viewModel = createViewModel()
     composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
     composeTestRule.waitUntil(timeoutMillis = 2_000) {
@@ -180,13 +193,120 @@ class GroupSessionScreenTest {
 
     composeTestRule
         .onAllNodesWithTag(GroupSessionScreenTestTags.PARTICIPANTS_PILL)[0]
+        .assert(hasContentDescription("View 2 participants"))
         .performClick()
-    composeTestRule.waitForIdle()
 
-    assertEquals(
-        context.getString(R.string.toast_not_implemented),
-        ShadowToast.getTextOfLatestToast(),
-    )
+    composeTestRule.onNodeWithTag(GroupSessionParticipantsTestTags.SHEET).assertIsDisplayed()
+    assertRosterContent()
+    composeTestRule.onNodeWithTag(GroupSessionParticipantsTestTags.CLOSE).performClick()
+    composeTestRule.onNodeWithTag(GroupSessionParticipantsTestTags.SHEET).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST).assertIsDisplayed()
+  }
+
+  /** Both card paths present the same roster for the selected session. */
+  @Test
+  fun participants_pill_in_map_room_opens_roster() {
+    val room =
+        CampusLocation(
+            name = "BC 01",
+            zone = "BC",
+            type = CampusLocationType.LECTURE_ROOM,
+            floor = 0,
+            location = Location(46.519, 6.565),
+        )
+    val viewModel =
+        createViewModel(campusLocationRepository = FakeCampusLocationRepository(listOf(room)))
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalInspectionMode provides true) {
+        GroupSessionScreen(viewModel = viewModel)
+      }
+    }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.rooms.isNotEmpty() }
+
+    // The room link takes the test to the same map cards shown after a room pin is selected.
+    composeTestRule.onNodeWithText("BC 01").performClick()
+    composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.PARTICIPANTS_PILL)
+        .performScrollTo()
+        .assertIsDisplayed()
+        .assert(hasContentDescription("View 2 participants"))
+        .performClick()
+
+    composeTestRule.onNodeWithTag(GroupSessionParticipantsTestTags.SHEET).assertIsDisplayed()
+    assertRosterContent()
+    composeTestRule.onNodeWithTag(GroupSessionParticipantsTestTags.CLOSE).performClick()
+    composeTestRule.onNodeWithTag(GroupSessionParticipantsTestTags.SHEET).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST).assertIsDisplayed()
+  }
+
+  /** Search matches names without case or outer whitespace and can restore the whole roster. */
+  @Test
+  fun participants_search_filters_the_open_roster() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
+    val card = hasTestTag(GroupSessionScreenTestTags.sessionItem(2))
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST).performScrollToNode(card)
+    composeTestRule
+        .onNode(hasTestTag(GroupSessionScreenTestTags.PARTICIPANTS_PILL) and hasAnyAncestor(card))
+        .performClick()
+
+    expandParticipantsSheet()
+    val sheet = hasAnyAncestor(hasTestTag(GroupSessionParticipantsTestTags.SHEET))
+    val bob = composeTestRule.onNode(hasText("Bob") and sheet)
+    val you = composeTestRule.onNode(hasText("You") and sheet)
+    val search = composeTestRule.onNodeWithTag(GroupSessionParticipantsTestTags.SEARCH)
+    bob.assertIsDisplayed()
+    you.assertIsDisplayed()
+
+    search.performTextReplacement("  bOB  ")
+    bob.assertIsDisplayed()
+    you.assertDoesNotExist()
+    composeTestRule.onNode(hasText("Participants (2)") and sheet).assertIsDisplayed()
+
+    search.performTextReplacement("you")
+    you.assertIsDisplayed()
+    bob.assertDoesNotExist()
+
+    search.performTextReplacement("missing")
+    composeTestRule
+        .onNode(
+            hasText(context.getString(R.string.group_session_participants_no_matches)) and sheet
+        )
+        .assertIsDisplayed()
+
+    search.performTextReplacement("")
+    bob.assertIsDisplayed()
+    you.assertIsDisplayed()
+  }
+
+  /** Opens the expanded sheet so roster assertions do not depend on available screen height. */
+  private fun expandParticipantsSheet() {
+    composeTestRule
+        .onNode(SemanticsMatcher.keyIsDefined(SemanticsActions.Expand), useUnmergedTree = true)
+        .performSemanticsAction(SemanticsActions.Expand)
+  }
+
+  /** Verifies the session subject and the signed-in host’s label and avatar. */
+  private fun assertRosterContent() {
+    expandParticipantsSheet()
+    composeTestRule.onAllNodesWithTag(GroupSessionParticipantsTestTags.AVATAR).assertCountEquals(2)
+    composeTestRule
+        .onNodeWithTag(GroupSessionParticipantsTestTags.SHEET)
+        .assert(hasAnyDescendant(hasText("Software Architecture")))
+        .assert(
+            hasAnyDescendant(hasText(context.getString(R.string.group_session_participants_you)))
+        )
+        .assert(hasAnyDescendant(hasText("A")))
+        .assert(
+            hasAnyDescendant(hasText(context.getString(R.string.group_session_participants_host)))
+        )
+        .assert(
+            hasAnyDescendant(
+                hasText(context.getString(R.string.group_session_participants_unknown))
+            )
+        )
   }
 
   @Test
@@ -340,7 +460,11 @@ class GroupSessionScreenTest {
         .assert(
             hasAnyDescendant(hasText(context.getString(R.string.group_session_location_fallback)))
         )
-        .assert(hasAnyDescendant(hasText("+1")))
+        .assert(hasAnyDescendant(hasContentDescription("View 3 participants")))
+    // Verify the total also appears visually inside the button.
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.sessionItem(3), useUnmergedTree = true)
+        .assert(hasAnyDescendant(hasText("3")))
   }
 
   @Test
@@ -936,6 +1060,9 @@ class GroupSessionScreenTest {
       ProfileRepository {
     override suspend fun getProfile(userId: String): Result<UserProfile?> =
         Result.success(profiles[userId])
+
+    override suspend fun updateUsername(userId: String, username: String): Result<UserProfile> =
+        Result.failure(UnsupportedOperationException("Not needed in this test"))
 
     override suspend fun createProfile(userId: String): Result<UserProfile> =
         Result.success(UserProfile(uid = userId))
