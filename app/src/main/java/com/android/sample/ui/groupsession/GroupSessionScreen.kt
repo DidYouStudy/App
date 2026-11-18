@@ -328,7 +328,10 @@ internal fun GroupSessionContent(
   when (viewMode) {
     GroupSessionViewMode.LIST -> {
       Box(modifier = modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize().padding(horizontal = Spacing.large)) {
+        Column(
+            modifier =
+                Modifier.fillMaxSize().padding(horizontal = Spacing.large, vertical = Spacing.small)
+        ) {
           GroupSessionSearchBar(
               query = state.query,
               onQueryChange = onQueryChange,
