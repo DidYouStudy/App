@@ -197,6 +197,20 @@
     <string name="group_session_filter_my">My sessions</string>
     <string name="group_session_active_sessions_title">Active sessions</string>
     <string name="group_session_host_unknown">Unknown host</string>
+    <plurals name="group_session_view_participants">
+        <item quantity="one">View %1$d participant</item>
+        <item quantity="other">View %1$d participants</item>
+    </plurals>
+    <string name="group_session_participants_title">Participants (%1$d)</string>
+    <string name="group_session_participants_host">Host</string>
+    <string name="group_session_participants_you">You</string>
+    <string name="group_session_participants_search">Search participants</string>
+    <string name="group_session_participants_no_matches">No matching participants</string>
+    <string name="group_session_participants_unknown">Unknown</string>
+    <string name="group_session_participants_unavailable">Unavailable</string>
+    <string name="group_session_participants_loading">Loading participants&#8230;</string>
+    <string name="group_session_participants_error">Some usernames could not be loaded.</string>
+    <string name="group_session_participants_close">Close participants</string>
     <string name="group_session_loading">Loading sessions&#8230;</string>
     <string name="group_session_empty">No active sessions</string>
     <string name="group_session_subject_fallback">Other</string>
@@ -228,8 +242,7 @@
     <string name="group_session_action_join">Join</string>
     <!-- %1$s: day ("Today" or a weekday), %2$s: start time, %3$s: end time -->
     <string name="group_session_date_time_range">%1$s · %2$s – %3$s</string>
-    <!-- Number of members not shown as an avatar in the participants pill -->
-    <string name="group_session_extra_members">+%1$d</string>
+    <string name="group_session_participant_count">%1$d</string>
     <string name="group_session_view_mode_list">List view</string>
     <string name="group_session_view_mode_map">Map view</string>
     <!-- %1$s: location room name, %2$s: formatted distance from user -->
