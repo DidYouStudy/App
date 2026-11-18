@@ -7,6 +7,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -24,8 +25,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.integerResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.core.content.res.ResourcesCompat
 import com.android.sample.R
 import com.android.sample.model.location.CampusLocation
@@ -42,7 +45,10 @@ import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
 import kotlin.math.acos
+import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Map of the campus with one pin per room.
@@ -62,6 +68,7 @@ import kotlinx.coroutines.launch
  * @param onMapClick Called when the map is tapped away from any pin.
  * @param cameraPositionState Camera of the map, for a caller that needs to read or move it, such as
  *   instrumented tests; by default a camera on the campus centre at the default zoom.
+ * @param userLocation Current device location of the user, or null if not available or shared.
  */
 @Composable
 fun GroupSessionMapView(
@@ -71,10 +78,11 @@ fun GroupSessionMapView(
     modifier: Modifier = Modifier,
     onMapClick: () -> Unit = {},
     cameraPositionState: CameraPositionState? = null,
+    userLocation: Location? = null,
 ) {
   // The real map cannot load in the IDE preview, so it shows a stand-in.
   if (LocalInspectionMode.current) {
-    MapPlaceholder(onMapClick, modifier)
+    MapPlaceholder(onMapClick, modifier, userLocation)
     return
   }
 
@@ -107,10 +115,21 @@ fun GroupSessionMapView(
   }
   val scope = rememberCoroutineScope()
 
-  LaunchedEffect(cameraTarget) { cameraTarget?.let { focusOn(it) } }
+  LaunchedEffect(cameraTarget) {
+    cameraTarget?.let { target ->
+      withTimeoutOrNull(2_000.milliseconds) {
+        while (cameraPositionState.projection == null) {
+          delay(50.milliseconds)
+        }
+      }
+      focusOn(target)
+    }
+  }
 
-  // Disable on-screen zoom buttons so they do not overlap with bottom floating UI components.
-  val uiSettings = remember { MapUiSettings(zoomControlsEnabled = false) }
+  // Disable on-screen zoom and default my-location buttons so they do not overlap with floating UI.
+  val uiSettings = remember {
+    MapUiSettings(zoomControlsEnabled = false, myLocationButtonEnabled = false)
+  }
 
   Box(modifier = modifier.fillMaxSize()) {
     GoogleMap(
@@ -119,6 +138,15 @@ fun GroupSessionMapView(
         uiSettings = uiSettings,
         onMapClick = { onMapClick() },
     ) {
+      userLocation?.let { location ->
+        MarkerComposable(
+            keys = arrayOf("UserLocation", location),
+            state = rememberUpdatedMarkerState(position = location.toLatLng()),
+            title = stringResource(R.string.group_session_user_location_title),
+        ) {
+          UserLocationPin()
+        }
+      }
       rooms.forEach { room ->
         MarkerComposable(
             room.name,
@@ -189,12 +217,33 @@ internal fun dropletPath(size: Size, quarterTurn: Float, fullTurn: Float): Path 
   }
 }
 
+/** Pin drawn for the user's current location: a solid circle with a white border. */
+@Composable
+private fun UserLocationPin() {
+  val diameter = Dimens.mapMarkerWidth
+  val innerColor = MaterialTheme.colorScheme.primary
+  Canvas(modifier = Modifier.size(diameter)) {
+    drawCircle(
+        Color.White,
+        radius = size.minDimension / 2,
+    )
+    drawCircle(
+        innerColor,
+        radius = (size.minDimension / 2) - 2.dp.toPx(),
+    )
+  }
+}
+
 /**
  * Stand-in for the map where the real one cannot load, in the IDE preview and in unit tests.
  * Tapping it reports a map click, like the real map.
  */
 @Composable
-private fun MapPlaceholder(onMapClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun MapPlaceholder(
+    onMapClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    userLocation: Location? = null,
+) {
   Box(
       modifier =
           modifier
@@ -203,10 +252,19 @@ private fun MapPlaceholder(onMapClick: () -> Unit, modifier: Modifier = Modifier
               .clickable { onMapClick() }
               .padding(Spacing.large)
   ) {
-    Text(
-        text = stringResource(R.string.group_session_map_preview_placeholder),
-        style = MaterialTheme.typography.titleMedium,
-    )
+    Column {
+      Text(
+          text = stringResource(R.string.group_session_map_preview_placeholder),
+          style = MaterialTheme.typography.titleMedium,
+      )
+      if (userLocation != null) {
+        Text(
+            text = stringResource(R.string.group_session_user_location_placeholder),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.testTag(GroupSessionMapTestTags.USER_LOCATION_MARKER),
+        )
+      }
+    }
   }
 }
 

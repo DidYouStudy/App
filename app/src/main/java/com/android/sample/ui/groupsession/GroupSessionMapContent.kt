@@ -44,6 +44,9 @@ import kotlinx.coroutines.runBlocking
 object GroupSessionMapTestTags {
   /** The list of session cards shown at the bottom once a pin is tapped. */
   const val SESSION_LIST = "group_session_map_session_list"
+
+  /** The marker representing the user's current location on the map. */
+  const val USER_LOCATION_MARKER = "group_session_map_user_location_marker"
 }
 
 /**
@@ -77,6 +80,9 @@ fun GroupSessionMapContent(
     onSelectedRoomChange: ((String?) -> Unit)? = null,
     onLocationClick: (GroupSessionItem) -> Unit = {},
     cameraPositionState: CameraPositionState? = null,
+    userLocation: Location? = null,
+    cameraTarget: Location? = null,
+    cameraTargetKey: Any? = null,
 ) {
   // Supports both state hosting (controlled by parent via selectedRoom/onSelectedRoomChange)
   // and self-contained state (uncontrolled, falling back to internalSelectedRoom initialized with
@@ -98,23 +104,30 @@ fun GroupSessionMapContent(
           floatResource(R.dimen.map_campus_center_latitude).toDouble(),
           floatResource(R.dimen.map_campus_center_longitude).toDouble(),
       )
-  var cameraTarget by remember {
+  var internalCameraTarget by remember {
     mutableStateOf<Location?>(selected?.room?.location ?: campusCenter)
   }
 
   LaunchedEffect(selected) {
     if (selected != null) {
-      cameraTarget = selected.room.location
+      internalCameraTarget = selected.room.location
+    }
+  }
+
+  LaunchedEffect(cameraTarget, cameraTargetKey) {
+    if (cameraTarget != null) {
+      internalCameraTarget = cameraTarget
     }
   }
 
   BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     GroupSessionMapView(
         rooms = campusRooms,
-        cameraTarget = cameraTarget,
+        cameraTarget = internalCameraTarget,
         onMarkerClick = updateSelectedRoom,
         onMapClick = { updateSelectedRoom(null) },
         cameraPositionState = cameraPositionState,
+        userLocation = userLocation,
     )
     if (selected != null) {
       SessionCardList(

@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
 import androidx.compose.runtime.CompositionLocalProvider
@@ -86,6 +87,9 @@ class GroupSessionMapContentTest {
       onJoin: (String) -> Unit = {},
       onEdit: (String) -> Unit = {},
       initialSelectedRoom: String? = null,
+      userLocation: Location? = null,
+      cameraTarget: Location? = null,
+      cameraTargetKey: Any? = null,
   ) {
     composeTestRule.setContent {
       // The real Google map cannot load in a unit test; in inspection mode the map view shows a
@@ -98,9 +102,30 @@ class GroupSessionMapContentTest {
             onLeave = {},
             onEdit = onEdit,
             initialSelectedRoom = initialSelectedRoom,
+            userLocation = userLocation,
+            cameraTarget = cameraTarget,
+            cameraTargetKey = cameraTargetKey,
         )
       }
     }
+  }
+
+  @Test
+  fun content_withUserLocation_displaysUserLocationMarker() {
+    setContent(userLocation = Location(46.519, 6.565))
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionMapTestTags.USER_LOCATION_MARKER, useUnmergedTree = true)
+        .assertExists()
+  }
+
+  @Test
+  fun content_withoutUserLocation_doesNotDisplayUserLocationMarker() {
+    setContent(userLocation = null)
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionMapTestTags.USER_LOCATION_MARKER, useUnmergedTree = true)
+        .assertDoesNotExist()
   }
 
   @Test
