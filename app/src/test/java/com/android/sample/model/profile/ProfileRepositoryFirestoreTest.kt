@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot
 // Co-authored-by: Codex AI Agent
+// Co-authored-by: Claude Code
 package com.android.sample.model.profile
 
 import com.google.android.gms.tasks.TaskCompletionSource
@@ -34,6 +35,7 @@ class ProfileRepositoryFirestoreTest {
   private lateinit var firestore: FirebaseFirestore
   private lateinit var collection: CollectionReference
   private lateinit var document: DocumentReference
+  private lateinit var usernames: CollectionReference
   private lateinit var repository: ProfileRepositoryFirestore
 
   @Before
@@ -43,6 +45,9 @@ class ProfileRepositoryFirestoreTest {
     document = mock(DocumentReference::class.java)
     `when`(firestore.collection("profiles")).thenReturn(collection)
     `when`(collection.document(any())).thenReturn(document)
+    usernames = mock(CollectionReference::class.java)
+    `when`(firestore.collection("usernames")).thenReturn(usernames)
+    `when`(usernames.document(any())).thenReturn(mock(DocumentReference::class.java))
     repository = ProfileRepositoryFirestore(firestore)
   }
 
@@ -400,6 +405,154 @@ class ProfileRepositoryFirestoreTest {
 
     assertProfileError(result, ProfileError.UNKNOWN)
     assertEquals(wrapped, result.exceptionOrNull()?.cause)
+  }
+
+  // Claims a first username: reserves it, updates the profile and returns the new name.
+  @Test
+  fun updateUsername_reservesNameAndUpdatesProfile() = runTest {
+    val transaction = mock(Transaction::class.java)
+    val reservation = reservationStub(transaction, "alice", takenBy = null)
+    stubProfile(transaction, UserProfile("user123"))
+    stubTransaction(transaction)
+
+    val result = repository.updateUsername("user123", " Alice ")
+
+    assertEquals(UserProfile("user123", "Alice"), result.getOrNull())
+    verify(transaction).set(reservation, mapOf("uid" to "user123"))
+    verify(transaction).update(document, "username", "Alice")
+    verify(transaction, never()).delete(any())
+  }
+
+  // Rejects a name reserved by another user and writes nothing.
+  @Test
+  fun updateUsername_returnsTaken_whenReservedByAnotherUser() = runTest {
+    val transaction = mock(Transaction::class.java)
+    reservationStub(transaction, "alice", takenBy = "someone-else")
+    stubProfile(transaction, UserProfile("user123"))
+    stubTransaction(transaction)
+
+    val result = repository.updateUsername("user123", "Alice")
+
+    assertProfileError(result, ProfileError.USERNAME_TAKEN)
+    verify(transaction, never()).set(any(), any())
+    verify(transaction, never()).update(any(), any<String>(), any())
+  }
+
+  // Renaming releases the previous reservation in the same transaction.
+  @Test
+  fun updateUsername_releasesPreviousReservation_whenRenaming() = runTest {
+    val transaction = mock(Transaction::class.java)
+    reservationStub(transaction, "bob", takenBy = null)
+    val old = reservationRef("alice")
+    stubProfile(transaction, UserProfile("user123", "Alice"))
+    stubTransaction(transaction)
+
+    val result = repository.updateUsername("user123", "Bob")
+
+    assertEquals("Bob", result.getOrNull()?.username)
+    verify(transaction).delete(old)
+  }
+
+  // Choosing the owned name again (only the letter case differs) keeps the reservation.
+  @Test
+  fun updateUsername_keepsReservation_whenOnlyCaseChanges() = runTest {
+    val transaction = mock(Transaction::class.java)
+    reservationStub(transaction, "alice", takenBy = "user123")
+    stubProfile(transaction, UserProfile("user123", "alice"))
+    stubTransaction(transaction)
+
+    val result = repository.updateUsername("user123", "ALICE")
+
+    assertEquals("ALICE", result.getOrNull()?.username)
+    verify(transaction, never()).delete(any())
+    verify(transaction, never()).set(any(), any())
+    verify(transaction).update(document, "username", "ALICE")
+  }
+
+  // Fails when the profile document does not exist.
+  @Test
+  fun updateUsername_returnsInvalidProfileData_whenProfileIsMissing() = runTest {
+    val transaction = mock(Transaction::class.java)
+    reservationStub(transaction, "alice", takenBy = null)
+    val missing = mock(DocumentSnapshot::class.java)
+    `when`(missing.exists()).thenReturn(false)
+    `when`(transaction.get(document)).thenReturn(missing)
+    stubTransaction(transaction)
+
+    val result = repository.updateUsername("user123", "Alice")
+
+    assertProfileError(result, ProfileError.INVALID_PROFILE_DATA)
+  }
+
+  // Rejects blank user IDs and malformed names before touching Firestore.
+  @Test
+  fun updateUsername_rejectsInvalidInput_withoutAccessingFirestore() = runTest {
+    assertProfileError(repository.updateUsername(" ", "Alice"), ProfileError.INVALID_USER_ID)
+    for (bad in listOf("", "ab", "a".repeat(21), "has space", "bad/name", "_start")) {
+      assertProfileError(repository.updateUsername("user123", bad), ProfileError.INVALID_USERNAME)
+    }
+    verify(firestore, never()).runTransaction<UserProfile>(any())
+  }
+
+  // Maps a failed transaction to a Firestore failure.
+  @Test
+  fun updateUsername_returnsFirestoreFailure_whenTransactionTaskFails() = runTest {
+    `when`(firestore.runTransaction<UserProfile>(any()))
+        .thenReturn(Tasks.forException(firestoreException("denied")))
+
+    val result = repository.updateUsername("user123", "Alice")
+
+    assertProfileError(result, ProfileError.FIRESTORE_FAILURE)
+  }
+
+  // Maps an unexpected exception to the unknown category.
+  @Test
+  fun updateUsername_returnsUnknownFailure_whenTransactionFailsUnexpectedly() = runTest {
+    `when`(firestore.runTransaction<UserProfile>(any()))
+        .thenReturn(Tasks.forException(IllegalStateException("boom")))
+
+    assertProfileError(repository.updateUsername("user123", "Alice"), ProfileError.UNKNOWN)
+  }
+
+  // Propagates cancellation instead of returning a failed result.
+  @Test
+  fun updateUsername_propagatesCancellation() = runTest {
+    `when`(firestore.runTransaction<UserProfile>(any()))
+        .thenThrow(CancellationException("cancelled"))
+
+    try {
+      repository.updateUsername("user123", "Alice")
+      fail("Expected cancellation")
+    } catch (expected: CancellationException) {
+      assertEquals("cancelled", expected.message)
+    }
+  }
+
+  private fun reservationRef(key: String): DocumentReference {
+    val reference = mock(DocumentReference::class.java)
+    `when`(usernames.document(key)).thenReturn(reference)
+    return reference
+  }
+
+  // Stubs the reservation read; takenBy is the owning UID, or null when the name is free.
+  private fun reservationStub(
+      transaction: Transaction,
+      key: String,
+      takenBy: String?,
+  ): DocumentReference {
+    val reference = reservationRef(key)
+    val snapshot = mock(DocumentSnapshot::class.java)
+    `when`(snapshot.exists()).thenReturn(takenBy != null)
+    `when`(snapshot.getString("uid")).thenReturn(takenBy)
+    `when`(transaction.get(reference)).thenReturn(snapshot)
+    return reference
+  }
+
+  private fun stubProfile(transaction: Transaction, profile: UserProfile) {
+    val snapshot = mock(DocumentSnapshot::class.java)
+    `when`(snapshot.exists()).thenReturn(true)
+    `when`(snapshot.toObject(UserProfile::class.java)).thenReturn(profile)
+    `when`(transaction.get(document)).thenReturn(snapshot)
   }
 
   private fun stubTransaction(transaction: Transaction) {
