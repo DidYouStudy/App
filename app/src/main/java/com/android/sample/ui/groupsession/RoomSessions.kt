@@ -3,6 +3,8 @@
 package com.android.sample.ui.groupsession
 
 import com.android.sample.model.location.CampusLocation
+import com.android.sample.model.location.CampusLocationType
+import com.android.sample.model.location.Location
 import com.android.sample.model.location.SessionPlaceResolver
 
 /**
@@ -26,10 +28,19 @@ data class RoomSessions(val room: CampusLocation, val items: List<GroupSessionIt
  * room first appears in [items], so the result is stable between calls.
  */
 fun groupByRoom(items: List<GroupSessionItem>, resolver: SessionPlaceResolver): List<RoomSessions> {
-  val byRoom = LinkedHashMap<CampusLocation, MutableList<GroupSessionItem>>()
-  for (item in items) {
-    val room = resolver.resolve(item.session.details.location) ?: continue
-    byRoom.getOrPut(room) { mutableListOf() }.add(item)
-  }
-  return byRoom.map { (room, grouped) -> RoomSessions(room, grouped.toList()) }
+
+  // fake CampusLocation object used to filter noLoc sessions
+  val noLoc =
+      CampusLocation(
+          "",
+          "",
+          CampusLocationType.CONFERENCE_ROOM,
+          0,
+          Location(0.0, 0.0),
+      )
+
+  return items
+      .groupBy { item -> resolver.resolve(item.session.details.location) ?: noLoc }
+      .filter { (key, _) -> key != noLoc }
+      .map { (room, grouped) -> RoomSessions(room, grouped.toList()) }
 }
