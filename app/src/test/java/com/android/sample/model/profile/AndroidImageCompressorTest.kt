@@ -4,6 +4,7 @@ package com.android.sample.model.profile
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import com.android.sample.R
@@ -67,6 +68,19 @@ class AndroidImageCompressorTest {
     assertEquals(height, options.outHeight)
   }
 
+  /** Transparent pixels take the background colour in the JPEG instead of turning black. */
+  @Test
+  fun compress_drawsTransparentPixelsOnTheBackgroundColor() = runTest {
+    // writePng creates a fully transparent bitmap.
+    val uri = writePng(width = maxEdge / 2, height = maxEdge / 2)
+
+    val bytes = compressor().compress(uri).getOrThrow()
+    val pixel = BitmapFactory.decodeByteArray(bytes, 0, bytes.size).getPixel(0, 0)
+
+    val expected = context.getColor(R.color.white)
+    assertColorsClose(expected, pixel)
+  }
+
   /** A location that cannot be read fails with the invalid image category. */
   @Test
   fun compress_returnsInvalidImageFailure_whenUriCannotBeRead() = runTest {
@@ -114,6 +128,14 @@ class AndroidImageCompressorTest {
 
   private fun compressor() = AndroidImageCompressor(context, UnconfinedTestDispatcher())
 
+  /** Asserts that each colour channel differs by at most [CHANNEL_TOLERANCE], for JPEG rounding. */
+  private fun assertColorsClose(expected: Int, actual: Int) {
+    val channels = listOf(Color::red, Color::green, Color::blue)
+    channels.forEach { channel ->
+      assertEquals(channel(expected).toDouble(), channel(actual).toDouble(), CHANNEL_TOLERANCE)
+    }
+  }
+
   /** Writes [bytes] as they are to a file in the cache directory and returns its URI string. */
   private fun writeFile(bytes: ByteArray): String {
     val file = File.createTempFile("picked", ".png", context.cacheDir)
@@ -121,7 +143,10 @@ class AndroidImageCompressorTest {
     return Uri.fromFile(file).toString()
   }
 
-  /** Writes a blank PNG of the given size to the cache directory and returns its URI string. */
+  /**
+   * Writes a blank (fully transparent) PNG of the given size to the cache directory and returns its
+   * URI string.
+   */
   private fun writePng(width: Int, height: Int): String {
     val file = File.createTempFile("picked", ".png", context.cacheDir)
     file.outputStream().use { output ->
@@ -136,5 +161,10 @@ class AndroidImageCompressorTest {
     val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
     return options
+  }
+
+  private companion object {
+    /** Largest accepted difference per colour channel (0-255) after the lossy JPEG round trip. */
+    const val CHANNEL_TOLERANCE = 5.0
   }
 }
