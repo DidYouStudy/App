@@ -298,6 +298,45 @@ class SettingsViewModelUsernameTest {
     assertEquals("bob", vm.uiState.value.username)
   }
 
+  @Test
+  fun save_whenDialogIsClosed_doesNothing() = runTest {
+    val vm = viewModel()
+    vm.saveUsername()
+
+    assertTrue(repository.requestedUsernames.isEmpty())
+  }
+
+  @Test
+  fun save_whenSignedOutAfterOpening_doesNothing() = runTest {
+    val vm = viewModel()
+    vm.type("bob")
+    currentUser.value = null
+    vm.saveUsername()
+
+    assertTrue(repository.requestedUsernames.isEmpty())
+  }
+
+  @Test
+  fun save_cancelled_doesNotReportAnError() = runTest {
+    repository.onUpdate = { throw kotlinx.coroutines.CancellationException("cancelled") }
+    val vm = viewModel()
+    vm.type("bob")
+    vm.saveUsername()
+
+    // Cancellation is propagated, not turned into a failure shown to the user.
+    assertNull(vm.edit().error)
+  }
+
+  @Test
+  fun open_whileProfileIsLoading_doesNothing() = runTest {
+    val vm = SettingsViewModel(authRepository, repository)
+    currentUser.value = null
+    // A signed-out ViewModel finishes loading but has no user to edit.
+    vm.openUsernameEditor()
+
+    assertNull(vm.uiState.value.usernameEdit)
+  }
+
   // --- Pure helpers ------------------------------------------------------------------------
 
   @Test
