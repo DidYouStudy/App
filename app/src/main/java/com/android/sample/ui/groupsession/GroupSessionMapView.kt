@@ -71,6 +71,8 @@ import kotlinx.coroutines.withTimeoutOrNull
  * @param userLocation Current device location of the user, or null if not available or shared.
  * @param hasLocationPermission Whether location permission is granted, enabling the native Google
  *   Maps blue dot for user location.
+ * @param recenterTrigger Counter incremented by caller to recenter camera onto user location (or
+ *   campus centre).
  */
 @Composable
 fun GroupSessionMapView(
@@ -82,6 +84,7 @@ fun GroupSessionMapView(
     cameraPositionState: CameraPositionState? = null,
     userLocation: Location? = null,
     hasLocationPermission: Boolean = false,
+    recenterTrigger: Int = 0,
 ) {
   // The real map cannot load in the IDE preview, so it shows a stand-in.
   if (LocalInspectionMode.current) {
@@ -120,6 +123,23 @@ fun GroupSessionMapView(
 
   LaunchedEffect(cameraTarget) {
     cameraTarget?.let { target ->
+      withTimeoutOrNull(2_000.milliseconds) {
+        while (cameraPositionState.projection == null) {
+          delay(50.milliseconds)
+        }
+      }
+      focusOn(target)
+    }
+  }
+
+  LaunchedEffect(recenterTrigger) {
+    if (recenterTrigger > 0) {
+      val target =
+          if (hasLocationPermission && userLocation != null) {
+            userLocation
+          } else {
+            Location(campusCenter.latitude, campusCenter.longitude)
+          }
       withTimeoutOrNull(2_000.milliseconds) {
         while (cameraPositionState.projection == null) {
           delay(50.milliseconds)

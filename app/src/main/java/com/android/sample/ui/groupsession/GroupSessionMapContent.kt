@@ -84,6 +84,7 @@ fun GroupSessionMapContent(
     cameraTarget: Location? = null,
     cameraTargetKey: Any? = null,
     hasLocationPermission: Boolean = false,
+    recenterTrigger: Int = 0,
 ) {
   // Supports both state hosting (controlled by parent via selectedRoom/onSelectedRoomChange)
   // and self-contained state (uncontrolled, falling back to internalSelectedRoom initialized with
@@ -121,6 +122,12 @@ fun GroupSessionMapContent(
     }
   }
 
+  LaunchedEffect(recenterTrigger) {
+    if (recenterTrigger > 0) {
+      updateSelectedRoom(null)
+    }
+  }
+
   BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     GroupSessionMapView(
         rooms = campusRooms,
@@ -130,6 +137,7 @@ fun GroupSessionMapContent(
         cameraPositionState = cameraPositionState,
         userLocation = userLocation,
         hasLocationPermission = hasLocationPermission,
+        recenterTrigger = recenterTrigger,
     )
     if (selected != null) {
       SessionCardList(

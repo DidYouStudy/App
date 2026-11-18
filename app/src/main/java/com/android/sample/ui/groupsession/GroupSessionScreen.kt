@@ -207,10 +207,12 @@ fun GroupSessionScreen(
           floatResource(R.dimen.map_campus_center_latitude).toDouble(),
           floatResource(R.dimen.map_campus_center_longitude).toDouble(),
       )
+  var recenterTrigger by remember { mutableIntStateOf(0) }
   var cameraTarget by remember { mutableStateOf<Location?>(null) }
   var cameraTargetKey by remember { mutableIntStateOf(0) }
 
   val onCenterLocationClick: () -> Unit = {
+    recenterTrigger++
     cameraTarget =
         if (hasLocationPermission && uiState.userLocation != null) {
           uiState.userLocation
@@ -314,6 +316,7 @@ fun GroupSessionScreen(
             cameraTarget = cameraTarget,
             cameraTargetKey = cameraTargetKey,
             hasLocationPermission = hasLocationPermission,
+            recenterTrigger = recenterTrigger,
         )
       },
   )
@@ -370,6 +373,7 @@ internal fun GroupSessionContent(
     cameraTarget: Location? = null,
     cameraTargetKey: Any? = null,
     hasLocationPermission: Boolean = false,
+    recenterTrigger: Int = 0,
 ) {
   when (viewMode) {
     GroupSessionViewMode.LIST -> {
@@ -450,6 +454,7 @@ internal fun GroupSessionContent(
             cameraTarget = cameraTarget,
             cameraTargetKey = cameraTargetKey,
             hasLocationPermission = hasLocationPermission,
+            recenterTrigger = recenterTrigger,
         )
         Column(
             modifier =

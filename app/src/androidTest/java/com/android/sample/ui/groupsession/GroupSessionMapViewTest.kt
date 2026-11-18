@@ -1,6 +1,10 @@
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.core.content.res.ResourcesCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -81,6 +85,56 @@ class GroupSessionMapViewTest {
   @Test
   fun startingTarget_movesTheCameraOntoItAtLeastToTheFocusZoom() {
     showMap(cameraTarget = campusCenter)
+
+    waitForCameraAt(campusCenter, minZoom = focusZoom, maxZoom = 21f)
+  }
+
+  @Test
+  fun recenterTrigger_centersCameraOnUserLocationWhenPermissionGranted() {
+    val userLocation = Location(46.5200, 6.5650)
+    var trigger by mutableIntStateOf(0)
+    composeTestRule.setContent {
+      camera = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(FAR_AWAY, START_ZOOM)
+      }
+      GroupSessionMapView(
+          rooms = listOf(first, second),
+          cameraTarget = null,
+          onMarkerClick = {},
+          userLocation = userLocation,
+          hasLocationPermission = true,
+          recenterTrigger = trigger,
+          cameraPositionState = camera,
+      )
+    }
+    map.waitForMap()
+
+    trigger = 1
+
+    waitForCameraAt(userLocation, minZoom = focusZoom, maxZoom = 21f)
+  }
+
+  @Test
+  fun recenterTrigger_centersCameraOnCampusCenterWhenPermissionDenied() {
+    val userLocation = Location(46.5200, 6.5650)
+    var trigger by mutableIntStateOf(0)
+    composeTestRule.setContent {
+      camera = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(FAR_AWAY, START_ZOOM)
+      }
+      GroupSessionMapView(
+          rooms = listOf(first, second),
+          cameraTarget = null,
+          onMarkerClick = {},
+          userLocation = userLocation,
+          hasLocationPermission = false,
+          recenterTrigger = trigger,
+          cameraPositionState = camera,
+      )
+    }
+    map.waitForMap()
+
+    trigger = 1
 
     waitForCameraAt(campusCenter, minZoom = focusZoom, maxZoom = 21f)
   }

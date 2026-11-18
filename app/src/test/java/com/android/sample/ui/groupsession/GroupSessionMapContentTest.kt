@@ -3,6 +3,9 @@
 package com.android.sample.ui.groupsession
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalInspectionMode
@@ -91,6 +94,7 @@ class GroupSessionMapContentTest {
       cameraTarget: Location? = null,
       cameraTargetKey: Any? = null,
       hasLocationPermission: Boolean = false,
+      recenterTrigger: Int = 0,
   ) {
     composeTestRule.setContent {
       // The real Google map cannot load in a unit test; in inspection mode the map view shows a
@@ -107,9 +111,34 @@ class GroupSessionMapContentTest {
             cameraTarget = cameraTarget,
             cameraTargetKey = cameraTargetKey,
             hasLocationPermission = hasLocationPermission,
+            recenterTrigger = recenterTrigger,
         )
       }
     }
+  }
+
+  @Test
+  fun recenterTrigger_closesSelectedRoom() {
+    var trigger by mutableIntStateOf(0)
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalInspectionMode provides true) {
+        GroupSessionMapContent(
+            rooms = rooms,
+            now = now,
+            onJoin = {},
+            onLeave = {},
+            onEdit = {},
+            initialSelectedRoom = "CM 1 121",
+            recenterTrigger = trigger,
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithText("Chemistry").assertIsDisplayed()
+    trigger = 1
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST).assertDoesNotExist()
   }
 
   @Test
