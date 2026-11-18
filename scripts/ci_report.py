@@ -60,13 +60,21 @@ def format_duration(started, completed):
 
 
 def render_jobs(jobs_json):
-    """Render the job table from the GitHub jobs API payload."""
+    """Render the job table from the GitHub jobs API payload.
+
+    Rows follow the order the jobs started, with a skipped job (whose timestamps are
+    meaningless) shown without a duration.
+    """
     rows = ["| Job | Result | Duration |", "|---|---|---|"]
-    for job in jobs_json.get("jobs", []):
+    jobs = sorted(jobs_json.get("jobs", []), key=lambda job: job.get("started_at") or "")
+    for job in jobs:
         if job.get("name") in IGNORED_JOBS:
             continue
         result = job.get("conclusion") or job.get("status") or "unknown"
-        duration = format_duration(job.get("started_at"), job.get("completed_at"))
+        if result == "skipped":
+            duration = "-"
+        else:
+            duration = format_duration(job.get("started_at"), job.get("completed_at"))
         rows.append(f"| {job.get('name')} | {result} | {duration} |")
     return "\n".join(rows)
 
