@@ -1012,6 +1012,9 @@ class AuthViewModelTest {
       return getProfileAction(userId)
     }
 
+    override suspend fun updateUsername(userId: String, username: String): Result<UserProfile> =
+        Result.failure(UnsupportedOperationException("Not needed in this test"))
+
     override suspend fun createProfile(userId: String): Result<UserProfile> {
       createProfileUserIds += userId
       return createProfileAction(userId)

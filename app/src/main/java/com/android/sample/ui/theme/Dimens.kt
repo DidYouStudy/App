@@ -4,6 +4,7 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: OpenAI Codex
 package com.android.sample.ui.theme
 
 import androidx.compose.ui.unit.dp
@@ -31,6 +32,7 @@ object Dimens {
   val cornerFull = 32.dp
   val cardPadding = 18.dp
   val avatarSizeLarge = 56.dp
+  val avatarSizeMedium = 40.dp
   val avatarSizeSmall = 20.dp
   val iconSizeSmall = 16.dp
   val actionButtonHeight = 40.dp
