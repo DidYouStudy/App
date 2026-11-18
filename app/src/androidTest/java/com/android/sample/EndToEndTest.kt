@@ -69,8 +69,10 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
 import java.util.UUID
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -244,6 +246,9 @@ class EndToEndTest {
       withSeedClient(picker) { uid, seedDb, _ ->
         val stored = preferences(uid)
         PreferencesRepositoryFirestore(seedDb).savePreferences(stored).getOrThrow()
+        // The save returns once the write is in the local cache. Wait for the server before the
+        // seed client is torn down, otherwise the queued write is discarded and never stored.
+        withTimeout(TIMEOUT_MILLIS.milliseconds) { seedDb.waitForPendingWrites().await() }
         stored
       }
 
@@ -322,6 +327,8 @@ class EndToEndTest {
     composeRule.onNodeWithTag(PrefTags.SAVE_BUTTON).performClick()
     assertOnDashboard()
     composeRule.onNodeWithTag(PrefTags.PREFERENCE_SCREEN).assertDoesNotExist()
+    // The save returns once the write is local, so wait until it reaches the server.
+    composeRule.waitUntil(timeoutMillis = TIMEOUT_MILLIS) { storedPreferences(uid) != null }
     assertEquals(
         UserPreferences(
             userId = uid,
@@ -412,6 +419,10 @@ class EndToEndTest {
     // Saving persists the edit in Firestore and lands back on Settings, not on the dashboard.
     waitForTag(SettingsScreenTestTags.SCREEN)
     composeRule.onNodeWithTag(PrefTags.PREFERENCE_SCREEN).assertDoesNotExist()
+    // The save returns once the write is local, so wait until the edit reaches the server.
+    composeRule.waitUntil(timeoutMillis = TIMEOUT_MILLIS) {
+      storedPreferences(uid)?.sessionLengthMinutes == 120
+    }
     assertEquals(120, storedPreferences(uid)?.sessionLengthMinutes)
 
     // Back from Settings reaches the dashboard: Preferences was not left on the back stack.
