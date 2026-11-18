@@ -8,7 +8,7 @@ package com.android.sample.model.profile
  * [ProfileRepository]. Implementations return [Result] so callers can handle failures explicitly
  * without depending on a particular storage SDK.
  */
-interface ProfilePictureRepository {
+fun interface ProfilePictureRepository {
   /**
    * Uploads a user's profile picture, replacing the previous one if there is any.
    *
