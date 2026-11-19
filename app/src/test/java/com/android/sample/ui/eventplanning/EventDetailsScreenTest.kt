@@ -4,6 +4,7 @@
 package com.android.sample.ui.eventplanning
 
 import android.content.Context
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertAny
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -11,13 +12,16 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
@@ -260,6 +264,75 @@ class EventDetailsScreenTest {
         .assertCountEquals(0)
   }
 
+  // Group session view
+
+  private val groupMembers =
+      listOf(
+          EventMember("host", "Hosty", isHost = true, isCurrentUser = true),
+          EventMember("bob", "Bob", isHost = false),
+          EventMember("carl", null, isHost = false),
+          EventMember("dana", null, isHost = false, isUnavailable = true),
+      )
+
+  private fun groupDisplay() =
+      sampleDisplay(tasks = emptyList(), isGroupSession = true, participants = groupMembers)
+
+  @Test
+  fun groupSessionShowsTheGroupSessionChip() {
+    setStatelessContent(display = groupDisplay())
+
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.GROUP_SESSION_CHIP)
+        .assertIsDisplayed()
+        .assertTextContains(string(R.string.event_details_group_session))
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.TYPE_BADGE).assertIsDisplayed()
+  }
+
+  @Test
+  fun personalEventHasNoGroupChipAndNoParticipants() {
+    setStatelessContent()
+
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.GROUP_SESSION_CHIP)
+        .assertDoesNotExist()
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.PARTICIPANTS_LABEL)
+        .assertDoesNotExist()
+  }
+
+  @Test
+  fun groupSessionListsParticipantsWithTheirCountHostFirst() {
+    setStatelessContent(display = groupDisplay())
+
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.PARTICIPANTS_LABEL)
+        .performScrollTo()
+        .assertTextEquals(string(R.string.group_session_participants_title, 4))
+    val you = string(R.string.group_session_participants_you)
+    val host = string(R.string.group_session_participants_host)
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.participantRow(0), useUnmergedTree = true)
+        .assert(hasAnyDescendant(hasText(you)))
+        .assert(hasAnyDescendant(hasText(host)))
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.participantRow(1), useUnmergedTree = true)
+        .assert(hasAnyDescendant(hasText("Bob")))
+        .assert(hasAnyDescendant(hasText(host)).not())
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.participantRow(2), useUnmergedTree = true)
+        .assert(hasAnyDescendant(hasText(string(R.string.group_session_participants_unknown))))
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.participantRow(3), useUnmergedTree = true)
+        .assert(hasAnyDescendant(hasText(string(R.string.group_session_participants_unavailable))))
+  }
+
+  @Test
+  fun groupSessionHidesTheTasksSection() {
+    setStatelessContent(display = groupDisplay())
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.TASKS_LABEL).assertDoesNotExist()
+  }
+
   @Test
   fun actionButtonsShowTheirLabels() {
     setStatelessContent()
@@ -418,6 +491,35 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DATE_TIME).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.LOADING).assertDoesNotExist()
     verifyBlocking(eventsRepository) { getEvent(USER_ID, EVENT_ID) }
+  }
+
+  @Test
+  fun statefulScreenLoadsAGroupSessionWithItsParticipants() {
+    val groupSessions = InMemoryGroupSessionsRepository()
+    val profiles = FakeProfileRepository()
+    profiles.setUsername(USER_ID, "Me")
+    profiles.setUsername("bob", "Bob")
+    val session = sampleGroupSession(createdBy = USER_ID, memberIds = listOf(USER_ID, "bob"))
+    runBlocking { groupSessions.saveSession(USER_ID, session).getOrThrow() }
+    val viewModel = EventDetailsViewModel(authRepository, eventsRepository, groupSessions, profiles)
+
+    composeTestRule.setContent {
+      EventDetailsScreen(
+          eventId = session.id,
+          kind = EventKind.GROUP_SESSION,
+          viewModel = viewModel,
+      )
+    }
+    settle()
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.GROUP_SESSION_CHIP).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.participantRow(0), useUnmergedTree = true)
+        .performScrollTo()
+        .assert(hasAnyDescendant(hasText(string(R.string.group_session_participants_you))))
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.participantRow(1), useUnmergedTree = true)
+        .assert(hasAnyDescendant(hasText("Bob")))
   }
 
   @Test
