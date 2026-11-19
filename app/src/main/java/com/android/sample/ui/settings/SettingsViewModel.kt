@@ -130,8 +130,9 @@ class SettingsViewModel(
   }
 
   /**
-   * Updates the text typed in the dialog, capped at [UsernamePolicy.MAX_LENGTH], and re-validates
-   * it. Ignored while a save is running.
+   * Updates the text typed in the dialog and re-validates it. Leading whitespace is dropped and the
+   * text is capped at [UsernamePolicy.MAX_LENGTH], so spaces never use up the limit. Ignored while
+   * a save is running.
    */
   fun onUsernameInputChange(input: String) {
     _uiState.update { state ->
@@ -139,7 +140,8 @@ class SettingsViewModel(
       if (edit == null || edit.isSaving) state
       else
           state.copy(
-              usernameEdit = editState(input.take(UsernamePolicy.MAX_LENGTH), state.username)
+              usernameEdit =
+                  editState(input.trimStart().take(UsernamePolicy.MAX_LENGTH), state.username)
           )
     }
   }
@@ -165,20 +167,25 @@ class SettingsViewModel(
           } catch (exception: Exception) {
             Result.failure(exception)
           }
+      // The user may have signed out while the request was running; drop the stale result.
+      if (currentUserId != userId) return@launch
       result
           .onSuccess { profile ->
             _uiState.update { it.copy(username = profile.username, usernameEdit = null) }
           }
           .onFailure { exception ->
             Log.w(TAG, "Failed to update the username", exception)
-            val error = (exception as? ProfileException)?.error?.toUsernameError()
+            val error =
+                (exception as? ProfileException)?.error?.toUsernameError() ?: UsernameError.FAILURE
             _uiState.update {
               it.copy(
                   usernameEdit =
                       edit.copy(
                           isSaving = false,
-                          error = error ?: UsernameError.FAILURE,
-                          canSave = false,
+                          error = error,
+                          // A storage failure may be temporary, so the same name can be retried;
+                          // the other errors need a different name.
+                          canSave = error == UsernameError.FAILURE,
                       )
               )
             }

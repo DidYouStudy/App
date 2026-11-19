@@ -25,8 +25,11 @@ enum class UsernameError {
   /** Another user already owns the name ([ProfileError.USERNAME_TAKEN]). */
   TAKEN,
 
-  /** The save failed because of the network or another storage problem. */
+  /** The save failed because of the network or another storage problem; retrying may work. */
   FAILURE,
+
+  /** The user's profile document is missing or unreadable ([ProfileError.INVALID_PROFILE_DATA]). */
+  PROFILE_UNAVAILABLE,
 }
 
 /** Returns the string resource shown under the username field for this error. */
@@ -38,6 +41,7 @@ fun UsernameError.toMessageRes(): Int =
       UsernameError.INVALID_CHARACTERS -> R.string.settings_username_error_invalid_characters
       UsernameError.TAKEN -> R.string.settings_username_error_taken
       UsernameError.FAILURE -> R.string.settings_username_error_failure
+      UsernameError.PROFILE_UNAVAILABLE -> R.string.settings_username_error_profile_unavailable
     }
 
 /**
@@ -66,14 +70,12 @@ data class UsernameEditState(
  * @return the first problem found, or null when the input is empty or valid.
  */
 fun validateUsernameInput(raw: String): UsernameError? {
-  val text = raw.trim()
-  if (text.isEmpty()) return null
-  val allowed = text.all { it.code < 128 && (it.isLetterOrDigit() || it in "_.-") }
-  return when {
-    !allowed || !text.first().isLetterOrDigit() -> UsernameError.INVALID_CHARACTERS
-    text.length < UsernamePolicy.MIN_LENGTH -> UsernameError.TOO_SHORT
-    text.length > UsernamePolicy.MAX_LENGTH -> UsernameError.TOO_LONG
-    else -> null
+  if (raw.isBlank()) return null
+  return when (UsernamePolicy.issue(raw)) {
+    UsernamePolicy.Issue.INVALID_CHARACTERS -> UsernameError.INVALID_CHARACTERS
+    UsernamePolicy.Issue.TOO_SHORT -> UsernameError.TOO_SHORT
+    UsernamePolicy.Issue.TOO_LONG -> UsernameError.TOO_LONG
+    null -> null
   }
 }
 
@@ -82,5 +84,6 @@ fun ProfileError.toUsernameError(): UsernameError =
     when (this) {
       ProfileError.USERNAME_TAKEN -> UsernameError.TAKEN
       ProfileError.INVALID_USERNAME -> UsernameError.INVALID_CHARACTERS
+      ProfileError.INVALID_PROFILE_DATA -> UsernameError.PROFILE_UNAVAILABLE
       else -> UsernameError.FAILURE
     }

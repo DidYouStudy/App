@@ -185,6 +185,15 @@ class SettingsViewModelUsernameTest {
   }
 
   @Test
+  fun leadingWhitespace_isDroppedAndDoesNotUseUpTheLimit() = runTest {
+    val vm = viewModel()
+    vm.type("     " + "a".repeat(UsernamePolicy.MAX_LENGTH))
+
+    assertEquals("a".repeat(UsernamePolicy.MAX_LENGTH), vm.edit().input)
+    assertNull(vm.edit().error)
+  }
+
+  @Test
   fun inputChange_ignored_whenDialogIsClosed() = runTest {
     val vm = viewModel()
     vm.onUsernameInputChange("bob")
@@ -248,11 +257,41 @@ class SettingsViewModelUsernameTest {
     vm.saveUsername()
 
     assertEquals(UsernameError.FAILURE, vm.edit().error)
+    // A storage failure may be temporary: the same name can be saved again without editing it.
+    assertTrue(vm.edit().canSave)
+    vm.saveUsername()
+    assertEquals(listOf("bob", "bob"), repository.requestedUsernames)
 
     // Typing again clears the error and re-enables Save.
     vm.onUsernameInputChange("bobby")
     assertNull(vm.edit().error)
     assertTrue(vm.edit().canSave)
+  }
+
+  @Test
+  fun save_missingProfile_showsProfileUnavailable_withoutRetry() = runTest {
+    repository.onUpdate = { Result.failure(ProfileException(ProfileError.INVALID_PROFILE_DATA)) }
+    val vm = viewModel()
+    vm.type("bob")
+    vm.saveUsername()
+
+    assertEquals(UsernameError.PROFILE_UNAVAILABLE, vm.edit().error)
+    assertFalse(vm.edit().canSave)
+  }
+
+  @Test
+  fun save_resultArrivingAfterSignOut_isIgnored() = runTest {
+    val gate = CompletableDeferred<Result<UserProfile>>()
+    repository.onUpdate = { gate.await() }
+    val vm = viewModel()
+    vm.type("bob")
+    vm.saveUsername()
+    currentUser.value = null
+
+    gate.complete(Result.success(UserProfile(uid = "u1", username = "bob")))
+
+    assertNull(vm.uiState.value.username)
+    assertNull(vm.uiState.value.usernameEdit)
   }
 
   @Test
@@ -361,6 +400,10 @@ class SettingsViewModelUsernameTest {
   fun toUsernameError_mapsRepositoryCategories() {
     assertEquals(UsernameError.TAKEN, ProfileError.USERNAME_TAKEN.toUsernameError())
     assertEquals(UsernameError.INVALID_CHARACTERS, ProfileError.INVALID_USERNAME.toUsernameError())
+    assertEquals(
+        UsernameError.PROFILE_UNAVAILABLE,
+        ProfileError.INVALID_PROFILE_DATA.toUsernameError(),
+    )
     assertEquals(UsernameError.FAILURE, ProfileError.FIRESTORE_FAILURE.toUsernameError())
     assertEquals(UsernameError.FAILURE, ProfileError.UNKNOWN.toUsernameError())
   }
