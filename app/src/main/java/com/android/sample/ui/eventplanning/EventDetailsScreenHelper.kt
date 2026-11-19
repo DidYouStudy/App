@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Copilot
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 
 package com.android.sample.ui.eventplanning
 
@@ -38,7 +39,7 @@ internal data class EventTaskDisplay(val text: String, val isCompleted: Boolean)
 /**
  * Maps an [Event] to its [EventDetailsDisplay], formatting times in [zone].
  *
- * Only a [PersonalEvent] has a checklist; other kinds show no tasks.
+ * Personal events supply the checklist. Group sessions display [members] in their existing order.
  */
 internal fun Event.toDisplay(
     zone: ZoneId = ZoneId.systemDefault(),
@@ -47,6 +48,7 @@ internal fun Event.toDisplay(
 ): EventDetailsDisplay {
   val dateFormatter = DateTimeFormatter.ofPattern(EVENT_DATE_PATTERN, locale).withZone(zone)
   val timeFormatter = DateTimeFormatter.ofPattern(EVENT_TIME_PATTERN, locale).withZone(zone)
+  val isGroupSession = this is GroupSession
   return EventDetailsDisplay(
       type = details.type,
       title = details.subject?.takeIf { it.isNotBlank() },
@@ -59,6 +61,8 @@ internal fun Event.toDisplay(
           (this as? PersonalEvent)?.tasks.orEmpty().map {
             EventTaskDisplay(it.text, it.isCompleted)
           },
+      isGroupSession = isGroupSession,
+      participants = if (isGroupSession) members else emptyList(),
   )
 }
 

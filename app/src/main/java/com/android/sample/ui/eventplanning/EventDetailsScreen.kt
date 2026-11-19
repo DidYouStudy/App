@@ -3,27 +3,35 @@
 
 package com.android.sample.ui.eventplanning
 
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -40,10 +49,13 @@ import com.android.sample.R
 import com.android.sample.model.event.EventType
 import com.android.sample.ui.sharedComponents.EventTypeBadge
 import com.android.sample.ui.sharedComponents.IconTextRow
+import com.android.sample.ui.sharedComponents.ParticipantRow
 import com.android.sample.ui.sharedComponents.PillActionButton
 import com.android.sample.ui.sharedComponents.SecondaryMediumTopAppBar
 import com.android.sample.ui.sharedComponents.TaskCheckRow
+import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
+import com.android.sample.ui.theme.Spacing
 
 /** Test tags for the Event details screen. */
 object EventDetailsScreenTestTags {
@@ -61,6 +73,7 @@ object EventDetailsScreenTestTags {
   const val TASKS_LABEL = "eventDetailsTasksLabel"
   const val GROUP_SESSION_CHIP = "eventDetailsGroupSessionChip"
   const val PARTICIPANTS_LABEL = "eventDetailsParticipantsLabel"
+  const val PARTICIPANT_AVATAR = "eventDetailsParticipantAvatar"
   const val PARTICIPANT_ROW_PREFIX = "eventDetailsParticipantRow_"
   const val TASK_CHECKBOX_PREFIX = "eventDetailsTaskCheckbox_"
   const val EDIT_BUTTON = "eventDetailsEditButton"
@@ -109,7 +122,10 @@ fun EventDetailsScreen(
     }
   }
 
-  val display = remember(uiState.event) { uiState.event?.toDisplay() }
+  val display =
+      remember(uiState.event, uiState.members) {
+        uiState.event?.toDisplay(members = uiState.members)
+      }
 
   EventDetailsStateless(
       display = display,
@@ -212,10 +228,16 @@ private fun EventDetailsBody(
       verticalArrangement = Arrangement.spacedBy(Dimens.sectionSpacing),
   ) {
     Column(verticalArrangement = Arrangement.spacedBy(Dimens.metaRowSpacing)) {
-      EventTypeBadge(
-          type = display.type,
-          modifier = Modifier.testTag(EventDetailsScreenTestTags.TYPE_BADGE),
-      )
+      Row(
+          horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+          verticalAlignment = Alignment.CenterVertically,
+      ) {
+        EventTypeBadge(
+            type = display.type,
+            modifier = Modifier.testTag(EventDetailsScreenTestTags.TYPE_BADGE),
+        )
+        if (display.isGroupSession) GroupSessionChip()
+      }
       Spacer(Modifier.height(Dimens.titleToMetaSpacing))
       Text(
           text = display.title ?: stringResource(R.string.event_details_subject_fallback),
@@ -253,7 +275,9 @@ private fun EventDetailsBody(
       )
     }
 
-    if (display.tasks.isNotEmpty()) {
+    if (display.isGroupSession) {
+      EventDetailsParticipants(display.participants)
+    } else if (display.tasks.isNotEmpty()) {
       LabeledSection(
           label = stringResource(R.string.event_details_tasks_label),
           labelTag = EventDetailsScreenTestTags.TASKS_LABEL,
@@ -269,6 +293,61 @@ private fun EventDetailsBody(
             )
           }
         }
+      }
+    }
+  }
+}
+
+/** Identifies a group session beside its event type badge. */
+@Composable
+private fun GroupSessionChip() {
+  Surface(
+      shape = RoundedCornerShape(Dimens.cornerSmall),
+      color = MaterialTheme.colorScheme.secondaryContainer,
+      contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+      modifier =
+          Modifier.testTag(EventDetailsScreenTestTags.GROUP_SESSION_CHIP).semantics(
+              mergeDescendants = true
+          ) {},
+  ) {
+    Row(
+        modifier = Modifier.padding(horizontal = Spacing.medium, vertical = Spacing.extraSmall),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.extraSmall),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Icon(
+          imageVector = Icons.Outlined.Groups,
+          contentDescription = null,
+          modifier = Modifier.size(Dimens.iconSizeSmall),
+      )
+      Text(
+          text = stringResource(R.string.event_details_group_session),
+          fontWeight = FontWeight.Bold,
+          style = MaterialTheme.typography.labelLarge,
+      )
+    }
+  }
+}
+
+/** Shows the participant count and rows in the order supplied by the view model. */
+@Composable
+private fun EventDetailsParticipants(participants: List<EventMember>) {
+  LabeledSection(
+      label = stringResource(R.string.group_session_participants_title, participants.size),
+      labelTag = EventDetailsScreenTestTags.PARTICIPANTS_LABEL,
+  ) {
+    Column {
+      participants.forEachIndexed { index, participant ->
+        if (index > 0) HorizontalDivider()
+        ParticipantRow(
+            userId = participant.userId,
+            username = participant.username,
+            isHost = participant.isHost,
+            isCurrentUser = participant.isCurrentUser,
+            isUnavailable = participant.isUnavailable,
+            avatarTestTag = EventDetailsScreenTestTags.PARTICIPANT_AVATAR,
+            modifier = Modifier.testTag(EventDetailsScreenTestTags.participantRow(index)),
+        )
       }
     }
   }
@@ -350,6 +429,43 @@ fun EventDetailsPreview() {
                     listOf(
                         EventTaskDisplay("Solve exercises 12, 13", false),
                         EventTaskDisplay("Read chapter 3 of textbook", false),
+                    ),
+            ),
+    )
+  }
+}
+
+/** Previews the group session details and shared roster rows in both themes. */
+@Preview(
+    name = "Group session light",
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_NO,
+)
+@Preview(
+    name = "Group session dark",
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+)
+@Composable
+private fun GroupSessionEventDetailsPreview() {
+  DidYouStudyTheme(dynamicColor = false) {
+    EventDetailsStateless(
+        display =
+            EventDetailsDisplay(
+                type = EventType.EXERCISE_SESSION,
+                title = "Algebra",
+                dateLabel = "Nov 2, 2026",
+                startTimeLabel = "10:15",
+                endTimeLabel = "12:00",
+                location = "CM5",
+                description = "Exercise session focusing on the new concepts of week 8.",
+                tasks = emptyList(),
+                isGroupSession = true,
+                participants =
+                    listOf(
+                        EventMember("host", "Sam", isHost = true, isCurrentUser = true),
+                        EventMember("marcus", "Marcus Vance", isHost = false),
+                        EventMember("alice", "Alice Laurent", isHost = false),
                     ),
             ),
     )

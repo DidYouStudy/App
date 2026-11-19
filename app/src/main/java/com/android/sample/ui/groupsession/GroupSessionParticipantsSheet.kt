@@ -1,23 +1,19 @@
 // Co-authored-by: OpenAI Codex
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.ui.groupsession
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -27,7 +23,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -41,10 +36,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import com.android.sample.R
+import com.android.sample.ui.sharedComponents.ParticipantRow
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 
@@ -136,7 +131,14 @@ internal fun GroupSessionParticipantsSheet(
       LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
         items(matchingParticipants, key = { it.userId }) { participant ->
           HorizontalDivider()
-          ParticipantRow(participant)
+          ParticipantRow(
+              userId = participant.userId,
+              username = participant.username,
+              isHost = participant.isHost,
+              isCurrentUser = participant.isCurrentUser,
+              isUnavailable = participant.isUnavailable,
+              avatarTestTag = GroupSessionParticipantsTestTags.AVATAR,
+          )
         }
       }
     }
@@ -166,82 +168,4 @@ private fun ParticipantSearchField(query: String, onQueryChange: (String) -> Uni
               focusedBorderColor = Color.Transparent,
           ),
   )
-}
-
-/** Renders a username or its fallback beside an avatar, with a badge for the host. */
-@Composable
-private fun ParticipantRow(participant: GroupSessionParticipant) {
-  val username =
-      participant.username
-          ?: stringResource(
-              if (participant.isUnavailable) R.string.group_session_participants_unavailable
-              else R.string.group_session_participants_unknown
-          )
-  Row(
-      modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.medium),
-      horizontalArrangement = Arrangement.spacedBy(Spacing.small),
-      verticalAlignment = Alignment.CenterVertically,
-  ) {
-    ParticipantAvatar(participant)
-    Text(
-        text =
-            if (participant.isCurrentUser) stringResource(R.string.group_session_participants_you)
-            else username,
-        style = MaterialTheme.typography.bodyLarge,
-        modifier = Modifier.weight(1f),
-    )
-    if (participant.isHost) {
-      Surface(
-          shape = RoundedCornerShape(Dimens.cornerSmall),
-          color = MaterialTheme.colorScheme.secondaryContainer,
-          contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-      ) {
-        Text(
-            text = stringResource(R.string.group_session_participants_host),
-            style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(horizontal = Spacing.small, vertical = Spacing.extraSmall),
-        )
-      }
-    }
-  }
-}
-
-/** Shows an initial from the stored username, with a stable color across roster updates. */
-@Composable
-private fun ParticipantAvatar(participant: GroupSessionParticipant) {
-  val initial =
-      participant.username
-          ?.trimStart()
-          ?.takeIf { it.isNotEmpty() }
-          ?.let { name ->
-            String(Character.toChars(Character.toUpperCase(Character.codePointAt(name, 0))))
-          }
-  val colors = MaterialTheme.colorScheme
-  val (background, foreground) =
-      when {
-        initial == null -> colors.surfaceVariant to colors.onSurfaceVariant
-        participant.isHost -> colors.primaryContainer to colors.onPrimaryContainer
-        participant.userId.hashCode() % 2 == 0 ->
-            colors.secondaryContainer to colors.onSecondaryContainer
-        else -> colors.tertiaryContainer to colors.onTertiaryContainer
-      }
-
-  Box(
-      modifier =
-          Modifier.size(Dimens.avatarSizeMedium)
-              .background(background, CircleShape)
-              .testTag(GroupSessionParticipantsTestTags.AVATAR)
-              .semantics { hideFromAccessibility() },
-      contentAlignment = Alignment.Center,
-  ) {
-    if (initial == null) {
-      Icon(
-          imageVector = Icons.Outlined.Person,
-          contentDescription = null,
-          tint = foreground,
-      )
-    } else {
-      Text(text = initial, color = foreground, style = MaterialTheme.typography.titleMedium)
-    }
-  }
 }
