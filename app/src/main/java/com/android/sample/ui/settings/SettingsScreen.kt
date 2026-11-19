@@ -41,7 +41,6 @@ import com.android.sample.ui.theme.Spacing
  * @param viewModel ViewModel supplying settings state and the sign-out action.
  * @param modifier Modifier applied to the settings screen.
  * @param onBackClick Called when the user taps the back button.
- * @param onEditUsernameClick Called when the user requests to edit their username.
  * @param onChangeProfilePictureClick Called when the user requests to change their profile picture.
  * @param onModifyPreferencesClick Called when the user opens preference settings.
  * @param onManageFriendsClick Called when the user opens friend management.
@@ -51,7 +50,6 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = settingsViewModel(),
     onBackClick: () -> Unit = {},
-    onEditUsernameClick: () -> Unit = {},
     onChangeProfilePictureClick: () -> Unit = {},
     onModifyPreferencesClick: () -> Unit = {},
     onManageFriendsClick: () -> Unit = {},
@@ -78,12 +76,22 @@ fun SettingsScreen(
       isLoading = uiState.isLoading,
       snackbarHostState = snackbarHostState,
       onBackClick = onBackClick,
-      onEditUsernameClick = onEditUsernameClick,
+      onEditUsernameClick = viewModel::openUsernameEditor,
       onChangeProfilePictureClick = onChangeProfilePictureClick,
       onModifyPreferencesClick = onModifyPreferencesClick,
       onManageFriendsClick = onManageFriendsClick,
       onLogoutClick = { viewModel.signOut() },
   )
+
+  // The dialog is driven by the ViewModel, so its content survives recomposition and rotation.
+  uiState.usernameEdit?.let { edit ->
+    EditUsernameDialog(
+        state = edit,
+        onInputChange = viewModel::onUsernameInputChange,
+        onSave = viewModel::saveUsername,
+        onDismiss = viewModel::dismissUsernameEditor,
+    )
+  }
 }
 
 /**

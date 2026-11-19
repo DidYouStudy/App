@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Ai Agent
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.settings
 
 import androidx.compose.foundation.BorderStroke
@@ -60,6 +61,13 @@ object SettingsScreenTestTags {
   const val LOADING_INDICATOR = "settings_loading_indicator"
   const val EDIT_USERNAME_BUTTON = "settings_edit_username_button"
   const val CHANGE_PROFILE_PICTURE_BUTTON = "settings_change_profile_picture_button"
+
+  // Edit username dialog
+  const val EDIT_USERNAME_DIALOG = "settings_edit_username_dialog"
+  const val EDIT_USERNAME_FIELD = "settings_edit_username_field"
+  const val EDIT_USERNAME_ERROR = "settings_edit_username_error"
+  const val EDIT_USERNAME_SAVE_BUTTON = "settings_edit_username_save_button"
+  const val EDIT_USERNAME_CANCEL_BUTTON = "settings_edit_username_cancel_button"
 
   // Navigation buttons
   const val PREFERENCES_BUTTON = "settings_preferences_button"
@@ -144,11 +152,6 @@ internal fun ProfileCard(
             text = stringResource(R.string.settings_edit_username),
             onClick = onEditUsernameClick,
             testTag = SettingsScreenTestTags.EDIT_USERNAME_BUTTON,
-        )
-        Text(
-            text = stringResource(R.string.not_implemented),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         // Opens the flow for choosing a profile picture.
         SmallEditButton(
