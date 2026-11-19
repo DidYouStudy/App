@@ -113,6 +113,7 @@ data class GroupSessionItem(
     val isCreator: Boolean,
     val hostName: String? = null,
     val proximity: SessionWithProximity = SessionWithProximity(session, null, null, null),
+    val isActionInProgress: Boolean = false,
 )
 
 /** A session enriched with its resolved room and optional distance from the user. */
@@ -214,6 +215,8 @@ class GroupSessionsViewModel(
   private var campusLocationsByName: Map<String, CampusLocation> = emptyMap()
   private val usernamesByUserId = mutableMapOf<String, String>()
   private val usernameLookupsInProgress = mutableSetOf<String>()
+  /** Session IDs whose join or leave request is currently running. */
+  private val actionRequestsInProgress = mutableSetOf<String>()
   private var participantsSessionId: String? = null
   private val participantNamesWithoutUsername = mutableMapOf<String, ParticipantNameStatus>()
 
@@ -237,6 +240,7 @@ class GroupSessionsViewModel(
               authGeneration += 1
               usernamesByUserId.clear()
               usernameLookupsInProgress.clear()
+              actionRequestsInProgress.clear()
               clearParticipants()
             }
             if (user == null) {
@@ -383,37 +387,42 @@ class GroupSessionsViewModel(
     }
   }
 
-  /**
-   * Joins [sessionId] as the signed-in user and reports failures as
-   * [GroupSessionsError.JOIN_FAILED] only if the observed user ID has not changed while joining.
-   * The error remains until [clearError] or a change in the observed user ID.
-   */
+  /** Starts a join request for [sessionId]. */
   fun join(sessionId: String) {
-    viewModelScope.launch {
-      val userId = currentUserId ?: return@launch
-      val requestGeneration = authGeneration
-      if (
-          repository.joinSession(userId, sessionId).isFailure && requestGeneration == authGeneration
-      ) {
-        _uiState.update { it.copy(error = GroupSessionsError.JOIN_FAILED) }
-      }
-    }
+    runSessionAction(sessionId, isJoin = true)
+  }
+
+  /** Starts a leave request for [sessionId]. */
+  fun leave(sessionId: String) {
+    runSessionAction(sessionId, isJoin = false)
   }
 
   /**
-   * Leaves [sessionId] as the signed-in user and reports failures as
-   * [GroupSessionsError.LEAVE_FAILED] only if the observed user ID has not changed while leaving.
-   * The error remains until [clearError] or a change in the observed user ID.
+   * Runs one join or leave request, publishing its progress and ignoring duplicate taps for the
+   * same session until the repository result arrives.
    */
-  fun leave(sessionId: String) {
+  private fun runSessionAction(sessionId: String, isJoin: Boolean) {
     viewModelScope.launch {
       val userId = currentUserId ?: return@launch
+      if (!actionRequestsInProgress.add(sessionId)) return@launch
+      updateVisibleSessions()
+
       val requestGeneration = authGeneration
-      if (
-          repository.leaveSession(userId, sessionId).isFailure &&
-              requestGeneration == authGeneration
-      ) {
-        _uiState.update { it.copy(error = GroupSessionsError.LEAVE_FAILED) }
+      val result =
+          if (isJoin) repository.joinSession(userId, sessionId)
+          else repository.leaveSession(userId, sessionId)
+      if (requestGeneration != authGeneration) return@launch
+
+      actionRequestsInProgress.remove(sessionId)
+      updateVisibleSessions()
+      if (result.isFailure) {
+        _uiState.update {
+          it.copy(
+              error =
+                  if (isJoin) GroupSessionsError.JOIN_FAILED else GroupSessionsError.LEAVE_FAILED,
+          )
+        }
+        refresh()
       }
     }
   }
@@ -657,6 +666,7 @@ class GroupSessionsViewModel(
                         usernamesByUserId[session.createdBy].takeUnless {
                           session.createdBy == userId
                         },
+                    isActionInProgress = session.id in actionRequestsInProgress,
                 )
               }
               .filter { item ->

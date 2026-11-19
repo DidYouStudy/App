@@ -13,6 +13,9 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasContentDescription
@@ -29,6 +32,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
@@ -544,6 +548,183 @@ class GroupSessionScreenTest {
     composeTestRule.waitUntil(timeoutMillis = 2_000) { repo.leaveCalls == 1 }
   }
 
+  /** Tagged Join and Leave buttons keep their labels and call the matching callback. */
+  @Test
+  fun cardButtons_showLabelsAndCallCallbacksWhenNotInProgress() {
+    val joined = mutableListOf<String>()
+    val left = mutableListOf<String>()
+    setCardContent(
+        items = listOf(screenItem("join"), screenItem("leave", isMember = true)),
+        onJoin = joined::add,
+        onLeave = left::add,
+    )
+    val sessionList = composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+    val joinText = context.getString(R.string.group_session_action_join)
+    val leaveText = context.getString(R.string.group_session_action_leave)
+
+    sessionList.performScrollToNode(hasText("Subject join"))
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.joinButton("join"))
+        .assert(hasText(joinText))
+        .performClick()
+    assertEquals(listOf("join"), joined)
+
+    sessionList.performScrollToNode(hasTestTag(GroupSessionScreenTestTags.leaveButton("leave")))
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.leaveButton("leave"))
+        .assert(hasText(leaveText))
+        .performClick()
+    assertEquals(listOf("leave"), left)
+  }
+
+  /** A pending join shows progress without Join text and does not invoke onJoin when tapped. */
+  @Test
+  fun card_pendingJoinShowsProgressAndIgnoresTap() {
+    val joined = mutableListOf<String>()
+    setCardContent(
+        items = listOf(screenItem("busy-join", isActionInProgress = true)),
+        onJoin = joined::add,
+    )
+    val sessionList = composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+    sessionList.performScrollToNode(hasText("Subject busy-join"))
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.joinButton("busy-join"))
+        .assert(
+            hasAnyDescendant(hasTestTag(GroupSessionScreenTestTags.actionProgress("busy-join")))
+        )
+        .performTouchInput { click() }
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.actionProgress("busy-join"))
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.group_session_action_join))
+        .assertDoesNotExist()
+    assertEquals(emptyList<String>(), joined)
+  }
+
+  /** A pending leave shows progress without Leave text and does not invoke onLeave when tapped. */
+  @Test
+  fun card_pendingLeaveShowsProgressAndIgnoresTap() {
+    val left = mutableListOf<String>()
+    setCardContent(
+        items = listOf(screenItem("busy-leave", isMember = true, isActionInProgress = true)),
+        onLeave = left::add,
+    )
+    val sessionList = composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+    sessionList.performScrollToNode(hasText("Subject busy-leave"))
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.leaveButton("busy-leave"))
+        .assert(
+            hasAnyDescendant(hasTestTag(GroupSessionScreenTestTags.actionProgress("busy-leave")))
+        )
+        .performTouchInput { click() }
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.actionProgress("busy-leave"))
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.group_session_action_leave))
+        .assertDoesNotExist()
+    assertEquals(emptyList<String>(), left)
+  }
+
+  /** A pending join button exposes its disabled state to accessibility services. */
+  @Test
+  fun card_pendingJoinIsDisabledForAccessibility() {
+    setCardContent(items = listOf(screenItem("busy-join", isActionInProgress = true)))
+    val sessionList = composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+    val joinButton = GroupSessionScreenTestTags.joinButton("busy-join")
+    sessionList.performScrollToNode(hasTestTag(joinButton))
+
+    composeTestRule.onNodeWithTag(joinButton).assertIsNotEnabled()
+  }
+
+  /** A pending leave button exposes its disabled state to accessibility services. */
+  @Test
+  fun card_pendingLeaveIsDisabledForAccessibility() {
+    setCardContent(
+        items = listOf(screenItem("busy-leave", isMember = true, isActionInProgress = true)),
+    )
+    val sessionList = composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+    val leaveButton = GroupSessionScreenTestTags.leaveButton("busy-leave")
+    sessionList.performScrollToNode(hasTestTag(leaveButton))
+
+    composeTestRule.onNodeWithTag(leaveButton).assertIsNotEnabled()
+  }
+
+  /** Idle Join and Leave buttons remain enabled. */
+  @Test
+  fun card_idleButtonsAreEnabled() {
+    setCardContent(
+        items = listOf(screenItem("idle-join"), screenItem("idle-leave", isMember = true))
+    )
+    val sessionList = composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+    val joinButton = GroupSessionScreenTestTags.joinButton("idle-join")
+    sessionList.performScrollToNode(hasTestTag(joinButton))
+    composeTestRule.onNodeWithTag(joinButton).assertIsEnabled()
+
+    val leaveButton = GroupSessionScreenTestTags.leaveButton("idle-leave")
+    sessionList.performScrollToNode(hasTestTag(leaveButton))
+    composeTestRule.onNodeWithTag(leaveButton).assertIsEnabled()
+  }
+
+  /** The other card remains actionable while one card is showing leave progress. */
+  @Test
+  fun card_otherButtonStillWorksWhileOneCardIsInProgress() {
+    val joined = mutableListOf<String>()
+    setCardContent(
+        items =
+            listOf(
+                screenItem("busy-leave", isMember = true, isActionInProgress = true),
+                screenItem("available-join"),
+            ),
+        onJoin = joined::add,
+    )
+    val sessionList = composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+    sessionList.performScrollToNode(
+        hasTestTag(GroupSessionScreenTestTags.joinButton("available-join")),
+    )
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.joinButton("available-join"))
+        .performClick()
+    assertEquals(listOf("available-join"), joined)
+
+    sessionList.performScrollToNode(hasText("Subject busy-leave"))
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.actionProgress("busy-leave"))
+        .assertIsDisplayed()
+  }
+
+  /** Join failures expose only the existing Dismiss snackbar action, never Retry. */
+  @Test
+  fun joinFailureSnackbar_hasDismissAndNoRetry() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
+    repo.failJoin = true
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(hasText(context.getString(R.string.group_session_action_join)))
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.group_session_action_join))
+        .performClick()
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { repo.joinCalls == 1 }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) {
+      composeTestRule
+          .onAllNodesWithText(context.getString(R.string.group_session_error_join))
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.ERROR_SNACKBAR)
+        .assert(hasAnyDescendant(hasText(context.getString(R.string.group_session_error_dismiss))))
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ERROR_DISMISS).assertIsDisplayed()
+    assertEquals(0, composeTestRule.onAllNodesWithText("Retry").fetchSemanticsNodes().size)
+  }
+
   @Test
   fun failed_join_shows_dismissible_error_message() {
     val viewModel = createViewModel()
@@ -799,6 +980,45 @@ class GroupSessionScreenTest {
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.MAP_CONTENT).assertIsDisplayed()
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST).assertDoesNotExist()
   }
+
+  private fun setCardContent(
+      items: List<GroupSessionItem>,
+      onJoin: (String) -> Unit = {},
+      onLeave: (String) -> Unit = {},
+  ) {
+    composeTestRule.setContent {
+      GroupSessionContent(
+          state = GroupSessionsUiState(now = testInstant, isLoading = false, sessions = items),
+          onJoin = onJoin,
+          onLeave = onLeave,
+      )
+    }
+  }
+
+  private fun screenItem(
+      id: String,
+      isMember: Boolean = false,
+      isActionInProgress: Boolean = false,
+  ) =
+      GroupSessionItem(
+          session =
+              GroupSession(
+                  id = id,
+                  createdBy = "host",
+                  memberIds = if (isMember) listOf("host", "user-1") else listOf("host"),
+                  details =
+                      EventDetails(
+                          type = EventType.STUDY_SESSION,
+                          subject = "Subject $id",
+                          startsAt = testInstant.plus(Duration.ofHours(1)),
+                          endsAt = testInstant.plus(Duration.ofHours(2)),
+                      ),
+                  createdAt = testInstant.minus(Duration.ofHours(1)),
+              ),
+          isMember = isMember,
+          isCreator = false,
+          isActionInProgress = isActionInProgress,
+      )
 
   private fun createViewModel(
       repository: GroupSessionsRepository = repo,
