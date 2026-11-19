@@ -26,6 +26,13 @@ import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 
+/** Test tags used to locate UI elements in the [OfflineBanner] component during automated tests. */
+object OfflineBannerTestTags {
+  const val OFFLINE_BANNER = "OfflineBanner"
+  const val OFFLINE_BANNER_ICON = "OfflineBannerIcon"
+  const val OFFLINE_BANNER_TEXT = "OfflineBannerText"
+}
+
 /**
  * Shared offline banner component that displays an offline icon and "You're offline" status message
  * using theme colors.
