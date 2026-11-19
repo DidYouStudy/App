@@ -86,8 +86,11 @@ where `<project-id>` is the `project_id` in `app/google-services.json`.
 enforces `storage.rules`.
 
 ### Profile picture storage
-Profile pictures are stored in Cloud Storage as `profilePictures/{uid}.jpg`; the download URL is
-saved in the user's profile document. `storage.rules` is the source of truth for who can read and
+Profile pictures are stored in Cloud Storage as `profilePictures/{uid}_a.jpg` or
+`profilePictures/{uid}_b.jpg`; the download URL is saved in the user's profile document. A new
+picture is uploaded to the slot the profile does not point to, because replacing a file invalidates
+its old URL: if saving the new URL then fails, the profile still points to a picture that loads.
+`storage.rules` is the source of truth for who can read and
 write them: only the owner can upload, and only a JPEG under 1 MB. Change the rules in a PR, never
 in the console, since the next deploy overwrites console edits.
 
