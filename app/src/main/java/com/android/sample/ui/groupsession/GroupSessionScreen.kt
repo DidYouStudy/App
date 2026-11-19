@@ -45,12 +45,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -83,12 +85,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
@@ -140,6 +142,12 @@ object GroupSessionScreenTestTags {
   const val OFFLINE_INDICATOR = "groupSessionOfflineIndicator"
 
   fun sessionItem(index: Int) = "$SESSION_ITEM_PREFIX$index"
+
+  fun joinButton(sessionId: String) = "groupSessionJoin_$sessionId"
+
+  fun leaveButton(sessionId: String) = "groupSessionLeave_$sessionId"
+
+  fun actionProgress(sessionId: String) = "groupSessionActionProgress_$sessionId"
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -200,7 +208,7 @@ fun GroupSessionScreen(
       viewModel.clearError()
     }
   }
-  // TODO: Have the ViewModel expose a retry/loading state after join or leave failures.
+  // Join/leave progress is stored per session in GroupSessionsViewModel.
   Scaffold(
       modifier = Modifier.testTag(GroupSessionScreenTestTags.SCREEN),
       snackbarHost = {
@@ -676,20 +684,13 @@ internal fun GroupSessionCard(
   val shouldShowHost = item.isCreator
 
   val subjectFallback = stringResource(R.string.group_session_subject_fallback)
-  val actionEditLabel = stringResource(R.string.group_session_action_edit)
-  val actionJoinedLabel = stringResource(R.string.group_session_action_joined)
-  val actionJoinLabel = stringResource(R.string.group_session_action_join)
-  val actionLeaveLabel = stringResource(R.string.group_session_action_leave)
-  val actionLabel =
-      if (shouldShowHost) actionEditLabel
-      else if (item.isMember) actionJoinedLabel else actionJoinLabel
 
   Card(
       modifier = modifier.fillMaxWidth(),
       shape = RoundedCornerShape(Dimens.cornerExtraLarge),
       colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
       border = BorderStroke(Dimens.borderThin, MaterialTheme.colorScheme.outlineVariant),
-      elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+      elevation = CardDefaults.cardElevation(defaultElevation = Dimens.groupSessionCardElevation),
   ) {
     Column(modifier = Modifier.fillMaxWidth().padding(Dimens.cardPadding)) {
       // Top Row: Avatar + Title/Host + Status Badge
@@ -877,72 +878,128 @@ internal fun GroupSessionCard(
           }
         }
 
-        // Action Buttons (Host Edit vs Member Leave/Joined vs Join)
-        if (shouldShowHost) {
-          Button(
-              onClick = { onEdit(session.id) },
-              shape = RoundedCornerShape(Dimens.cornerLarge),
-              colors =
-                  ButtonDefaults.buttonColors(
-                      containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                      contentColor = MaterialTheme.colorScheme.onSurface,
-                  ),
-              border = BorderStroke(Dimens.borderThin, MaterialTheme.colorScheme.outline),
-              contentPadding = PaddingValues(horizontal = Spacing.extraSmall),
-              modifier = Modifier.height(Dimens.actionButtonHeight).width(Dimens.actionButtonWidth),
-          ) {
-            Text(actionLabel, fontWeight = FontWeight.Medium)
-          }
-        } else if (item.isMember) {
-          Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
-            OutlinedButton(
-                onClick = { onLeave(session.id) },
-                shape = RoundedCornerShape(Dimens.cornerLarge),
-                border = BorderStroke(Dimens.borderThin, MaterialTheme.colorScheme.error),
-                colors =
-                    ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error,
-                    ),
-                contentPadding = PaddingValues(horizontal = Spacing.extraSmall),
-                modifier =
-                    Modifier.height(Dimens.actionButtonHeight).width(Dimens.actionButtonWidth),
-            ) {
-              Text(actionLeaveLabel, fontWeight = FontWeight.Medium)
-            }
-            Button(
-                onClick = {},
-                enabled = false,
-                shape = RoundedCornerShape(Dimens.cornerLarge),
-                contentPadding = PaddingValues(horizontal = Spacing.extraSmall),
-                modifier =
-                    Modifier.height(Dimens.actionButtonHeight).width(Dimens.actionButtonWidth),
-            ) {
-              Icon(
-                  Icons.Default.Check,
-                  contentDescription = null,
-                  modifier = Modifier.size(Dimens.iconSizeSmall),
-              )
-              Spacer(Modifier.width(Spacing.extraExtraSmall))
-              Text(actionJoinedLabel, fontWeight = FontWeight.Medium)
-            }
-          }
-        } else {
-          Button(
-              onClick = { onJoin(session.id) },
-              shape = RoundedCornerShape(Dimens.cornerLarge),
-              colors =
-                  ButtonDefaults.buttonColors(
-                      containerColor = MaterialTheme.colorScheme.primary,
-                      contentColor = MaterialTheme.colorScheme.onPrimary,
-                  ),
-              contentPadding = PaddingValues(horizontal = Spacing.extraSmall),
-              modifier = Modifier.height(Dimens.actionButtonHeight).width(Dimens.actionButtonWidth),
-          ) {
-            Text(actionJoinLabel, fontWeight = FontWeight.Medium)
-          }
-        }
+        GroupSessionCardActions(item, onJoin, onLeave, onEdit)
       }
     }
+  }
+}
+
+/** Renders the edit, leave, joined, or join actions for a group session card. */
+@Composable
+private fun GroupSessionCardActions(
+    item: GroupSessionItem,
+    onJoin: (String) -> Unit,
+    onLeave: (String) -> Unit,
+    onEdit: (String) -> Unit,
+) {
+  val sessionId = item.session.id
+  val actionEditLabel = stringResource(R.string.group_session_action_edit)
+  val actionJoinedLabel = stringResource(R.string.group_session_action_joined)
+  val actionJoinLabel = stringResource(R.string.group_session_action_join)
+  val actionLeaveLabel = stringResource(R.string.group_session_action_leave)
+  val actionJoiningDescription = stringResource(R.string.group_session_action_joining)
+  val actionLeavingDescription = stringResource(R.string.group_session_action_leaving)
+
+  // Keep buttons enabled for their colors; semantics communicates busy state to TalkBack.
+  if (item.isCreator) {
+    Button(
+        onClick = { onEdit(sessionId) },
+        shape = RoundedCornerShape(Dimens.cornerLarge),
+        colors =
+            ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ),
+        border = BorderStroke(Dimens.borderThin, MaterialTheme.colorScheme.outline),
+        contentPadding = PaddingValues(horizontal = Spacing.extraSmall),
+        modifier = Modifier.height(Dimens.actionButtonHeight).width(Dimens.actionButtonWidth),
+    ) {
+      Text(actionEditLabel, fontWeight = FontWeight.Medium)
+    }
+  } else if (item.isMember) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
+      OutlinedButton(
+          onClick = { if (!item.isActionInProgress) onLeave(sessionId) },
+          shape = RoundedCornerShape(Dimens.cornerLarge),
+          border = BorderStroke(Dimens.borderThin, MaterialTheme.colorScheme.error),
+          colors =
+              ButtonDefaults.outlinedButtonColors(
+                  contentColor = MaterialTheme.colorScheme.error,
+              ),
+          contentPadding = PaddingValues(horizontal = Spacing.extraSmall),
+          modifier =
+              Modifier.height(Dimens.actionButtonHeight)
+                  .width(Dimens.actionButtonWidth)
+                  .testTag(GroupSessionScreenTestTags.leaveButton(sessionId))
+                  .semantics { if (item.isActionInProgress) disabled() },
+      ) {
+        ActionButtonContent(
+            isInProgress = item.isActionInProgress,
+            label = actionLeaveLabel,
+            progressDescription = actionLeavingDescription,
+            progressTag = GroupSessionScreenTestTags.actionProgress(sessionId),
+        )
+      }
+      Button(
+          onClick = {},
+          enabled = false,
+          shape = RoundedCornerShape(Dimens.cornerLarge),
+          contentPadding = PaddingValues(horizontal = Spacing.extraSmall),
+          modifier = Modifier.height(Dimens.actionButtonHeight).width(Dimens.actionButtonWidth),
+      ) {
+        Icon(
+            Icons.Default.Check,
+            contentDescription = null,
+            modifier = Modifier.size(Dimens.iconSizeSmall),
+        )
+        Spacer(Modifier.width(Spacing.extraExtraSmall))
+        Text(actionJoinedLabel, fontWeight = FontWeight.Medium)
+      }
+    }
+  } else {
+    Button(
+        onClick = { if (!item.isActionInProgress) onJoin(sessionId) },
+        shape = RoundedCornerShape(Dimens.cornerLarge),
+        colors =
+            ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ),
+        contentPadding = PaddingValues(horizontal = Spacing.extraSmall),
+        modifier =
+            Modifier.height(Dimens.actionButtonHeight)
+                .width(Dimens.actionButtonWidth)
+                .testTag(GroupSessionScreenTestTags.joinButton(sessionId))
+                .semantics { if (item.isActionInProgress) disabled() },
+    ) {
+      ActionButtonContent(
+          isInProgress = item.isActionInProgress,
+          label = actionJoinLabel,
+          progressDescription = actionJoiningDescription,
+          progressTag = GroupSessionScreenTestTags.actionProgress(sessionId),
+      )
+    }
+  }
+}
+
+/** Renders an action button's progress indicator or label. */
+@Composable
+private fun ActionButtonContent(
+    isInProgress: Boolean,
+    label: String,
+    progressDescription: String,
+    progressTag: String,
+) {
+  if (isInProgress) {
+    CircularProgressIndicator(
+        modifier =
+            Modifier.size(Dimens.groupSessionActionProgressSize)
+                .semantics { contentDescription = progressDescription }
+                .testTag(progressTag),
+        color = LocalContentColor.current,
+    )
+  } else {
+    Text(label, fontWeight = FontWeight.Medium)
   }
 }
 
