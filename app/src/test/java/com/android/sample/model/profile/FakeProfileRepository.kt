@@ -53,6 +53,9 @@ internal class FakeProfileRepository : ProfileRepository {
   override suspend fun updateUsername(userId: String, username: String): Result<UserProfile> =
       Result.failure(UnsupportedOperationException("Not needed in this test"))
 
+  override suspend fun updateProfilePictureUrl(userId: String, url: String): Result<Unit> =
+      Result.failure(UnsupportedOperationException("Not needed in this test"))
+
   override suspend fun createProfile(userId: String): Result<UserProfile> =
       Result.success(UserProfile(uid = userId))
 }
