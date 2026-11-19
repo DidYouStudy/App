@@ -1,5 +1,6 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.dashboard
 
 import android.content.Context
@@ -14,7 +15,7 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -26,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
+import com.android.sample.model.event.EventType
+import com.android.sample.ui.theme.labelRes
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -84,6 +87,28 @@ class DashboardContentTest {
   }
 
   @Test
+  fun clickingSessionItemInvokesOnEventCardClickWithSessionId() {
+    val session =
+        DashboardSession(
+            id = "test-session-123",
+            startTime = "09:00",
+            endTime = "10:30",
+            subject = "Physics",
+            eventType = EventType.STUDY_SESSION,
+        )
+    var clickedId: String? = null
+    composeTestRule.setContent {
+      DashboardContent(
+          sessions = listOf(session),
+          onEventCardClick = { clickedId = it },
+      )
+    }
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.sessionItem(0)).performClick()
+    assertEquals("test-session-123", clickedId)
+  }
+
+  @Test
   fun emptySessionsShowLocalizedEmptyDayWithoutSessionItems() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     composeTestRule.setContent { DashboardContent(sessions = emptyList()) }
@@ -97,10 +122,21 @@ class DashboardContentTest {
 
   @Test
   fun sessionItemsShowExactlyTheirTextsInInputAndOnScreenOrder() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
     val sessions =
         listOf(
-            DashboardSession(startTime = "08:15", endTime = "09:45", subject = "Algebra"),
-            DashboardSession(startTime = "13:00", endTime = "14:30", subject = "Chemistry"),
+            DashboardSession(
+                startTime = "08:15",
+                endTime = "09:45",
+                subject = "Algebra",
+                eventType = EventType.STUDY_SESSION,
+            ),
+            DashboardSession(
+                startTime = "13:00",
+                endTime = "14:30",
+                subject = "Chemistry",
+                eventType = EventType.EXERCISE_SESSION,
+            ),
         )
     composeTestRule.setContent { DashboardContent(sessions = sessions) }
 
@@ -109,17 +145,18 @@ class DashboardContentTest {
       val itemTag = DashboardContentTestTags.sessionItem(index)
       val itemNode = composeTestRule.onNodeWithTag(itemTag, useUnmergedTree = true)
       itemNode.assertIsDisplayed()
-      itemNode.onChildren().assertCountEquals(3)
-      listOf(session.startTime, session.endTime, session.subject).forEach { text ->
+
+      val typeLabel = context.getString(session.eventType.labelRes())
+      listOf(session.timeRange, session.subject, typeLabel).forEach { text ->
         composeTestRule.onNodeWithText(text, useUnmergedTree = true).assertIsDisplayed()
         composeTestRule
             .onAllNodes(hasText(text, substring = false), useUnmergedTree = true)
             .assertCountEquals(1)
       }
       itemNode.assert(
-          hasAnyDescendant(hasText(session.startTime, substring = false))
-              .and(hasAnyDescendant(hasText(session.endTime, substring = false)))
+          hasAnyDescendant(hasText(session.timeRange, substring = false))
               .and(hasAnyDescendant(hasText(session.subject, substring = false)))
+              .and(hasAnyDescendant(hasText(typeLabel, substring = false)))
       )
       if (index > 0) {
         val previousTop =
@@ -140,6 +177,35 @@ class DashboardContentTest {
     composeTestRule
         .onNodeWithTag(DashboardContentTestTags.sessionItem(sessions.size))
         .assertDoesNotExist()
+  }
+
+  @Test
+  fun sessionItemWithLocationDisplaysLocationUnderTimes() {
+    val session =
+        DashboardSession(
+            startTime = "10:00",
+            endTime = "11:30",
+            subject = "Physics",
+            eventType = EventType.COURSE,
+            location = "CO 020",
+        )
+    composeTestRule.setContent { DashboardContent(sessions = listOf(session)) }
+
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.sessionTime(0), useUnmergedTree = true)
+        .assertIsDisplayed()
+        .assertTextEquals("10:00 - 11:30")
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.sessionLocation(0), useUnmergedTree = true)
+        .assertIsDisplayed()
+        .assertTextEquals("CO 020")
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.sessionSubject(0), useUnmergedTree = true)
+        .assertIsDisplayed()
+        .assertTextEquals("Physics")
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.sessionType(0), useUnmergedTree = true)
+        .assertIsDisplayed()
   }
 
   @Test

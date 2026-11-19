@@ -38,6 +38,7 @@ object Dimens {
   val actionButtonHeight = 40.dp
   val actionButtonWidth = 88.dp
   val sessionTimeColumnWidth = 72.dp
+  val sessionTimeRangeColumnWidth = 120.dp
   val fabClearance = 88.dp
   val groupSessionViewSwitcherHeight = 48.dp
   val groupSessionViewSwitcherClearance = groupSessionViewSwitcherHeight + Spacing.large
