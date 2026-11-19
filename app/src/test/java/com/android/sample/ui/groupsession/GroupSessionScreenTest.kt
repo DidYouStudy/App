@@ -36,6 +36,10 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.core.app.ActivityOptionsCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
@@ -972,6 +976,62 @@ class GroupSessionScreenTest {
         .onNodeWithTag(GroupSessionScreenTestTags.CENTER_LOCATION_BUTTON)
         .assertIsDisplayed()
         .performClick()
+  }
+
+  @Test
+  fun onResume_refreshes_location_permission_when_revoked_and_granted() {
+    val application = ApplicationProvider.getApplicationContext<Application>()
+    shadowOf(application).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+
+    var collectionCount = 0
+    val trackingProvider = LocationProvider {
+      collectionCount++
+      flowOf(null)
+    }
+    val lifecycleOwner =
+        object : LifecycleOwner {
+          val registry = LifecycleRegistry(this)
+          override val lifecycle: Lifecycle = registry
+        }
+    lifecycleOwner.registry.currentState = Lifecycle.State.RESUMED
+    val viewModel = createViewModel(locationProvider = trackingProvider)
+
+    composeTestRule.setContent {
+      CompositionLocalProvider(
+          LocalInspectionMode provides true,
+          LocalLifecycleOwner provides lifecycleOwner,
+      ) {
+        GroupSessionScreen(viewModel = viewModel, initialViewMode = GroupSessionViewMode.MAP)
+      }
+    }
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithTag(GroupSessionMapTestTags.USER_LOCATION_MARKER, useUnmergedTree = true)
+        .assertExists()
+
+    // Simulate revoking permission in system Settings and returning to the screen.
+    shadowOf(application).denyPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+    composeTestRule.runOnUiThread {
+      lifecycleOwner.registry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+      lifecycleOwner.registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+    }
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithTag(GroupSessionMapTestTags.USER_LOCATION_MARKER, useUnmergedTree = true)
+        .assertDoesNotExist()
+
+    // Simulate granting permission in system Settings and returning to the screen.
+    val countBeforeGrant = collectionCount
+    shadowOf(application).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+    composeTestRule.runOnUiThread {
+      lifecycleOwner.registry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+      lifecycleOwner.registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+    }
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithTag(GroupSessionMapTestTags.USER_LOCATION_MARKER, useUnmergedTree = true)
+        .assertExists()
+    assertTrue(collectionCount > countBeforeGrant)
   }
 
   private fun createViewModel(
