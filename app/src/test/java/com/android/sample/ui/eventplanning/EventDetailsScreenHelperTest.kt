@@ -174,4 +174,38 @@ class EventDetailsScreenHelperTest {
     assertEquals(false, display.isGroupSession)
     assertTrue(display.participants.isEmpty())
   }
+
+  /** A personal event offers Edit and Delete. */
+  @Test
+  fun toDisplay_personalEvent_offersEditAndDelete() {
+    assertEquals(EventDetailsActionSet.EDIT_AND_DELETE, samplePersonalEvent().toDisplay().actions)
+  }
+
+  /** The signed-in host of a group session may only edit it from Details. */
+  @Test
+  fun toDisplay_groupSessionHostedByCurrentUser_offersEditOnly() {
+    val members =
+        listOf(
+            EventMember("me", "Me", isHost = true, isCurrentUser = true),
+            EventMember("bob", "Bob", isHost = false),
+        )
+
+    val display = sampleGroupSession().toDisplay(members = members)
+
+    assertEquals(EventDetailsActionSet.EDIT_ONLY, display.actions)
+  }
+
+  /** A member who is not the host gets no actions. */
+  @Test
+  fun toDisplay_groupSessionJoinedByCurrentUser_offersNoActions() {
+    val members =
+        listOf(
+            EventMember("host", "Hosty", isHost = true),
+            EventMember("me", "Me", isHost = false, isCurrentUser = true),
+        )
+
+    val display = sampleGroupSession().toDisplay(members = members)
+
+    assertEquals(EventDetailsActionSet.NONE, display.actions)
+  }
 }
