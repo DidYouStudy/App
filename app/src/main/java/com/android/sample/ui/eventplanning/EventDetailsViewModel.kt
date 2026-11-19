@@ -86,7 +86,7 @@ data class EventDetailsUiState(
  * ViewModel backing the Event Details screen.
  *
  * Provides event loading, event deletion, and task checklist toggling through repository contracts
- * ([AuthRepository] and [EventsRepository]).
+ * ([AuthRepository], [EventsRepository], [GroupSessionsRepository] and [ProfileRepository]).
  *
  * @param authRepository source of the currently authenticated user.
  * @param eventsRepository repository storing personal events.
