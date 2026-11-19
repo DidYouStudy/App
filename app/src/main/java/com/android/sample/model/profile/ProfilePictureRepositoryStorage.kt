@@ -12,9 +12,12 @@ import kotlinx.coroutines.tasks.await
 /**
  * Cloud Storage implementation of [ProfilePictureRepository].
  *
- * Each user has one picture, stored at `profilePictures/{userId}.jpg`, so uploading a new one
- * replaces the old one and nothing is left behind. Firebase access stays in this model-layer class
- * so ViewModels depend only on [ProfilePictureRepository].
+ * Each user has two picture slots, `profilePictures/{userId}_a.jpg` and
+ * `profilePictures/{userId}_b.jpg`. A new picture always goes to the slot the profile does not
+ * currently point to, so the current picture and its URL stay valid until the caller has saved the
+ * new URL. The next upload then reuses the older slot, so at most two files exist per user and
+ * nothing needs deleting. Firebase access stays in this model-layer class so ViewModels depend only
+ * on [ProfilePictureRepository].
  *
  * The Storage folder and the content type must match `storage.rules`, so they are read once from
  * non-translatable string resources ([R.string.profile_picture_storage_folder] and
@@ -31,15 +34,21 @@ class ProfilePictureRepositoryStorage(
   private val contentType = context.getString(R.string.profile_picture_content_type)
 
   /**
-   * Uploads [jpegBytes] to the user's picture path and returns its download URL.
+   * Uploads [jpegBytes] to the user's slot that [currentUrl] does not point to and returns its
+   * download URL.
    *
    * @param userId stable authentication identifier; must not be blank or contain `/`.
    * @param jpegBytes the already compressed JPEG image; must not be empty.
+   * @param currentUrl the picture URL the profile references now, or null if it has none.
    * @return [Result.success] containing the download URL; [Result.failure] containing
    *   [ProfilePictureException] with a stable [ProfilePictureError] category.
    * @throws CancellationException when the coroutine is cancelled.
    */
-  override suspend fun uploadProfilePicture(userId: String, jpegBytes: ByteArray): Result<String> {
+  override suspend fun uploadProfilePicture(
+      userId: String,
+      jpegBytes: ByteArray,
+      currentUrl: String?,
+  ): Result<String> {
     // A "/" would turn the file name into a sub-folder, which the Storage rules refuse anyway.
     if (userId.isBlank() || userId.contains('/')) {
       return Result.failure(ProfilePictureException(ProfilePictureError.INVALID_USER_ID))
@@ -48,12 +57,29 @@ class ProfilePictureRepositoryStorage(
       return Result.failure(ProfilePictureException(ProfilePictureError.EMPTY_IMAGE))
     }
     return execute {
-      val reference = storage.reference.child("$folder/$userId.jpg")
+      val reference =
+          storage.reference.child("$folder/${userId}_${freeSlot(userId, currentUrl)}.jpg")
       // The Storage rules only accept image/jpeg, so the type is always declared explicitly.
       val metadata = StorageMetadata.Builder().setContentType(contentType).build()
       reference.putBytes(jpegBytes, metadata).await()
       reference.downloadUrl.await().toString()
     }
+  }
+
+  /**
+   * Chooses the slot a new picture is uploaded to: the one [currentUrl] does not point to.
+   *
+   * A Storage download URL contains the file name, so it tells which slot it belongs to. A null URL
+   * or one for any other file, such as a picture of an earlier format, selects [SLOT_A]; the
+   * current file is then left alone all the same, because it is not one of the two slots.
+   *
+   * @param userId the user whose slots are considered.
+   * @param currentUrl the picture URL the profile references now, or null if it has none.
+   * @return [SLOT_B] when [currentUrl] points to slot A, otherwise [SLOT_A].
+   */
+  private fun freeSlot(userId: String, currentUrl: String?): String {
+    val usesSlotA = currentUrl?.contains("${userId}_$SLOT_A.jpg") == true
+    return if (usesSlotA) SLOT_B else SLOT_A
   }
 
   /**
@@ -77,5 +103,13 @@ class ProfilePictureRepositoryStorage(
     } catch (exception: Exception) {
       Result.failure(ProfilePictureException(ProfilePictureError.UNKNOWN, exception))
     }
+  }
+
+  private companion object {
+    /** Suffix of the first picture slot; also the slot used when the profile has no picture. */
+    const val SLOT_A = "a"
+
+    /** Suffix of the second picture slot. */
+    const val SLOT_B = "b"
   }
 }
