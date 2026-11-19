@@ -464,7 +464,7 @@ fun EventDetailsPreview() {
     uiMode = Configuration.UI_MODE_NIGHT_YES,
 )
 @Composable
-private fun GroupSessionEventDetailsPreview() {
+internal fun GroupSessionEventDetailsPreview() {
   DidYouStudyTheme(dynamicColor = false) {
     EventDetailsStateless(
         display =
