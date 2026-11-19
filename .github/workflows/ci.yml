@@ -133,11 +133,17 @@ jobs:
             app/build/outputs/apk/debug/app-debug.apk
 
   android-tests:
-    name: Emulator tests
+    name: Emulator tests (shard ${{ matrix.shard }})
     # Google Maps key injected into the manifest; without it the map in the APK stays blank.
     env:
       MAP_API_KEY: ${{ secrets.MAP_API_KEY }}
     runs-on: ubuntu-latest
+    # The instrumented tests are split across parallel emulators. Each shard runs 1/N of the
+    # tests (AndroidJUnitRunner numShards/shardIndex). Add an index here to add a shard.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2]
     steps:
       # First step : Checkout the repository on the runner
       - name: Checkout
@@ -202,7 +208,7 @@ jobs:
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
         with:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.shard != 0 }}
           cache-cleanup: never
 
       # Cache only an encrypted archive; keep the project directory off the cache service.
@@ -271,7 +277,7 @@ jobs:
           script: >-
             PATH="$JAVA_HOME_21_X64/bin:$PATH"
             firebase emulators:exec --only auth,firestore --project demo-didyoustudy
-            "./gradlew connectedCheck --parallel --build-cache --configuration-cache"
+            "./gradlew connectedCheck --parallel --build-cache --configuration-cache -Pandroid.testInstrumentationRunnerArguments.numShards=${{ strategy.job-total }} -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard }}"
 
       - name: Encrypt Gradle configuration for caching
         if: env.GRADLE_ENCRYPTION_KEY != ''
@@ -281,7 +287,7 @@ jobs:
           rm "$RUNNER_TEMP/gradle-configuration-cache.tar"
 
       - name: Save encrypted Gradle configuration
-        if: github.ref == 'refs/heads/main' && env.GRADLE_ENCRYPTION_KEY != '' && steps.configuration-cache.outputs.cache-hit != 'true'
+        if: github.ref == 'refs/heads/main' && matrix.shard == 0 && env.GRADLE_ENCRYPTION_KEY != '' && steps.configuration-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: ${{ runner.temp }}/gradle-configuration-cache.tar.gpg
@@ -290,7 +296,7 @@ jobs:
       - name: Upload emulator coverage
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: connected-coverage
+          name: connected-coverage-${{ matrix.shard }}
           retention-days: 1
           if-no-files-found: error
           path: app/build/outputs/code_coverage/
@@ -340,10 +346,11 @@ jobs:
           name: build-analysis
           path: app/build
 
+      # One artifact per shard, extracted into separate subfolders so the .ec files do not collide.
       - name: Download emulator coverage
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: connected-coverage
+          pattern: connected-coverage-*
           path: app/build/outputs/code_coverage
 
       - name: Verify transferred analysis inputs

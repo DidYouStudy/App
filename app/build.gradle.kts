@@ -265,7 +265,7 @@ tasks.register("jacocoTestReport", JacocoReport::class) {
   executionData.setFrom(
       fileTree(layout.buildDirectory.get().asFile.absolutePath) {
         include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
-        include("outputs/code_coverage/debugAndroidTest/connected/*/*.ec")
+        include("outputs/code_coverage/**/debugAndroidTest/connected/*/*.ec")
       }
   )
 }
