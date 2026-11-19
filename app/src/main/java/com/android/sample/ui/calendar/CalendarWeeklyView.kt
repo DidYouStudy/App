@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import com.android.sample.R
 import com.android.sample.model.event.Event
 import com.android.sample.ui.eventplanning.EventKind
+import com.android.sample.ui.eventplanning.kind
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.calendarDateLabelStyle
@@ -115,7 +116,7 @@ object CalendarTestTags {
  * @param onPreviousWeek Callback invoked when the previous-week control is clicked.
  * @param onNextWeek Callback invoked when the next-week control is clicked.
  * @param modifier The modifier applied to the weekly calendar's root column.
- * @param onEventClick Callback receiving the selected event's ID.
+ * @param onEventClick Callback receiving the selected event's ID and kind.
  */
 @Composable
 internal fun CalendarWeeklyView(
@@ -340,7 +341,7 @@ private fun CalendarTodayCircle(modifier: Modifier = Modifier) {
  * viewport has enough scroll range.
  *
  * @param modifier The modifier applied to the timeline container.
- * @param onEventClick Callback receiving the selected event's ID.
+ * @param onEventClick Callback receiving the selected event's ID and kind.
  */
 @Composable
 fun CalendarTimeGrid(
@@ -429,7 +430,7 @@ fun CalendarTimeGrid(
                           .offset(x = cardWidth * placement.laneIndex, y = placement.top)
                           .height(maxOf(Dimens.calendarEventCardMinHeight, placement.height))
                           .testTag(CalendarTestTags.eventCard(placement.event.id, dayIndex)),
-                  onClick = { onEventClick(placement.event.id, EventKind.PERSONAL) },
+                  onClick = { onEventClick(placement.event.id, placement.event.kind()) },
               )
             }
           }

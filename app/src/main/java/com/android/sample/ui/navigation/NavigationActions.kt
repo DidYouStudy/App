@@ -32,24 +32,31 @@ sealed class Screen(
 
   /** Details destination for a personal event or a group session. */
   data class EventDetails(val eventId: String, val kind: EventKind = EventKind.PERSONAL) :
-      Screen(route = "$PATH/${Uri.encode(eventId)}", name = "EventDetails") {
+      Screen(
+          route = "$PATH/${Uri.encode(eventId)}?$EVENT_KIND_ARGUMENT=${kind.name}",
+          name = "EventDetails",
+      ) {
     companion object {
       private const val PATH = "event_details"
-      const val ROUTE = "$PATH/{$EVENT_ID_ARGUMENT}"
+      const val ROUTE = "$PATH/{$EVENT_ID_ARGUMENT}?$EVENT_KIND_ARGUMENT={$EVENT_KIND_ARGUMENT}"
     }
   }
 
   /** Shared editor destination for a personal event or a group session. */
   data class EditEvent(val eventId: String, val kind: EventKind = EventKind.PERSONAL) :
-      Screen(route = "$PATH/${Uri.encode(eventId)}?kind=${kind.name}", name = "EditEvent") {
+      Screen(
+          route = "$PATH/${Uri.encode(eventId)}?$EVENT_KIND_ARGUMENT=${kind.name}",
+          name = "EditEvent",
+      ) {
     companion object {
       private const val PATH = "edit_event"
-      const val ROUTE = "$PATH/{$EVENT_ID_ARGUMENT}?kind={kind}"
+      const val ROUTE = "$PATH/{$EVENT_ID_ARGUMENT}?$EVENT_KIND_ARGUMENT={$EVENT_KIND_ARGUMENT}"
     }
   }
 
   companion object {
     const val EVENT_ID_ARGUMENT = "eventId"
+    const val EVENT_KIND_ARGUMENT = "kind"
   }
 }
 
@@ -152,4 +159,5 @@ open class NavigationActions(
 }
 
 /** Parses a route's kind argument, falling back to [EventKind.PERSONAL] when missing or unknown. */
-internal fun eventKindArgument(value: String?): EventKind = TODO("slice 1")
+internal fun eventKindArgument(value: String?): EventKind =
+    value?.let { runCatching { EventKind.valueOf(it) }.getOrNull() } ?: EventKind.PERSONAL
