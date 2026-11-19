@@ -41,6 +41,7 @@ import com.android.sample.model.groupsession.GroupSessionsRepositoryFirestore
 import com.android.sample.model.preferences.PreferencesRepositoryFirestore
 import com.android.sample.model.preferences.TimeOfDay
 import com.android.sample.model.preferences.UserPreferences
+import com.android.sample.model.profile.ProfilePictureRepositoryStorage
 import com.android.sample.model.profile.ProfileRepositoryFirestore
 import com.android.sample.testing.FakeGoogleCredentialManager
 import com.android.sample.testing.RepositoryOverridesRule
@@ -59,6 +60,7 @@ import com.google.firebase.FirebaseOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
+import com.google.firebase.storage.FirebaseStorage
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Duration
@@ -85,8 +87,8 @@ import org.junit.rules.RuleChain
 /**
  * End-to-end tests driving the real [MainActivity] through the whole user journey (sign-in,
  * first-time preferences, dashboard tabs, settings, logout) against the real Firebase SDKs talking
- * to the local Firebase emulators (Auth on 9099, Firestore on 8080, reached from the Android
- * emulator at 10.0.2.2).
+ * to the local Firebase emulators (Auth on 9099, Firestore on 8080, Storage on 9199, reached from
+ * the Android emulator at 10.0.2.2).
  *
  * Sign-in goes through the app's real flow: the Google button, the account picker (replaced by
  * [FakeGoogleCredentialManager], which returns a fake ID token), `AuthRepositoryFirebase` and the
@@ -94,7 +96,7 @@ import org.junit.rules.RuleChain
  * directly on the emulator server. Each test uses a uniquely named Firebase app and user, and
  * removes everything it created, so runs are repeatable and never touch production data.
  *
- * Requires: `firebase emulators:start --only auth,firestore` running on the host.
+ * Requires: `firebase emulators:start --only auth,firestore,storage` running on the host.
  */
 class EndToEndTest {
   private val email = "e2e-${UUID.randomUUID()}@example.test"
@@ -104,6 +106,7 @@ class EndToEndTest {
   private val app: FirebaseApp = initializeEmulatorApp("e2e")
   private val auth = FirebaseAuth.getInstance(app).apply { useEmulator(HOST, AUTH_PORT) }
   private val db = FirebaseFirestore.getInstance(app).apply { useEmulator(HOST, FIRESTORE_PORT) }
+  private val storage = FirebaseStorage.getInstance(app).apply { useEmulator(HOST, STORAGE_PORT) }
   private val composeRule = createAndroidComposeRule<MainActivity>()
 
   // Installs emulator-backed repositories and the fake picker before MainActivity launches. Every
@@ -118,6 +121,11 @@ class EndToEndTest {
                       },
                   preferences = PreferencesRepositoryFirestore(db),
                   profile = ProfileRepositoryFirestore(db),
+                  profilePicture =
+                      ProfilePictureRepositoryStorage(
+                          ApplicationProvider.getApplicationContext(),
+                          storage,
+                      ),
                   events = EventsRepositoryFirestore(db, auth),
                   groupSessions = GroupSessionsRepositoryFirestore(db, auth),
                   credentialManager = picker,
@@ -591,6 +599,7 @@ class EndToEndTest {
     const val HOST = "10.0.2.2"
     const val AUTH_PORT = 9099
     const val FIRESTORE_PORT = 8080
+    const val STORAGE_PORT = 9199
     const val PROJECT_ID = "demo-didyoustudy"
     const val TIMEOUT_MILLIS = 30_000L
 

@@ -21,6 +21,8 @@ import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.PreferencesRepositoryProvider
 import com.android.sample.model.preferences.UserPreferences
+import com.android.sample.model.profile.ProfilePictureRepository
+import com.android.sample.model.profile.ProfilePictureRepositoryProvider
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.ProfileRepositoryProvider
 import com.android.sample.ui.auth.TestAuthRepository
@@ -66,6 +68,7 @@ class NotImplementedToastNavigationTest {
     AuthRepositoryProvider.setRepository(auth)
     PreferencesRepositoryProvider.setRepository(preferences)
     ProfileRepositoryProvider.setRepository(mock<ProfileRepository>())
+    ProfilePictureRepositoryProvider.setRepository(mock<ProfilePictureRepository>())
     EventsRepositoryProvider.setRepository(InMemoryEventsRepository())
     GroupSessionsRepositoryProvider.setRepository(InMemoryGroupSessionsRepository())
 
@@ -79,6 +82,7 @@ class NotImplementedToastNavigationTest {
     AuthRepositoryProvider.setRepository(null)
     PreferencesRepositoryProvider.setRepository(null)
     ProfileRepositoryProvider.setRepository(null)
+    ProfilePictureRepositoryProvider.setRepository(null)
     EventsRepositoryProvider.setRepository(null)
     GroupSessionsRepositoryProvider.setRepository(null)
   }
@@ -90,14 +94,13 @@ class NotImplementedToastNavigationTest {
     tapAndExpectToast(DashboardContentTestTags.STATS_CARD, expectedCount = 2)
   }
 
-  /** Username, profile picture and friends actions in Settings show the toast. */
+  /** Username and friends actions in Settings show the toast. */
   @Test
   fun settingsPlaceholderActionsShowNotImplementedToast() {
     openSettings()
 
     tapAndExpectToast(SettingsScreenTestTags.EDIT_USERNAME_BUTTON, expectedCount = 1)
-    tapAndExpectToast(SettingsScreenTestTags.CHANGE_PROFILE_PICTURE_BUTTON, expectedCount = 2)
-    tapAndExpectToast(SettingsScreenTestTags.FRIENDS_BUTTON, expectedCount = 3)
+    tapAndExpectToast(SettingsScreenTestTags.FRIENDS_BUTTON, expectedCount = 2)
   }
 
   /** Adding study locations in Preferences (opened from Settings) shows the toast. */
