@@ -1,11 +1,8 @@
 // Co-authored-by: Codex AI Agent
-// Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Copilot
-// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Gemini
-// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
-// Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: OpenAI Codex
 package com.android.sample.ui.groupsession
 
@@ -39,6 +36,7 @@ import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Map
@@ -67,7 +65,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -103,9 +100,9 @@ import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
-import com.android.sample.ui.profile.ProfileButton
 import com.android.sample.ui.sharedComponents.AddButton
 import com.android.sample.ui.sharedComponents.EventTypeBadge
+import com.android.sample.ui.sharedComponents.MainTopAppBar
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.color
@@ -142,6 +139,7 @@ object GroupSessionScreenTestTags {
   const val MAP_CONTENT = "groupSessionMapContent"
   const val LOCATION_PILL = "groupSessionLocationPill"
   const val PARTICIPANTS_PILL = "groupSessionParticipantsPill"
+  const val OFFLINE_INDICATOR = "groupSessionOfflineIndicator"
 
   fun sessionItem(index: Int) = "$SESSION_ITEM_PREFIX$index"
 
@@ -233,16 +231,9 @@ fun GroupSessionScreen(
         )
       },
       topBar = {
-        TopAppBar(
-            title = {
-              Text(
-                  stringResource(R.string.group_session_title),
-                  modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE),
-              )
-            },
-            actions = {
-              ProfileButton(onClick = { navigationActions?.navigateTo(Screen.Settings) })
-            },
+        MainTopAppBar(
+            title = stringResource(R.string.group_session_title),
+            onProfileClick = { navigationActions?.navigateTo(Screen.Settings) },
         )
       },
       bottomBar = {
@@ -344,7 +335,10 @@ internal fun GroupSessionContent(
   when (viewMode) {
     GroupSessionViewMode.LIST -> {
       Box(modifier = modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize().padding(horizontal = Spacing.large)) {
+        Column(
+            modifier =
+                Modifier.fillMaxSize().padding(horizontal = Spacing.large, vertical = Spacing.small)
+        ) {
           GroupSessionSearchBar(
               query = state.query,
               onQueryChange = onQueryChange,
@@ -355,6 +349,10 @@ internal fun GroupSessionContent(
               filter = state.filter,
               onFilterChange = onFilterChange,
           )
+          if (state.isOffline) {
+            Spacer(Modifier.height(Spacing.small))
+            GroupSessionOfflineIndicator()
+          }
           Text(
               stringResource(R.string.group_session_active_sessions_title),
               style = MaterialTheme.typography.titleLarge,
@@ -433,6 +431,10 @@ internal fun GroupSessionContent(
               filter = state.filter,
               onFilterChange = onFilterChange,
           )
+          if (state.isOffline) {
+            Spacer(Modifier.height(Spacing.small))
+            GroupSessionOfflineIndicator()
+          }
         }
         if (selectedRoom == null) {
           GroupSessionViewSwitcher(
@@ -552,6 +554,40 @@ internal fun GroupSessionSearchBar(
               focusedBorderColor = Color.Transparent,
           ),
   )
+}
+
+/**
+ * Banner telling the student the device is offline, so the sessions shown are the ones already
+ * loaded and saved on the device.
+ *
+ * Shown in both the list and the map view while [GroupSessionsUiState.isOffline] is true, and
+ * removed as soon as the connection returns.
+ */
+@Composable
+internal fun GroupSessionOfflineIndicator(modifier: Modifier = Modifier) {
+  Surface(
+      modifier = modifier.fillMaxWidth().testTag(GroupSessionScreenTestTags.OFFLINE_INDICATOR),
+      shape = RoundedCornerShape(Dimens.cornerMedium),
+      color = MaterialTheme.colorScheme.surfaceContainerHigh,
+  ) {
+    Row(
+        modifier = Modifier.padding(horizontal = Spacing.medium, vertical = Spacing.small),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Icon(
+          Icons.Outlined.CloudOff,
+          contentDescription = null,
+          modifier = Modifier.size(Dimens.iconSizeMedium),
+          tint = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+      Spacer(Modifier.width(Spacing.small))
+      Text(
+          text = stringResource(R.string.group_session_offline_indicator),
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+    }
+  }
 }
 
 /** Floating segmented pill control toggling between list and map views of group sessions. */
@@ -1021,4 +1057,57 @@ private fun sessionTimeLabel(instant: Instant): String =
 @Composable
 fun GroupSessionScreenPreview() {
   GroupSessionScreen()
+}
+
+@Preview(showBackground = true)
+@Composable
+fun GroupSessionContentOfflinePreview() {
+  val state =
+      GroupSessionsUiState(
+          now = Instant.now(),
+          isLoading = false,
+          sessions = emptyList(),
+          rooms = emptyList(),
+          query = "",
+          filter = GroupSessionFilter.ALL,
+          selectedSessionTypes = emptySet(),
+          startingTimeFilter = GroupSessionTimeFilter.ANYTIME,
+          selectedRadiusMeters = null,
+          selectedZones = emptySet(),
+          availableZones = emptyList(),
+          showLabRoomType = false,
+          hideFullSessions = false,
+          userLocation = null,
+          error = null,
+          isOffline = true,
+      )
+  GroupSessionContent(state = state)
+}
+
+@Preview(showBackground = true)
+@Composable
+fun GroupSessionMapContentOfflinePreview() {
+  val state =
+      GroupSessionsUiState(
+          now = Instant.now(),
+          isLoading = false,
+          sessions = emptyList(),
+          rooms = emptyList(),
+          query = "",
+          filter = GroupSessionFilter.ALL,
+          selectedSessionTypes = emptySet(),
+          startingTimeFilter = GroupSessionTimeFilter.ANYTIME,
+          selectedRadiusMeters = null,
+          selectedZones = emptySet(),
+          availableZones = emptyList(),
+          showLabRoomType = false,
+          hideFullSessions = false,
+          userLocation = null,
+          error = null,
+          isOffline = true,
+      )
+  GroupSessionContent(
+      state = state,
+      viewMode = GroupSessionViewMode.MAP,
+  )
 }
