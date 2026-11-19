@@ -92,7 +92,7 @@ object EventDetailsScreenTestTags {
  *
  * @param eventId ID of the event to display.
  * @param onNavigateBack invoked on back press and after a successful delete.
- * @param onEdit invoked with the event ID when the edit button is pressed.
+ * @param onEdit invoked with the loaded event's ID and kind when the edit button is pressed.
  */
 @Composable
 fun EventDetailsScreen(
@@ -137,7 +137,7 @@ fun EventDetailsScreen(
       onToggleTask = viewModel::toggleTask,
       onEdit = {
         val state = viewModel.uiState.value
-        if (!state.isBusy) state.event?.let { onEdit(it.id, EventKind.PERSONAL) }
+        if (!state.isBusy) state.event?.let { event -> onEdit(event.id, event.kind()) }
       },
       onDelete = viewModel::deleteEvent,
   )
@@ -205,6 +205,7 @@ internal fun EventDetailsStateless(
         }
       }
       EventDetailsActions(
+          actions = display?.actions ?: EventDetailsActionSet.EDIT_AND_DELETE,
           enabled = display != null && !isBusy,
           isDeleting = isDeleting,
           onEdit = onEdit,
@@ -371,13 +372,17 @@ private fun LabeledSection(
   }
 }
 
+/** Renders the action buttons offered for the displayed event. */
 @Composable
 private fun EventDetailsActions(
+    actions: EventDetailsActionSet,
     enabled: Boolean,
     isDeleting: Boolean,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
+  if (actions == EventDetailsActionSet.NONE) return
+
   Column(
       modifier =
           Modifier.padding(
@@ -397,17 +402,19 @@ private fun EventDetailsActions(
         progressTag = EventDetailsScreenTestTags.EDIT_BUTTON + "Progress",
         icon = Icons.Default.Edit,
     )
-    PillActionButton(
-        onClick = onDelete,
-        enabled = enabled,
-        isInProgress = isDeleting,
-        label = stringResource(R.string.event_details_delete),
-        containerColor = MaterialTheme.colorScheme.error,
-        contentColor = MaterialTheme.colorScheme.onError,
-        buttonTag = EventDetailsScreenTestTags.DELETE_BUTTON,
-        progressTag = EventDetailsScreenTestTags.DELETE_PROGRESS,
-        icon = Icons.Outlined.Delete,
-    )
+    if (actions == EventDetailsActionSet.EDIT_AND_DELETE) {
+      PillActionButton(
+          onClick = onDelete,
+          enabled = enabled,
+          isInProgress = isDeleting,
+          label = stringResource(R.string.event_details_delete),
+          containerColor = MaterialTheme.colorScheme.error,
+          contentColor = MaterialTheme.colorScheme.onError,
+          buttonTag = EventDetailsScreenTestTags.DELETE_BUTTON,
+          progressTag = EventDetailsScreenTestTags.DELETE_PROGRESS,
+          icon = Icons.Outlined.Delete,
+      )
+    }
   }
 }
 
@@ -467,6 +474,7 @@ private fun GroupSessionEventDetailsPreview() {
                         EventMember("marcus", "Marcus Vance", isHost = false),
                         EventMember("alice", "Alice Laurent", isHost = false),
                     ),
+                actions = EventDetailsActionSet.EDIT_ONLY,
             ),
     )
   }
