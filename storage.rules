@@ -23,6 +23,7 @@ service firebase.storage {
         && (fileName == request.auth.uid + '_a.jpg' || fileName == request.auth.uid + '_b.jpg')
         && request.resource.contentType == 'image/jpeg'
         && request.resource.size < 1024 * 1024;
+        //TODO: add rules for file deletion
     }
 
     // Anything not matched above is denied by default.
