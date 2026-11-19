@@ -34,10 +34,9 @@ enum class DashboardViewModelError {
   LOAD_SESSIONS_FAILED,
 }
 
-/** State holding today's study sessions, raw events, loading indicator, and any load error. */
+/** State holding today's study sessions, loading indicator, and any load error. */
 data class DashboardUiState(
     val sessions: List<DashboardSession> = emptyList(),
-    val events: List<Event> = emptyList(),
     val isLoading: Boolean = true,
     val error: DashboardViewModelError? = null,
     val midnightDelay: Duration = 0.toDuration(DurationUnit.SECONDS),
@@ -124,7 +123,6 @@ class DashboardViewModel(
       _uiState.value =
           DashboardUiState(
               sessions = emptyList(),
-              events = emptyList(),
               isLoading = false,
               error = null,
               midnightDelay = calculateMidnightDelay(),
@@ -138,7 +136,6 @@ class DashboardViewModel(
       _uiState.value =
           DashboardUiState(
               sessions = emptyList(),
-              events = emptyList(),
               isLoading = true,
               error = null,
               midnightDelay = calculateMidnightDelay(),
@@ -164,7 +161,7 @@ class DashboardViewModel(
                 id = event.id,
                 startTime = timeFormatter.format(event.details.startsAt),
                 endTime = timeFormatter.format(event.details.endsAt),
-                subject = event.details.subject ?: "Other",
+                subject = event.details.subject,
                 eventType = event.details.type,
                 location = event.details.location,
             )
@@ -172,7 +169,6 @@ class DashboardViewModel(
           _uiState.update {
             it.copy(
                 sessions = sessions,
-                events = events,
                 isLoading = false,
                 error = null,
                 midnightDelay = calculateMidnightDelay(),
@@ -188,7 +184,6 @@ class DashboardViewModel(
     _uiState.update {
       it.copy(
           sessions = emptyList(),
-          events = emptyList(),
           isLoading = false,
           error = DashboardViewModelError.LOAD_SESSIONS_FAILED,
       )

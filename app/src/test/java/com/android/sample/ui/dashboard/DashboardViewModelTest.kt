@@ -84,7 +84,6 @@ class DashboardViewModelTest {
 
     val state = viewModel.uiState.value
     assertTrue(state.sessions.isEmpty())
-    assertTrue(state.events.isEmpty())
     assertFalse(state.isLoading)
     assertNull(state.error)
   }
@@ -135,7 +134,6 @@ class DashboardViewModelTest {
     assertFalse(state.isLoading)
     assertNull(state.error)
     assertEquals(2, state.sessions.size)
-    assertEquals(listOf(personalEvent, groupSession), state.events)
 
     assertEquals("09:00", state.sessions[0].startTime)
     assertEquals("10:30", state.sessions[0].endTime)
@@ -153,7 +151,7 @@ class DashboardViewModelTest {
   }
 
   @Test
-  fun eventWithNullSubjectFallsBackToOther() = runTest {
+  fun eventWithNullSubjectKeepsNullSubject() = runTest {
     authRepository.currentUser.value = UserAccount("alice", "alice@epfl.ch", "Alice", null)
 
     val start = Instant.parse("2026-10-28T09:00:00Z")
@@ -176,7 +174,7 @@ class DashboardViewModelTest {
     val viewModel = createViewModel()
 
     val session = viewModel.uiState.value.sessions.single()
-    assertEquals("Other", session.subject)
+    assertNull(session.subject)
   }
 
   @Test
@@ -216,7 +214,6 @@ class DashboardViewModelTest {
     assertFalse(state.isLoading)
     assertEquals(DashboardViewModelError.LOAD_SESSIONS_FAILED, state.error)
     assertTrue(state.sessions.isEmpty())
-    assertTrue(state.events.isEmpty())
   }
 
   @Test
