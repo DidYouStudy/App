@@ -4,7 +4,7 @@ package com.android.sample.ui.navigation
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.assertHasNoClickAction
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
@@ -136,8 +136,8 @@ class CalendarEventNavigationTest {
 
     val hostedCard = composeRule.onNodeWithTag(CalendarTestTags.eventCard(hosted.id, 0))
     val joinedCard = composeRule.onNodeWithTag(CalendarTestTags.eventCard(joined.id, 1))
-    hostedCard.assertIsDisplayed().assertHasNoClickAction()
-    joinedCard.assertIsDisplayed().assertHasNoClickAction()
+    hostedCard.assertIsDisplayed().assertHasClickAction()
+    joinedCard.assertIsDisplayed().assertHasClickAction()
     composeRule.onNodeWithTag(selectedCardTag).assertIsDisplayed()
 
     runBlocking { groupSessions.leaveSession(userId, joined.id).getOrThrow() }
@@ -145,6 +145,29 @@ class CalendarEventNavigationTest {
     joinedCard.assertDoesNotExist()
     hostedCard.assertIsDisplayed()
     openDetails()
+  }
+
+  /** A joined group session card opens its Details as a group session; Back keeps the week. */
+  @Test
+  fun groupSessionCardOpensDetailsAndBackReturnsToTheSameWeek() {
+    val joined =
+        GroupSession(
+            id = "joined-session",
+            createdBy = "another-student",
+            memberIds = listOf("another-student", userId),
+            details = event("unused", previousMonday.plusDays(2), "Group revision").details,
+            createdAt = selectedEvent.createdAt,
+        )
+    runBlocking { groupSessions.saveSession(joined.createdBy, joined).getOrThrow() }
+    val joinedCard = CalendarTestTags.eventCard(joined.id, dayIndex = 2)
+
+    composeRule.onNodeWithTag(joinedCard).performTouchInput { click(center) }
+
+    composeRule.onNodeWithTag(DetailsTags.SUBJECT).assertTextContains("Group revision")
+    composeRule.onNodeWithTag(DetailsTags.NOT_FOUND).assertDoesNotExist()
+    composeRule.onNodeWithTag(DetailsTags.BACK_BUTTON).performClick()
+    assertCalendarWeekIsDisplayed()
+    composeRule.onNodeWithTag(joinedCard).assertIsDisplayed()
   }
 
   /** Renders both halves of a joined session that crosses the selected week's boundary. */

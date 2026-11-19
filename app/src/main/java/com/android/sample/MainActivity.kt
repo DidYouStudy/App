@@ -212,7 +212,7 @@ fun DidYouStudyApp(
                   applicationViewModel::canNavigateTo,
               )
             },
-            onEventClick = { eventId ->
+            onEventClick = { eventId, _ ->
               navController.runIfCurrentEntry(entry) {
                 navigationActions.navigateIfAllowed(
                     Screen.EventDetails(eventId),

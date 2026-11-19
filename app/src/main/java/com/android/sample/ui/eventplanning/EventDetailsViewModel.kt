@@ -215,13 +215,6 @@ class EventDetailsViewModel(
     }
   }
 
-  /** The [EventKind] this event is loaded as. */
-  private fun Event.kind(): EventKind =
-      when (this) {
-        is PersonalEvent -> EventKind.PERSONAL
-        is GroupSession -> EventKind.GROUP_SESSION
-      }
-
   /**
    * Deletes the currently loaded event for the signed-in user. On success, sets
    * [EventDetailsUiState.isEventDeleted] to true.

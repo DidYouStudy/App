@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.android.sample.R
 import com.android.sample.model.event.Event
+import com.android.sample.ui.eventplanning.EventKind
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.calendarDateLabelStyle
@@ -123,7 +124,7 @@ internal fun CalendarWeeklyView(
     onPreviousWeek: () -> Unit,
     onNextWeek: () -> Unit,
     modifier: Modifier = Modifier,
-    onEventClick: (String) -> Unit = {},
+    onEventClick: (String, EventKind) -> Unit = { _, _ -> },
 ) {
   BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     // Checks the dimensions of the screen and decide whether to make the headers compact
@@ -347,7 +348,7 @@ fun CalendarTimeGrid(
     modifier: Modifier = Modifier,
     events: List<Event> = emptyList(),
     weekDates: List<LocalDate> = emptyList(),
-    onEventClick: (String) -> Unit = {},
+    onEventClick: (String, EventKind) -> Unit = { _, _ -> },
 ) {
   // Keep the grid vertically scrollable
   val scrollState = remember { ScrollState(0) }
@@ -429,7 +430,7 @@ fun CalendarTimeGrid(
                           .offset(x = cardWidth * placement.laneIndex, y = placement.top)
                           .height(maxOf(Dimens.calendarEventCardMinHeight, placement.height))
                           .testTag(CalendarTestTags.eventCard(placement.event.id, dayIndex)),
-                  onClick = { onEventClick(placement.event.id) },
+                  onClick = { onEventClick(placement.event.id, EventKind.PERSONAL) },
               )
             }
           }
