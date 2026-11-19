@@ -417,6 +417,15 @@ class EventDetailsScreenTest {
   }
 
   @Test
+  fun groupSessionPreviewShowsTheHostView() {
+    composeTestRule.setContent { GroupSessionEventDetailsPreview() }
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.GROUP_SESSION_CHIP).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EDIT_BUTTON).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_BUTTON).assertDoesNotExist()
+  }
+
+  @Test
   fun actionButtonsShowTheirLabels() {
     setStatelessContent()
 
