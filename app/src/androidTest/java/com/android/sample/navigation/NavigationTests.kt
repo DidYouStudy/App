@@ -902,8 +902,11 @@ private class FakePreferencesRepository(
 
 /** Picture repository for tests that never change the profile picture. */
 private class FakeProfilePictureRepository : ProfilePictureRepository {
-  override suspend fun uploadProfilePicture(userId: String, jpegBytes: ByteArray): Result<String> =
-      Result.failure(UnsupportedOperationException("Not needed in this test"))
+  override suspend fun uploadProfilePicture(
+      userId: String,
+      jpegBytes: ByteArray,
+      currentUrl: String?,
+  ): Result<String> = Result.failure(UnsupportedOperationException("Not needed in this test"))
 }
 
 private class FakeProfileRepository : ProfileRepository {

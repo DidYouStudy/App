@@ -5,6 +5,8 @@ import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.profile.ImageCompressor
+import com.android.sample.model.profile.ProfilePictureError
+import com.android.sample.model.profile.ProfilePictureException
 import com.android.sample.model.profile.ProfilePictureRepository
 import com.android.sample.model.profile.ProfileRepository
 import kotlinx.coroutines.Dispatchers
@@ -77,6 +79,25 @@ class SettingsViewModelLoggingTest {
             imageCompressor,
         )
         .signOut()
+
+    assertWarningLogged(cause)
+  }
+
+  /** A failure while changing the profile picture logs its exception, whichever step failed. */
+  @Test
+  fun pictureChangeFailureLogsTheCause() = runTest {
+    val cause = ProfilePictureException(ProfilePictureError.INVALID_IMAGE)
+    `when`(authRepository.currentUser).thenReturn(MutableStateFlow(null))
+    `when`(authRepository.currentUserId).thenReturn("user123")
+    `when`(imageCompressor.compress("content://picked")).thenReturn(Result.failure(cause))
+
+    SettingsViewModel(
+            authRepository,
+            profileRepository,
+            profilePictureRepository,
+            imageCompressor,
+        )
+        .onPictureSelected("content://picked")
 
     assertWarningLogged(cause)
   }
