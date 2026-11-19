@@ -21,10 +21,10 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.rule.GrantPermissionRule
 import com.android.sample.R
@@ -233,12 +233,7 @@ class GroupSessionScreenTest {
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.FILTER_BUTTON).performClick()
 
     composeTestRule.onNodeWithText("Filter sessions").assertIsDisplayed()
-    // Close through the sheet's own button: Espresso's pressBack() waits for window focus,
-    // which the CI emulator sometimes never grants while the sheet's window is open.
-    composeTestRule
-        .onNodeWithTag(GroupSessionFilterSheetTestTags.SHOW_SESSIONS)
-        .performScrollTo()
-        .performClick()
+    pressBack()
     composeTestRule.onNodeWithText("Filter sessions").assertDoesNotExist()
   }
 
