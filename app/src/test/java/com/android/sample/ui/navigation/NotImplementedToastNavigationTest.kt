@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.navigation
 
 import android.content.Context
@@ -83,11 +84,14 @@ class NotImplementedToastNavigationTest {
     GroupSessionsRepositoryProvider.setRepository(null)
   }
 
-  /** Both Dashboard cards show the toast. */
+  /** Dashboard stats card shows the toast (Your day card is no longer a placeholder). */
   @Test
   fun dashboardCardsShowNotImplementedToast() {
-    tapAndExpectToast(DashboardContentTestTags.YOUR_DAY_CARD, expectedCount = 1)
-    tapAndExpectToast(DashboardContentTestTags.STATS_CARD, expectedCount = 2)
+    composeRule.onNodeWithTag(DashboardContentTestTags.YOUR_DAY_CARD).performClick()
+    composeRule.waitForIdle()
+    assertEquals(0, ShadowToast.shownToastCount())
+
+    tapAndExpectToast(DashboardContentTestTags.STATS_CARD, expectedCount = 1)
   }
 
   /** Username, profile picture and friends actions in Settings show the toast. */
