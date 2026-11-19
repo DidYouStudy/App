@@ -30,8 +30,8 @@ sealed class Screen(
 
   object AddGroupSession : Screen(route = "add_group_session", name = "AddGroupSession")
 
-  /** Details destination for a personal event. */
-  class EventDetails(eventId: String) :
+  /** Details destination for a personal event or a group session. */
+  data class EventDetails(val eventId: String, val kind: EventKind = EventKind.PERSONAL) :
       Screen(route = "$PATH/${Uri.encode(eventId)}", name = "EventDetails") {
     companion object {
       private const val PATH = "event_details"
@@ -150,3 +150,6 @@ open class NavigationActions(
     return navController?.currentDestination?.route ?: ""
   }
 }
+
+/** Parses a route's kind argument, falling back to [EventKind.PERSONAL] when missing or unknown. */
+internal fun eventKindArgument(value: String?): EventKind = TODO("slice 1")

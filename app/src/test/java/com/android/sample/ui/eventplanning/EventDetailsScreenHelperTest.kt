@@ -142,4 +142,11 @@ class EventDetailsScreenHelperTest {
     assertEquals("12:00", display.endTimeLabel)
     assertTrue(display.tasks.isEmpty())
   }
+
+  /** Each event type maps to the kind used for navigation and loading. */
+  @Test
+  fun kind_mapsEachEventType() {
+    assertEquals(EventKind.PERSONAL, samplePersonalEvent().kind())
+    assertEquals(EventKind.GROUP_SESSION, sampleGroupSession().kind())
+  }
 }

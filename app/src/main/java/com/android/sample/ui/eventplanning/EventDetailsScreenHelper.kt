@@ -6,6 +6,7 @@ package com.android.sample.ui.eventplanning
 
 import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventType
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.PersonalEvent
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -57,3 +58,10 @@ internal fun Event.toDisplay(
           },
   )
 }
+
+/** The [EventKind] this event is loaded and navigated as. */
+internal fun Event.kind(): EventKind =
+    when (this) {
+      is PersonalEvent -> EventKind.PERSONAL
+      is GroupSession -> EventKind.GROUP_SESSION
+    }
