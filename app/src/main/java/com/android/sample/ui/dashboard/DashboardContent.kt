@@ -55,7 +55,7 @@ import com.android.sample.ui.theme.onColor
 data class DashboardSession(
     val startTime: String,
     val endTime: String,
-    val subject: String,
+    val subject: String? = null,
     val eventType: EventType = EventType.STUDY_SESSION,
     val location: String? = null,
     val id: String = "",
@@ -117,7 +117,6 @@ object DashboardContentTestTags {
  * @param modifier Modifier applied to the scrollable content column.
  * @param stats Study statistics shown in the stats card.
  * @param onEventCardClick Called when the user taps an event card.
- * @param onDayCardClick Called when the user taps the "Your day" card.
  * @param onStatsCardClick Called when the user taps the stats card.
  */
 @Composable
@@ -126,7 +125,6 @@ fun DashboardContent(
     modifier: Modifier = Modifier,
     stats: DashboardStats = DashboardStats(),
     onEventCardClick: (String) -> Unit = {},
-    onDayCardClick: () -> Unit = {},
     onStatsCardClick: () -> Unit = {},
 ) {
   Column(
@@ -141,7 +139,7 @@ fun DashboardContent(
               .testTag(DashboardContentTestTags.CONTENT),
       verticalArrangement = Arrangement.spacedBy(Spacing.large),
   ) {
-    DashboardDayCard(sessions, onClick = onDayCardClick, onEventCardClick = onEventCardClick)
+    DashboardDayCard(sessions, onEventCardClick = onEventCardClick)
     DashboardStatsCard(stats, onClick = onStatsCardClick)
   }
 }
@@ -150,14 +148,13 @@ fun DashboardContent(
 @Composable
 private fun DashboardDayCard(
     sessions: List<DashboardSession>,
-    onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onEventCardClick: (String) -> Unit = {},
 ) {
   DashboardCard(
       testTag = DashboardContentTestTags.YOUR_DAY_CARD,
       clickLabel = stringResource(R.string.dashboard_your_day),
-      onClick = if (sessions.isEmpty()) onClick else null,
+      onClick = null,
       modifier = modifier,
   ) {
     Text(
@@ -299,7 +296,7 @@ private fun DashboardSessionRow(
         verticalArrangement = Arrangement.spacedBy(Spacing.extraExtraSmall),
     ) {
       Text(
-          text = session.subject,
+          text = session.subject ?: stringResource(R.string.event_type_other),
           style = MaterialTheme.typography.titleMedium,
           fontWeight = FontWeight.Bold,
           color = contentColor,

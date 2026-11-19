@@ -179,7 +179,6 @@ fun DashboardScreen(
                 sessions = uiState.sessions,
                 modifier = Modifier.padding(pd),
                 onEventCardClick = onEventCardClick,
-                onDayCardClick = {},
                 onStatsCardClick = notImplemented,
             )
           }

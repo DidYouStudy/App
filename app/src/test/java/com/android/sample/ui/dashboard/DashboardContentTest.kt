@@ -64,25 +64,21 @@ class DashboardContentTest {
         .assertTextEquals(context.getString(R.string.dashboard_your_stats))
   }
 
-  /** Each card reports its own taps, so the screen can route them independently. */
+  /** Tapping the stats card invokes its callback while tapping the day card does not. */
   @Test
-  fun tappingEachCardInvokesOnlyItsOwnCallback() {
-    var dayClicks = 0
+  fun tappingStatsCardInvokesOnStatsCardClick() {
     var statsClicks = 0
     composeTestRule.setContent {
       DashboardContent(
           sessions = emptyList(),
-          onDayCardClick = { dayClicks++ },
           onStatsCardClick = { statsClicks++ },
       )
     }
 
     composeTestRule.onNodeWithTag(DashboardContentTestTags.YOUR_DAY_CARD).performClick()
-    assertEquals(1, dayClicks)
     assertEquals(0, statsClicks)
 
     composeTestRule.onNodeWithTag(DashboardContentTestTags.STATS_CARD).performClick()
-    assertEquals(1, dayClicks)
     assertEquals(1, statsClicks)
   }
 
@@ -147,7 +143,8 @@ class DashboardContentTest {
       itemNode.assertIsDisplayed()
 
       val typeLabel = context.getString(session.eventType.labelRes())
-      listOf(session.timeRange, session.subject, typeLabel).forEach { text ->
+      val subject = requireNotNull(session.subject)
+      listOf(session.timeRange, subject, typeLabel).forEach { text ->
         composeTestRule.onNodeWithText(text, useUnmergedTree = true).assertIsDisplayed()
         composeTestRule
             .onAllNodes(hasText(text, substring = false), useUnmergedTree = true)
@@ -155,7 +152,7 @@ class DashboardContentTest {
       }
       itemNode.assert(
           hasAnyDescendant(hasText(session.timeRange, substring = false))
-              .and(hasAnyDescendant(hasText(session.subject, substring = false)))
+              .and(hasAnyDescendant(hasText(subject, substring = false)))
               .and(hasAnyDescendant(hasText(typeLabel, substring = false)))
       )
       if (index > 0) {
@@ -257,7 +254,7 @@ class DashboardContentTest {
     composeTestRule.setContent { DashboardContent(sessions = sessions) }
 
     composeTestRule.onNodeWithTag(lastSessionTag).performScrollTo().assertIsDisplayed()
-    composeTestRule.onNodeWithText(lastSession.subject).assertIsDisplayed()
+    composeTestRule.onNodeWithText(requireNotNull(lastSession.subject)).assertIsDisplayed()
   }
 
   @Test
