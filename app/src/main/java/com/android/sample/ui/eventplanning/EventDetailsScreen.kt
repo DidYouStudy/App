@@ -78,6 +78,7 @@ object EventDetailsScreenTestTags {
 @Composable
 fun EventDetailsScreen(
     eventId: String,
+    kind: EventKind = EventKind.PERSONAL,
     onNavigateBack: () -> Unit = {},
     onEdit: (String) -> Unit = {},
     viewModel: EventDetailsViewModel = eventDetailsViewModel(),
@@ -86,7 +87,7 @@ fun EventDetailsScreen(
   val snackbarHostState = remember { SnackbarHostState() }
   val errorMessage = uiState.error?.let { stringResource(it.stringResource) }
 
-  LaunchedEffect(eventId) { viewModel.loadEvent(eventId) }
+  LaunchedEffect(eventId, kind) { viewModel.loadEvent(eventId, kind) }
 
   LaunchedEffect(uiState.isEventDeleted) {
     if (uiState.isEventDeleted) {
