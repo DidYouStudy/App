@@ -495,9 +495,10 @@ class EventDetailsViewModelTest {
   private fun seedSession(
       memberIds: List<String> = listOf("host"),
       id: String = SESSION_ID,
+      createdBy: String = "host",
   ): GroupSession {
-    val session = sampleGroupSession(id = id, createdBy = "host", memberIds = memberIds)
-    runBlocking { groupSessionsRepository.saveSession("host", session).getOrThrow() }
+    val session = sampleGroupSession(id = id, createdBy = createdBy, memberIds = memberIds)
+    runBlocking { groupSessionsRepository.saveSession(createdBy, session).getOrThrow() }
     return session
   }
 
@@ -555,6 +556,44 @@ class EventDetailsViewModelTest {
     assertEquals(listOf(EventMember("host", "Hosty", true)), viewModel.uiState.value.members)
   }
 
+  /** The signed-in user's own row is flagged, and no other row is. */
+  @Test
+  fun loadEvent_groupSessionCurrentUserIsMember_flagsOnlyTheirRow() = runTest {
+    seedSession(memberIds = listOf("host", "user123", "zoe"))
+    profileRepository.setUsername("host", "Hosty")
+    profileRepository.setUsername("user123", "Me")
+    profileRepository.setUsername("zoe", "Zoe")
+    val viewModel = createViewModel()
+
+    viewModel.loadEvent(SESSION_ID, EventKind.GROUP_SESSION)
+
+    assertEquals(
+        listOf(
+            EventMember("host", "Hosty", isHost = true, isCurrentUser = false),
+            EventMember("user123", "Me", isHost = false, isCurrentUser = true),
+            EventMember("zoe", "Zoe", isHost = false, isCurrentUser = false),
+        ),
+        viewModel.uiState.value.members,
+    )
+  }
+
+  /** When the signed-in user hosts the session, the host row is both host and current user. */
+  @Test
+  fun loadEvent_groupSessionCurrentUserIsHost_hostRowIsCurrentUser() = runTest {
+    seedSession(createdBy = "user123", memberIds = listOf("user123", "zoe"))
+    profileRepository.setUsername("user123", "Me")
+    profileRepository.setUsername("zoe", "Zoe")
+    val viewModel = createViewModel()
+
+    viewModel.loadEvent(SESSION_ID, EventKind.GROUP_SESSION)
+
+    val host = viewModel.uiState.value.members.first()
+    assertEquals("user123", host.userId)
+    assertTrue(host.isHost)
+    assertTrue(host.isCurrentUser)
+    assertFalse(viewModel.uiState.value.members[1].isCurrentUser)
+  }
+
   /** A member without a profile gets a null username and no error. */
   @Test
   fun loadEvent_groupSessionMissingProfile_usernameIsNull() = runTest {
@@ -565,7 +604,9 @@ class EventDetailsViewModelTest {
     viewModel.loadEvent(SESSION_ID, EventKind.GROUP_SESSION)
 
     val state = viewModel.uiState.value
-    assertNull(state.members.single { it.userId == "bob" }.username)
+    val bob = state.members.single { it.userId == "bob" }
+    assertNull(bob.username)
+    assertFalse(bob.isUnavailable)
     assertNull(state.error)
   }
 
@@ -582,6 +623,7 @@ class EventDetailsViewModelTest {
     val members = viewModel.uiState.value.members
     assertNull(members.single { it.userId == "bob" }.username)
     assertNull(members.single { it.userId == "carl" }.username)
+    assertFalse(members.any { it.isUnavailable })
   }
 
   /** A failed or throwing profile lookup hides only that username and sets no error. */
@@ -600,6 +642,7 @@ class EventDetailsViewModelTest {
 
     val state = viewModel.uiState.value
     assertEquals(listOf("Hosty", null, null), state.members.map { it.username })
+    assertEquals(listOf(false, true, true), state.members.map { it.isUnavailable })
     assertEquals(3, state.members.size)
     assertNull(state.error)
     assertFalse(state.isLoading)

@@ -19,3 +19,21 @@ suspend fun ProfileRepository.findUsername(userId: String): String? =
     } catch (exception: Exception) {
       null
     }
+
+/** The outcome of looking up a user's username for display. */
+sealed interface UsernameLookup {
+  /** The profile exists and has a non-blank [username]. */
+  data class Found(val username: String) : UsernameLookup
+
+  /** No profile, or a blank username: shown as an unknown user. */
+  data object Missing : UsernameLookup
+
+  /** The lookup failed (a [Result.failure] or a thrown exception): shown as unavailable. */
+  data object Unavailable : UsernameLookup
+}
+
+/**
+ * Looks up the username of [userId] and tells a missing name apart from a failed lookup, so one bad
+ * profile never fails a whole screen. Cancellation is propagated.
+ */
+suspend fun ProfileRepository.lookupUsername(userId: String): UsernameLookup = TODO("stub")

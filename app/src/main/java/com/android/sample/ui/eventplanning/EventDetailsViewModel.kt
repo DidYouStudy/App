@@ -42,8 +42,16 @@ import kotlinx.coroutines.launch
  * @property username the member's username, or null when the profile is missing, blank, or failed
  *   to load.
  * @property isHost true for the session's creator, who is always listed first.
+ * @property isCurrentUser true for the signed-in user's own row.
+ * @property isUnavailable true when the profile failed to load, as opposed to having no name.
  */
-data class EventMember(val userId: String, val username: String?, val isHost: Boolean)
+data class EventMember(
+    val userId: String,
+    val username: String?,
+    val isHost: Boolean,
+    val isCurrentUser: Boolean = false,
+    val isUnavailable: Boolean = false,
+)
 
 /**
  * UI state for the Event Details screen.

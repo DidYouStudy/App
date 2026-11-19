@@ -1,73 +1,76 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.profile
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Test
 
-/** Tests [findUsername], which turns any profile lookup outcome into a displayable name or null. */
+/**
+ * Tests [lookupUsername], which turns any profile lookup outcome into a name, a missing name, or an
+ * unavailable profile.
+ */
 class UsernameLookupTest {
   private val repository = FakeProfileRepository()
 
   /** An existing profile yields its username. */
   @Test
-  fun findUsername_profileFound_returnsUsername() = runTest {
+  fun lookupUsername_profileFound_returnsFound() = runTest {
     repository.setUsername("alice", "alice_s")
 
-    assertEquals("alice_s", repository.findUsername("alice"))
+    assertEquals(UsernameLookup.Found("alice_s"), repository.lookupUsername("alice"))
     assertEquals(listOf("alice"), repository.getProfileUserIds)
   }
 
-  /** A missing profile yields null. */
+  /** A missing profile yields Missing. */
   @Test
-  fun findUsername_nullProfile_returnsNull() = runTest {
+  fun lookupUsername_nullProfile_returnsMissing() = runTest {
     repository.enqueue("alice", Result.success(null))
 
-    assertNull(repository.findUsername("alice"))
+    assertEquals(UsernameLookup.Missing, repository.lookupUsername("alice"))
   }
 
-  /** An empty username yields null. */
+  /** An empty username yields Missing. */
   @Test
-  fun findUsername_emptyUsername_returnsNull() = runTest {
+  fun lookupUsername_emptyUsername_returnsMissing() = runTest {
     repository.setUsername("alice", "")
 
-    assertNull(repository.findUsername("alice"))
+    assertEquals(UsernameLookup.Missing, repository.lookupUsername("alice"))
   }
 
-  /** A whitespace-only username yields null. */
+  /** A whitespace-only username yields Missing. */
   @Test
-  fun findUsername_whitespaceUsername_returnsNull() = runTest {
+  fun lookupUsername_whitespaceUsername_returnsMissing() = runTest {
     repository.setUsername("alice", "   ")
 
-    assertNull(repository.findUsername("alice"))
+    assertEquals(UsernameLookup.Missing, repository.lookupUsername("alice"))
   }
 
-  /** A failed lookup result yields null instead of an error. */
+  /** A failed lookup result yields Unavailable instead of an error. */
   @Test
-  fun findUsername_resultFailure_returnsNull() = runTest {
+  fun lookupUsername_resultFailure_returnsUnavailable() = runTest {
     repository.enqueue("alice", Result.failure(ProfileException(ProfileError.FIRESTORE_FAILURE)))
 
-    assertNull(repository.findUsername("alice"))
+    assertEquals(UsernameLookup.Unavailable, repository.lookupUsername("alice"))
   }
 
-  /** A thrown non-cancellation exception yields null instead of propagating. */
+  /** A thrown non-cancellation exception yields Unavailable instead of propagating. */
   @Test
-  fun findUsername_thrownException_returnsNull() = runTest {
+  fun lookupUsername_thrownException_returnsUnavailable() = runTest {
     repository.throwFor("alice", IllegalStateException("boom"))
 
-    assertNull(repository.findUsername("alice"))
+    assertEquals(UsernameLookup.Unavailable, repository.lookupUsername("alice"))
   }
 
   /** Cancellation is never swallowed, so structured concurrency keeps working. */
   @Test
-  fun findUsername_cancellationException_isRethrown() = runTest {
+  fun lookupUsername_cancellationException_isRethrown() = runTest {
     repository.throwFor("alice", CancellationException("cancelled"))
 
     val thrown =
         try {
-          repository.findUsername("alice")
+          repository.lookupUsername("alice")
           null
         } catch (exception: CancellationException) {
           exception
