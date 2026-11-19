@@ -59,6 +59,9 @@ object EventDetailsScreenTestTags {
   const val DESCRIPTION_LABEL = "eventDetailsDescriptionLabel"
   const val DESCRIPTION = "eventDetailsDescription"
   const val TASKS_LABEL = "eventDetailsTasksLabel"
+  const val GROUP_SESSION_CHIP = "eventDetailsGroupSessionChip"
+  const val PARTICIPANTS_LABEL = "eventDetailsParticipantsLabel"
+  const val PARTICIPANT_ROW_PREFIX = "eventDetailsParticipantRow_"
   const val TASK_CHECKBOX_PREFIX = "eventDetailsTaskCheckbox_"
   const val EDIT_BUTTON = "eventDetailsEditButton"
   const val DELETE_BUTTON = "eventDetailsDeleteButton"
@@ -66,6 +69,9 @@ object EventDetailsScreenTestTags {
   const val SNACKBAR = "eventDetailsSnackbar"
 
   fun taskCheckbox(index: Int) = "$TASK_CHECKBOX_PREFIX$index"
+
+  /** Test tag of the participant row at [index], host first. */
+  fun participantRow(index: Int) = "$PARTICIPANT_ROW_PREFIX$index"
 }
 
 /**

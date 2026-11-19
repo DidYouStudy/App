@@ -149,4 +149,29 @@ class EventDetailsScreenHelperTest {
     assertEquals(EventKind.PERSONAL, samplePersonalEvent().kind())
     assertEquals(EventKind.GROUP_SESSION, sampleGroupSession().kind())
   }
+
+  /** A group session is flagged, lists its members in the given order, and has no tasks. */
+  @Test
+  fun toDisplay_groupSession_hasParticipantsAndNoTasks() {
+    val members =
+        listOf(
+            EventMember("host", "Hosty", isHost = true, isCurrentUser = true),
+            EventMember("bob", null, isHost = false, isUnavailable = true),
+        )
+
+    val display = sampleGroupSession().toDisplay(members = members)
+
+    assertTrue(display.isGroupSession)
+    assertEquals(members, display.participants)
+    assertTrue(display.tasks.isEmpty())
+  }
+
+  /** A personal event is not a group session and has no participants. */
+  @Test
+  fun toDisplay_personalEvent_hasNoParticipants() {
+    val display = samplePersonalEvent().toDisplay()
+
+    assertEquals(false, display.isGroupSession)
+    assertTrue(display.participants.isEmpty())
+  }
 }

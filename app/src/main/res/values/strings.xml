@@ -158,6 +158,7 @@
     <string name="event_details_description_fallback">No description</string>
     <string name="event_details_edit">Edit details</string>
     <string name="event_details_delete">Delete event</string>
+    <string name="event_details_group_session">Group session</string>
     <string name="event_details_not_found">This event could not be displayed</string>
 
     <!-- Group Sessions Screen -->

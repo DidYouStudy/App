@@ -28,6 +28,8 @@ internal data class EventDetailsDisplay(
     val location: String?,
     val description: String?,
     val tasks: List<EventTaskDisplay>,
+    val isGroupSession: Boolean = false,
+    val participants: List<EventMember> = emptyList(),
 )
 
 /** One checklist entry of [EventDetailsDisplay]. */
@@ -41,6 +43,7 @@ internal data class EventTaskDisplay(val text: String, val isCompleted: Boolean)
 internal fun Event.toDisplay(
     zone: ZoneId = ZoneId.systemDefault(),
     locale: Locale = Locale.getDefault(),
+    members: List<EventMember> = emptyList(),
 ): EventDetailsDisplay {
   val dateFormatter = DateTimeFormatter.ofPattern(EVENT_DATE_PATTERN, locale).withZone(zone)
   val timeFormatter = DateTimeFormatter.ofPattern(EVENT_TIME_PATTERN, locale).withZone(zone)
