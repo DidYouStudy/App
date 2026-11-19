@@ -2,6 +2,8 @@
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
+import android.content.Context
+import android.content.res.Resources
 import androidx.annotation.DimenRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -276,6 +278,33 @@ private fun MapPlaceholder(
 @Composable
 internal fun floatResource(@DimenRes id: Int): Float =
     ResourcesCompat.getFloat(LocalResources.current, id)
+
+/**
+ * Reads the default campus centre geographic coordinates from Android [resources], defined in
+ * `res/values/map.xml`.
+ */
+fun defaultCampusCenter(resources: Resources): Location =
+    Location(
+        ResourcesCompat.getFloat(resources, R.dimen.map_campus_center_latitude).toDouble(),
+        ResourcesCompat.getFloat(resources, R.dimen.map_campus_center_longitude).toDouble(),
+    )
+
+/**
+ * Reads the default campus centre geographic coordinates from [context], defined in
+ * `res/values/map.xml`.
+ */
+fun defaultCampusCenter(context: Context): Location = defaultCampusCenter(context.resources)
+
+/**
+ * Reads the default campus centre geographic coordinates in Compose from `res/values/map.xml`,
+ * reacting to configuration changes via [LocalResources].
+ */
+@Composable
+fun defaultCampusCenter(): Location =
+    Location(
+        floatResource(R.dimen.map_campus_center_latitude).toDouble(),
+        floatResource(R.dimen.map_campus_center_longitude).toDouble(),
+    )
 
 /** Google Maps positions use the same degrees as [Location]. */
 internal fun Location.toLatLng(): LatLng = LatLng(latitude, longitude)

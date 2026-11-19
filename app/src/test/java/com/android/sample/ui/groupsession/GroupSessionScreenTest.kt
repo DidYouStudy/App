@@ -985,6 +985,7 @@ class GroupSessionScreenTest {
           profileRepository = profileRepository,
           locationProvider = locationProvider,
           campusLocationRepository = campusLocationRepository,
+          campusCenter = defaultCampusCenter(ApplicationProvider.getApplicationContext<Context>()),
       )
 
   private class FakeCampusLocationRepository(

@@ -742,6 +742,7 @@ class GroupSessionScreenTest {
           clock = clock,
           locationProvider = locationProvider,
           campusLocationRepository = campusLocationRepository,
+          campusCenter = defaultCampusCenter(ApplicationProvider.getApplicationContext<Context>()),
       )
 
   private class FakeCampusLocationRepository(

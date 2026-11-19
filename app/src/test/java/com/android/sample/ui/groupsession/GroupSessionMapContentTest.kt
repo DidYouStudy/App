@@ -2,6 +2,7 @@
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
+import android.content.Context
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -17,7 +18,10 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.core.content.res.ResourcesCompat
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.sample.R
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
@@ -139,6 +143,26 @@ class GroupSessionMapContentTest {
     composeTestRule.waitForIdle()
 
     composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST).assertDoesNotExist()
+  }
+
+  @Test
+  fun defaultCampusCenter_readsCoordinatesFromMapResources() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val expected =
+        Location(
+            ResourcesCompat.getFloat(context.resources, R.dimen.map_campus_center_latitude)
+                .toDouble(),
+            ResourcesCompat.getFloat(context.resources, R.dimen.map_campus_center_longitude)
+                .toDouble(),
+        )
+
+    assertEquals(expected, defaultCampusCenter(context.resources))
+    assertEquals(expected, defaultCampusCenter(context))
+
+    var composableCenter: Location? = null
+    composeTestRule.setContent { composableCenter = defaultCampusCenter() }
+    composeTestRule.waitForIdle()
+    assertEquals(expected, composableCenter)
   }
 
   @Test
