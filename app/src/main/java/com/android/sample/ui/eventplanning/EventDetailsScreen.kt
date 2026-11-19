@@ -149,6 +149,7 @@ fun EventDetailsScreen(
 internal fun EventDetailsStateless(
     display: EventDetailsDisplay?,
     isLoading: Boolean = false,
+    fallbackActions: EventDetailsActionSet = EventDetailsActionSet.EDIT_AND_DELETE,
     isBusy: Boolean = false,
     isDeleting: Boolean = false,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },

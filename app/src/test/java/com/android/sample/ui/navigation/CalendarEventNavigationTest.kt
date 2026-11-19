@@ -200,6 +200,32 @@ class CalendarEventNavigationTest {
     assertCalendarWeekIsDisplayed()
   }
 
+  /** The host deletes a group session from its editor and lands back on the same Calendar week. */
+  @Test
+  fun hostDeletesGroupSessionInEditReturnsDirectlyToCalendar() {
+    val hosted =
+        GroupSession(
+            id = "hosted?kind=PERSONAL&x=1",
+            createdBy = userId,
+            memberIds = listOf(userId),
+            details = event("unused", previousMonday.plusDays(2), "Hosted revision").details,
+            createdAt = selectedEvent.createdAt,
+        )
+    runBlocking { groupSessions.saveSession(userId, hosted).getOrThrow() }
+    val card = CalendarTestTags.eventCard(hosted.id, dayIndex = 2)
+    composeRule.onNodeWithTag(card).performTouchInput { click(center) }
+    composeRule.onNodeWithTag(DetailsTags.EDIT_BUTTON).performClick()
+    composeRule.onNodeWithTag(EditTags.SUBJECT_SELECTOR).assertTextContains("Hosted revision")
+
+    composeRule.onNodeWithTag(EditTags.DELETE_BUTTON).performClick()
+
+    assertCalendarWeekIsDisplayed()
+    composeRule.onNodeWithTag(card).assertDoesNotExist()
+    // A further Back must not land on a stale Details entry for the deleted session.
+    pressSystemBack()
+    composeRule.onNodeWithTag(DetailsTags.SUBJECT).assertDoesNotExist()
+  }
+
   /** A member who does not host the session gets no Edit or Delete in Details. */
   @Test
   fun memberSeesNoActionsOnGroupSessionDetails() {
