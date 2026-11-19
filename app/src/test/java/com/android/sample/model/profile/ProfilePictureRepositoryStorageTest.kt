@@ -25,6 +25,7 @@ import org.mockito.Mockito.`when`
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.never
+import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 
 class ProfilePictureRepositoryStorageTest {
@@ -85,11 +86,11 @@ class ProfilePictureRepositoryStorageTest {
   @Test
   fun uploadProfilePicture_uploadsJpegAndReturnsDownloadUrl() = runTest {
     stubUpload(finishedUpload())
-    stubUrl(Tasks.forResult(urlOf("https://example.test/a.jpg")))
+    stubUrl(Tasks.forResult(urlOf(storageUrl("user123_a.jpg"))))
 
     val result = repository.uploadProfilePicture("user123", bytes, null)
 
-    assertEquals("https://example.test/a.jpg", result.getOrThrow())
+    assertEquals(storageUrl("user123_a.jpg"), result.getOrThrow())
     val metadata = argumentCaptor<StorageMetadata>()
     verify(picture).putBytes(any(), metadata.capture())
     assertEquals("image/jpeg", metadata.firstValue.contentType)
@@ -153,7 +154,7 @@ class ProfilePictureRepositoryStorageTest {
   @Test
   fun uploadProfilePicture_withoutCurrentUrl_usesSlotA() = runTest {
     stubUpload(finishedUpload())
-    stubUrl(Tasks.forResult(urlOf("https://example.test/a.jpg")))
+    stubUrl(Tasks.forResult(urlOf(storageUrl("user123_a.jpg"))))
 
     repository.uploadProfilePicture("user123", bytes, null)
 
@@ -165,11 +166,11 @@ class ProfilePictureRepositoryStorageTest {
   @Test
   fun uploadProfilePicture_currentUrlInSlotA_usesSlotB() = runTest {
     stubUpload(finishedUpload(), pictureB)
-    stubUrl(Tasks.forResult(urlOf("https://example.test/b.jpg")), pictureB)
+    stubUrl(Tasks.forResult(urlOf(storageUrl("user123_b.jpg"))), pictureB)
 
     val result = repository.uploadProfilePicture("user123", bytes, urlInSlot("a"))
 
-    assertEquals("https://example.test/b.jpg", result.getOrThrow())
+    assertEquals(storageUrl("user123_b.jpg"), result.getOrThrow())
     verify(pictureB).putBytes(any(), any())
     verify(picture, never()).putBytes(any(), any())
   }
@@ -178,7 +179,7 @@ class ProfilePictureRepositoryStorageTest {
   @Test
   fun uploadProfilePicture_currentUrlInSlotB_usesSlotA() = runTest {
     stubUpload(finishedUpload())
-    stubUrl(Tasks.forResult(urlOf("https://example.test/a.jpg")))
+    stubUrl(Tasks.forResult(urlOf(storageUrl("user123_a.jpg"))))
 
     repository.uploadProfilePicture("user123", bytes, urlInSlot("b"))
 
@@ -190,15 +191,55 @@ class ProfilePictureRepositoryStorageTest {
   @Test
   fun uploadProfilePicture_unrecognizedCurrentUrl_usesSlotA() = runTest {
     stubUpload(finishedUpload())
-    stubUrl(Tasks.forResult(urlOf("https://example.test/a.jpg")))
+    stubUrl(Tasks.forResult(urlOf(storageUrl("user123_a.jpg"))))
+
+    repository.uploadProfilePicture("user123", bytes, storageUrl("user123.jpg"))
+
+    verify(picture).putBytes(any(), any())
+    verify(pictureB, never()).putBytes(any(), any())
+  }
+
+  // The slot is read from the object name, so the emulator's http host and port change nothing.
+  @Test
+  fun uploadProfilePicture_emulatorUrlInSlotA_usesSlotB() = runTest {
+    stubUpload(finishedUpload(), pictureB)
+    stubUrl(Tasks.forResult(urlOf(storageUrl("user123_b.jpg"))), pictureB)
 
     repository.uploadProfilePicture(
         "user123",
         bytes,
-        "https://example.test/o/profilePictures%2Fuser123.jpg?alt=media&token=t",
+        "http://10.0.2.2:9199/v0/b/demo-app.appspot.com/o/profilePictures%2Fuser123_a.jpg" +
+            "?alt=media&token=t",
     )
 
-    verify(picture).putBytes(any(), any())
+    verify(pictureB).putBytes(any(), any())
+    verify(picture, never()).putBytes(any(), any())
+  }
+
+  // Only the object name decides the slot: look-alike names in other URL parts or other objects do
+  // not count as slot A, so slot A is chosen (and it is the free slot, as the URL is not slot A).
+  @Test
+  fun uploadProfilePicture_lookAlikeUrls_areNotSlotA() = runTest {
+    val lookAlikes =
+        listOf(
+            // Same file name in another folder.
+            storageUrl("otherFolder/user123_a.jpg"),
+            // Another user whose id ends with this user's id.
+            storageUrl("xuser123_a.jpg"),
+            // The slot A name only appears in the query string.
+            storageUrl("user123_b.jpg", token = "user123_a.jpg"),
+            // The slot A name only appears in the bucket name.
+            storageUrl("user123_b.jpg", bucket = "user123_a.jpg"),
+            // Not a Storage download URL at all.
+            "https://example.test/user123_a.jpg",
+            "not a url",
+        )
+    stubUpload(finishedUpload())
+    stubUrl(Tasks.forResult(urlOf(storageUrl("user123_a.jpg"))))
+
+    lookAlikes.forEach { url -> repository.uploadProfilePicture("user123", bytes, url) }
+
+    verify(picture, times(lookAlikes.size)).putBytes(any(), any())
     verify(pictureB, never()).putBytes(any(), any())
   }
 
@@ -215,9 +256,25 @@ class ProfilePictureRepositoryStorageTest {
     verify(picture, never()).putBytes(any(), any())
   }
 
-  /** A download URL shaped like Firebase's, for the user's picture in the given [slot]. */
-  private fun urlInSlot(slot: String) =
-      "https://example.test/o/profilePictures%2Fuser123_$slot.jpg?alt=media&token=t"
+  /** A real-format download URL for the user's picture in the given [slot] ("a" or "b"). */
+  private fun urlInSlot(slot: String) = storageUrl("user123_$slot.jpg")
+
+  /**
+   * A download URL in the format Firebase Storage returns:
+   * `https://firebasestorage.googleapis.com/v0/b/<bucket>/o/<escaped name>?alt=media&token=<t>`,
+   * where the `/` between the folder and the file name is escaped as `%2F`.
+   *
+   * @param file file name inside `profilePictures`, or a `folder/file` path to use another folder.
+   */
+  private fun storageUrl(
+      file: String,
+      bucket: String = "my-app.appspot.com",
+      token: String = "0a1b2c3d-4e5f-6789-abcd-ef0123456789",
+  ): String {
+    val name = if (file.contains('/')) file else "profilePictures/$file"
+    return "https://firebasestorage.googleapis.com/v0/b/$bucket/o/" +
+        "${name.replace("/", "%2F")}?alt=media&token=$token"
+  }
 
   /** Returns the [ProfilePictureException] of a failed [result], failing the test otherwise. */
   private fun error(result: Result<String>): ProfilePictureException {

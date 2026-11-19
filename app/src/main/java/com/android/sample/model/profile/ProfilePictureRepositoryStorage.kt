@@ -6,6 +6,7 @@ import com.android.sample.R
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageException
 import com.google.firebase.storage.StorageMetadata
+import java.net.URI
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
 
@@ -69,17 +70,35 @@ class ProfilePictureRepositoryStorage(
   /**
    * Chooses the slot a new picture is uploaded to: the one [currentUrl] does not point to.
    *
-   * A Storage download URL contains the file name, so it tells which slot it belongs to. A null URL
-   * or one for any other file, such as a picture of an earlier format, selects [SLOT_A]; the
-   * current file is then left alone all the same, because it is not one of the two slots.
+   * A Storage download URL embeds the object name, so it tells which slot it belongs to. The name
+   * is parsed out of the URL (see [objectNameOf]) and compared with the slot A name as a whole. A
+   * null URL or one for any other object, such as a picture of an earlier format, selects [SLOT_A];
+   * the current file is then left alone all the same, because it is not one of the two slots.
    *
    * @param userId the user whose slots are considered.
    * @param currentUrl the picture URL the profile references now, or null if it has none.
    * @return [SLOT_B] when [currentUrl] points to slot A, otherwise [SLOT_A].
    */
   private fun freeSlot(userId: String, currentUrl: String?): String {
-    val usesSlotA = currentUrl?.contains("${userId}_$SLOT_A.jpg") == true
+    val usesSlotA = currentUrl?.let(::objectNameOf) == "$folder/${userId}_$SLOT_A.jpg"
     return if (usesSlotA) SLOT_B else SLOT_A
+  }
+
+  /**
+   * Extracts the decoded object name from a Storage download URL.
+   *
+   * A download URL looks like `https://<host>/v0/b/<bucket>/o/<escaped name>?alt=media&token=<t>`,
+   * where the `/` of the name is escaped as `%2F`. Only the path is read, so a user id or file name
+   * that appears in the host, bucket or query string is never mistaken for the object name.
+   *
+   * @param url the picture URL to parse.
+   * @return the unescaped object name, for example `profilePictures/uid_a.jpg`, or null when [url]
+   *   is not a well-formed Storage download URL.
+   */
+  private fun objectNameOf(url: String): String? {
+    // java.net.URI is used rather than android.net.Uri so that this also runs in plain unit tests.
+    val path = runCatching { URI(url).path }.getOrNull() ?: return null
+    return OBJECT_PATH.matchEntire(path)?.groupValues?.get(1)
   }
 
   /**
@@ -111,5 +130,11 @@ class ProfilePictureRepositoryStorage(
 
     /** Suffix of the second picture slot. */
     const val SLOT_B = "b"
+
+    /**
+     * Decoded path of a download URL, `/v0/b/<bucket>/o/<object name>`; group 1 is the object name.
+     * The bucket is a single path segment, so the first `/o/` after it starts the object name.
+     */
+    val OBJECT_PATH = Regex("^/v0/b/[^/]+/o/(.+)$")
   }
 }
