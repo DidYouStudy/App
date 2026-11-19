@@ -64,12 +64,18 @@ class SettingsViewModel(
   private val _uiState = MutableStateFlow(SettingsUiState(isLoading = true))
   val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
+  /**
+   * ID of the account whose profile the state shows, or null before the first one or at sign-out.
+   */
+  private var observedUserId: String? = null
+
   init {
     viewModelScope.launch {
       try {
         authRepository.currentUser.collect { userAccount ->
           // safely prevent null pointer exception and stops the loading state
           if (userAccount == null) {
+            observedUserId = null
             _uiState.value = SettingsUiState(isLoading = false)
             return@collect
           }
@@ -85,11 +91,20 @@ class SettingsViewModel(
           val photoUrl =
               profile?.profilePictureUrl?.takeIf { it.isNotBlank() } ?: userAccount.photoUrl
 
+          // Another account replacing the shown one does not inherit its picture upload: that
+          // upload's result is discarded when it arrives (see onPictureSelected), so the indicator
+          // must not wait for it. The first account seen is not a replacement: a pick made before
+          // the profile loaded is still its own.
+          val previousUserId = observedUserId
+          val accountReplaced = previousUserId != null && previousUserId != userAccount.uid
+          observedUserId = userAccount.uid
+
           _uiState.update {
             it.copy(
                 username = username,
                 profilePictureUrl = photoUrl,
                 isLoading = false,
+                isUploadingPicture = it.isUploadingPicture && !accountReplaced,
                 error = null,
             )
           }
@@ -129,6 +144,10 @@ class SettingsViewModel(
    * picture is still uploading. Any failure is reported as [SettingsError.UPLOAD_PICTURE_FAILED]
    * and the previous URL is kept.
    *
+   * If the signed-in account changes during the upload (sign-out, or another account signing in),
+   * the result belongs to the previous user and is not written to the state, which by then shows
+   * someone else. The picture is still saved in the previous user's profile.
+   *
    * @param uri location of the picked image, or null when nothing was picked.
    */
   fun onPictureSelected(uri: String?) {
@@ -138,21 +157,24 @@ class SettingsViewModel(
       _uiState.update { it.copy(error = SettingsError.UPLOAD_PICTURE_FAILED) }
       return
     }
+    // Read together with the user ID: later, the state may show another account's picture.
+    val currentUrl = _uiState.value.profilePictureUrl
     _uiState.update { it.copy(isUploadingPicture = true) }
     viewModelScope.launch {
-      uploadPicture(userId, uri)
-          .onSuccess { url ->
-            _uiState.update {
-              it.copy(profilePictureUrl = url, isUploadingPicture = false, error = null)
-            }
-          }
-          .onFailure { exception ->
-            // Users see only the translated message; the cause goes to the log for debugging.
-            Log.w(TAG, "Failed to change the profile picture", exception)
-            _uiState.update {
-              it.copy(isUploadingPicture = false, error = SettingsError.UPLOAD_PICTURE_FAILED)
-            }
-          }
+      val result = uploadPicture(userId, uri, currentUrl)
+      // Users see only the translated message; the cause goes to the log for debugging.
+      result.exceptionOrNull()?.let { Log.w(TAG, "Failed to change the profile picture", it) }
+      if (authRepository.currentUserId != userId) return@launch
+      _uiState.update { state ->
+        result.fold(
+            onSuccess = { url ->
+              state.copy(profilePictureUrl = url, isUploadingPicture = false, error = null)
+            },
+            onFailure = {
+              state.copy(isUploadingPicture = false, error = SettingsError.UPLOAD_PICTURE_FAILED)
+            },
+        )
+      }
     }
   }
 
@@ -160,26 +182,30 @@ class SettingsViewModel(
    * Compresses the image, uploads it and saves its URL in the profile, stopping at the first
    * failure.
    *
-   * The picture the profile currently shows ([SettingsUiState.profilePictureUrl]) is passed to the
-   * upload so that it is not overwritten: a new image goes to a different file, and the current URL
-   * keeps working until the new one is saved. If the save fails, the profile therefore still points
-   * to a picture that loads, and the user can simply pick again.
+   * [currentUrl] is passed to the upload so that the current picture is not overwritten: a new
+   * image goes to a different file, and the current URL keeps working until the new one is saved.
+   * If the save fails, the profile therefore still points to a picture that loads, and the user can
+   * simply pick again.
    *
    * @param userId authentication ID of the user whose picture is replaced.
    * @param uri location of the picked image.
+   * @param currentUrl the picture URL that user's profile shows, taken when the pick was made; it
+   *   must belong to [userId], so it is not read here, after the state may have changed account.
    * @return the URL the new picture can be loaded from, or the failure of the step that failed.
    */
-  private suspend fun uploadPicture(userId: String, uri: String): Result<String> {
+  private suspend fun uploadPicture(
+      userId: String,
+      uri: String,
+      currentUrl: String?,
+  ): Result<String> {
     val jpegBytes =
         imageCompressor.compress(uri).getOrElse {
           return Result.failure(it)
         }
     val url =
-        profilePictureRepository
-            .uploadProfilePicture(userId, jpegBytes, _uiState.value.profilePictureUrl)
-            .getOrElse {
-              return Result.failure(it)
-            }
+        profilePictureRepository.uploadProfilePicture(userId, jpegBytes, currentUrl).getOrElse {
+          return Result.failure(it)
+        }
     return profileRepository.updateProfilePictureUrl(userId, url).map { url }
   }
 
