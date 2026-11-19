@@ -40,7 +40,9 @@ class ProfilePictureRepositoryStorage(
    *
    * @param userId stable authentication identifier; must not be blank or contain `/`.
    * @param jpegBytes the already compressed JPEG image; must not be empty.
-   * @param currentUrl the picture URL the profile references now, or null if it has none.
+   * @param currentUrl the picture URL the profile references now, or null if it has none. It must
+   *   come from the freshly loaded profile, not a cached copy: a stale URL makes the upload
+   *   overwrite the live slot (see [ProfilePictureRepository.uploadProfilePicture]).
    * @return [Result.success] containing the download URL; [Result.failure] containing
    *   [ProfilePictureException] with a stable [ProfilePictureError] category.
    * @throws CancellationException when the coroutine is cancelled.
