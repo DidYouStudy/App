@@ -1019,5 +1019,8 @@ class AuthViewModelTest {
       createProfileUserIds += userId
       return createProfileAction(userId)
     }
+
+    override suspend fun updateProfilePictureUrl(userId: String, url: String): Result<Unit> =
+        Result.failure(UnsupportedOperationException("Not needed in this test"))
   }
 }

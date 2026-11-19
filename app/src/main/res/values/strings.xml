@@ -4,6 +4,9 @@
 <!-- Co-authored-by: OpenAI Codex <noreply@openai.com> -->
 <resources>
     <string name="app_name">DidYouStudy</string>
+    <!-- Cloud Storage values that must match storage.rules; never shown to the user. -->
+    <string name="profile_picture_storage_folder" translatable="false">profilePictures</string>
+    <string name="profile_picture_content_type" translatable="false">image/jpeg</string>
     <string name="button_go_back">Back</string>
     <string name="offline_banner_text">You\'re offline</string>
     <string name="not_implemented">(Not implemented)</string>
