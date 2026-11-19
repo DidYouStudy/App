@@ -4,12 +4,14 @@
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.navigation
 
+import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.lifecycle.ViewModel
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
@@ -28,6 +30,7 @@ import com.android.sample.ui.calendar.CalendarUiState
 import com.android.sample.ui.dashboard.DashboardScreen
 import com.android.sample.ui.groupsession.GroupSessionScreen
 import com.android.sample.ui.groupsession.GroupSessionsViewModel
+import com.android.sample.ui.groupsession.defaultCampusCenter
 import com.android.sample.ui.profile.ProfileButtonTestTags
 import java.time.Instant
 import java.time.LocalDate
@@ -129,6 +132,8 @@ class TopLevelScreensProfileButtonTest {
             EmptyGroupSessionsRepository(),
             EmptyProfileRepository(),
             locationProvider = FakeLocationProvider(),
+            campusCenter =
+                defaultCampusCenter(ApplicationProvider.getApplicationContext<Context>()),
         )
     assertProfileButtonOpensSettings(groupSessionsViewModel) { navigationActions, viewModel ->
       GroupSessionScreen(
@@ -175,5 +180,8 @@ class TopLevelScreensProfileButtonTest {
 
     override suspend fun createProfile(userId: String): Result<UserProfile> =
         Result.success(UserProfile(uid = userId))
+
+    override suspend fun updateProfilePictureUrl(userId: String, url: String): Result<Unit> =
+        Result.failure(UnsupportedOperationException("Not needed in this test"))
   }
 }

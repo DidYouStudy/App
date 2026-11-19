@@ -2,9 +2,11 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.groupsession
 
+import android.content.Context
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.lifecycle.ViewModel
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
@@ -16,6 +18,7 @@ import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
 import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
 import com.android.sample.model.location.FakeLocationProvider
+import com.android.sample.model.location.Location
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.ProfileRepositoryProvider
 import com.android.sample.model.profile.UserProfile
@@ -35,6 +38,7 @@ import org.junit.runner.RunWith
 class GroupSessionsViewModelFactoryTest {
   @get:Rule val composeTestRule = createComposeRule()
 
+  private val context = ApplicationProvider.getApplicationContext<Context>()
   private val authRepository = TestAuthRepository()
   private val repository = InMemoryGroupSessionsRepository()
   private val profileRepository = FakeProfileRepository(mapOf(BOB to UserProfile(BOB, "Bob")))
@@ -44,6 +48,7 @@ class GroupSessionsViewModelFactoryTest {
           repository,
           profileRepository,
           FakeLocationProvider(),
+          campusCenter = defaultCampusCenter(context),
       )
 
   @After
@@ -98,6 +103,37 @@ class GroupSessionsViewModelFactoryTest {
       viewModel.uiState.value.sessions.firstOrNull()?.hostName == "Bob"
     }
     assertEquals(listOf(BOB), profileRepository.getProfileUserIds)
+  }
+
+  /** Factory passes custom campusCenter to the created ViewModel. */
+  @Test
+  fun createPassesCampusCenterToViewModel() {
+    val customCenter = Location(47.0, 7.0)
+    val customFactory =
+        GroupSessionsViewModelFactory(
+            authRepository,
+            repository,
+            profileRepository,
+            FakeLocationProvider(),
+            campusCenter = customCenter,
+        )
+    val viewModel = customFactory.create(GroupSessionsViewModel::class.java)
+    assertEquals(customCenter, viewModel.uiState.value.campusCenter)
+  }
+
+  /** Composable helper supplies [defaultCampusCenter] from map.xml to the created ViewModel. */
+  @Test
+  fun groupSessionsViewModelUsesDefaultCampusCenterFromResources() {
+    authRepository.currentUser.value = account(ALICE)
+    setAuthProviderRepository(authRepository)
+    setGroupSessionsProviderRepository(repository)
+    setProfileProviderRepository(profileRepository)
+
+    var received: GroupSessionsViewModel? = null
+    composeTestRule.setContent { received = groupSessionsViewModel() }
+    composeTestRule.waitForIdle()
+
+    assertEquals(defaultCampusCenter(context), received?.uiState?.value?.campusCenter)
   }
 
   /** Unsupported ViewModel types are rejected with the offending class name in the message. */
@@ -237,6 +273,9 @@ class GroupSessionsViewModelFactoryTest {
 
     override suspend fun createProfile(userId: String): Result<UserProfile> =
         Result.success(UserProfile(uid = userId))
+
+    override suspend fun updateProfilePictureUrl(userId: String, url: String): Result<Unit> =
+        Result.failure(UnsupportedOperationException("Not needed in this test"))
   }
 
   private companion object {

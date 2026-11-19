@@ -4,6 +4,7 @@ package com.android.sample.ui.groupsession
 
 import android.Manifest
 import android.app.Application
+import android.content.Context
 import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.result.ActivityResultRegistry
 import androidx.activity.result.ActivityResultRegistryOwner
@@ -461,6 +462,12 @@ class GroupSessionScreenFiltersTest {
 
                 override suspend fun createProfile(userId: String) =
                     Result.failure<UserProfile>(UnsupportedOperationException())
+
+                override suspend fun updateProfilePictureUrl(
+                    userId: String,
+                    url: String,
+                ): Result<Unit> =
+                    Result.failure(UnsupportedOperationException("Not needed in this test"))
               },
           locationProvider = LocationProvider { flowOf(null) },
           campusLocationRepository =
@@ -472,6 +479,7 @@ class GroupSessionScreenFiltersTest {
                       campusLocation("AI 1", "AI"),
                   ),
               ),
+          campusCenter = defaultCampusCenter(ApplicationProvider.getApplicationContext<Context>()),
       )
 
   private fun campusLocation(name: String, zone: String) =

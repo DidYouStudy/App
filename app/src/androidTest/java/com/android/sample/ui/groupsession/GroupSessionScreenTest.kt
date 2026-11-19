@@ -6,7 +6,9 @@
 // Co-authored-by: OpenAI Codex
 package com.android.sample.ui.groupsession
 
+import android.Manifest
 import android.content.Context
+import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
@@ -14,7 +16,7 @@ import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -22,8 +24,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.rule.GrantPermissionRule
 import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
@@ -62,9 +64,29 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class GroupSessionScreenTest {
-  @get:Rule val composeTestRule = createComposeRule()
+  @get:Rule(order = 0)
+  val permissionRule: GrantPermissionRule =
+      GrantPermissionRule.grant(
+          Manifest.permission.ACCESS_FINE_LOCATION,
+          Manifest.permission.ACCESS_COARSE_LOCATION,
+      )
+
+  @get:Rule(order = 1) val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
   private val context: Context = ApplicationProvider.getApplicationContext()
+
+  /**
+   * Triggers the system back action through the activity's back dispatcher.
+   *
+   * Unlike `Espresso.pressBack()`, this does not wait for a root window with focus, which a
+   * `ModalBottomSheet` (shown in its own window) can leave unavailable on the CI emulator.
+   */
+  private fun pressBack() {
+    composeTestRule.activityRule.scenario.onActivity { activity ->
+      activity.onBackPressedDispatcher.onBackPressed()
+    }
+    composeTestRule.waitForIdle()
+  }
 
   // Base instant captured when test class is instantiated and shifted forward
   // so group session end times stay in the future regardless of test execution date.
@@ -618,6 +640,9 @@ class GroupSessionScreenTest {
         .onNodeWithTag(GroupSessionScreenTestTags.ALL_SESSIONS_FILTER)
         .assertIsDisplayed()
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.MY_SESSIONS_FILTER).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.CENTER_LOCATION_BUTTON)
+        .assertIsDisplayed()
 
     // Switch back to list view mode
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.LIST_VIEW_BUTTON).performClick()
@@ -730,6 +755,7 @@ class GroupSessionScreenTest {
           clock = clock,
           locationProvider = locationProvider,
           campusLocationRepository = campusLocationRepository,
+          campusCenter = defaultCampusCenter(ApplicationProvider.getApplicationContext<Context>()),
       )
 
   private class FakeCampusLocationRepository(
@@ -779,6 +805,9 @@ class GroupSessionScreenTest {
 
     override suspend fun createProfile(userId: String): Result<UserProfile> =
         Result.success(UserProfile(uid = userId))
+
+    override suspend fun updateProfilePictureUrl(userId: String, url: String): Result<Unit> =
+        Result.failure(UnsupportedOperationException("Not needed in this test"))
   }
 
   private class FakeGroupSessionsRepository(

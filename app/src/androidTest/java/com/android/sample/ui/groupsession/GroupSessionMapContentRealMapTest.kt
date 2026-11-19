@@ -1,6 +1,8 @@
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
+import android.Manifest
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -12,6 +14,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.core.content.res.ResourcesCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.rule.GrantPermissionRule
 import com.android.sample.R
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
@@ -41,7 +44,14 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class GroupSessionMapContentRealMapTest {
 
-  @get:Rule val composeTestRule = createComposeRule()
+  @get:Rule(order = 0)
+  val permissionRule: GrantPermissionRule =
+      GrantPermissionRule.grant(
+          Manifest.permission.ACCESS_FINE_LOCATION,
+          Manifest.permission.ACCESS_COARSE_LOCATION,
+      )
+
+  @get:Rule(order = 1) val composeTestRule = createComposeRule()
 
   private val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
   private val now = Instant.parse("2030-01-01T09:00:00Z")

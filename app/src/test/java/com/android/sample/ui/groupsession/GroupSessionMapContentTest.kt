@@ -1,11 +1,20 @@
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
+import android.content.Context
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -13,7 +22,11 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTouchInput
+import androidx.core.content.res.ResourcesCompat
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.sample.R
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
@@ -48,7 +61,12 @@ class GroupSessionMapContentTest {
           Location(46.52, 6.56),
       )
 
-  private fun item(id: String, subject: String, isCreator: Boolean = false) =
+  private fun item(
+      id: String,
+      subject: String,
+      isCreator: Boolean = false,
+      isActionInProgress: Boolean = false,
+  ) =
       GroupSessionItem(
           session =
               GroupSession(
@@ -66,6 +84,7 @@ class GroupSessionMapContentTest {
               ),
           isMember = false,
           isCreator = isCreator,
+          isActionInProgress = isActionInProgress,
       )
 
   private val aab = room("AAB 0 26")
@@ -86,21 +105,99 @@ class GroupSessionMapContentTest {
       onJoin: (String) -> Unit = {},
       onEdit: (String) -> Unit = {},
       initialSelectedRoom: String? = null,
+      userLocation: Location? = null,
+      cameraDestination: CameraDestination? = null,
+      hasLocationPermission: Boolean = false,
+      roomsToShow: List<RoomSessions> = rooms,
   ) {
     composeTestRule.setContent {
       // The real Google map cannot load in a unit test; in inspection mode the map view shows a
       // stand-in with the same tap behaviour.
       CompositionLocalProvider(LocalInspectionMode provides true) {
         GroupSessionMapContent(
-            rooms = rooms,
+            rooms = roomsToShow,
             now = now,
             onJoin = onJoin,
             onLeave = {},
             onEdit = onEdit,
             initialSelectedRoom = initialSelectedRoom,
+            userLocation = userLocation,
+            cameraDestination = cameraDestination,
+            hasLocationPermission = hasLocationPermission,
         )
       }
     }
+  }
+
+  @Test
+  fun defaultCampusCenter_readsCoordinatesFromMapResources() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val expected =
+        Location(
+            ResourcesCompat.getFloat(context.resources, R.dimen.map_campus_center_latitude)
+                .toDouble(),
+            ResourcesCompat.getFloat(context.resources, R.dimen.map_campus_center_longitude)
+                .toDouble(),
+        )
+
+    assertEquals(expected, defaultCampusCenter(context.resources))
+    assertEquals(expected, defaultCampusCenter(context))
+
+    var composableCenter: Location? = null
+    composeTestRule.setContent { composableCenter = defaultCampusCenter() }
+    composeTestRule.waitForIdle()
+    assertEquals(expected, composableCenter)
+  }
+
+  @Test
+  fun cameraDestination_closesSelectedRoom() {
+    var destination by mutableStateOf<CameraDestination?>(null)
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalInspectionMode provides true) {
+        GroupSessionMapContent(
+            rooms = rooms,
+            now = now,
+            onJoin = {},
+            onLeave = {},
+            onEdit = {},
+            initialSelectedRoom = "CM 1 121",
+            cameraDestination = destination,
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithText("Chemistry").assertIsDisplayed()
+    destination = CameraDestination(Location(46.52, 6.56), trigger = 1)
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST).assertDoesNotExist()
+  }
+
+  @Test
+  fun content_withLocationPermission_displaysUserLocationMarker() {
+    setContent(hasLocationPermission = true)
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionMapTestTags.USER_LOCATION_MARKER, useUnmergedTree = true)
+        .assertExists()
+  }
+
+  @Test
+  fun content_withUserLocation_displaysUserLocationMarker() {
+    setContent(userLocation = Location(46.519, 6.565))
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionMapTestTags.USER_LOCATION_MARKER, useUnmergedTree = true)
+        .assertExists()
+  }
+
+  @Test
+  fun content_withoutUserLocation_doesNotDisplayUserLocationMarker() {
+    setContent(userLocation = null, hasLocationPermission = false)
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionMapTestTags.USER_LOCATION_MARKER, useUnmergedTree = true)
+        .assertDoesNotExist()
   }
 
   @Test
@@ -178,6 +275,36 @@ class GroupSessionMapContentTest {
     composeTestRule.onNodeWithText(JOIN_LABEL).performClick()
 
     assertEquals("s3", joined)
+  }
+
+  /** A pending join in the selected room shows progress and ignores card taps. */
+  @Test
+  fun pendingJoinOnACard_showsProgressAndIgnoresTap() {
+    var joined: String? = null
+    val pendingItem = item("pending", "Pending", isActionInProgress = true)
+    setContent(
+        onJoin = { joined = it },
+        initialSelectedRoom = cm.name,
+        roomsToShow = listOf(RoomSessions(cm, listOf(pendingItem))),
+    )
+    val sessionList = composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST)
+    sessionList.performScrollToNode(hasText("Pending"))
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.joinButton("pending"))
+        .assert(
+            hasAnyDescendant(
+                hasTestTag(GroupSessionScreenTestTags.actionProgress("pending")),
+            ),
+        )
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.actionProgress("pending"))
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.joinButton("pending"))
+        .performTouchInput { click() }
+
+    assertEquals(null, joined)
   }
 
   @Test

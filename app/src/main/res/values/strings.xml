@@ -4,7 +4,11 @@
 <!-- Co-authored-by: OpenAI Codex <noreply@openai.com> -->
 <resources>
     <string name="app_name">DidYouStudy</string>
+    <!-- Cloud Storage values that must match storage.rules; never shown to the user. -->
+    <string name="profile_picture_storage_folder" translatable="false">profilePictures</string>
+    <string name="profile_picture_content_type" translatable="false">image/jpeg</string>
     <string name="button_go_back">Back</string>
+    <string name="offline_banner_text">You\'re offline</string>
     <string name="not_implemented">(Not implemented)</string>
     <string name="toast_not_implemented">Not implemented yet</string>
     <string name="nav_tab_dashboard">Dashboard</string>
@@ -77,6 +81,16 @@
     <!-- %1$s: the user's display name -->
     <string name="settings_greeting">Hello, %1$s!</string>
     <string name="settings_edit_username">Edit username</string>
+    <string name="settings_username_dialog_title">Edit username</string>
+    <string name="settings_username_field_label">Username</string>
+    <string name="settings_username_save">Save</string>
+    <string name="settings_username_cancel">Cancel</string>
+    <string name="settings_username_error_too_short">Use at least 3 characters.</string>
+    <string name="settings_username_error_too_long">Use at most 20 characters.</string>
+    <string name="settings_username_error_invalid_characters">Start with a letter or digit, then use only letters, digits, _ . or -.</string>
+    <string name="settings_username_error_taken">This username is already taken.</string>
+    <string name="settings_username_error_profile_unavailable">Your profile could not be found. Sign out and back in, then try again.</string>
+    <string name="settings_username_error_failure">Could not save your username. Check your connection and try again.</string>
     <string name="settings_change_profile_picture">Change profile picture</string>
     <string name="settings_preferences_button">Modify your preferences</string>
     <string name="settings_friends_button">Manage friends list</string>
@@ -244,11 +258,15 @@
     <string name="group_session_action_leave">Leave</string>
     <string name="group_session_action_joined">Joined</string>
     <string name="group_session_action_join">Join</string>
+    <string name="group_session_action_joining">Joining&#8230;</string>
+    <string name="group_session_action_leaving">Leaving&#8230;</string>
     <!-- %1$s: day ("Today" or a weekday), %2$s: start time, %3$s: end time -->
     <string name="group_session_date_time_range">%1$s · %2$s – %3$s</string>
     <string name="group_session_participant_count">%1$d</string>
     <string name="group_session_view_mode_list">List view</string>
     <string name="group_session_view_mode_map">Map view</string>
+    <string name="group_session_center_location_description">Center on user location</string>
+    <string name="group_session_user_location_placeholder">User location marker</string>
     <!-- %1$s: location room name, %2$s: formatted distance from user -->
     <string name="group_session_location_with_distance">%1$s • %2$s</string>
     <string name="event_type_study_session">Study session</string>

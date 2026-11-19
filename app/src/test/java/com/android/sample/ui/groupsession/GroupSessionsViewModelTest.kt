@@ -37,6 +37,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -62,6 +63,7 @@ class GroupSessionsViewModelTest {
   private lateinit var authRepository: TestAuthRepository
   private lateinit var repository: InMemoryGroupSessionsRepository
   private lateinit var profileRepository: FakeProfileRepository
+  private val testCampusCenter = Location(0.0, 0.0)
 
   @Before
   fun setUp() {
@@ -631,6 +633,282 @@ class GroupSessionsViewModelTest {
     assertFalse(viewModel.uiState.value.sessions.single().isMember)
   }
 
+  /** Marks only the requested session while joining and clears progress after success. */
+  @Test
+  fun join_marksOnlyTargetInProgressUntilSuccess() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(
+            listOf(session("a", BOB, listOf(BOB)), session("b", BOB, listOf(BOB))),
+        )
+    val viewModel = createViewModel(sessionsRepository)
+    runCurrent()
+
+    viewModel.join("a")
+    runCurrent()
+    assertTrue(sessionsRepository.joinStarted.isCompleted)
+    assertTrue(viewModel.uiState.value.sessions.single { it.session.id == "a" }.isActionInProgress)
+    assertFalse(viewModel.uiState.value.sessions.single { it.session.id == "b" }.isActionInProgress)
+
+    sessionsRepository.joinResult.complete(Result.success(Unit))
+    runCurrent()
+
+    assertFalse(viewModel.uiState.value.sessions.single { it.session.id == "a" }.isActionInProgress)
+  }
+
+  /** Marks only the requested member session while leaving and clears progress after success. */
+  @Test
+  fun leave_marksOnlyTargetInProgressUntilSuccess() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(
+            listOf(
+                session("a", BOB, listOf(BOB, ALICE)),
+                session("b", BOB, listOf(BOB, ALICE)),
+            ),
+        )
+    val viewModel = createViewModel(sessionsRepository)
+    runCurrent()
+
+    viewModel.leave("a")
+    runCurrent()
+    assertTrue(sessionsRepository.leaveStarted.isCompleted)
+    assertTrue(viewModel.uiState.value.sessions.single { it.session.id == "a" }.isActionInProgress)
+    assertFalse(viewModel.uiState.value.sessions.single { it.session.id == "b" }.isActionInProgress)
+
+    sessionsRepository.leaveResult.complete(Result.success(Unit))
+    runCurrent()
+
+    assertFalse(viewModel.uiState.value.sessions.single { it.session.id == "a" }.isActionInProgress)
+  }
+
+  /** Clears join progress and reports JOIN_FAILED after a failed request. */
+  @Test
+  fun join_clearsProgressAndReportsFailure() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(listOf(session("a", BOB, listOf(BOB))))
+    val viewModel = createViewModel(sessionsRepository)
+    runCurrent()
+
+    viewModel.join("a")
+    runCurrent()
+    assertTrue(viewModel.uiState.value.sessions.single().isActionInProgress)
+    sessionsRepository.joinResult.complete(Result.failure(IllegalStateException()))
+    runCurrent()
+    assertFalse(viewModel.uiState.value.sessions.single().isActionInProgress)
+    assertEquals(GroupSessionsError.JOIN_FAILED, viewModel.uiState.value.error)
+    sessionsRepository.refreshedSessions.complete(Result.success(listOf(session("a", BOB))))
+    runCurrent()
+  }
+
+  /** Clears leave progress and reports LEAVE_FAILED after a failed request. */
+  @Test
+  fun leave_clearsProgressAndReportsFailure() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(listOf(session("a", BOB, listOf(BOB, ALICE))))
+    val viewModel = createViewModel(sessionsRepository)
+    runCurrent()
+
+    viewModel.leave("a")
+    runCurrent()
+    assertTrue(viewModel.uiState.value.sessions.single().isActionInProgress)
+    sessionsRepository.leaveResult.complete(Result.failure(IllegalStateException()))
+    runCurrent()
+    assertFalse(viewModel.uiState.value.sessions.single().isActionInProgress)
+    assertEquals(GroupSessionsError.LEAVE_FAILED, viewModel.uiState.value.error)
+    sessionsRepository.refreshedSessions.complete(
+        Result.success(listOf(session("a", BOB, listOf(BOB, ALICE)))),
+    )
+    runCurrent()
+  }
+
+  /** Ignores a second join tap while the first request is pending. */
+  @Test
+  fun secondJoinWhilePending_callsRepositoryOnce() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(listOf(session("a", BOB, listOf(BOB))))
+    val viewModel = createViewModel(sessionsRepository)
+    runCurrent()
+
+    viewModel.join("a")
+    runCurrent()
+    viewModel.join("a")
+    runCurrent()
+
+    assertEquals(1, sessionsRepository.joinCalls)
+    sessionsRepository.joinResult.complete(Result.success(Unit))
+    runCurrent()
+  }
+
+  /** Ignores a second leave tap while the first request is pending. */
+  @Test
+  fun secondLeaveWhilePending_callsRepositoryOnce() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(listOf(session("a", BOB, listOf(BOB, ALICE))))
+    val viewModel = createViewModel(sessionsRepository)
+    runCurrent()
+
+    viewModel.leave("a")
+    runCurrent()
+    viewModel.leave("a")
+    runCurrent()
+
+    assertEquals(1, sessionsRepository.leaveCalls)
+    sessionsRepository.leaveResult.complete(Result.success(Unit))
+    runCurrent()
+  }
+
+  /** Ignores leave while a join for the same session is pending. */
+  @Test
+  fun leaveWhileJoinPending_callsOnlyJoin() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(listOf(session("a", BOB, listOf(BOB, ALICE))))
+    val viewModel = createViewModel(sessionsRepository)
+    runCurrent()
+
+    viewModel.join("a")
+    runCurrent()
+    viewModel.leave("a")
+    runCurrent()
+
+    assertEquals(1, sessionsRepository.joinCalls)
+    assertEquals(0, sessionsRepository.leaveCalls)
+    sessionsRepository.joinResult.complete(Result.success(Unit))
+    runCurrent()
+  }
+
+  /** Re-observes after join failure and keeps loading until the refreshed list arrives. */
+  @Test
+  fun failedJoin_reobservesUntilRefreshedListArrives() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(listOf(session("a", BOB, listOf(BOB))))
+    val viewModel = createViewModel(sessionsRepository)
+    runCurrent()
+    assertEquals(1, sessionsRepository.observationCount)
+
+    viewModel.join("a")
+    runCurrent()
+    sessionsRepository.joinResult.complete(Result.failure(IllegalStateException()))
+    runCurrent()
+
+    assertEquals(2, sessionsRepository.observationCount)
+    assertTrue(viewModel.uiState.value.isLoading)
+
+    sessionsRepository.refreshedSessions.complete(Result.success(listOf(session("a", BOB))))
+    runCurrent()
+
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  /** A successful join leaves the existing session observation intact. */
+  @Test
+  fun successfulJoin_doesNotReobserveSessions() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(listOf(session("a", BOB, listOf(BOB))))
+    val viewModel = createViewModel(sessionsRepository)
+    runCurrent()
+
+    viewModel.join("a")
+    runCurrent()
+    sessionsRepository.joinResult.complete(Result.success(Unit))
+    runCurrent()
+
+    assertEquals(1, sessionsRepository.observationCount)
+  }
+
+  /** Re-observes after leave failure and keeps loading until the refreshed list arrives. */
+  @Test
+  fun failedLeave_reobservesUntilRefreshedListArrives() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(listOf(session("a", BOB, listOf(BOB, ALICE))))
+    val viewModel = createViewModel(sessionsRepository)
+    runCurrent()
+    assertEquals(1, sessionsRepository.observationCount)
+
+    viewModel.leave("a")
+    runCurrent()
+    sessionsRepository.leaveResult.complete(Result.failure(IllegalStateException()))
+    runCurrent()
+
+    assertEquals(2, sessionsRepository.observationCount)
+    assertTrue(viewModel.uiState.value.isLoading)
+
+    sessionsRepository.refreshedSessions.complete(
+        Result.success(listOf(session("a", BOB, listOf(BOB, ALICE)))),
+    )
+    runCurrent()
+
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  /** A successful leave leaves the existing session observation intact. */
+  @Test
+  fun successfulLeave_doesNotReobserveSessions() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(listOf(session("a", BOB, listOf(BOB, ALICE))))
+    val viewModel = createViewModel(sessionsRepository)
+    runCurrent()
+
+    viewModel.leave("a")
+    runCurrent()
+    sessionsRepository.leaveResult.complete(Result.success(Unit))
+    runCurrent()
+
+    assertEquals(1, sessionsRepository.observationCount)
+  }
+
+  /** A pending join failure after sign-out leaves no error or progress state. */
+  @Test
+  fun pendingJoinFailureAfterSignOut_doesNotChangeState() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(listOf(session("a", BOB, listOf(BOB))))
+    val viewModel = createViewModel(sessionsRepository)
+    runCurrent()
+    viewModel.join("a")
+    runCurrent()
+
+    authRepository.currentUser.value = null
+    runCurrent()
+    sessionsRepository.joinResult.complete(Result.failure(IllegalStateException()))
+    runCurrent()
+
+    assertNull(viewModel.uiState.value.error)
+    assertTrue(viewModel.uiState.value.sessions.isEmpty())
+    assertTrue(viewModel.uiState.value.sessions.none { it.isActionInProgress })
+  }
+
+  /** A pending join failure after switching users leaves no error or progress state. */
+  @Test
+  fun pendingJoinFailureAfterUserChange_doesNotChangeState() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(listOf(session("a", BOB, listOf(BOB))))
+    val viewModel = createViewModel(sessionsRepository)
+    runCurrent()
+    viewModel.join("a")
+    runCurrent()
+
+    authRepository.currentUser.value = account(BOB)
+    runCurrent()
+    sessionsRepository.joinResult.complete(Result.failure(IllegalStateException()))
+    runCurrent()
+
+    assertNull(viewModel.uiState.value.error)
+    assertTrue(viewModel.uiState.value.sessions.none { it.isActionInProgress })
+    sessionsRepository.refreshedSessions.complete(Result.success(listOf(session("a", BOB))))
+    runCurrent()
+  }
+
   /**
    * Missing-session joins and creator leaves produce their stable categories and can be cleared.
    */
@@ -875,6 +1153,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             mutableClock,
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
 
     assertEquals(listOf("expiring"), visibleIds(viewModel))
@@ -898,6 +1177,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
     clock.currentInstant = Instant.parse("2025-03-01T12:00:25Z")
 
@@ -918,6 +1198,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
     clock.currentInstant = Instant.parse("2025-03-01T12:00:25Z")
 
@@ -940,6 +1221,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             AdvancingTestClock(now),
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
 
     viewModel.refresh()
@@ -960,6 +1242,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             MutableTestClock(now),
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
 
     assertEquals(now, viewModel.uiState.value.now)
@@ -977,6 +1260,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
     observe(viewModel)
     val later = now.plusSeconds(30)
@@ -1005,6 +1289,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
     viewModel.join("missing")
     assertEquals(GroupSessionsError.JOIN_FAILED, viewModel.uiState.value.error)
@@ -1031,6 +1316,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
     observe(viewModel)
     clock.currentInstant = Instant.parse("2025-03-01T12:00:30Z")
@@ -1053,6 +1339,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
     val hiddenAt = now.plusSeconds(600)
     observe(viewModel).cancel()
@@ -1084,6 +1371,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
     val signedOutAt = now.plusSeconds(600)
     clock.currentInstant = signedOutAt
@@ -1106,6 +1394,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
     viewModel.onQueryChange("bio")
     viewModel.onFilterChange(GroupSessionFilter.JOINED)
@@ -1315,7 +1604,8 @@ class GroupSessionsViewModelTest {
     val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
     val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
     val hosted = session("hosted", BOB)
-    val signedOutState = GroupSessionsUiState(now = now, isLoading = false)
+    val signedOutState =
+        GroupSessionsUiState(now = now, isLoading = false, campusCenter = testCampusCenter)
     emissions.emit(Result.success(listOf(hosted)))
     runCurrent()
     assertEquals(listOf(BOB), profileRepository.getProfileUserIds)
@@ -1331,6 +1621,44 @@ class GroupSessionsViewModelTest {
     runCurrent()
 
     assertEquals(signedOutState, viewModel.uiState.value)
+  }
+
+  /** When currentUser becomes null, userLocation is preserved in uiState. */
+  @Test
+  fun currentUserBecomesNull_preservesUserLocation() = runTest {
+    val location = Location(46.52, 6.56)
+    val customProvider = LocationProvider { flowOf(location) }
+    val viewModel = createViewModel(locationProvider = customProvider)
+    val collector = observe(viewModel)
+    runCurrent()
+
+    assertEquals(location, viewModel.uiState.value.userLocation)
+
+    authRepository.currentUser.value = null
+    runCurrent()
+
+    assertEquals(location, viewModel.uiState.value.userLocation)
+    collector.cancel()
+  }
+
+  /** Calling refreshLocation restarts observing the location provider. */
+  @Test
+  fun refreshLocation_restartsCollectionOnLocationProvider() = runTest {
+    var collectionCount = 0
+    val customProvider = LocationProvider {
+      collectionCount++
+      flowOf(Location(46.52, 6.56))
+    }
+    val viewModel = createViewModel(locationProvider = customProvider)
+    observe(viewModel)
+    runCurrent()
+    val initialCollections = collectionCount
+    assertTrue(initialCollections >= 1)
+
+    viewModel.refreshLocation()
+    runCurrent()
+
+    assertTrue(collectionCount > initialCollections)
   }
 
   /** The roster shares the pending host read and loads only the selected session's members. */
@@ -1468,6 +1796,7 @@ class GroupSessionsViewModelTest {
       campusLocationRepository: CampusLocationRepository? = null,
       profiles: FakeProfileRepository = profileRepository,
       clock: Clock = MutableTestClock(now),
+      campusCenter: Location = testCampusCenter,
   ): GroupSessionsViewModel =
       GroupSessionsViewModel(
           authRepository = authRepository,
@@ -1476,6 +1805,7 @@ class GroupSessionsViewModelTest {
           locationProvider = locationProvider,
           campusLocationRepository = campusLocationRepository,
           profileRepository = profiles,
+          campusCenter = campusCenter,
       )
 
   private fun visibleIds(viewModel: GroupSessionsViewModel): List<String> =
@@ -1632,6 +1962,59 @@ class GroupSessionsViewModelTest {
     }
   }
 
+  /** Repository fake for holding actions while exposing and counting session observations. */
+  private class PendingActionGroupSessionsRepository(
+      private val initialSessions: List<GroupSession>,
+  ) : GroupSessionsRepository {
+    val refreshedSessions = CompletableDeferred<Result<List<GroupSession>>>()
+    val joinStarted = CompletableDeferred<Unit>()
+    val leaveStarted = CompletableDeferred<Unit>()
+    val joinResult = CompletableDeferred<Result<Unit>>()
+    val leaveResult = CompletableDeferred<Result<Unit>>()
+    var observationCount = 0
+      private set
+
+    var joinCalls = 0
+      private set
+
+    var leaveCalls = 0
+      private set
+
+    override fun observeSessions(endingAfter: Instant): Flow<Result<List<GroupSession>>> = flow {
+      observationCount += 1
+      emit(
+          if (observationCount == 1) {
+            Result.success(initialSessions)
+          } else {
+            refreshedSessions.await()
+          },
+      )
+    }
+
+    override fun newSessionId(): String = "unused"
+
+    override suspend fun getSession(sessionId: String): Result<GroupSession> =
+        Result.failure(UnsupportedOperationException("Not used in this test"))
+
+    override suspend fun saveSession(userId: String, session: GroupSession): Result<Unit> =
+        Result.success(Unit)
+
+    override suspend fun deleteSession(userId: String, sessionId: String): Result<Unit> =
+        Result.success(Unit)
+
+    override suspend fun joinSession(userId: String, sessionId: String): Result<Unit> {
+      joinCalls += 1
+      joinStarted.complete(Unit)
+      return joinResult.await()
+    }
+
+    override suspend fun leaveSession(userId: String, sessionId: String): Result<Unit> {
+      leaveCalls += 1
+      leaveStarted.complete(Unit)
+      return leaveResult.await()
+    }
+  }
+
   private class FakeProfileRepository : ProfileRepository {
     val getProfileUserIds = mutableListOf<String>()
     private val outcomes = mutableMapOf<String, MutableList<Result<UserProfile?>>>()
@@ -1659,6 +2042,9 @@ class GroupSessionsViewModelTest {
 
     override suspend fun createProfile(userId: String): Result<UserProfile> =
         Result.success(UserProfile(uid = userId))
+
+    override suspend fun updateProfilePictureUrl(userId: String, url: String): Result<Unit> =
+        Result.failure(UnsupportedOperationException("Not needed in this test"))
   }
 
   private companion object {

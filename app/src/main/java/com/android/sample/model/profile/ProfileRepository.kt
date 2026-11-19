@@ -49,4 +49,21 @@ interface ProfileRepository {
    *   is propagated rather than converted into a failed [Result].
    */
   suspend fun updateUsername(userId: String, username: String): Result<UserProfile>
+
+  /**
+   * Saves the URL of a user's profile picture in their existing profile, leaving every other field
+   * untouched.
+   *
+   * The profile must already exist: it is created at sign-in through [createProfile]. Uploading the
+   * image itself is the job of [ProfilePictureRepository].
+   *
+   * @param userId stable authentication identifier used as the Firestore document ID.
+   * @param url URL the picture can be loaded from, as returned by
+   *   [ProfilePictureRepository.uploadProfilePicture].
+   * @return [Result.success] once the URL is saved; [Result.failure] containing a
+   *   [ProfileException], including when the profile does not exist.
+   * @throws kotlinx.coroutines.CancellationException when the coroutine is cancelled. Cancellation
+   *   is propagated rather than converted into a failed [Result].
+   */
+  suspend fun updateProfilePictureUrl(userId: String, url: String): Result<Unit>
 }

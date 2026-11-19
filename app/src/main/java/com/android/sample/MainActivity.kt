@@ -320,11 +320,10 @@ fun DidYouStudyApp(
         route = Screen.Settings.name,
     ) {
       composable(Screen.Settings.route) {
-        // Profile editing and friends management are not built yet.
+        // Profile-picture editing and friends management are not built yet.
         val notImplemented = rememberNotImplementedToast()
         SettingsScreen(
             onBackClick = navigationActions::goBack,
-            onEditUsernameClick = notImplemented,
             onChangeProfilePictureClick = notImplemented,
             onModifyPreferencesClick = {
               navigationActions.navigateIfAllowed(

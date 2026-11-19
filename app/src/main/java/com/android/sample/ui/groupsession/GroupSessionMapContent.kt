@@ -18,6 +18,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -44,6 +45,9 @@ import kotlinx.coroutines.runBlocking
 object GroupSessionMapTestTags {
   /** The list of session cards shown at the bottom once a pin is tapped. */
   const val SESSION_LIST = "group_session_map_session_list"
+
+  /** The marker representing the user's current location on the map. */
+  const val USER_LOCATION_MARKER = "group_session_map_user_location_marker"
 }
 
 /**
@@ -51,8 +55,8 @@ object GroupSessionMapTestTags {
  * the sessions held in that room in a list at the bottom. Tapping the map away from a pin closes
  * the list.
  *
- * The map moves its own camera onto a tapped pin; this composable only remembers which room is
- * selected. When first shown, the camera moves to the campus centre.
+ * All camera moves — initial campus centre, pin selection, and external recenter requests via
+ * [cameraDestination] — flow through a single [CameraDestination] passed to [GroupSessionMapView].
  *
  * @param rooms Rooms that have sessions, each with its sessions' list items.
  * @param now Reference time of the cards' relative labels.
@@ -78,6 +82,10 @@ fun GroupSessionMapContent(
     onSelectedRoomChange: ((String?) -> Unit)? = null,
     onLocationClick: (GroupSessionItem) -> Unit = {},
     cameraPositionState: CameraPositionState? = null,
+    userLocation: Location? = null,
+    cameraDestination: CameraDestination? = null,
+    hasLocationPermission: Boolean = false,
+    campusCenter: Location? = null,
     onParticipantsClick: (String) -> Unit = {},
 ) {
   // Supports both state hosting (controlled by parent via selectedRoom/onSelectedRoomChange)
@@ -95,28 +103,58 @@ fun GroupSessionMapContent(
   val campusRooms = remember(rooms) { rooms.map { it.room } }
   val selected = rooms.firstOrNull { it.room.name == activeSelectedRoom }
   val maxListHeightFraction = floatResource(R.dimen.map_session_list_max_height_fraction)
-  val campusCenter =
-      Location(
-          floatResource(R.dimen.map_campus_center_latitude).toDouble(),
-          floatResource(R.dimen.map_campus_center_longitude).toDouble(),
-      )
-  var cameraTarget by remember {
-    mutableStateOf<Location?>(selected?.room?.location ?: campusCenter)
+  val resolvedCampusCenter = campusCenter ?: defaultCampusCenter()
+  var internalDestinationTrigger by remember { mutableIntStateOf(0) }
+  var lastFocusedRoom by remember { mutableStateOf(selected?.room?.name) }
+  var internalDestination by remember {
+    mutableStateOf(
+        CameraDestination(
+            selected?.room?.location ?: resolvedCampusCenter,
+            internalDestinationTrigger,
+        )
+    )
   }
 
   LaunchedEffect(selected) {
-    if (selected != null) {
-      cameraTarget = selected.room.location
+    if (selected == null) {
+      lastFocusedRoom = null
+    } else if (selected.room.name != lastFocusedRoom) {
+      lastFocusedRoom = selected.room.name
+      internalDestination = CameraDestination(selected.room.location, ++internalDestinationTrigger)
+    }
+  }
+
+  LaunchedEffect(cameraDestination) {
+    if (cameraDestination != null) {
+      lastFocusedRoom = null
+      internalDestination =
+          CameraDestination(cameraDestination.location, ++internalDestinationTrigger)
+      updateSelectedRoom(null)
     }
   }
 
   BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     GroupSessionMapView(
         rooms = campusRooms,
-        cameraTarget = cameraTarget,
-        onMarkerClick = updateSelectedRoom,
-        onMapClick = { updateSelectedRoom(null) },
+        cameraDestination = internalDestination,
+        onMarkerClick = { roomName ->
+          updateSelectedRoom(roomName)
+          rooms
+              .firstOrNull { it.room.name == roomName }
+              ?.let { roomSessions ->
+                lastFocusedRoom = roomName
+                internalDestination =
+                    CameraDestination(roomSessions.room.location, ++internalDestinationTrigger)
+              }
+        },
+        onMapClick = {
+          lastFocusedRoom = null
+          updateSelectedRoom(null)
+        },
         cameraPositionState = cameraPositionState,
+        userLocation = userLocation,
+        hasLocationPermission = hasLocationPermission,
+        campusCenter = resolvedCampusCenter,
     )
     if (selected != null) {
       SessionCardList(
