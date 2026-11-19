@@ -355,6 +355,40 @@ class EventDetailsScreenTest {
   }
 
   @Test
+  fun statefulGroupSessionThatFailsToLoadShowsNoActions() {
+    val viewModel =
+        EventDetailsViewModel(
+            authRepository,
+            eventsRepository,
+            InMemoryGroupSessionsRepository(),
+            FakeProfileRepository(),
+        )
+    composeTestRule.setContent {
+      EventDetailsScreen(eventId = "missing", kind = EventKind.GROUP_SESSION, viewModel = viewModel)
+    }
+    settle()
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.NOT_FOUND).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EDIT_BUTTON).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_BUTTON).assertDoesNotExist()
+  }
+
+  @Test
+  fun statelessGroupSessionWithoutDisplayShowsNoActions() {
+    composeTestRule.setContent {
+      EventDetailsStateless(
+          display = null,
+          isLoading = true,
+          fallbackActions = EventDetailsActionSet.NONE,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.LOADING).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EDIT_BUTTON).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_BUTTON).assertDoesNotExist()
+  }
+
+  @Test
   fun statefulHostEditForwardsTheSessionIdAndGroupKind() {
     val events = mutableListOf<String>()
     val groupSessions = InMemoryGroupSessionsRepository()
