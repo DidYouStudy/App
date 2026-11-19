@@ -146,7 +146,9 @@ class SettingsViewModel(
               it.copy(profilePictureUrl = url, isUploadingPicture = false, error = null)
             }
           }
-          .onFailure {
+          .onFailure { exception ->
+            // Users see only the translated message; the cause goes to the log for debugging.
+            Log.w(TAG, "Failed to change the profile picture", exception)
             _uiState.update {
               it.copy(isUploadingPicture = false, error = SettingsError.UPLOAD_PICTURE_FAILED)
             }
@@ -158,11 +160,10 @@ class SettingsViewModel(
    * Compresses the image, uploads it and saves its URL in the profile, stopping at the first
    * failure.
    *
-   * Saving the URL is attempted twice. A new upload replaces the file at the same path and gets a
-   * new download token, so the URL already stored in the profile stops working as soon as the
-   * upload succeeds. If saving failed for good, the profile would keep that dead URL, so one retry
-   * is made to cover a short-lived failure. If both attempts fail, the profile is repaired by the
-   * user's next successful upload.
+   * The picture the profile currently shows ([SettingsUiState.profilePictureUrl]) is passed to the
+   * upload so that it is not overwritten: a new image goes to a different file, and the current URL
+   * keeps working until the new one is saved. If the save fails, the profile therefore still points
+   * to a picture that loads, and the user can simply pick again.
    *
    * @param userId authentication ID of the user whose picture is replaced.
    * @param uri location of the picked image.
@@ -174,12 +175,11 @@ class SettingsViewModel(
           return Result.failure(it)
         }
     val url =
-        profilePictureRepository.uploadProfilePicture(userId, jpegBytes).getOrElse {
-          return Result.failure(it)
-        }
-    val firstAttempt = profileRepository.updateProfilePictureUrl(userId, url)
-    if (firstAttempt.isSuccess) return Result.success(url)
-    Log.w(TAG, "Failed to save the picture URL, retrying once", firstAttempt.exceptionOrNull())
+        profilePictureRepository
+            .uploadProfilePicture(userId, jpegBytes, _uiState.value.profilePictureUrl)
+            .getOrElse {
+              return Result.failure(it)
+            }
     return profileRepository.updateProfilePictureUrl(userId, url).map { url }
   }
 
