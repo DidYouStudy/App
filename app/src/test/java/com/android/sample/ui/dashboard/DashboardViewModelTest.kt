@@ -141,6 +141,7 @@ class DashboardViewModelTest {
     assertEquals("Calculus", state.sessions[0].subject)
     assertEquals("BC 01", state.sessions[0].location)
     assertEquals(EventType.STUDY_SESSION, state.sessions[0].eventType)
+    assertTrue(state.sessions[0].isClickable)
 
     assertEquals("14:00", state.sessions[1].startTime)
     assertEquals("15:30", state.sessions[1].endTime)
@@ -148,6 +149,7 @@ class DashboardViewModelTest {
     assertEquals("Physics", state.sessions[1].subject)
     assertNull(state.sessions[1].location)
     assertEquals(EventType.EXERCISE_SESSION, state.sessions[1].eventType)
+    assertFalse(state.sessions[1].isClickable)
   }
 
   @Test

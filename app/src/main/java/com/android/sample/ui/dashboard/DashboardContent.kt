@@ -59,6 +59,7 @@ data class DashboardSession(
     val eventType: EventType = EventType.STUDY_SESSION,
     val location: String? = null,
     val id: String = "",
+    val isClickable: Boolean = true,
 ) {
   /** Formatted time range displayed as "start_time - end_time". */
   val timeRange: String
@@ -180,7 +181,7 @@ private fun DashboardDayCard(
           DashboardSessionRow(
               session = session,
               index = index,
-              onClick = { onEventCardClick(session.id) },
+              onClick = if (session.isClickable) ({ onEventCardClick(session.id) }) else null,
           )
         }
       }
@@ -239,7 +240,7 @@ private fun DashboardSessionRow(
     session: DashboardSession,
     index: Int,
     modifier: Modifier = Modifier,
-    onClick: () -> Unit = {},
+    onClick: (() -> Unit)? = null,
 ) {
   val tileShape = RoundedCornerShape(Dimens.cornerMedium)
   val backgroundColor = session.eventType.color
@@ -249,7 +250,7 @@ private fun DashboardSessionRow(
           modifier
               .fillMaxWidth()
               .clip(tileShape)
-              .clickable(onClick = onClick)
+              .let { if (onClick != null) it.clickable(onClick = onClick) else it }
               .background(backgroundColor, tileShape)
               .padding(Spacing.medium)
               .testTag(DashboardContentTestTags.sessionItem(index)),

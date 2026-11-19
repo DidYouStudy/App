@@ -11,6 +11,7 @@ import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.event.Event
 import com.android.sample.model.event.GetUserScheduleUseCase
+import com.android.sample.model.event.GroupSession
 import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -164,6 +165,8 @@ class DashboardViewModel(
                 subject = event.details.subject,
                 eventType = event.details.type,
                 location = event.details.location,
+                // Group sessions stay non-clickable until Event Details supports them (#325/#326).
+                isClickable = event !is GroupSession,
             )
           }
           _uiState.update {

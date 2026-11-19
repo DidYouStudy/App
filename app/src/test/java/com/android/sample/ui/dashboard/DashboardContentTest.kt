@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -31,6 +32,7 @@ import com.android.sample.model.event.EventType
 import com.android.sample.ui.theme.labelRes
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -102,6 +104,32 @@ class DashboardContentTest {
 
     composeTestRule.onNodeWithTag(DashboardContentTestTags.sessionItem(0)).performClick()
     assertEquals("test-session-123", clickedId)
+  }
+
+  @Test
+  fun nonClickableSessionItemHasNoClickAction() {
+    val session =
+        DashboardSession(
+            id = "group-session-123",
+            startTime = "09:00",
+            endTime = "10:30",
+            subject = "Physics",
+            eventType = EventType.STUDY_SESSION,
+            isClickable = false,
+        )
+    var clickedId: String? = null
+    composeTestRule.setContent {
+      DashboardContent(
+          sessions = listOf(session),
+          onEventCardClick = { clickedId = it },
+      )
+    }
+
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.sessionItem(0))
+        .assertHasNoClickAction()
+        .performClick()
+    assertNull(clickedId)
   }
 
   @Test
