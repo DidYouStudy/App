@@ -8,6 +8,7 @@ package com.android.sample.ui.groupsession
 
 import android.Manifest
 import android.content.Context
+import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
@@ -15,7 +16,7 @@ import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -23,7 +24,6 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.rule.GrantPermissionRule
 import com.android.sample.R
@@ -71,9 +71,22 @@ class GroupSessionScreenTest {
           Manifest.permission.ACCESS_COARSE_LOCATION,
       )
 
-  @get:Rule(order = 1) val composeTestRule = createComposeRule()
+  @get:Rule(order = 1) val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
   private val context: Context = ApplicationProvider.getApplicationContext()
+
+  /**
+   * Triggers the system back action through the activity's back dispatcher.
+   *
+   * Unlike `Espresso.pressBack()`, this does not wait for a root window with focus, which a
+   * `ModalBottomSheet` (shown in its own window) can leave unavailable on the CI emulator.
+   */
+  private fun pressBack() {
+    composeTestRule.activityRule.scenario.onActivity { activity ->
+      activity.onBackPressedDispatcher.onBackPressed()
+    }
+    composeTestRule.waitForIdle()
+  }
 
   // Base instant captured when test class is instantiated and shifted forward
   // so group session end times stay in the future regardless of test execution date.
