@@ -4,7 +4,7 @@ package com.android.sample.ui.groupsession
 
 import android.Manifest
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.core.content.res.ResourcesCompat
@@ -42,7 +42,7 @@ class GroupSessionMapViewTest {
   @get:Rule(order = 1) val composeTestRule = createComposeRule()
 
   private val resources = InstrumentationRegistry.getInstrumentation().targetContext.resources
-  private val campusCenter = Location(46.5191, 6.5668)
+  private val campusCenter = defaultCampusCenter(resources)
   private val focusZoom = resourceFloat(R.dimen.map_focus_zoom)
 
   private val first = MapTestDriver.lectureRoom("AAB 0 26", Location(46.5207473, 6.5632687))
@@ -64,15 +64,29 @@ class GroupSessionMapViewTest {
    * Shows the map with the camera at [startAt], at [START_ZOOM]. By default that is far from the
    * campus centre and from the pins, so the tests of camera moves have a move to make.
    */
-  private fun showMap(cameraTarget: Location? = null, startAt: LatLng = FAR_AWAY) {
+  private fun showMap(
+      destination: CameraDestination? = null,
+      startAt: LatLng = FAR_AWAY,
+      focusOnMarkerClick: Boolean = false,
+  ) {
+    var currentDestination by mutableStateOf(destination)
+    var trigger = 0
+    val rooms = listOf(first, second)
     composeTestRule.setContent {
       camera = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(startAt, START_ZOOM)
       }
       GroupSessionMapView(
-          rooms = listOf(first, second),
-          cameraTarget = cameraTarget,
-          onMarkerClick = { tappedRoom = it },
+          rooms = rooms,
+          cameraDestination = currentDestination,
+          onMarkerClick = { roomName ->
+            tappedRoom = roomName
+            if (focusOnMarkerClick) {
+              rooms
+                  .firstOrNull { it.name == roomName }
+                  ?.let { room -> currentDestination = CameraDestination(room.location, ++trigger) }
+            }
+          },
           onMapClick = { mapClicks++ },
           cameraPositionState = camera,
       )
@@ -93,57 +107,52 @@ class GroupSessionMapViewTest {
 
   @Test
   fun startingTarget_movesTheCameraOntoItAtLeastToTheFocusZoom() {
-    showMap(cameraTarget = campusCenter)
+    showMap(destination = CameraDestination(campusCenter))
 
     waitForCameraAt(campusCenter, minZoom = focusZoom, maxZoom = 21f)
   }
 
   @Test
-  fun recenterTrigger_centersCameraOnUserLocationWhenPermissionGranted() {
+  fun cameraDestination_centersCameraOnUserLocation() {
     val userLocation = Location(46.5200, 6.5650)
-    var trigger by mutableIntStateOf(0)
+    var destination by mutableStateOf<CameraDestination?>(null)
     composeTestRule.setContent {
       camera = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(FAR_AWAY, START_ZOOM)
       }
       GroupSessionMapView(
           rooms = listOf(first, second),
-          cameraTarget = null,
+          cameraDestination = destination,
           onMarkerClick = {},
           userLocation = userLocation,
           hasLocationPermission = true,
-          recenterTrigger = trigger,
           cameraPositionState = camera,
       )
     }
     map.waitForMap()
 
-    trigger = 1
+    destination = CameraDestination(userLocation, trigger = 1)
 
     waitForCameraAt(userLocation, minZoom = focusZoom, maxZoom = 21f)
   }
 
   @Test
-  fun recenterTrigger_centersCameraOnCampusCenterWhenPermissionDenied() {
-    val userLocation = Location(46.5200, 6.5650)
-    var trigger by mutableIntStateOf(0)
+  fun cameraDestination_centersCameraOnCampusCenter() {
+    var destination by mutableStateOf<CameraDestination?>(null)
     composeTestRule.setContent {
       camera = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(FAR_AWAY, START_ZOOM)
       }
       GroupSessionMapView(
           rooms = listOf(first, second),
-          cameraTarget = null,
+          cameraDestination = destination,
           onMarkerClick = {},
-          userLocation = userLocation,
-          hasLocationPermission = false,
-          recenterTrigger = trigger,
           cameraPositionState = camera,
       )
     }
     map.waitForMap()
 
-    trigger = 1
+    destination = CameraDestination(campusCenter, trigger = 1)
 
     waitForCameraAt(campusCenter, minZoom = focusZoom, maxZoom = 21f)
   }
@@ -154,7 +163,7 @@ class GroupSessionMapViewTest {
    */
   @Test
   fun tappingAPin_reportsItsRoomAndFocusesItWithoutAMapClick() {
-    showMap(startAt = betweenThePins)
+    showMap(startAt = betweenThePins, focusOnMarkerClick = true)
 
     map.tapPinUntil(first.location.toLatLng()) { tappedRoom != null }
     assertEquals(first.name, tappedRoom)

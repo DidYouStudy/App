@@ -94,7 +94,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
-import com.android.sample.model.location.Location
 import com.android.sample.ui.eventplanning.EventKind
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
@@ -204,24 +203,20 @@ fun GroupSessionScreen(
     }
   }
 
-  val campusCenter =
-      Location(
-          floatResource(R.dimen.map_campus_center_latitude).toDouble(),
-          floatResource(R.dimen.map_campus_center_longitude).toDouble(),
-      )
-  var recenterTrigger by remember { mutableIntStateOf(0) }
-  var cameraTarget by remember { mutableStateOf<Location?>(null) }
-  var cameraTargetKey by remember { mutableIntStateOf(0) }
+  val fallbackCampusCenter = defaultCampusCenter()
+  var cameraDestination by remember { mutableStateOf<CameraDestination?>(null) }
+  var cameraDestinationTrigger by remember { mutableIntStateOf(0) }
 
   val onCenterLocationClick: () -> Unit = {
-    recenterTrigger++
-    cameraTarget =
-        if (hasLocationPermission && uiState.userLocation != null) {
-          uiState.userLocation
+    val userLoc = uiState.userLocation
+    val target =
+        if (hasLocationPermission && userLoc != null) {
+          userLoc
         } else {
-          campusCenter
+          uiState.campusCenter ?: fallbackCampusCenter
         }
-    cameraTargetKey++
+    selectedRoom = null
+    cameraDestination = CameraDestination(target, ++cameraDestinationTrigger)
   }
   fun closeFilterSheet() {
     coroutineScope.launch {
@@ -294,11 +289,22 @@ fun GroupSessionScreen(
             state = uiState,
             modifier = Modifier.padding(pd),
             viewMode = viewMode,
-            onViewModeChange = { viewMode = it },
+            onViewModeChange = { newMode ->
+              if (newMode == GroupSessionViewMode.LIST) {
+                cameraDestination = null
+              }
+              viewMode = newMode
+            },
             selectedRoom = selectedRoom,
-            onSelectedRoomChange = { selectedRoom = it },
+            onSelectedRoomChange = { room ->
+              selectedRoom = room
+              if (room != null) {
+                cameraDestination = null
+              }
+            },
             onLocationClick = { item ->
               selectedRoom = item.proximity.campusLocation?.name ?: item.session.details.location
+              cameraDestination = null
               viewMode = GroupSessionViewMode.MAP
             },
             onQueryChange = viewModel::onQueryChange,
@@ -308,10 +314,8 @@ fun GroupSessionScreen(
             onEdit = onEditSessionClick,
             onOpenFilters = { showFilterSheet = true },
             onCenterLocationClick = onCenterLocationClick,
-            cameraTarget = cameraTarget,
-            cameraTargetKey = cameraTargetKey,
+            cameraDestination = cameraDestination,
             hasLocationPermission = hasLocationPermission,
-            recenterTrigger = recenterTrigger,
             onParticipantsClick = viewModel::openParticipants,
         )
       },
@@ -375,10 +379,8 @@ internal fun GroupSessionContent(
     onEdit: (String) -> Unit = {},
     onOpenFilters: () -> Unit = {},
     onCenterLocationClick: (() -> Unit)? = null,
-    cameraTarget: Location? = null,
-    cameraTargetKey: Any? = null,
+    cameraDestination: CameraDestination? = null,
     hasLocationPermission: Boolean = false,
-    recenterTrigger: Int = 0,
     onParticipantsClick: (String) -> Unit = {},
 ) {
   when (viewMode) {
@@ -463,10 +465,9 @@ internal fun GroupSessionContent(
             onSelectedRoomChange = onSelectedRoomChange,
             onLocationClick = onLocationClick,
             userLocation = state.userLocation,
-            cameraTarget = cameraTarget,
-            cameraTargetKey = cameraTargetKey,
+            cameraDestination = cameraDestination,
             hasLocationPermission = hasLocationPermission,
-            recenterTrigger = recenterTrigger,
+            campusCenter = state.campusCenter,
             onParticipantsClick = onParticipantsClick,
         )
         Column(

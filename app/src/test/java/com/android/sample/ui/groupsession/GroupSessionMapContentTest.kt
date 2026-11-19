@@ -5,7 +5,7 @@ package com.android.sample.ui.groupsession
 import android.content.Context
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -95,10 +95,8 @@ class GroupSessionMapContentTest {
       onEdit: (String) -> Unit = {},
       initialSelectedRoom: String? = null,
       userLocation: Location? = null,
-      cameraTarget: Location? = null,
-      cameraTargetKey: Any? = null,
+      cameraDestination: CameraDestination? = null,
       hasLocationPermission: Boolean = false,
-      recenterTrigger: Int = 0,
   ) {
     composeTestRule.setContent {
       // The real Google map cannot load in a unit test; in inspection mode the map view shows a
@@ -112,37 +110,11 @@ class GroupSessionMapContentTest {
             onEdit = onEdit,
             initialSelectedRoom = initialSelectedRoom,
             userLocation = userLocation,
-            cameraTarget = cameraTarget,
-            cameraTargetKey = cameraTargetKey,
+            cameraDestination = cameraDestination,
             hasLocationPermission = hasLocationPermission,
-            recenterTrigger = recenterTrigger,
         )
       }
     }
-  }
-
-  @Test
-  fun recenterTrigger_closesSelectedRoom() {
-    var trigger by mutableIntStateOf(0)
-    composeTestRule.setContent {
-      CompositionLocalProvider(LocalInspectionMode provides true) {
-        GroupSessionMapContent(
-            rooms = rooms,
-            now = now,
-            onJoin = {},
-            onLeave = {},
-            onEdit = {},
-            initialSelectedRoom = "CM 1 121",
-            recenterTrigger = trigger,
-        )
-      }
-    }
-
-    composeTestRule.onNodeWithText("Chemistry").assertIsDisplayed()
-    trigger = 1
-    composeTestRule.waitForIdle()
-
-    composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST).assertDoesNotExist()
   }
 
   @Test
@@ -163,6 +135,30 @@ class GroupSessionMapContentTest {
     composeTestRule.setContent { composableCenter = defaultCampusCenter() }
     composeTestRule.waitForIdle()
     assertEquals(expected, composableCenter)
+  }
+
+  @Test
+  fun cameraDestination_closesSelectedRoom() {
+    var destination by mutableStateOf<CameraDestination?>(null)
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalInspectionMode provides true) {
+        GroupSessionMapContent(
+            rooms = rooms,
+            now = now,
+            onJoin = {},
+            onLeave = {},
+            onEdit = {},
+            initialSelectedRoom = "CM 1 121",
+            cameraDestination = destination,
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithText("Chemistry").assertIsDisplayed()
+    destination = CameraDestination(Location(46.52, 6.56), trigger = 1)
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST).assertDoesNotExist()
   }
 
   @Test

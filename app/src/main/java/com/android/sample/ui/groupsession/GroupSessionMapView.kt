@@ -18,7 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -49,7 +48,6 @@ import com.google.maps.android.compose.rememberUpdatedMarkerState
 import kotlin.math.acos
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
@@ -57,36 +55,35 @@ import kotlinx.coroutines.withTimeoutOrNull
  *
  * It is the only composable that draws Google Maps, so the rest of the screen stays free of map
  * types, apart from the optional camera passed through for tests, and can be tested without the
- * real map. It holds no selection: tapping a pin moves the camera onto it and reports the room to
- * the caller, which decides what to show.
+ * real map. It holds no selection: tapping a pin reports the room to the caller, which decides what
+ * to show and drives all camera moves through [cameraDestination].
  *
  * Needs a Maps API key in the app manifest; without one the map stays blank.
  *
  * @param rooms Rooms to draw a pin for, at their coordinates.
- * @param cameraTarget Place to move the camera to whenever it changes, for moves the caller starts;
- *   null keeps the camera where the user left it.
- * @param onMarkerClick Called with the room name when a pin is tapped, after the camera starts
- *   moving onto it.
+ * @param onMarkerClick Called with the room name when a pin is tapped.
  * @param onMapClick Called when the map is tapped away from any pin.
+ * @param cameraDestination Destination to move the camera onto whenever it changes; null keeps the
+ *   camera where the user left it.
  * @param cameraPositionState Camera of the map, for a caller that needs to read or move it, such as
- *   instrumented tests; by default a camera on the campus centre at the default zoom.
+ *   instrumented tests; by default a camera on [campusCenter] at the default zoom.
  * @param userLocation Current device location of the user, or null if not available or shared.
  * @param hasLocationPermission Whether location permission is granted, enabling the native Google
  *   Maps blue dot for user location.
- * @param recenterTrigger Counter incremented by caller to recenter camera onto user location (or
- *   campus centre).
+ * @param campusCenter Default campus centre coordinates used to initialize the camera when
+ *   [cameraPositionState] is not supplied; defaults to [defaultCampusCenter] from `map.xml`.
  */
 @Composable
 fun GroupSessionMapView(
     rooms: List<CampusLocation>,
-    cameraTarget: Location?,
     onMarkerClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     onMapClick: () -> Unit = {},
+    cameraDestination: CameraDestination? = null,
     cameraPositionState: CameraPositionState? = null,
     userLocation: Location? = null,
     hasLocationPermission: Boolean = false,
-    recenterTrigger: Int = 0,
+    campusCenter: Location? = null,
 ) {
   // The real map cannot load in the IDE preview, so it shows a stand-in.
   if (LocalInspectionMode.current) {
@@ -94,18 +91,14 @@ fun GroupSessionMapView(
     return
   }
 
-  val campusCenter =
-      LatLng(
-          floatResource(R.dimen.map_campus_center_latitude).toDouble(),
-          floatResource(R.dimen.map_campus_center_longitude).toDouble(),
-      )
+  val resolvedCampusCenter = (campusCenter ?: defaultCampusCenter()).toLatLng()
   val defaultZoom = floatResource(R.dimen.map_default_zoom)
   val focusZoom = floatResource(R.dimen.map_focus_zoom)
   val cameraAnimationMs = integerResource(R.integer.map_camera_animation_ms)
   val cameraPositionState =
       cameraPositionState
           ?: rememberCameraPositionState {
-            position = CameraPosition.fromLatLngZoom(campusCenter, defaultZoom)
+            position = CameraPosition.fromLatLngZoom(resolvedCampusCenter, defaultZoom)
           }
 
   // Moves the camera onto a place, zooming in if the map is further out than the focus zoom.
@@ -121,33 +114,18 @@ fun GroupSessionMapView(
       // failure.
     }
   }
-  val scope = rememberCoroutineScope()
+  val projectionTimeoutMs = integerResource(R.integer.map_projection_timeout_ms).milliseconds
+  val projectionPollIntervalMs =
+      integerResource(R.integer.map_projection_poll_interval_ms).milliseconds
 
-  LaunchedEffect(cameraTarget) {
-    cameraTarget?.let { target ->
-      withTimeoutOrNull(2_000.milliseconds) {
+  LaunchedEffect(cameraDestination) {
+    cameraDestination?.let { destination ->
+      withTimeoutOrNull(projectionTimeoutMs) {
         while (cameraPositionState.projection == null) {
-          delay(50.milliseconds)
+          delay(projectionPollIntervalMs)
         }
       }
-      focusOn(target)
-    }
-  }
-
-  LaunchedEffect(recenterTrigger) {
-    if (recenterTrigger > 0) {
-      val target =
-          if (hasLocationPermission && userLocation != null) {
-            userLocation
-          } else {
-            Location(campusCenter.latitude, campusCenter.longitude)
-          }
-      withTimeoutOrNull(2_000.milliseconds) {
-        while (cameraPositionState.projection == null) {
-          delay(50.milliseconds)
-        }
-      }
-      focusOn(target)
+      focusOn(destination.location)
     }
   }
 
@@ -171,9 +149,9 @@ fun GroupSessionMapView(
             room.name,
             state = rememberUpdatedMarkerState(position = room.location.toLatLng()),
             onClick = {
-              scope.launch { focusOn(room.location) }
               onMarkerClick(room.name)
-              // Consumed: the camera move above replaces the map's default one.
+              // Consumed: the caller moves the camera via cameraDestination instead of Maps'
+              // default snap.
               true
             },
         ) {
