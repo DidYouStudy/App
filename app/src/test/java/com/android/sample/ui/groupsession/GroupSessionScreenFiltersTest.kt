@@ -462,6 +462,12 @@ class GroupSessionScreenFiltersTest {
 
                 override suspend fun createProfile(userId: String) =
                     Result.failure<UserProfile>(UnsupportedOperationException())
+
+                override suspend fun updateProfilePictureUrl(
+                    userId: String,
+                    url: String,
+                ): Result<Unit> =
+                    Result.failure(UnsupportedOperationException("Not needed in this test"))
               },
           locationProvider = LocationProvider { flowOf(null) },
           campusLocationRepository =

@@ -50,6 +50,9 @@ private class UsernameProfileRepository : ProfileRepository {
 
   override suspend fun updateUsername(userId: String, username: String): Result<UserProfile> =
       result ?: Result.success(UserProfile(uid = userId, username = username))
+
+  override suspend fun updateProfilePictureUrl(userId: String, url: String): Result<Unit> =
+      Result.failure(UnsupportedOperationException("Not needed in this test"))
 }
 
 /**

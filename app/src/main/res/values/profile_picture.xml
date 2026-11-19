@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Co-authored-by: Claude Sonnet 5.5 -->
+<resources>
+    <!-- Longest side, in pixels, of the stored profile picture. Plenty for an avatar, and it keeps
+         the file to a few dozen KB, far below the 1 MB limit set in storage.rules. Read by
+         AndroidImageCompressor. -->
+    <integer name="profile_picture_max_edge_px">512</integer>
+
+    <!-- JPEG quality from 0 to 100 used when re-encoding the picture. Read by
+         AndroidImageCompressor. -->
+    <integer name="profile_picture_jpeg_quality">85</integer>
+</resources>

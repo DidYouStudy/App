@@ -267,7 +267,7 @@ jobs:
           disable-animations: true
           script: >-
             PATH="$JAVA_HOME_21_X64/bin:$PATH"
-            firebase emulators:exec --only auth,firestore --project demo-didyoustudy
+            firebase emulators:exec --only auth,firestore,storage --project demo-didyoustudy
             "./gradlew connectedCheck --parallel --build-cache --configuration-cache"
 
       - name: Encrypt Gradle configuration for caching

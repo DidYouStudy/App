@@ -133,6 +133,28 @@ class ProfileRepositoryFirestore(
   }
 
   /**
+   * Sets only the `profilePictureUrl` field of an existing profile document.
+   *
+   * Firestore's `update` fails when the document is missing, so a profile is never created here
+   * without its `uid`; that case is reported as [ProfileError.FIRESTORE_FAILURE].
+   *
+   * @param userId stable authentication identifier and profile document ID.
+   * @param url URL the profile picture can be loaded from.
+   * @return [Result.success] once saved; [Result.failure] containing [ProfileException] with a
+   *   stable [ProfileError] category.
+   * @throws CancellationException when the coroutine is cancelled.
+   */
+  override suspend fun updateProfilePictureUrl(userId: String, url: String): Result<Unit> {
+    if (userId.isBlank()) {
+      return Result.failure(ProfileException(ProfileError.INVALID_USER_ID))
+    }
+    return execute {
+      collection.document(userId).update(UserProfile::profilePictureUrl.name, url).await()
+      Unit
+    }
+  }
+
+  /**
    * Executes a Firestore operation and maps persistence failures to profile-domain errors.
    *
    * Successful values are wrapped in [Result.success]. Coroutine cancellation is rethrown so
