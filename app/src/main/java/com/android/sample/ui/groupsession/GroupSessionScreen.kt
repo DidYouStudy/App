@@ -35,6 +35,7 @@ import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Groups
@@ -47,11 +48,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -67,8 +71,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -92,6 +98,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
 import com.android.sample.ui.eventplanning.EventKind
@@ -139,6 +148,7 @@ object GroupSessionScreenTestTags {
   const val MAP_CONTENT = "groupSessionMapContent"
   const val LOCATION_PILL = "groupSessionLocationPill"
   const val PARTICIPANTS_PILL = "groupSessionParticipantsPill"
+  const val CENTER_LOCATION_BUTTON = "groupSessionCenterLocationButton"
   const val OFFLINE_INDICATOR = "groupSessionOfflineIndicator"
 
   fun sessionItem(index: Int) = "$SESSION_ITEM_PREFIX$index"
@@ -169,21 +179,75 @@ fun GroupSessionScreen(
   val filterSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   val coroutineScope = rememberCoroutineScope()
   val context = LocalContext.current
-  val hasLocationPermission =
+  /** Returns whether the app currently holds either fine or coarse location permission. */
+  fun checkPermission(): Boolean =
       ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
           PackageManager.PERMISSION_GRANTED ||
           ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
               PackageManager.PERMISSION_GRANTED
+
+  var hasLocationPermission by remember { mutableStateOf(checkPermission()) }
+  val lifecycleOwner = LocalLifecycleOwner.current
+  DisposableEffect(lifecycleOwner) {
+    val observer = LifecycleEventObserver { _, event ->
+      if (event == Lifecycle.Event.ON_RESUME) {
+        val granted = checkPermission()
+        hasLocationPermission = granted
+        if (granted && viewMode == GroupSessionViewMode.MAP) {
+          viewModel.refreshLocation()
+        }
+      }
+    }
+    lifecycleOwner.lifecycle.addObserver(observer)
+    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+  }
   val locationPermissionLauncher =
       rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
           results ->
-        if (isLocationPermissionGranted(results)) {
-          viewModel.onRadiusFilterSelected(pendingLocationRadius)
-        } else {
-          viewModel.onRadiusFilterSelected(null)
+        val granted = isLocationPermissionGranted(results)
+        hasLocationPermission = granted || checkPermission()
+        if (granted) {
+          viewModel.refreshLocation()
         }
-        pendingLocationRadius = null
+        if (pendingLocationRadius != null) {
+          viewModel.onRadiusFilterSelected(if (granted) pendingLocationRadius else null)
+          pendingLocationRadius = null
+        }
       }
+
+  LaunchedEffect(viewMode) {
+    if (viewMode == GroupSessionViewMode.MAP) {
+      val granted = checkPermission()
+      hasLocationPermission = granted
+      if (granted) {
+        // Ensure location flow is active when entering MAP mode
+        viewModel.refreshLocation()
+      } else {
+        locationPermissionLauncher.launch(
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+            )
+        )
+      }
+    }
+  }
+
+  val fallbackCampusCenter = defaultCampusCenter()
+  var cameraDestination by remember { mutableStateOf<CameraDestination?>(null) }
+  var cameraDestinationTrigger by remember { mutableIntStateOf(0) }
+
+  val onCenterLocationClick: () -> Unit = {
+    val userLoc = uiState.userLocation
+    val target =
+        if (hasLocationPermission && userLoc != null) {
+          userLoc
+        } else {
+          uiState.campusCenter ?: fallbackCampusCenter
+        }
+    selectedRoom = null
+    cameraDestination = CameraDestination(target, ++cameraDestinationTrigger)
+  }
   fun closeFilterSheet() {
     coroutineScope.launch {
       if (filterSheetState.isVisible) filterSheetState.hide()
@@ -255,11 +319,22 @@ fun GroupSessionScreen(
             state = uiState,
             modifier = Modifier.padding(pd),
             viewMode = viewMode,
-            onViewModeChange = { viewMode = it },
+            onViewModeChange = { newMode ->
+              if (newMode == GroupSessionViewMode.LIST) {
+                cameraDestination = null
+              }
+              viewMode = newMode
+            },
             selectedRoom = selectedRoom,
-            onSelectedRoomChange = { selectedRoom = it },
+            onSelectedRoomChange = { room ->
+              selectedRoom = room
+              if (room != null) {
+                cameraDestination = null
+              }
+            },
             onLocationClick = { item ->
               selectedRoom = item.proximity.campusLocation?.name ?: item.session.details.location
+              cameraDestination = null
               viewMode = GroupSessionViewMode.MAP
             },
             onQueryChange = viewModel::onQueryChange,
@@ -268,6 +343,9 @@ fun GroupSessionScreen(
             onLeave = viewModel::leave,
             onEdit = onEditSessionClick,
             onOpenFilters = { showFilterSheet = true },
+            onCenterLocationClick = onCenterLocationClick,
+            cameraDestination = cameraDestination,
+            hasLocationPermission = hasLocationPermission,
             onParticipantsClick = viewModel::openParticipants,
         )
       },
@@ -330,6 +408,9 @@ internal fun GroupSessionContent(
     onLeave: (String) -> Unit = {},
     onEdit: (String) -> Unit = {},
     onOpenFilters: () -> Unit = {},
+    onCenterLocationClick: (() -> Unit)? = null,
+    cameraDestination: CameraDestination? = null,
+    hasLocationPermission: Boolean = false,
     onParticipantsClick: (String) -> Unit = {},
 ) {
   when (viewMode) {
@@ -413,6 +494,10 @@ internal fun GroupSessionContent(
             selectedRoom = selectedRoom,
             onSelectedRoomChange = onSelectedRoomChange,
             onLocationClick = onLocationClick,
+            userLocation = state.userLocation,
+            cameraDestination = cameraDestination,
+            hasLocationPermission = hasLocationPermission,
+            campusCenter = state.campusCenter,
             onParticipantsClick = onParticipantsClick,
         )
         Column(
@@ -430,6 +515,7 @@ internal fun GroupSessionContent(
           GroupSessionFilterRow(
               filter = state.filter,
               onFilterChange = onFilterChange,
+              onCenterLocationClick = onCenterLocationClick,
           )
           if (state.isOffline) {
             Spacer(Modifier.height(Spacing.small))
@@ -454,6 +540,7 @@ internal fun GroupSessionFilterRow(
     filter: GroupSessionFilter,
     onFilterChange: (GroupSessionFilter) -> Unit,
     modifier: Modifier = Modifier,
+    onCenterLocationClick: (() -> Unit)? = null,
 ) {
   val chipColors =
       FilterChipDefaults.filterChipColors(
@@ -462,55 +549,78 @@ internal fun GroupSessionFilterRow(
       )
 
   Row(
-      modifier = modifier,
-      horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+      modifier = modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
   ) {
-    FilterChip(
-        modifier = Modifier.testTag(GroupSessionScreenTestTags.ALL_SESSIONS_FILTER),
-        selected = filter == GroupSessionFilter.ALL,
-        onClick = { onFilterChange(GroupSessionFilter.ALL) },
-        label = { Text(stringResource(R.string.group_session_filter_all)) },
-        leadingIcon =
-            if (filter == GroupSessionFilter.ALL) {
-              {
-                Icon(
-                    Icons.Default.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(Dimens.iconSizeSmall),
-                )
-              }
-            } else null,
-        shape = RoundedCornerShape(Dimens.cornerMedium),
-        colors = chipColors,
-        border =
-            FilterChipDefaults.filterChipBorder(
-                enabled = true,
-                selected = filter == GroupSessionFilter.ALL,
-            ),
-    )
-    FilterChip(
-        modifier = Modifier.testTag(GroupSessionScreenTestTags.MY_SESSIONS_FILTER),
-        selected = filter == GroupSessionFilter.JOINED,
-        onClick = { onFilterChange(GroupSessionFilter.JOINED) },
-        label = { Text(stringResource(R.string.group_session_filter_my)) },
-        leadingIcon =
-            if (filter == GroupSessionFilter.JOINED) {
-              {
-                Icon(
-                    Icons.Default.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(Dimens.iconSizeSmall),
-                )
-              }
-            } else null,
-        shape = RoundedCornerShape(Dimens.cornerMedium),
-        colors = chipColors,
-        border =
-            FilterChipDefaults.filterChipBorder(
-                enabled = true,
-                selected = filter == GroupSessionFilter.JOINED,
-            ),
-    )
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+      FilterChip(
+          modifier = Modifier.testTag(GroupSessionScreenTestTags.ALL_SESSIONS_FILTER),
+          selected = filter == GroupSessionFilter.ALL,
+          onClick = { onFilterChange(GroupSessionFilter.ALL) },
+          label = { Text(stringResource(R.string.group_session_filter_all)) },
+          leadingIcon =
+              if (filter == GroupSessionFilter.ALL) {
+                {
+                  Icon(
+                      Icons.Default.Check,
+                      contentDescription = null,
+                      modifier = Modifier.size(Dimens.iconSizeSmall),
+                  )
+                }
+              } else null,
+          shape = RoundedCornerShape(Dimens.cornerMedium),
+          colors = chipColors,
+          border =
+              FilterChipDefaults.filterChipBorder(
+                  enabled = true,
+                  selected = filter == GroupSessionFilter.ALL,
+              ),
+      )
+      FilterChip(
+          modifier = Modifier.testTag(GroupSessionScreenTestTags.MY_SESSIONS_FILTER),
+          selected = filter == GroupSessionFilter.JOINED,
+          onClick = { onFilterChange(GroupSessionFilter.JOINED) },
+          label = { Text(stringResource(R.string.group_session_filter_my)) },
+          leadingIcon =
+              if (filter == GroupSessionFilter.JOINED) {
+                {
+                  Icon(
+                      Icons.Default.Check,
+                      contentDescription = null,
+                      modifier = Modifier.size(Dimens.iconSizeSmall),
+                  )
+                }
+              } else null,
+          shape = RoundedCornerShape(Dimens.cornerMedium),
+          colors = chipColors,
+          border =
+              FilterChipDefaults.filterChipBorder(
+                  enabled = true,
+                  selected = filter == GroupSessionFilter.JOINED,
+              ),
+      )
+    }
+    if (onCenterLocationClick != null) {
+      FilledIconButton(
+          onClick = onCenterLocationClick,
+          modifier = Modifier.testTag(GroupSessionScreenTestTags.CENTER_LOCATION_BUTTON),
+          shape = FloatingActionButtonDefaults.shape,
+          colors =
+              IconButtonDefaults.filledIconButtonColors(
+                  containerColor = MaterialTheme.colorScheme.surface,
+                  contentColor = MaterialTheme.colorScheme.primary,
+              ),
+      ) {
+        Icon(
+            Icons.Default.MyLocation,
+            contentDescription = stringResource(R.string.group_session_center_location_description),
+        )
+      }
+    }
   }
 }
 

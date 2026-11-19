@@ -63,6 +63,7 @@ class GroupSessionsViewModelTest {
   private lateinit var authRepository: TestAuthRepository
   private lateinit var repository: InMemoryGroupSessionsRepository
   private lateinit var profileRepository: FakeProfileRepository
+  private val testCampusCenter = Location(0.0, 0.0)
 
   @Before
   fun setUp() {
@@ -1152,6 +1153,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             mutableClock,
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
 
     assertEquals(listOf("expiring"), visibleIds(viewModel))
@@ -1175,6 +1177,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
     clock.currentInstant = Instant.parse("2025-03-01T12:00:25Z")
 
@@ -1195,6 +1198,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
     clock.currentInstant = Instant.parse("2025-03-01T12:00:25Z")
 
@@ -1217,6 +1221,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             AdvancingTestClock(now),
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
 
     viewModel.refresh()
@@ -1237,6 +1242,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             MutableTestClock(now),
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
 
     assertEquals(now, viewModel.uiState.value.now)
@@ -1254,6 +1260,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
     observe(viewModel)
     val later = now.plusSeconds(30)
@@ -1282,6 +1289,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
     viewModel.join("missing")
     assertEquals(GroupSessionsError.JOIN_FAILED, viewModel.uiState.value.error)
@@ -1308,6 +1316,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
     observe(viewModel)
     clock.currentInstant = Instant.parse("2025-03-01T12:00:30Z")
@@ -1330,6 +1339,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
     val hiddenAt = now.plusSeconds(600)
     observe(viewModel).cancel()
@@ -1361,6 +1371,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
     val signedOutAt = now.plusSeconds(600)
     clock.currentInstant = signedOutAt
@@ -1383,6 +1394,7 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
     viewModel.onQueryChange("bio")
     viewModel.onFilterChange(GroupSessionFilter.JOINED)
@@ -1592,7 +1604,8 @@ class GroupSessionsViewModelTest {
     val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
     val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
     val hosted = session("hosted", BOB)
-    val signedOutState = GroupSessionsUiState(now = now, isLoading = false)
+    val signedOutState =
+        GroupSessionsUiState(now = now, isLoading = false, campusCenter = testCampusCenter)
     emissions.emit(Result.success(listOf(hosted)))
     runCurrent()
     assertEquals(listOf(BOB), profileRepository.getProfileUserIds)
@@ -1608,6 +1621,44 @@ class GroupSessionsViewModelTest {
     runCurrent()
 
     assertEquals(signedOutState, viewModel.uiState.value)
+  }
+
+  /** When currentUser becomes null, userLocation is preserved in uiState. */
+  @Test
+  fun currentUserBecomesNull_preservesUserLocation() = runTest {
+    val location = Location(46.52, 6.56)
+    val customProvider = LocationProvider { flowOf(location) }
+    val viewModel = createViewModel(locationProvider = customProvider)
+    val collector = observe(viewModel)
+    runCurrent()
+
+    assertEquals(location, viewModel.uiState.value.userLocation)
+
+    authRepository.currentUser.value = null
+    runCurrent()
+
+    assertEquals(location, viewModel.uiState.value.userLocation)
+    collector.cancel()
+  }
+
+  /** Calling refreshLocation restarts observing the location provider. */
+  @Test
+  fun refreshLocation_restartsCollectionOnLocationProvider() = runTest {
+    var collectionCount = 0
+    val customProvider = LocationProvider {
+      collectionCount++
+      flowOf(Location(46.52, 6.56))
+    }
+    val viewModel = createViewModel(locationProvider = customProvider)
+    observe(viewModel)
+    runCurrent()
+    val initialCollections = collectionCount
+    assertTrue(initialCollections >= 1)
+
+    viewModel.refreshLocation()
+    runCurrent()
+
+    assertTrue(collectionCount > initialCollections)
   }
 
   /** The roster shares the pending host read and loads only the selected session's members. */
@@ -1745,6 +1796,7 @@ class GroupSessionsViewModelTest {
       campusLocationRepository: CampusLocationRepository? = null,
       profiles: FakeProfileRepository = profileRepository,
       clock: Clock = MutableTestClock(now),
+      campusCenter: Location = testCampusCenter,
   ): GroupSessionsViewModel =
       GroupSessionsViewModel(
           authRepository = authRepository,
@@ -1753,6 +1805,7 @@ class GroupSessionsViewModelTest {
           locationProvider = locationProvider,
           campusLocationRepository = campusLocationRepository,
           profileRepository = profiles,
+          campusCenter = campusCenter,
       )
 
   private fun visibleIds(viewModel: GroupSessionsViewModel): List<String> =

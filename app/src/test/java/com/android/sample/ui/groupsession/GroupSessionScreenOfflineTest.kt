@@ -478,6 +478,7 @@ class GroupSessionScreenOfflineTest {
         profileRepository = NoProfilesRepository(),
         locationProvider = LocationProvider { flowOf(null) },
         connectivityObserver = connectivity,
+        campusCenter = defaultCampusCenter(ApplicationProvider.getApplicationContext<Context>()),
     )
   }
 

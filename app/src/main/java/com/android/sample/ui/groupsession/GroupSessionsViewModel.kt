@@ -169,6 +169,7 @@ data class GroupSessionsUiState(
     val showLabRoomType: Boolean = false,
     val hideFullSessions: Boolean = false,
     val userLocation: Location? = null,
+    val campusCenter: Location? = null,
     val error: GroupSessionsError? = null,
     val isOffline: Boolean = false,
     val participantsSheet: GroupSessionParticipantsSheet? = null,
@@ -202,12 +203,20 @@ class GroupSessionsViewModel(
     private val locationProvider: LocationProvider,
     private val campusLocationRepository: CampusLocationRepository? = null,
     private val connectivityObserver: ConnectivityObserver? = null,
+    private val campusCenter: Location,
 ) : ViewModel() {
-  private val _uiState = MutableStateFlow(GroupSessionsUiState(now = clock.instant()))
+  private val _uiState =
+      MutableStateFlow(
+          GroupSessionsUiState(
+              now = clock.instant(),
+              campusCenter = campusCenter,
+          )
+      )
   /** The current loading, list, search, filter, and categorized-error state. */
   val uiState: StateFlow<GroupSessionsUiState> = _uiState.asStateFlow()
 
   private val refreshVersion = MutableStateFlow(0)
+  private val locationRefreshTrigger = MutableStateFlow(0)
   private var currentUserId: String? = null
   /** Distinguishes action requests made during different observed sign-in periods. */
   private var authGeneration = 0L
@@ -250,6 +259,10 @@ class GroupSessionsViewModel(
                       now = clock.instant(),
                       isLoading = false,
                       availableZones = _uiState.value.availableZones,
+                      // Preserve user location if authRepository emits null after a location
+                      // already emitted.
+                      userLocation = _uiState.value.userLocation,
+                      campusCenter = campusCenter,
                       // Connectivity belongs to the device, not to the signed-in user.
                       isOffline = _uiState.value.isOffline,
                   )
@@ -440,6 +453,14 @@ class GroupSessionsViewModel(
     }
   }
 
+  /**
+   * Re-evaluates location collection from [locationProvider], for example after runtime location
+   * permissions have been granted.
+   */
+  fun refreshLocation() {
+    viewModelScope.launch { locationRefreshTrigger.update { it + 1 } }
+  }
+
   /** Opens the roster for a session in the latest repository snapshot. */
   fun openParticipants(sessionId: String) {
     viewModelScope.launch {
@@ -486,9 +507,12 @@ class GroupSessionsViewModel(
   /** Collects device location only while the UI state has an active observer. */
   private fun observeLocationWhileObserved() {
     viewModelScope.launch {
-      _uiState.subscriptionCount
-          .map { it > 0 }
-          .distinctUntilChanged()
+      combine(
+              _uiState.subscriptionCount.map { it > 0 }.distinctUntilChanged(),
+              locationRefreshTrigger,
+          ) { isObserved, _ ->
+            isObserved
+          }
           .collectLatest { isObserved ->
             val locations =
                 if (isObserved) locationProvider.observeCurrentLocation() else emptyFlow()
@@ -756,6 +780,7 @@ class GroupSessionsViewModelFactory(
     private val locationProvider: LocationProvider,
     private val campusLocationRepository: CampusLocationRepository? = null,
     private val connectivityObserver: ConnectivityObserver? = null,
+    private val campusCenter: Location,
 ) : ViewModelProvider.Factory {
   /**
    * Creates the requested ViewModel and rejects unsupported classes with their class name.
@@ -774,6 +799,7 @@ class GroupSessionsViewModelFactory(
         locationProvider = locationProvider,
         campusLocationRepository = campusLocationRepository,
         connectivityObserver = connectivityObserver,
+        campusCenter = campusCenter,
     )
         as T
   }
@@ -789,6 +815,7 @@ fun groupSessionsViewModel(): GroupSessionsViewModel {
   val context = LocalContext.current
   val locationProvider = remember(context) { AndroidLocationProvider.create(context) }
   val connectivityObserver = remember(context) { AndroidConnectivityObserver.create(context) }
+  val campusCenter = defaultCampusCenter()
   return viewModel(
       factory =
           GroupSessionsViewModelFactory(
@@ -798,6 +825,7 @@ fun groupSessionsViewModel(): GroupSessionsViewModel {
               profileRepository = ProfileRepositoryProvider.getRepository(),
               locationProvider = locationProvider,
               connectivityObserver = connectivityObserver,
+              campusCenter = campusCenter,
           )
   )
 }

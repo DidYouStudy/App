@@ -5,7 +5,13 @@
 // Co-authored-by: OpenAI Codex
 package com.android.sample.ui.groupsession
 
+import android.Manifest
+import android.app.Application
 import android.content.Context
+import androidx.activity.compose.LocalActivityResultRegistryOwner
+import androidx.activity.result.ActivityResultRegistry
+import androidx.activity.result.ActivityResultRegistryOwner
+import androidx.activity.result.contract.ActivityResultContract
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.semantics.SemanticsActions
@@ -33,6 +39,11 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
+import androidx.core.app.ActivityOptionsCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
@@ -60,11 +71,13 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Shadows.shadowOf
 
 @RunWith(AndroidJUnit4::class)
 class GroupSessionScreenTest {
@@ -149,6 +162,12 @@ class GroupSessionScreenTest {
 
   @Before
   fun resetRepo() {
+    val application = ApplicationProvider.getApplicationContext<Application>()
+    shadowOf(application)
+        .denyPermissions(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+        )
     repo.reset()
     authRepository.currentUser.value = UserAccount("user-1", null, "Alice", null)
   }
@@ -981,6 +1000,221 @@ class GroupSessionScreenTest {
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST).assertDoesNotExist()
   }
 
+  @Test
+  fun center_location_button_is_displayed_in_map_mode_and_not_in_list_mode() {
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalInspectionMode provides true) {
+        GroupSessionScreen(viewModel = viewModel)
+      }
+    }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
+
+    // List mode: button should not be present
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.CENTER_LOCATION_BUTTON)
+        .assertDoesNotExist()
+
+    // Switch to Map mode: button should be displayed on the filter row
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.MAP_VIEW_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.CENTER_LOCATION_BUTTON)
+        .assertIsDisplayed()
+  }
+
+  @Test
+  fun switching_to_map_mode_requests_location_permission_when_not_granted() {
+    var permissionRequested = false
+    val registry =
+        object : ActivityResultRegistry() {
+          override fun <I, O> onLaunch(
+              requestCode: Int,
+              contract: ActivityResultContract<I, O>,
+              input: I,
+              options: ActivityOptionsCompat?,
+          ) {
+            permissionRequested = true
+          }
+        }
+    val owner =
+        object : ActivityResultRegistryOwner {
+          override val activityResultRegistry = registry
+        }
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      CompositionLocalProvider(
+          LocalInspectionMode provides true,
+          LocalActivityResultRegistryOwner provides owner,
+      ) {
+        GroupSessionScreen(viewModel = viewModel)
+      }
+    }
+
+    // Switch to map view mode
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.MAP_VIEW_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+
+    assertTrue(permissionRequested)
+  }
+
+  @Test
+  fun switching_to_map_mode_does_not_request_permission_when_already_granted() {
+    val application = ApplicationProvider.getApplicationContext<Application>()
+    shadowOf(application).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+
+    var permissionRequested = false
+    val registry =
+        object : ActivityResultRegistry() {
+          override fun <I, O> onLaunch(
+              requestCode: Int,
+              contract: ActivityResultContract<I, O>,
+              input: I,
+              options: ActivityOptionsCompat?,
+          ) {
+            permissionRequested = true
+          }
+        }
+    val owner =
+        object : ActivityResultRegistryOwner {
+          override val activityResultRegistry = registry
+        }
+    val viewModel = createViewModel()
+    composeTestRule.setContent {
+      CompositionLocalProvider(
+          LocalInspectionMode provides true,
+          LocalActivityResultRegistryOwner provides owner,
+      ) {
+        GroupSessionScreen(viewModel = viewModel)
+      }
+    }
+
+    // Switch to map view mode
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.MAP_VIEW_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+
+    assertFalse(permissionRequested)
+  }
+
+  @Test
+  fun switching_to_map_mode_when_permission_granted_refreshes_location() {
+    val application = ApplicationProvider.getApplicationContext<Application>()
+    shadowOf(application).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+
+    var collectionCount = 0
+    val trackingProvider = LocationProvider {
+      collectionCount++
+      flowOf(Location(46.52, 6.56))
+    }
+    val viewModel = createViewModel(locationProvider = trackingProvider)
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalInspectionMode provides true) {
+        GroupSessionScreen(viewModel = viewModel)
+      }
+    }
+    composeTestRule.waitForIdle()
+    val initialCount = collectionCount
+    assertTrue(initialCount >= 1)
+
+    // Switch to map view mode: permission is already granted, so it triggers refreshLocation()
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.MAP_VIEW_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+
+    assertTrue(
+        "refreshLocation should restart collection on LocationProvider",
+        collectionCount > initialCount,
+    )
+  }
+
+  @Test
+  fun center_location_button_can_be_clicked_when_location_shared() {
+    val application = ApplicationProvider.getApplicationContext<Application>()
+    shadowOf(application).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+
+    val userLoc = Location(46.52, 6.56)
+    val viewModel = createViewModel(locationProvider = LocationProvider { flowOf(userLoc) })
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalInspectionMode provides true) {
+        GroupSessionScreen(viewModel = viewModel, initialViewMode = GroupSessionViewMode.MAP)
+      }
+    }
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.CENTER_LOCATION_BUTTON)
+        .assertIsDisplayed()
+        .performClick()
+  }
+
+  @Test
+  fun center_location_button_can_be_clicked_when_location_not_shared() {
+    val viewModel = createViewModel(locationProvider = LocationProvider { flowOf(null) })
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalInspectionMode provides true) {
+        GroupSessionScreen(viewModel = viewModel, initialViewMode = GroupSessionViewMode.MAP)
+      }
+    }
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.CENTER_LOCATION_BUTTON)
+        .assertIsDisplayed()
+        .performClick()
+  }
+
+  @Test
+  fun onResume_refreshes_location_permission_when_revoked_and_granted() {
+    val application = ApplicationProvider.getApplicationContext<Application>()
+    shadowOf(application).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+
+    var collectionCount = 0
+    val trackingProvider = LocationProvider {
+      collectionCount++
+      flowOf(null)
+    }
+    val lifecycleOwner =
+        object : LifecycleOwner {
+          val registry = LifecycleRegistry(this)
+          override val lifecycle: Lifecycle = registry
+        }
+    lifecycleOwner.registry.currentState = Lifecycle.State.RESUMED
+    val viewModel = createViewModel(locationProvider = trackingProvider)
+
+    composeTestRule.setContent {
+      CompositionLocalProvider(
+          LocalInspectionMode provides true,
+          LocalLifecycleOwner provides lifecycleOwner,
+      ) {
+        GroupSessionScreen(viewModel = viewModel, initialViewMode = GroupSessionViewMode.MAP)
+      }
+    }
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithTag(GroupSessionMapTestTags.USER_LOCATION_MARKER, useUnmergedTree = true)
+        .assertExists()
+
+    // Simulate revoking permission in system Settings and returning to the screen.
+    shadowOf(application).denyPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+    composeTestRule.runOnUiThread {
+      lifecycleOwner.registry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+      lifecycleOwner.registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+    }
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithTag(GroupSessionMapTestTags.USER_LOCATION_MARKER, useUnmergedTree = true)
+        .assertDoesNotExist()
+
+    // Simulate granting permission in system Settings and returning to the screen.
+    val countBeforeGrant = collectionCount
+    shadowOf(application).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+    composeTestRule.runOnUiThread {
+      lifecycleOwner.registry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+      lifecycleOwner.registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+    }
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithTag(GroupSessionMapTestTags.USER_LOCATION_MARKER, useUnmergedTree = true)
+        .assertExists()
+    assertTrue(collectionCount > countBeforeGrant)
+  }
+
   private fun setCardContent(
       items: List<GroupSessionItem>,
       onJoin: (String) -> Unit = {},
@@ -1031,6 +1265,7 @@ class GroupSessionScreenTest {
           profileRepository = profileRepository,
           locationProvider = locationProvider,
           campusLocationRepository = campusLocationRepository,
+          campusCenter = defaultCampusCenter(ApplicationProvider.getApplicationContext<Context>()),
       )
 
   private class FakeCampusLocationRepository(
