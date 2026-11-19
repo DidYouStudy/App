@@ -463,6 +463,75 @@ class SettingsViewModelTest {
     assertEquals(SECOND_PICTURE_URL, viewModel.uiState.value.profilePictureUrl)
   }
 
+  /**
+   * If another account signs in during an upload, the result is not written to the state, which now
+   * shows that account. The picture is still saved for the user who picked it, with that user's own
+   * current picture, and the new account is not left waiting for the upload.
+   */
+  @Test
+  fun onPictureSelected_accountSwitchedDuringUpload_discardsTheResult() = runTest {
+    val compression = CompletableDeferred<Result<ByteArray>>()
+    val viewModel = startPendingPictureChange(compression)
+
+    switchToOtherAccount()
+    compression.complete(Result.success(JPEG_BYTES))
+
+    val state = viewModel.uiState.value
+    assertEquals(OTHER_PICTURE_URL, state.profilePictureUrl)
+    assertEquals("Other", state.username)
+    assertNull(state.error)
+    assertFalse(state.isUploadingPicture)
+    // The upload got the picture of the user who picked, not of the account shown by then.
+    verify(profilePictureRepository).uploadProfilePicture(USER_ID, JPEG_BYTES, OLD_PICTURE_URL)
+    verify(profileRepository).updateProfilePictureUrl(USER_ID, PICTURE_URL)
+    verify(profileRepository, Mockito.never()).updateProfilePictureUrl(OTHER_USER_ID, PICTURE_URL)
+  }
+
+  /** A sign-out during an upload also discards the result: nobody is shown a picture. */
+  @Test
+  fun onPictureSelected_signedOutDuringUpload_discardsTheResult() = runTest {
+    val compression = CompletableDeferred<Result<ByteArray>>()
+    val viewModel = startPendingPictureChange(compression)
+
+    `when`(authRepository.currentUserId).thenReturn(null)
+    currentUserFlow.value = null
+    compression.complete(Result.success(JPEG_BYTES))
+
+    assertEquals(SettingsUiState(isLoading = false), viewModel.uiState.value)
+    verify(profileRepository).updateProfilePictureUrl(USER_ID, PICTURE_URL)
+  }
+
+  /** A failure that arrives after an account switch is not reported to the new account. */
+  @Test
+  fun onPictureSelected_failureAfterAccountSwitch_showsNoErrorToTheNewAccount() = runTest {
+    val compression = CompletableDeferred<Result<ByteArray>>()
+    val viewModel = startPendingPictureChange(compression)
+
+    switchToOtherAccount()
+    compression.complete(Result.failure(ProfilePictureException(ProfilePictureError.INVALID_IMAGE)))
+
+    assertNull(viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isUploadingPicture)
+    assertEquals(OTHER_PICTURE_URL, viewModel.uiState.value.profilePictureUrl)
+  }
+
+  /**
+   * The same user being emitted again, for example after a profile update, keeps the upload shown.
+   */
+  @Test
+  fun sameUserEmittedDuringUpload_keepsTheUploadIndicator() = runTest {
+    val compression = CompletableDeferred<Result<ByteArray>>()
+    val viewModel = startPendingPictureChange(compression)
+
+    currentUserFlow.value =
+        UserAccount(uid = USER_ID, email = null, displayName = "Renamed", photoUrl = null)
+
+    assertTrue(viewModel.uiState.value.isUploadingPicture)
+    compression.complete(Result.success(JPEG_BYTES))
+    assertFalse(viewModel.uiState.value.isUploadingPicture)
+    assertEquals(PICTURE_URL, viewModel.uiState.value.profilePictureUrl)
+  }
+
   /** A closed picker (null) does nothing, and a pick made during an upload is ignored. */
   @Test
   fun onPictureSelected_ignoresNullUri_andPicksMadeWhileUploading() = runTest {
@@ -504,6 +573,49 @@ class SettingsViewModelTest {
       )
 
   /**
+   * Shows [USER_ID] with a stored picture and starts a picture change for it whose compression
+   * stays pending until [compression] is completed, so the test decides what happens meanwhile.
+   *
+   * @param compression completed by the test to let the pending compression finish.
+   * @return the ViewModel, with the upload indicator on.
+   */
+  private suspend fun startPendingPictureChange(
+      compression: CompletableDeferred<Result<ByteArray>>
+  ): SettingsViewModel {
+    `when`(profileRepository.getProfile(USER_ID))
+        .thenReturn(
+            Result.success(
+                UserProfile(uid = USER_ID, username = "Name", profilePictureUrl = OLD_PICTURE_URL)
+            )
+        )
+    currentUserFlow.value =
+        UserAccount(uid = USER_ID, email = null, displayName = null, photoUrl = null)
+    stubPictureSteps(currentUrl = OLD_PICTURE_URL)
+    whenever(imageCompressor.compress(PICKED_URI)).doSuspendableAnswer { compression.await() }
+    val viewModel = createViewModel()
+    viewModel.onPictureSelected(PICKED_URI)
+    assertTrue(viewModel.uiState.value.isUploadingPicture)
+    return viewModel
+  }
+
+  /** Signs [OTHER_USER_ID], who has a picture of their own, in place of [USER_ID]. */
+  private suspend fun switchToOtherAccount() {
+    `when`(authRepository.currentUserId).thenReturn(OTHER_USER_ID)
+    `when`(profileRepository.getProfile(OTHER_USER_ID))
+        .thenReturn(
+            Result.success(
+                UserProfile(
+                    uid = OTHER_USER_ID,
+                    username = "Other",
+                    profilePictureUrl = OTHER_PICTURE_URL,
+                )
+            )
+        )
+    currentUserFlow.value =
+        UserAccount(uid = OTHER_USER_ID, email = null, displayName = null, photoUrl = null)
+  }
+
+  /**
    * Makes each step of the picture change return the given result; all succeed by default.
    *
    * @param currentUrl the picture URL the ViewModel is expected to pass to the upload: the one the
@@ -523,6 +635,8 @@ class SettingsViewModelTest {
 
   private companion object {
     const val USER_ID = "user123"
+    const val OTHER_USER_ID = "other456"
+    const val OTHER_PICTURE_URL = "https://example.test/other.jpg"
     const val PICKED_URI = "content://media/picker/1"
     const val PICTURE_URL = "https://example.test/avatar.jpg"
     const val OLD_PICTURE_URL = "https://example.test/old.jpg"
