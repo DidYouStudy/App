@@ -31,6 +31,8 @@
     <string name="dashboard_add_description">Add</string>
     <string name="dashboard_fab_event">Event</string>
     <string name="dashboard_fab_group_session">Group session</string>
+    <string name="dashboard_load_sessions_error">Could not load study sessions.</string>
+    <string name="dashboard_retry_button">Retry</string>
     <string name="default_username">User</string>
     <string name="settings_error_failed_to_load_profile">Failed to load user profile.</string>
     <string name="settings_error_failed_to_sign_out">Failed to sign out.</string>
