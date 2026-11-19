@@ -5,6 +5,7 @@
 <resources>
     <string name="app_name">DidYouStudy</string>
     <string name="button_go_back">Back</string>
+    <string name="offline_banner_text">You\'re offline</string>
     <string name="not_implemented">(Not implemented)</string>
     <string name="toast_not_implemented">Not implemented yet</string>
     <string name="nav_tab_dashboard">Dashboard</string>
