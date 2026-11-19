@@ -32,6 +32,7 @@ import org.mockito.Mockito
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.doSuspendableAnswer
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -378,7 +379,8 @@ class SettingsViewModelTest {
 
     assertEquals(SettingsError.UPLOAD_PICTURE_FAILED, viewModel.uiState.value.error)
     assertFalse(viewModel.uiState.value.isUploadingPicture)
-    verify(profilePictureRepository, Mockito.never()).uploadProfilePicture(any(), any())
+    verify(profilePictureRepository, Mockito.never())
+        .uploadProfilePicture(any(), any(), anyOrNull())
 
     stubPictureSteps()
     viewModel.onPictureSelected(PICKED_URI)
@@ -401,26 +403,16 @@ class SettingsViewModelTest {
     verify(profileRepository, Mockito.never()).updateProfilePictureUrl(any(), any())
   }
 
-  /** A failed save is retried once, so a short-lived failure does not leave a dead URL behind. */
+  /**
+   * If saving the URL fails, an error is reported and the state keeps the previous URL. That URL
+   * still works, because the upload was told not to replace the file it points to.
+   */
   @Test
-  fun onPictureSelected_saveFailsOnce_retriesAndShowsTheNewPicture() = runTest {
-    stubPictureSteps()
-    `when`(profileRepository.updateProfilePictureUrl(USER_ID, PICTURE_URL))
-        .thenReturn(Result.failure(ProfileException(ProfileError.FIRESTORE_FAILURE)))
-        .thenReturn(Result.success(Unit))
-    val viewModel = createViewModel()
-
-    viewModel.onPictureSelected(PICKED_URI)
-
-    verify(profileRepository, Mockito.times(2)).updateProfilePictureUrl(USER_ID, PICTURE_URL)
-    assertNull(viewModel.uiState.value.error)
-    assertEquals(PICTURE_URL, viewModel.uiState.value.profilePictureUrl)
-  }
-
-  /** If the save fails twice, an error is reported and the state keeps the previous URL. */
-  @Test
-  fun onPictureSelected_saveFailsTwice_reportsErrorAndKeepsThePreviousPictureUrl() = runTest {
-    stubPictureSteps(saved = Result.failure(ProfileException(ProfileError.FIRESTORE_FAILURE)))
+  fun onPictureSelected_saveFailure_keepsThePreviousPictureUrl() = runTest {
+    stubPictureSteps(
+        currentUrl = OLD_PICTURE_URL,
+        saved = Result.failure(ProfileException(ProfileError.FIRESTORE_FAILURE)),
+    )
     `when`(profileRepository.getProfile(USER_ID)).thenReturn(Result.success(null))
     currentUserFlow.value =
         UserAccount(uid = USER_ID, email = null, displayName = null, photoUrl = OLD_PICTURE_URL)
@@ -428,10 +420,47 @@ class SettingsViewModelTest {
 
     viewModel.onPictureSelected(PICKED_URI)
 
-    // One retry only: the save is attempted twice, not forever.
-    verify(profileRepository, Mockito.times(2)).updateProfilePictureUrl(USER_ID, PICTURE_URL)
+    // The save is attempted once: there is no retry.
+    verify(profileRepository, Mockito.times(1)).updateProfilePictureUrl(USER_ID, PICTURE_URL)
     assertEquals(SettingsError.UPLOAD_PICTURE_FAILED, viewModel.uiState.value.error)
     assertEquals(OLD_PICTURE_URL, viewModel.uiState.value.profilePictureUrl)
+  }
+
+  /** The upload is told which picture the profile stores now, so that it does not replace it. */
+  @Test
+  fun onPictureSelected_passesTheStoredPictureUrlToTheUpload() = runTest {
+    `when`(profileRepository.getProfile(USER_ID))
+        .thenReturn(
+            Result.success(
+                UserProfile(uid = USER_ID, username = "Name", profilePictureUrl = OLD_PICTURE_URL)
+            )
+        )
+    currentUserFlow.value =
+        UserAccount(uid = USER_ID, email = null, displayName = null, photoUrl = null)
+    stubPictureSteps(currentUrl = OLD_PICTURE_URL)
+    val viewModel = createViewModel()
+
+    viewModel.onPictureSelected(PICKED_URI)
+
+    verify(profilePictureRepository).uploadProfilePicture(USER_ID, JPEG_BYTES, OLD_PICTURE_URL)
+    assertEquals(PICTURE_URL, viewModel.uiState.value.profilePictureUrl)
+  }
+
+  /** The picture that replaced the first one is the "current" one for the next change. */
+  @Test
+  fun onPictureSelected_secondChange_passesTheFirstNewUrlAsCurrent() = runTest {
+    stubPictureSteps()
+    val viewModel = createViewModel()
+    viewModel.onPictureSelected(PICKED_URI)
+    `when`(profilePictureRepository.uploadProfilePicture(USER_ID, JPEG_BYTES, PICTURE_URL))
+        .thenReturn(Result.success(SECOND_PICTURE_URL))
+    `when`(profileRepository.updateProfilePictureUrl(USER_ID, SECOND_PICTURE_URL))
+        .thenReturn(Result.success(Unit))
+
+    viewModel.onPictureSelected(PICKED_URI)
+
+    verify(profilePictureRepository).uploadProfilePicture(USER_ID, JPEG_BYTES, PICTURE_URL)
+    assertEquals(SECOND_PICTURE_URL, viewModel.uiState.value.profilePictureUrl)
   }
 
   /** A closed picker (null) does nothing, and a pick made during an upload is ignored. */
@@ -474,14 +503,21 @@ class SettingsViewModelTest {
           imageCompressor,
       )
 
-  /** Makes each step of the picture change return the given result; all succeed by default. */
+  /**
+   * Makes each step of the picture change return the given result; all succeed by default.
+   *
+   * @param currentUrl the picture URL the ViewModel is expected to pass to the upload: the one the
+   *   profile shows when the picture is changed, null when it has none.
+   */
   private suspend fun stubPictureSteps(
       compressed: Result<ByteArray> = Result.success(JPEG_BYTES),
       uploaded: Result<String> = Result.success(PICTURE_URL),
       saved: Result<Unit> = Result.success(Unit),
+      currentUrl: String? = null,
   ) {
     `when`(imageCompressor.compress(PICKED_URI)).thenReturn(compressed)
-    `when`(profilePictureRepository.uploadProfilePicture(USER_ID, JPEG_BYTES)).thenReturn(uploaded)
+    `when`(profilePictureRepository.uploadProfilePicture(USER_ID, JPEG_BYTES, currentUrl))
+        .thenReturn(uploaded)
     `when`(profileRepository.updateProfilePictureUrl(USER_ID, PICTURE_URL)).thenReturn(saved)
   }
 
@@ -490,6 +526,7 @@ class SettingsViewModelTest {
     const val PICKED_URI = "content://media/picker/1"
     const val PICTURE_URL = "https://example.test/avatar.jpg"
     const val OLD_PICTURE_URL = "https://example.test/old.jpg"
+    const val SECOND_PICTURE_URL = "https://example.test/avatar2.jpg"
     val JPEG_BYTES = byteArrayOf(1, 2, 3)
   }
 }

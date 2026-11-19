@@ -167,6 +167,7 @@ class SettingsViewModelFactoryTest {
     override suspend fun uploadProfilePicture(
         userId: String,
         jpegBytes: ByteArray,
+        currentUrl: String?,
     ): Result<String> = Result.failure(UnsupportedOperationException("Not needed in this test"))
   }
 
