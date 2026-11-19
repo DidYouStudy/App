@@ -87,8 +87,8 @@ import org.junit.rules.RuleChain
 /**
  * End-to-end tests driving the real [MainActivity] through the whole user journey (sign-in,
  * first-time preferences, dashboard tabs, settings, logout) against the real Firebase SDKs talking
- * to the local Firebase emulators (Auth on 9099, Firestore on 8080, reached from the Android
- * emulator at 10.0.2.2).
+ * to the local Firebase emulators (Auth on 9099, Firestore on 8080, Storage on 9199, reached from
+ * the Android emulator at 10.0.2.2).
  *
  * Sign-in goes through the app's real flow: the Google button, the account picker (replaced by
  * [FakeGoogleCredentialManager], which returns a fake ID token), `AuthRepositoryFirebase` and the
@@ -96,7 +96,7 @@ import org.junit.rules.RuleChain
  * directly on the emulator server. Each test uses a uniquely named Firebase app and user, and
  * removes everything it created, so runs are repeatable and never touch production data.
  *
- * Requires: `firebase emulators:start --only auth,firestore` running on the host.
+ * Requires: `firebase emulators:start --only auth,firestore,storage` running on the host.
  */
 class EndToEndTest {
   private val email = "e2e-${UUID.randomUUID()}@example.test"
