@@ -208,4 +208,15 @@ class EventDetailsScreenHelperTest {
 
     assertEquals(EventDetailsActionSet.NONE, display.actions)
   }
+
+  /** A personal event ignores any members passed in, so it never lists participants. */
+  @Test
+  fun toDisplay_personalEventWithMembers_stillHasNoParticipants() {
+    val members = listOf(EventMember("me", "Me", isHost = true, isCurrentUser = true))
+
+    val display = samplePersonalEvent().toDisplay(members = members)
+
+    assertTrue(display.participants.isEmpty())
+    assertEquals(EventDetailsActionSet.EDIT_AND_DELETE, display.actions)
+  }
 }
