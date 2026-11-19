@@ -91,8 +91,10 @@ object EventDetailsScreenTestTags {
  * Event details screen: loads [eventId], shows it, and lets the user toggle tasks, edit or delete.
  *
  * @param eventId ID of the event to display.
+ * @param kind Kind of event to load.
  * @param onNavigateBack invoked on back press and after a successful delete.
  * @param onEdit invoked with the loaded event's ID and kind when the edit button is pressed.
+ * @param viewModel Loads and manages the displayed event.
  */
 @Composable
 fun EventDetailsScreen(
@@ -130,6 +132,9 @@ fun EventDetailsScreen(
   EventDetailsStateless(
       display = display,
       isLoading = uiState.isLoading,
+      fallbackActions =
+          if (kind == EventKind.PERSONAL) EventDetailsActionSet.EDIT_AND_DELETE
+          else EventDetailsActionSet.NONE,
       isBusy = uiState.isBusy,
       isDeleting = uiState.isDeleting,
       snackbarHostState = snackbarHostState,
@@ -143,7 +148,11 @@ fun EventDetailsScreen(
   )
 }
 
-/** Stateless Event details layout, driven entirely by its parameters. */
+/**
+ * Stateless Event details layout, driven entirely by its parameters.
+ *
+ * @param fallbackActions Actions to show disabled when there is no display data.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun EventDetailsStateless(
@@ -206,7 +215,7 @@ internal fun EventDetailsStateless(
         }
       }
       EventDetailsActions(
-          actions = display?.actions ?: EventDetailsActionSet.EDIT_AND_DELETE,
+          actions = display?.actions ?: fallbackActions,
           enabled = display != null && !isBusy,
           isDeleting = isDeleting,
           onEdit = onEdit,
