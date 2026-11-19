@@ -7,7 +7,7 @@ import android.content.Context
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
@@ -16,10 +16,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
+import com.android.sample.model.auth.AuthRepositoryProvider
+import com.android.sample.model.event.EventType
+import com.android.sample.model.event.EventsRepositoryProvider
+import com.android.sample.model.event.InMemoryEventsRepository
+import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
+import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
+import com.android.sample.ui.auth.TestAuthRepository
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
+import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -29,6 +38,20 @@ import org.mockito.kotlin.verify
 @RunWith(AndroidJUnit4::class)
 class DashboardScreenTest {
   @get:Rule val composeTestRule = createComposeRule()
+
+  @Before
+  fun setUp() {
+    AuthRepositoryProvider.setRepository(TestAuthRepository())
+    EventsRepositoryProvider.setRepository(InMemoryEventsRepository())
+    GroupSessionsRepositoryProvider.setRepository(InMemoryGroupSessionsRepository())
+  }
+
+  @After
+  fun tearDown() {
+    AuthRepositoryProvider.setRepository(null)
+    EventsRepositoryProvider.setRepository(null)
+    GroupSessionsRepositoryProvider.setRepository(null)
+  }
 
   @Test
   fun screenWiresLocalizedDashboardCardsEmptyStateAndNavigationBars() {
@@ -145,10 +168,6 @@ class DashboardScreenTest {
     verify(navActions).navigateTo(Screen.AddGroupSession)
   }
 
-  /**
-   * Verifies that clicking on the FAB items when no navigation actions instance is provided
-   * executes safely as a no-op without throwing an exception.
-   */
   @Test
   fun fabMenuClickWithNullNavigationActionsDoesNotCrash() {
     composeTestRule.setContent { DashboardScreen(navigationActions = null) }
@@ -161,7 +180,170 @@ class DashboardScreenTest {
         .performClick()
   }
 
-  /** Verifies that the preview composable renders cleanly without crashing. */
+  @Test
+  fun loadingStateDisplaysLoadingIndicator() {
+    composeTestRule.setContent {
+      DashboardScreen(
+          uiState = DashboardUiState(isLoading = true),
+          navigationActions = null,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.LOADING_INDICATOR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.CONTENT).assertDoesNotExist()
+  }
+
+  @Test
+  fun errorStateDisplaysLocalizedErrorMessageAndRetryInvokesCallback() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var retryCount = 0
+
+    composeTestRule.setContent {
+      DashboardScreen(
+          uiState =
+              DashboardUiState(
+                  isLoading = false,
+                  error = DashboardViewModelError.LOAD_SESSIONS_FAILED,
+              ),
+          onRetry = { retryCount++ },
+          navigationActions = null,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.ERROR_CONTAINER).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.ERROR_TEXT)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.dashboard_load_sessions_error))
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.RETRY_BUTTON)
+        .assertIsDisplayed()
+        .performClick()
+
+    assertEquals(1, retryCount)
+  }
+
+  @Test
+  fun populatedStateDisplaysDashboardSessions() {
+    val sessions =
+        listOf(
+            DashboardSession(
+                startTime = "09:00",
+                endTime = "10:30",
+                subject = "Calculus",
+                eventType = EventType.STUDY_SESSION,
+                location = "BC 01",
+            ),
+            DashboardSession(
+                startTime = "14:00",
+                endTime = "15:30",
+                subject = "Physics",
+                eventType = EventType.EXERCISE_SESSION,
+            ),
+        )
+
+    composeTestRule.setContent {
+      DashboardScreen(
+          uiState = DashboardUiState(sessions = sessions, isLoading = false),
+          navigationActions = null,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.sessionItem(0)).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.sessionTime(0), useUnmergedTree = true)
+        .assertTextEquals("09:00 - 10:30")
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.sessionLocation(0), useUnmergedTree = true)
+        .assertTextEquals("BC 01")
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.sessionSubject(0), useUnmergedTree = true)
+        .assertTextEquals("Calculus")
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.sessionType(0), useUnmergedTree = true)
+        .assertIsDisplayed()
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.sessionItem(1)).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.sessionTime(1), useUnmergedTree = true)
+        .assertTextEquals("14:00 - 15:30")
+    composeTestRule
+        .onNodeWithTag(DashboardContentTestTags.sessionLocation(1), useUnmergedTree = true)
+        .assertDoesNotExist()
+  }
+
+  @Test
+  fun sessionClickInvokesCallbackWithSessionId() {
+    val sessions =
+        listOf(
+            DashboardSession(
+                id = "session-1",
+                startTime = "09:00",
+                endTime = "10:30",
+                subject = "Calculus",
+                eventType = EventType.STUDY_SESSION,
+            ),
+        )
+    var clickedId: String? = null
+    composeTestRule.setContent {
+      DashboardScreen(
+          uiState = DashboardUiState(sessions = sessions, isLoading = false),
+          navigationActions = null,
+          onEventCardClick = { clickedId = it },
+      )
+    }
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.sessionItem(0)).performClick()
+    assertEquals("session-1", clickedId)
+  }
+
+  @Test
+  fun defaultSessionClickNavigatesToEventDetails() {
+    val navActions = mock(NavigationActions::class.java)
+    val sessions =
+        listOf(
+            DashboardSession(
+                id = "session-42",
+                startTime = "09:00",
+                endTime = "10:30",
+                subject = "Calculus",
+                eventType = EventType.STUDY_SESSION,
+            ),
+        )
+    composeTestRule.setContent {
+      DashboardScreen(
+          uiState = DashboardUiState(sessions = sessions, isLoading = false),
+          navigationActions = navActions,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.sessionItem(0)).performClick()
+    verify(navActions)
+        .navigateTo(org.mockito.kotlin.argThat { route == Screen.EventDetails("session-42").route })
+  }
+
+  @Test
+  fun sessionClickWithNullNavigationActionsDoesNotCrash() {
+    val sessions =
+        listOf(
+            DashboardSession(
+                id = "session-42",
+                startTime = "09:00",
+                endTime = "10:30",
+                subject = "Calculus",
+                eventType = EventType.STUDY_SESSION,
+            ),
+        )
+    composeTestRule.setContent {
+      DashboardScreen(
+          uiState = DashboardUiState(sessions = sessions, isLoading = false),
+          navigationActions = null,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(DashboardContentTestTags.sessionItem(0)).performClick()
+  }
+
   @Test
   fun dashboardScreenPreviewRendersWithoutCrash() {
     val context = ApplicationProvider.getApplicationContext<Context>()
