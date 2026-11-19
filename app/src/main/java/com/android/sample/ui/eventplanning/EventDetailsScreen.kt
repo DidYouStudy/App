@@ -14,22 +14,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,6 +41,7 @@ import com.android.sample.model.event.EventType
 import com.android.sample.ui.sharedComponents.EventTypeBadge
 import com.android.sample.ui.sharedComponents.IconTextRow
 import com.android.sample.ui.sharedComponents.PillActionButton
+import com.android.sample.ui.sharedComponents.SecondaryMediumTopAppBar
 import com.android.sample.ui.sharedComponents.TaskCheckRow
 import com.android.sample.ui.theme.Dimens
 
@@ -148,30 +144,12 @@ internal fun EventDetailsStateless(
         )
       },
       topBar = {
-        MediumTopAppBar(
-            title = {
-              Text(
-                  text = stringResource(R.string.event_details_title),
-                  style = MaterialTheme.typography.headlineLarge,
-                  fontWeight = FontWeight.Bold,
-                  modifier = Modifier.testTag(EventDetailsScreenTestTags.TITLE),
-              )
-            },
-            navigationIcon = {
-              IconButton(
-                  onClick = onBack,
-                  modifier = Modifier.testTag(EventDetailsScreenTestTags.BACK_BUTTON),
-              ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.event_details_back_description),
-                )
-              }
-            },
-            colors =
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                ),
+        SecondaryMediumTopAppBar(
+            title = stringResource(R.string.event_details_title),
+            onBackClick = onBack,
+            backButtonDescription = stringResource(R.string.event_details_back_description),
+            backButtonTestTag = EventDetailsScreenTestTags.BACK_BUTTON,
+            titleTestTag = EventDetailsScreenTestTags.TITLE,
         )
       },
   ) { padding ->
