@@ -21,7 +21,8 @@ import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.ProfileRepositoryProvider
-import com.android.sample.model.profile.findUsername
+import com.android.sample.model.profile.UsernameLookup
+import com.android.sample.model.profile.lookupUsername
 import java.time.Clock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
@@ -147,7 +148,7 @@ class EventDetailsViewModel(
         }
         when (kind) {
           EventKind.PERSONAL -> loadPersonalEvent(ownerId, eventId)
-          EventKind.GROUP_SESSION -> loadGroupSession(eventId)
+          EventKind.GROUP_SESSION -> loadGroupSession(ownerId, eventId)
         }
       } catch (exception: CancellationException) {
         throw exception
@@ -170,11 +171,11 @@ class EventDetailsViewModel(
   }
 
   /** Reads a group session, resolves its member usernames, and publishes both in one update. */
-  private suspend fun loadGroupSession(eventId: String) {
+  private suspend fun loadGroupSession(ownerId: String, eventId: String) {
     groupSessionsRepository
         .getSession(eventId)
         .onSuccess { session ->
-          val members = resolveMembers(session)
+          val members = resolveMembers(session, ownerId)
           _uiState.update {
             it.copy(event = session, members = members, isLoading = false, error = null)
           }
@@ -182,17 +183,25 @@ class EventDetailsViewModel(
         .onFailure { exception -> publishLoadFailure(exception) }
   }
 
-  /** Looks up the members of [session] concurrently, host first, keeping that order. */
-  private suspend fun resolveMembers(session: GroupSession): List<EventMember> = coroutineScope {
-    session
-        .orderedMemberIds()
-        .map { id ->
-          async {
-            EventMember(id, profileRepository.findUsername(id), isHost = id == session.createdBy)
-          }
-        }
-        .awaitAll()
-  }
+  /** Resolves member rows concurrently in host-first order and marks the row for [ownerId]. */
+  private suspend fun resolveMembers(session: GroupSession, ownerId: String): List<EventMember> =
+      coroutineScope {
+        session
+            .orderedMemberIds()
+            .map { userId ->
+              async {
+                val lookup = profileRepository.lookupUsername(userId)
+                EventMember(
+                    userId = userId,
+                    username = (lookup as? UsernameLookup.Found)?.username,
+                    isHost = userId == session.createdBy,
+                    isCurrentUser = userId == ownerId,
+                    isUnavailable = lookup is UsernameLookup.Unavailable,
+                )
+              }
+            }
+            .awaitAll()
+      }
 
   /** Clears the displayed event and members and shows the error mapped from [exception]. */
   private fun publishLoadFailure(exception: Throwable) {

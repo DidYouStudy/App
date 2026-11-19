@@ -1,24 +1,9 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.model.profile
 
 import kotlinx.coroutines.CancellationException
-
-/**
- * Returns the username to show for [userId], or null when it cannot be shown.
- *
- * Null covers a missing profile, a blank username, and a failed lookup (a [Result.failure] or a
- * thrown exception), so one bad profile never fails a whole screen. Cancellation is propagated.
- * Shared by every ViewModel that shows other users by name.
- */
-suspend fun ProfileRepository.findUsername(userId: String): String? =
-    try {
-      getProfile(userId).getOrNull()?.username?.takeIf { it.isNotBlank() }
-    } catch (exception: CancellationException) {
-      throw exception
-    } catch (exception: Exception) {
-      null
-    }
 
 /** The outcome of looking up a user's username for display. */
 sealed interface UsernameLookup {
@@ -36,4 +21,18 @@ sealed interface UsernameLookup {
  * Looks up the username of [userId] and tells a missing name apart from a failed lookup, so one bad
  * profile never fails a whole screen. Cancellation is propagated.
  */
-suspend fun ProfileRepository.lookupUsername(userId: String): UsernameLookup = TODO("stub")
+suspend fun ProfileRepository.lookupUsername(userId: String): UsernameLookup =
+    try {
+      getProfile(userId)
+          .fold(
+              onSuccess = { profile ->
+                val username = profile?.username?.takeIf { it.isNotBlank() }
+                if (username == null) UsernameLookup.Missing else UsernameLookup.Found(username)
+              },
+              onFailure = { UsernameLookup.Unavailable },
+          )
+    } catch (exception: CancellationException) {
+      throw exception
+    } catch (exception: Exception) {
+      UsernameLookup.Unavailable
+    }
