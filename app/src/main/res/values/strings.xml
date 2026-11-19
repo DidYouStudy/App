@@ -76,6 +76,16 @@
     <!-- %1$s: the user's display name -->
     <string name="settings_greeting">Hello, %1$s!</string>
     <string name="settings_edit_username">Edit username</string>
+    <string name="settings_username_dialog_title">Edit username</string>
+    <string name="settings_username_field_label">Username</string>
+    <string name="settings_username_save">Save</string>
+    <string name="settings_username_cancel">Cancel</string>
+    <string name="settings_username_error_too_short">Use at least 3 characters.</string>
+    <string name="settings_username_error_too_long">Use at most 20 characters.</string>
+    <string name="settings_username_error_invalid_characters">Start with a letter or digit, then use only letters, digits, _ . or -.</string>
+    <string name="settings_username_error_taken">This username is already taken.</string>
+    <string name="settings_username_error_profile_unavailable">Your profile could not be found. Sign out and back in, then try again.</string>
+    <string name="settings_username_error_failure">Could not save your username. Check your connection and try again.</string>
     <string name="settings_change_profile_picture">Change profile picture</string>
     <string name="settings_preferences_button">Modify your preferences</string>
     <string name="settings_friends_button">Manage friends list</string>

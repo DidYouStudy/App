@@ -27,6 +27,23 @@ class UsernamePolicyTest {
 
   // The reservation key ignores letter case.
   @Test
+  fun issue_reportsTheFirstFormatProblem() {
+    assertNull(UsernamePolicy.issue("a_b.c-9"))
+    assertNull(UsernamePolicy.issue("  abc  "))
+    assertEquals(UsernamePolicy.Issue.TOO_SHORT, UsernamePolicy.issue("ab"))
+    assertEquals(UsernamePolicy.Issue.TOO_SHORT, UsernamePolicy.issue(""))
+    assertEquals(
+        UsernamePolicy.Issue.TOO_LONG,
+        UsernamePolicy.issue("a".repeat(UsernamePolicy.MAX_LENGTH + 1)),
+    )
+    assertEquals(UsernamePolicy.Issue.INVALID_CHARACTERS, UsernamePolicy.issue("_abc"))
+    assertEquals(UsernamePolicy.Issue.INVALID_CHARACTERS, UsernamePolicy.issue("ab c"))
+    assertEquals(UsernamePolicy.Issue.INVALID_CHARACTERS, UsernamePolicy.issue("é-abc"))
+    // Invalid characters win over length, so "a!" is reported as invalid, not too short.
+    assertEquals(UsernamePolicy.Issue.INVALID_CHARACTERS, UsernamePolicy.issue("a!"))
+  }
+
+  @Test
   fun key_isLowercase() {
     assertEquals("alice", UsernamePolicy.key("ALiCe"))
   }
