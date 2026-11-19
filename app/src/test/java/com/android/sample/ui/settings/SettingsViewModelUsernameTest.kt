@@ -46,6 +46,9 @@ class FakeProfileRepository(private val profile: UserProfile?) : ProfileReposito
     requestedUsernames += username
     return onUpdate(username)
   }
+
+  override suspend fun updateProfilePictureUrl(userId: String, url: String): Result<Unit> =
+      Result.failure(UnsupportedOperationException("Not needed in this test"))
 }
 
 /** Unit tests for the "Edit username" logic of [SettingsViewModel]. */
