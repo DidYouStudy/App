@@ -1,6 +1,7 @@
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.navigation
 
 import android.content.Context
@@ -13,9 +14,13 @@ import androidx.lifecycle.ViewModel
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.model.auth.AuthRepository
+import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.event.EventsRepositoryProvider
 import com.android.sample.model.event.GroupSession
+import com.android.sample.model.event.InMemoryEventsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepository
+import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
 import com.android.sample.model.location.FakeLocationProvider
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.UserProfile
@@ -32,6 +37,8 @@ import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import org.junit.After
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -42,6 +49,20 @@ import org.mockito.kotlin.verifyNoMoreInteractions
 @RunWith(AndroidJUnit4::class)
 class TopLevelScreensProfileButtonTest {
   @get:Rule val composeTestRule = createComposeRule()
+
+  @Before
+  fun setUp() {
+    AuthRepositoryProvider.setRepository(fakeAuthRepository)
+    EventsRepositoryProvider.setRepository(InMemoryEventsRepository())
+    GroupSessionsRepositoryProvider.setRepository(EmptyGroupSessionsRepository())
+  }
+
+  @After
+  fun tearDown() {
+    AuthRepositoryProvider.setRepository(null)
+    EventsRepositoryProvider.setRepository(null)
+    GroupSessionsRepositoryProvider.setRepository(null)
+  }
 
   private val fakeAuthRepository =
       object : AuthRepository {

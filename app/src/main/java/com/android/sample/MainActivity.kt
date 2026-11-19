@@ -172,7 +172,7 @@ fun DidYouStudyApp(
         startDestination = Screen.Dashboard.route,
         route = Screen.Dashboard.name,
     ) {
-      composable(Screen.Dashboard.route) {
+      composable(Screen.Dashboard.route) { entry ->
         DashboardScreen(
             navigationActions = navigationActions,
             onEventClick = {
@@ -186,6 +186,14 @@ fun DidYouStudyApp(
                   Screen.AddGroupSession,
                   applicationViewModel::canNavigateTo,
               )
+            },
+            onEventCardClick = { eventId ->
+              navController.runIfCurrentEntry(entry) {
+                navigationActions.navigateIfAllowed(
+                    Screen.EventDetails(eventId),
+                    applicationViewModel::canNavigateTo,
+                )
+              }
             },
         )
       }

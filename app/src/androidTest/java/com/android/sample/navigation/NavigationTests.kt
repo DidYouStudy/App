@@ -385,6 +385,34 @@ class NavigationTests {
     checkDashboardScreenIsDisplayed()
   }
 
+  /** Verifies clicking a study session card in the Dashboard navigates to EventDetails and back. */
+  @Test
+  fun clickingEventCardInDashboardNavigatesToEventDetailsAndBack() {
+    checkDashboardScreenIsDisplayed()
+    addCalendarEvent()
+    val sessionTag = DashboardContentTestTags.sessionItem(0)
+
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      composeTestRule.onAllNodesWithTag(sessionTag).fetchSemanticsNodes().isNotEmpty()
+    }
+    composeTestRule.onNodeWithTag(sessionTag).assertIsDisplayed().performClick()
+
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      composeTestRule
+          .onAllNodesWithTag(EventDetailsScreenTestTags.SCREEN)
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SCREEN).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.SUBJECT)
+        .assertIsDisplayed()
+        .assertTextContains("Navigation test event")
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.BACK_BUTTON).performClick()
+    checkDashboardScreenIsDisplayed()
+  }
+
   /** Verifies the Calendar FAB menu opens group-session creation and returns to Calendar. */
   @Test
   fun canNavigateToAddGroupSessionFromCalendarFabMenu() {
