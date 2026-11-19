@@ -47,11 +47,14 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -575,14 +578,19 @@ internal fun GroupSessionFilterRow(
       )
     }
     if (onCenterLocationClick != null) {
-      IconButton(
+      FilledIconButton(
           onClick = onCenterLocationClick,
           modifier = Modifier.testTag(GroupSessionScreenTestTags.CENTER_LOCATION_BUTTON),
+          shape = FloatingActionButtonDefaults.shape,
+          colors =
+              IconButtonDefaults.filledIconButtonColors(
+                  containerColor = MaterialTheme.colorScheme.surface,
+                  contentColor = MaterialTheme.colorScheme.primary,
+              ),
       ) {
         Icon(
             Icons.Default.MyLocation,
             contentDescription = stringResource(R.string.group_session_center_location_description),
-            tint = MaterialTheme.colorScheme.primary,
         )
       }
     }
