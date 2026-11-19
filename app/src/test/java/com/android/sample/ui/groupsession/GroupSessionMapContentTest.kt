@@ -10,7 +10,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -18,6 +22,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTouchInput
 import androidx.core.content.res.ResourcesCompat
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -56,7 +61,12 @@ class GroupSessionMapContentTest {
           Location(46.52, 6.56),
       )
 
-  private fun item(id: String, subject: String, isCreator: Boolean = false) =
+  private fun item(
+      id: String,
+      subject: String,
+      isCreator: Boolean = false,
+      isActionInProgress: Boolean = false,
+  ) =
       GroupSessionItem(
           session =
               GroupSession(
@@ -74,6 +84,7 @@ class GroupSessionMapContentTest {
               ),
           isMember = false,
           isCreator = isCreator,
+          isActionInProgress = isActionInProgress,
       )
 
   private val aab = room("AAB 0 26")
@@ -97,13 +108,14 @@ class GroupSessionMapContentTest {
       userLocation: Location? = null,
       cameraDestination: CameraDestination? = null,
       hasLocationPermission: Boolean = false,
+      roomsToShow: List<RoomSessions> = rooms,
   ) {
     composeTestRule.setContent {
       // The real Google map cannot load in a unit test; in inspection mode the map view shows a
       // stand-in with the same tap behaviour.
       CompositionLocalProvider(LocalInspectionMode provides true) {
         GroupSessionMapContent(
-            rooms = rooms,
+            rooms = roomsToShow,
             now = now,
             onJoin = onJoin,
             onLeave = {},
@@ -263,6 +275,36 @@ class GroupSessionMapContentTest {
     composeTestRule.onNodeWithText(JOIN_LABEL).performClick()
 
     assertEquals("s3", joined)
+  }
+
+  /** A pending join in the selected room shows progress and ignores card taps. */
+  @Test
+  fun pendingJoinOnACard_showsProgressAndIgnoresTap() {
+    var joined: String? = null
+    val pendingItem = item("pending", "Pending", isActionInProgress = true)
+    setContent(
+        onJoin = { joined = it },
+        initialSelectedRoom = cm.name,
+        roomsToShow = listOf(RoomSessions(cm, listOf(pendingItem))),
+    )
+    val sessionList = composeTestRule.onNodeWithTag(GroupSessionMapTestTags.SESSION_LIST)
+    sessionList.performScrollToNode(hasText("Pending"))
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.joinButton("pending"))
+        .assert(
+            hasAnyDescendant(
+                hasTestTag(GroupSessionScreenTestTags.actionProgress("pending")),
+            ),
+        )
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.actionProgress("pending"))
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.joinButton("pending"))
+        .performTouchInput { click() }
+
+    assertEquals(null, joined)
   }
 
   @Test

@@ -1,7 +1,14 @@
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.sharedComponents
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
@@ -34,6 +41,7 @@ import com.android.sample.ui.theme.Spacing
  * @param modifier Modifier applied to the [TopAppBar].
  * @param onProfileClick Called when the profile button is clicked.
  * @param actions Extra action composables displayed before the profile button.
+ * @param isOffline Whether to display the offline status banner under the top bar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,35 +50,44 @@ fun MainTopAppBar(
     modifier: Modifier = Modifier,
     onProfileClick: () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
+    isOffline: Boolean = false,
 ) {
-  TopAppBar(
-      title = {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE),
-        )
-      },
-      colors =
-          TopAppBarDefaults.topAppBarColors(
-              containerColor = MaterialTheme.colorScheme.surfaceContainer,
-              titleContentColor = MaterialTheme.colorScheme.onSurface,
-          ),
-      actions = {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(Spacing.small),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-          actions()
-          ProfileButton(
-              onClick = onProfileClick,
-              modifier = Modifier.padding(end = Dimens.profileButtonPadding),
+  Column(modifier = modifier) {
+    TopAppBar(
+        title = {
+          Text(
+              text = title,
+              style = MaterialTheme.typography.headlineLarge,
+              fontWeight = FontWeight.Bold,
+              modifier = Modifier.testTag(NavigationTestTags.TOP_BAR_TITLE),
           )
-        }
-      },
-      modifier = modifier,
-  )
+        },
+        colors =
+            TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                titleContentColor = MaterialTheme.colorScheme.onSurface,
+            ),
+        actions = {
+          Row(
+              horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+              verticalAlignment = Alignment.CenterVertically,
+          ) {
+            actions()
+            ProfileButton(
+                onClick = onProfileClick,
+                modifier = Modifier.padding(end = Dimens.profileButtonPadding),
+            )
+          }
+        },
+    )
+    AnimatedVisibility(
+        visible = isOffline,
+        enter = expandVertically() + fadeIn(),
+        exit = shrinkVertically() + fadeOut(),
+    ) {
+      OfflineBanner()
+    }
+  }
 }
 
 /**
@@ -85,6 +102,7 @@ fun MainTopAppBar(
  * @param backButtonTestTag Test tag applied to the back icon button.
  * @param titleTestTag Test tag applied to the title text.
  * @param actions Extra action composables displayed on the right.
+ * @param isOffline Whether to display the offline status banner under the top bar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,38 +115,47 @@ fun SecondaryMediumTopAppBar(
     backButtonTestTag: String = NavigationTestTags.GO_BACK_BUTTON,
     titleTestTag: String = NavigationTestTags.TOP_BAR_TITLE,
     actions: @Composable RowScope.() -> Unit = {},
+    isOffline: Boolean = false,
 ) {
-  MediumTopAppBar(
-      title = {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.testTag(titleTestTag),
-        )
-      },
-      navigationIcon = {
-        if (onBackClick != null) {
-          IconButton(
-              onClick = onBackClick,
-              enabled = backButtonEnabled,
-              modifier = Modifier.testTag(backButtonTestTag),
-          ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = backButtonDescription,
-            )
+  Column(modifier = modifier) {
+    MediumTopAppBar(
+        title = {
+          Text(
+              text = title,
+              style = MaterialTheme.typography.headlineLarge,
+              fontWeight = FontWeight.Bold,
+              modifier = Modifier.testTag(titleTestTag),
+          )
+        },
+        navigationIcon = {
+          if (onBackClick != null) {
+            IconButton(
+                onClick = onBackClick,
+                enabled = backButtonEnabled,
+                modifier = Modifier.testTag(backButtonTestTag),
+            ) {
+              Icon(
+                  imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                  contentDescription = backButtonDescription,
+              )
+            }
           }
-        }
-      },
-      colors =
-          TopAppBarDefaults.topAppBarColors(
-              containerColor = MaterialTheme.colorScheme.surfaceContainer,
-              scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-              navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-              titleContentColor = MaterialTheme.colorScheme.onSurface,
-          ),
-      actions = actions,
-      modifier = modifier,
-  )
+        },
+        colors =
+            TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                titleContentColor = MaterialTheme.colorScheme.onSurface,
+            ),
+        actions = actions,
+    )
+    AnimatedVisibility(
+        visible = isOffline,
+        enter = expandVertically() + fadeIn(),
+        exit = shrinkVertically() + fadeOut(),
+    ) {
+      OfflineBanner()
+    }
+  }
 }

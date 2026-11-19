@@ -5,6 +5,7 @@
 <resources>
     <string name="app_name">DidYouStudy</string>
     <string name="button_go_back">Back</string>
+    <string name="offline_banner_text">You\'re offline</string>
     <string name="not_implemented">(Not implemented)</string>
     <string name="toast_not_implemented">Not implemented yet</string>
     <string name="nav_tab_dashboard">Dashboard</string>
@@ -242,6 +243,8 @@
     <string name="group_session_action_leave">Leave</string>
     <string name="group_session_action_joined">Joined</string>
     <string name="group_session_action_join">Join</string>
+    <string name="group_session_action_joining">Joining&#8230;</string>
+    <string name="group_session_action_leaving">Leaving&#8230;</string>
     <!-- %1$s: day ("Today" or a weekday), %2$s: start time, %3$s: end time -->
     <string name="group_session_date_time_range">%1$s · %2$s – %3$s</string>
     <string name="group_session_participant_count">%1$d</string>
