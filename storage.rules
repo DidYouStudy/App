@@ -7,17 +7,20 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // A profile picture is the single object profilePictures/{userId}.jpg. Like the profile
-    // document, any signed-in user can read it; only its owner can create or replace it, and only
-    // with a JPEG under 1 MB (the app downscales far below that). There is no delete rule yet:
-    // deleting is denied until a "remove picture" feature needs it.
+    // A user's profile picture lives in one of two objects, profilePictures/{userId}_a.jpg and
+    // profilePictures/{userId}_b.jpg. The app uploads to the slot the profile does not point to, so
+    // the current picture and its URL stay valid until the new URL is saved (replacing an object
+    // invalidates its old URL). Like the profile document, any signed-in user can read them; only
+    // the owner can create or replace them, and only with a JPEG under 1 MB (the app downscales far
+    // below that). There is no delete rule yet: deleting is denied until a "remove picture" feature
+    // needs it.
     match /profilePictures/{fileName} {
       // The upload itself needs this rule: getDownloadUrl() reads the object's metadata right after
       // the upload. Showing a picture does not: it is loaded from the tokenized download URL saved
       // in the profile, which bypasses these rules, so this rule does not control who can view it.
       allow read: if request.auth != null;
       allow create, update: if request.auth != null
-        && fileName == request.auth.uid + '.jpg'
+        && (fileName == request.auth.uid + '_a.jpg' || fileName == request.auth.uid + '_b.jpg')
         && request.resource.contentType == 'image/jpeg'
         && request.resource.size < 1024 * 1024;
     }

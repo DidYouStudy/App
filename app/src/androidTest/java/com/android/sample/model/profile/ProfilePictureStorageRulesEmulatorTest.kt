@@ -57,17 +57,20 @@ class ProfilePictureStorageRulesEmulatorTest {
     clients.clear()
   }
 
-  /** The owner can upload a picture to their own path, read it back, and replace it. */
+  /** The owner can upload to each of their two slots, read them back, and replace a slot. */
   @Test
   fun ownerCanUploadReadAndReplaceOwnPicture() = runBlocking {
     val first = bytes(size = 2_048)
     val replacement = bytes(size = 3_072)
 
-    upload(pictureRef(owner, owner.uid), first)
-    assertArrayEquals(first, download(pictureRef(owner, owner.uid)))
+    upload(pictureRef(owner, owner.uid, "a"), first)
+    assertArrayEquals(first, download(pictureRef(owner, owner.uid, "a")))
 
-    upload(pictureRef(owner, owner.uid), replacement)
-    assertArrayEquals(replacement, download(pictureRef(owner, owner.uid)))
+    upload(pictureRef(owner, owner.uid, "b"), replacement)
+    assertArrayEquals(replacement, download(pictureRef(owner, owner.uid, "b")))
+
+    upload(pictureRef(owner, owner.uid, "a"), replacement)
+    assertArrayEquals(replacement, download(pictureRef(owner, owner.uid, "a")))
   }
 
   /** Any signed-in user can read someone's picture, but a signed-out client cannot. */
@@ -80,11 +83,21 @@ class ProfilePictureStorageRulesEmulatorTest {
     denied { download(pictureRef(signedOut, owner.uid)) }
   }
 
-  /** Neither another signed-in user nor a signed-out client can write to the owner's path. */
+  /** Neither another signed-in user nor a signed-out client can write to the owner's slots. */
   @Test
   fun onlyOwnerCanWriteToOwnPath() = runBlocking {
-    denied { upload(pictureRef(reader, owner.uid), bytes(size = 1_024)) }
-    denied { upload(pictureRef(signedOut, owner.uid), bytes(size = 1_024)) }
+    listOf("a", "b").forEach { slot ->
+      denied { upload(pictureRef(reader, owner.uid, slot), bytes(size = 1_024)) }
+      denied { upload(pictureRef(signedOut, owner.uid, slot), bytes(size = 1_024)) }
+    }
+  }
+
+  /** Only the two slot names are allowed: the old `{uid}.jpg` and any other slot are refused. */
+  @Test
+  fun onlyTheTwoSlotNamesAreAllowed() = runBlocking {
+    listOf("${owner.uid}.jpg", "${owner.uid}_c.jpg", "${owner.uid}_a.jpg.bak").forEach { name ->
+      denied { upload(owner.storage.reference.child("profilePictures/$name"), bytes(size = 1_024)) }
+    }
   }
 
   /** An upload whose content type is not `image/jpeg` is rejected, even for the owner. */
@@ -141,9 +154,9 @@ class ProfilePictureStorageRulesEmulatorTest {
         .uid
   }
 
-  /** Returns the reference of `profilePictures/{uid}.jpg` as seen by [client]. */
-  private fun pictureRef(client: Client, uid: String): StorageReference =
-      client.storage.reference.child("profilePictures/$uid.jpg")
+  /** Returns the reference of `profilePictures/{uid}_{slot}.jpg` as seen by [client]. */
+  private fun pictureRef(client: Client, uid: String, slot: String = "a"): StorageReference =
+      client.storage.reference.child("profilePictures/${uid}_$slot.jpg")
 
   /** Builds [size] arbitrary bytes; the rules look at metadata and size, not at the content. */
   private fun bytes(size: Int): ByteArray = ByteArray(size) { (it % 251).toByte() }

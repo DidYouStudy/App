@@ -68,37 +68,57 @@ class ProfilePictureRepositoryStorageEmulatorTest {
     app.delete()
   }
 
-  /** An upload succeeds, returns a URL, and stores exactly the bytes at the user's path. */
+  /** A first upload succeeds, returns a URL, and stores exactly the bytes in the user's slot A. */
   @Test
-  fun upload_storesBytesAtUserPathAndReturnsUrl() = runBlocking {
+  fun upload_firstUploadStoresBytesInSlotAAndReturnsUrl() = runBlocking {
     val bytes = ByteArray(UPLOAD_SIZE_BYTES) { (it % 251).toByte() }
 
-    val url = timed { repository.uploadProfilePicture(uid, bytes) }.getOrThrow()
+    val url = timed { repository.uploadProfilePicture(uid, bytes, null) }.getOrThrow()
 
-    assertTrue(url.contains("profilePictures"))
-    val stored = timed {
-      storage.reference.child("profilePictures/$uid.jpg").getBytes(MAX_DOWNLOAD_BYTES).await()
-    }
-    assertArrayEquals(bytes, stored)
+    assertTrue(url.contains("${uid}_a.jpg"))
+    assertArrayEquals(bytes, timed { storedBytes("a") })
   }
 
-  /** Replacing the picture at the fixed path yields a different URL, so image caches refresh. */
+  /**
+   * A second upload goes to the other slot and leaves the first picture untouched, so the profile's
+   * current picture stays intact until the new URL is saved. A third upload reuses slot A.
+   */
   @Test
-  fun upload_secondUploadReturnsDifferentUrl() = runBlocking {
-    val first = timed { repository.uploadProfilePicture(uid, byteArrayOf(1, 2, 3)) }.getOrThrow()
-    val second = timed { repository.uploadProfilePicture(uid, byteArrayOf(4, 5, 6)) }.getOrThrow()
+  fun upload_alternatesSlotsAndNeverOverwritesTheCurrentPicture() = runBlocking {
+    val firstBytes = byteArrayOf(1, 2, 3)
+    val secondBytes = byteArrayOf(4, 5, 6)
+    val thirdBytes = byteArrayOf(7, 8, 9)
+
+    val first = timed { repository.uploadProfilePicture(uid, firstBytes, null) }.getOrThrow()
+    val second = timed { repository.uploadProfilePicture(uid, secondBytes, first) }.getOrThrow()
 
     assertNotEquals(first, second)
+    assertTrue(second.contains("${uid}_b.jpg"))
+    assertArrayEquals(firstBytes, timed { storedBytes("a") })
+    assertArrayEquals(secondBytes, timed { storedBytes("b") })
+
+    val third = timed { repository.uploadProfilePicture(uid, thirdBytes, second) }.getOrThrow()
+
+    assertTrue(third.contains("${uid}_a.jpg"))
+    assertArrayEquals(secondBytes, timed { storedBytes("b") })
+    assertArrayEquals(thirdBytes, timed { storedBytes("a") })
   }
 
   /** The rules refuse an upload to someone else's path, which surfaces as STORAGE_FAILURE. */
   @Test
   fun upload_forAnotherUser_failsWithStorageFailure() = runBlocking {
-    val result = timed { repository.uploadProfilePicture("not-$uid", byteArrayOf(1, 2, 3)) }
+    val result = timed { repository.uploadProfilePicture("not-$uid", byteArrayOf(1, 2, 3), null) }
 
     val failure = result.exceptionOrNull() as ProfilePictureException
     assertEquals(ProfilePictureError.STORAGE_FAILURE, failure.error)
   }
+
+  /** Reads back the bytes stored in the signed-in user's picture [slot] ("a" or "b"). */
+  private suspend fun storedBytes(slot: String): ByteArray =
+      storage.reference
+          .child("profilePictures/${uid}_$slot.jpg")
+          .getBytes(MAX_DOWNLOAD_BYTES)
+          .await()
 
   /** Bounds a call so a stuck emulator fails the test instead of hanging it. */
   private suspend fun <T> timed(action: suspend () -> T): T =

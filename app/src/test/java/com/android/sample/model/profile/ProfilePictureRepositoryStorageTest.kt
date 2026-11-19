@@ -31,6 +31,7 @@ class ProfilePictureRepositoryStorageTest {
   private lateinit var storage: FirebaseStorage
   private lateinit var root: StorageReference
   private lateinit var picture: StorageReference
+  private lateinit var pictureB: StorageReference
   private lateinit var repository: ProfilePictureRepositoryStorage
   private val bytes = byteArrayOf(1, 2, 3)
 
@@ -39,8 +40,10 @@ class ProfilePictureRepositoryStorageTest {
     storage = mock(FirebaseStorage::class.java)
     root = mock(StorageReference::class.java)
     picture = mock(StorageReference::class.java)
+    pictureB = mock(StorageReference::class.java)
     `when`(storage.reference).thenReturn(root)
-    `when`(root.child("profilePictures/user123.jpg")).thenReturn(picture)
+    `when`(root.child("profilePictures/user123_a.jpg")).thenReturn(picture)
+    `when`(root.child("profilePictures/user123_b.jpg")).thenReturn(pictureB)
     val context = mock(Context::class.java)
     `when`(context.getString(R.string.profile_picture_storage_folder)).thenReturn("profilePictures")
     `when`(context.getString(R.string.profile_picture_content_type)).thenReturn("image/jpeg")
@@ -59,14 +62,17 @@ class ProfilePictureRepositoryStorageTest {
     return task
   }
 
-  /** Makes the picture reference return [task] from `putBytes`; [task] is built beforehand. */
-  private fun stubUpload(task: UploadTask) {
-    `when`(picture.putBytes(any(), any())).thenReturn(task)
+  /**
+   * Makes slot A (or slot B when [target] is [pictureB]) return [task] from `putBytes`; [task] is
+   * built beforehand.
+   */
+  private fun stubUpload(task: UploadTask, target: StorageReference = picture) {
+    `when`(target.putBytes(any(), any())).thenReturn(task)
   }
 
-  /** Makes the picture reference return [task] from `downloadUrl`. */
-  private fun stubUrl(task: Task<Uri>) {
-    `when`(picture.downloadUrl).thenReturn(task)
+  /** Makes slot A (or slot B when [target] is [pictureB]) return [task] from `downloadUrl`. */
+  private fun stubUrl(task: Task<Uri>, target: StorageReference = picture) {
+    `when`(target.downloadUrl).thenReturn(task)
   }
 
   private fun urlOf(value: String): Uri {
@@ -75,13 +81,13 @@ class ProfilePictureRepositoryStorageTest {
     return uri
   }
 
-  // Uploads a JPEG to the user's own path and returns the download URL.
+  // Uploads a JPEG to one of the user's own slots and returns the download URL.
   @Test
   fun uploadProfilePicture_uploadsJpegAndReturnsDownloadUrl() = runTest {
     stubUpload(finishedUpload())
     stubUrl(Tasks.forResult(urlOf("https://example.test/a.jpg")))
 
-    val result = repository.uploadProfilePicture("user123", bytes)
+    val result = repository.uploadProfilePicture("user123", bytes, null)
 
     assertEquals("https://example.test/a.jpg", result.getOrThrow())
     val metadata = argumentCaptor<StorageMetadata>()
@@ -93,7 +99,7 @@ class ProfilePictureRepositoryStorageTest {
   @Test
   fun uploadProfilePicture_rejectsInvalidUserId() = runTest {
     listOf("", "   ", "a/b").forEach { userId ->
-      val result = repository.uploadProfilePicture(userId, bytes)
+      val result = repository.uploadProfilePicture(userId, bytes, null)
 
       assertEquals(ProfilePictureError.INVALID_USER_ID, error(result).error)
     }
@@ -103,7 +109,7 @@ class ProfilePictureRepositoryStorageTest {
   // An empty image is rejected before touching Storage.
   @Test
   fun uploadProfilePicture_rejectsEmptyImage() = runTest {
-    val result = repository.uploadProfilePicture("user123", ByteArray(0))
+    val result = repository.uploadProfilePicture("user123", ByteArray(0), null)
 
     assertEquals(ProfilePictureError.EMPTY_IMAGE, error(result).error)
     verify(storage, never()).reference
@@ -115,7 +121,7 @@ class ProfilePictureRepositoryStorageTest {
     val cause = mock(StorageException::class.java)
     stubUpload(finishedUpload(failure = cause))
 
-    val result = repository.uploadProfilePicture("user123", bytes)
+    val result = repository.uploadProfilePicture("user123", bytes, null)
 
     assertEquals(ProfilePictureError.STORAGE_FAILURE, error(result).error)
     assertSame(cause, error(result).cause)
@@ -127,7 +133,7 @@ class ProfilePictureRepositoryStorageTest {
     stubUpload(finishedUpload())
     stubUrl(Tasks.forException(IllegalStateException("boom")))
 
-    val result = repository.uploadProfilePicture("user123", bytes)
+    val result = repository.uploadProfilePicture("user123", bytes, null)
 
     assertEquals(ProfilePictureError.UNKNOWN, error(result).error)
   }
@@ -139,9 +145,79 @@ class ProfilePictureRepositoryStorageTest {
     stubUrl(Tasks.forException(CancellationException("cancelled")))
 
     assertThrows(CancellationException::class.java) {
-      runBlocking { repository.uploadProfilePicture("user123", bytes) }
+      runBlocking { repository.uploadProfilePicture("user123", bytes, null) }
     }
   }
+
+  // Without a current picture, the first slot is used.
+  @Test
+  fun uploadProfilePicture_withoutCurrentUrl_usesSlotA() = runTest {
+    stubUpload(finishedUpload())
+    stubUrl(Tasks.forResult(urlOf("https://example.test/a.jpg")))
+
+    repository.uploadProfilePicture("user123", bytes, null)
+
+    verify(picture).putBytes(any(), any())
+    verify(pictureB, never()).putBytes(any(), any())
+  }
+
+  // A profile pointing to slot A gets its new picture in slot B, so slot A is left untouched.
+  @Test
+  fun uploadProfilePicture_currentUrlInSlotA_usesSlotB() = runTest {
+    stubUpload(finishedUpload(), pictureB)
+    stubUrl(Tasks.forResult(urlOf("https://example.test/b.jpg")), pictureB)
+
+    val result = repository.uploadProfilePicture("user123", bytes, urlInSlot("a"))
+
+    assertEquals("https://example.test/b.jpg", result.getOrThrow())
+    verify(pictureB).putBytes(any(), any())
+    verify(picture, never()).putBytes(any(), any())
+  }
+
+  // A profile pointing to slot B goes back to slot A, which holds the older picture.
+  @Test
+  fun uploadProfilePicture_currentUrlInSlotB_usesSlotA() = runTest {
+    stubUpload(finishedUpload())
+    stubUrl(Tasks.forResult(urlOf("https://example.test/a.jpg")))
+
+    repository.uploadProfilePicture("user123", bytes, urlInSlot("b"))
+
+    verify(picture).putBytes(any(), any())
+    verify(pictureB, never()).putBytes(any(), any())
+  }
+
+  // A URL that is not one of the user's slots, such as an older format, selects slot A.
+  @Test
+  fun uploadProfilePicture_unrecognizedCurrentUrl_usesSlotA() = runTest {
+    stubUpload(finishedUpload())
+    stubUrl(Tasks.forResult(urlOf("https://example.test/a.jpg")))
+
+    repository.uploadProfilePicture(
+        "user123",
+        bytes,
+        "https://example.test/o/profilePictures%2Fuser123.jpg?alt=media&token=t",
+    )
+
+    verify(picture).putBytes(any(), any())
+    verify(pictureB, never()).putBytes(any(), any())
+  }
+
+  // The point of the slots: even when the upload fails after the bytes are stored (here while
+  // fetching the URL), the slot the profile points to has not been written to.
+  @Test
+  fun uploadProfilePicture_failureAfterUpload_neverTouchesCurrentSlot() = runTest {
+    stubUpload(finishedUpload(), pictureB)
+    stubUrl(Tasks.forException(IllegalStateException("boom")), pictureB)
+
+    val result = repository.uploadProfilePicture("user123", bytes, urlInSlot("a"))
+
+    assertTrue(result.isFailure)
+    verify(picture, never()).putBytes(any(), any())
+  }
+
+  /** A download URL shaped like Firebase's, for the user's picture in the given [slot]. */
+  private fun urlInSlot(slot: String) =
+      "https://example.test/o/profilePictures%2Fuser123_$slot.jpg?alt=media&token=t"
 
   /** Returns the [ProfilePictureException] of a failed [result], failing the test otherwise. */
   private fun error(result: Result<String>): ProfilePictureException {
