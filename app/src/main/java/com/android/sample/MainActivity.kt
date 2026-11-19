@@ -292,10 +292,10 @@ fun DidYouStudyApp(
           kind = kind,
           viewModel = viewModel,
           onNavigateBack = { navController.runIfCurrentEntry(entry, navigationActions::goBack) },
-          onEdit = { selectedEventId, _ ->
+          onEdit = { selectedEventId, selectedKind ->
             navController.runIfCurrentEntry(entry) {
               navigationActions.navigateIfAllowed(
-                  Screen.EditEvent(selectedEventId),
+                  Screen.EditEvent(selectedEventId, selectedKind),
                   applicationViewModel::canNavigateTo,
               )
             }

@@ -74,6 +74,12 @@ internal fun Event.toDisplay(
           },
       isGroupSession = isGroupSession,
       participants = if (isGroupSession) members else emptyList(),
+      actions =
+          when {
+            !isGroupSession -> EventDetailsActionSet.EDIT_AND_DELETE
+            members.any { it.isHost && it.isCurrentUser } -> EventDetailsActionSet.EDIT_ONLY
+            else -> EventDetailsActionSet.NONE
+          },
   )
 }
 
