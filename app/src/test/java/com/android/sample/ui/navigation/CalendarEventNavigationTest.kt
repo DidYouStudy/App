@@ -170,6 +170,58 @@ class CalendarEventNavigationTest {
     composeRule.onNodeWithTag(joinedCard).assertIsDisplayed()
   }
 
+  /** The host opens the group session editor from Details, and Details shows the saved change. */
+  @Test
+  fun hostEditsGroupSessionFromDetailsAndDetailsRefreshes() {
+    val hosted =
+        GroupSession(
+            id = "hosted-session",
+            createdBy = userId,
+            memberIds = listOf(userId),
+            details = event("unused", previousMonday.plusDays(2), "Hosted revision").details,
+            createdAt = selectedEvent.createdAt,
+        )
+    runBlocking { groupSessions.saveSession(userId, hosted).getOrThrow() }
+    composeRule
+        .onNodeWithTag(CalendarTestTags.eventCard(hosted.id, dayIndex = 2))
+        .performTouchInput { click(center) }
+    composeRule.onNodeWithTag(DetailsTags.SUBJECT).assertTextContains("Hosted revision")
+    composeRule.onNodeWithTag(DetailsTags.DELETE_BUTTON).assertDoesNotExist()
+
+    composeRule.onNodeWithTag(DetailsTags.EDIT_BUTTON).performClick()
+    composeRule.onNodeWithTag(EditTags.SUBJECT_SELECTOR).assertTextContains("Hosted revision")
+    replaceDescription("Bring past exams")
+    composeRule.onNodeWithTag(EditTags.SAVE_BUTTON).performClick()
+
+    composeRule.onNodeWithTag(DetailsTags.DESCRIPTION).assertTextContains("Bring past exams")
+    val stored = runBlocking { groupSessions.getSession(hosted.id).getOrThrow() }
+    assertEquals("Bring past exams", stored.details.description)
+    composeRule.onNodeWithTag(DetailsTags.BACK_BUTTON).performClick()
+    assertCalendarWeekIsDisplayed()
+  }
+
+  /** A member who does not host the session gets no Edit or Delete in Details. */
+  @Test
+  fun memberSeesNoActionsOnGroupSessionDetails() {
+    val joined =
+        GroupSession(
+            id = "joined-session",
+            createdBy = "another-student",
+            memberIds = listOf("another-student", userId),
+            details = event("unused", previousMonday.plusDays(2), "Group revision").details,
+            createdAt = selectedEvent.createdAt,
+        )
+    runBlocking { groupSessions.saveSession(joined.createdBy, joined).getOrThrow() }
+
+    composeRule
+        .onNodeWithTag(CalendarTestTags.eventCard(joined.id, dayIndex = 2))
+        .performTouchInput { click(center) }
+
+    composeRule.onNodeWithTag(DetailsTags.SUBJECT).assertTextContains("Group revision")
+    composeRule.onNodeWithTag(DetailsTags.EDIT_BUTTON).assertDoesNotExist()
+    composeRule.onNodeWithTag(DetailsTags.DELETE_BUTTON).assertDoesNotExist()
+  }
+
   /** Renders both halves of a joined session that crosses the selected week's boundary. */
   @Test
   fun joinedGroupSessionAppearsInBothWeeksWhenItCrossesSundayMidnight() {

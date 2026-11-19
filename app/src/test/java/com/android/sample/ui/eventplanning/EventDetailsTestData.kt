@@ -39,6 +39,7 @@ internal fun sampleDisplay(
         ),
     isGroupSession: Boolean = false,
     participants: List<EventMember> = emptyList(),
+    actions: EventDetailsActionSet = EventDetailsActionSet.EDIT_AND_DELETE,
 ) =
     EventDetailsDisplay(
         type = type,
@@ -51,6 +52,7 @@ internal fun sampleDisplay(
         tasks = tasks,
         isGroupSession = isGroupSession,
         participants = participants,
+        actions = actions,
     )
 
 /** Builds a [PersonalEvent] for tests; every test class goes through this single factory. */

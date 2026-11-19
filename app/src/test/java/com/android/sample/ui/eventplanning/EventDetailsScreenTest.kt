@@ -118,7 +118,7 @@ class EventDetailsScreenTest {
       EventDetailsScreen(
           eventId = EVENT_ID,
           onNavigateBack = { events += "back" },
-          onEdit = { events += "edit:$it" },
+          onEdit = { id, kind -> events += "edit:$id:$kind" },
           viewModel = viewModel,
       )
     }
@@ -334,6 +334,55 @@ class EventDetailsScreenTest {
   }
 
   @Test
+  fun editOnlyActionsShowEditButNotDelete() {
+    val events = mutableListOf<String>()
+    setStatelessContent(
+        events = events,
+        display = groupDisplay().copy(actions = EventDetailsActionSet.EDIT_ONLY),
+    )
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_BUTTON).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EDIT_BUTTON).performClick()
+    assertEquals(listOf("edit"), events)
+  }
+
+  @Test
+  fun noActionsShowsNeitherButton() {
+    setStatelessContent(display = groupDisplay().copy(actions = EventDetailsActionSet.NONE))
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EDIT_BUTTON).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_BUTTON).assertDoesNotExist()
+  }
+
+  @Test
+  fun statefulHostEditForwardsTheSessionIdAndGroupKind() {
+    val events = mutableListOf<String>()
+    val groupSessions = InMemoryGroupSessionsRepository()
+    val session = sampleGroupSession(createdBy = USER_ID, memberIds = listOf(USER_ID))
+    runBlocking { groupSessions.saveSession(USER_ID, session).getOrThrow() }
+    val viewModel =
+        EventDetailsViewModel(
+            authRepository,
+            eventsRepository,
+            groupSessions,
+            FakeProfileRepository(),
+        )
+    composeTestRule.setContent {
+      EventDetailsScreen(
+          eventId = session.id,
+          kind = EventKind.GROUP_SESSION,
+          onEdit = { id, kind -> events += "edit:$id:$kind" },
+          viewModel = viewModel,
+      )
+    }
+    settle()
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EDIT_BUTTON).performClick()
+
+    assertEquals(listOf("edit:${session.id}:GROUP_SESSION"), events)
+  }
+
+  @Test
   fun actionButtonsShowTheirLabels() {
     setStatelessContent()
 
@@ -546,7 +595,7 @@ class EventDetailsScreenTest {
 
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EDIT_BUTTON).performClick()
 
-    assertEquals(listOf("edit:$EVENT_ID"), events)
+    assertEquals(listOf("edit:$EVENT_ID:PERSONAL"), events)
   }
 
   @Test

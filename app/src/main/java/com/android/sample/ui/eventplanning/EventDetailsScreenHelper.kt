@@ -31,7 +31,18 @@ internal data class EventDetailsDisplay(
     val tasks: List<EventTaskDisplay>,
     val isGroupSession: Boolean = false,
     val participants: List<EventMember> = emptyList(),
+    val actions: EventDetailsActionSet = EventDetailsActionSet.EDIT_AND_DELETE,
 )
+
+/** Which action buttons the Event details screen offers for the displayed event. */
+internal enum class EventDetailsActionSet {
+  /** A personal event: Edit and Delete. */
+  EDIT_AND_DELETE,
+  /** A group session hosted by the signed-in user: Edit only (Delete lives in the editor). */
+  EDIT_ONLY,
+  /** A group session the signed-in user joined: no actions. */
+  NONE,
+}
 
 /** One checklist entry of [EventDetailsDisplay]. */
 internal data class EventTaskDisplay(val text: String, val isCompleted: Boolean)

@@ -99,7 +99,7 @@ fun EventDetailsScreen(
     eventId: String,
     kind: EventKind = EventKind.PERSONAL,
     onNavigateBack: () -> Unit = {},
-    onEdit: (String) -> Unit = {},
+    onEdit: (String, EventKind) -> Unit = { _, _ -> },
     viewModel: EventDetailsViewModel = eventDetailsViewModel(),
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -137,7 +137,7 @@ fun EventDetailsScreen(
       onToggleTask = viewModel::toggleTask,
       onEdit = {
         val state = viewModel.uiState.value
-        if (!state.isBusy) state.event?.let { onEdit(it.id) }
+        if (!state.isBusy) state.event?.let { onEdit(it.id, EventKind.PERSONAL) }
       },
       onDelete = viewModel::deleteEvent,
   )
