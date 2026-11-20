@@ -640,8 +640,7 @@ class GroupSessionsViewModel(
   /** Publishes resolved rows in membership order with the host pinned to the top. */
   private fun updateParticipantsSheet() {
     val session = selectedParticipantsSession() ?: return
-    val orderedIds =
-        listOf(session.createdBy) + session.memberIds.filter { it != session.createdBy }
+    val orderedIds = session.orderedMemberIds()
     val rows = orderedIds.mapNotNull { userId ->
       val username = usernamesByUserId[userId]
       val status = participantNamesWithoutUsername[userId]

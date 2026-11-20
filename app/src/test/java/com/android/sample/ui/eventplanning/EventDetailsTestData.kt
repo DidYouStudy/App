@@ -1,9 +1,11 @@
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.eventplanning
 
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.PersonalEvent
 import java.time.Instant
 
@@ -74,4 +76,35 @@ internal fun samplePersonalEvent(
         createdAt = SAMPLE_CREATED_AT,
         updatedAt = SAMPLE_CREATED_AT,
         tasks = tasks,
+    )
+
+/** ID of the session built by [sampleGroupSession]. */
+internal const val SAMPLE_SESSION_ID = "session-1"
+
+/** Builds a [GroupSession] for tests; [createdBy] is its host and [memberIds] its stored order. */
+internal fun sampleGroupSession(
+    id: String = SAMPLE_SESSION_ID,
+    createdBy: String = SAMPLE_OWNER_ID,
+    memberIds: List<String> = listOf(createdBy),
+    type: EventType = EventType.STUDY_SESSION,
+    subject: String? = "Algebra",
+    location: String? = "CM5",
+    description: String? = "Exercise session focusing on the new concepts of week 8.",
+    startsAt: Instant = SAMPLE_START,
+    endsAt: Instant = SAMPLE_END,
+) =
+    GroupSession(
+        id = id,
+        createdBy = createdBy,
+        memberIds = memberIds,
+        details =
+            EventDetails(
+                type = type,
+                subject = subject,
+                startsAt = startsAt,
+                endsAt = endsAt,
+                location = location,
+                description = description,
+            ),
+        createdAt = SAMPLE_CREATED_AT,
     )

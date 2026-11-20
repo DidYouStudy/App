@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.event
@@ -82,5 +83,29 @@ class GroupSessionTest {
     assertThrows(IllegalArgumentException::class.java) {
       session().copy(memberIds = members + listOf("creator", "extra"))
     }
+  }
+
+  /** The creator is listed first even when stored after other members. */
+  @Test
+  fun orderedMemberIds_creatorStoredLater_isListedFirst() {
+    val value = session().copy(memberIds = listOf("first", "second", "creator"))
+
+    assertEquals(listOf("creator", "first", "second"), value.orderedMemberIds())
+  }
+
+  /** A session with only its creator lists just the creator. */
+  @Test
+  fun orderedMemberIds_creatorOnly_returnsCreator() {
+    val value = session().copy(memberIds = listOf("creator"))
+
+    assertEquals(listOf("creator"), value.orderedMemberIds())
+  }
+
+  /** The other members keep their stored order. */
+  @Test
+  fun orderedMemberIds_otherMembers_keepStoredOrder() {
+    val value = session().copy(memberIds = listOf("zoe", "creator", "adam", "mia"))
+
+    assertEquals(listOf("creator", "zoe", "adam", "mia"), value.orderedMemberIds())
   }
 }

@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.eventplanning
@@ -24,6 +25,8 @@ import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.PersonalEvent
+import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
+import com.android.sample.model.profile.FakeProfileRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -117,7 +120,13 @@ class EventDetailsScreenTest {
     }
   }
 
-  private fun createViewModel() = EventDetailsViewModel(authRepository, eventsRepository)
+  private fun createViewModel() =
+      EventDetailsViewModel(
+          authRepository,
+          eventsRepository,
+          InMemoryGroupSessionsRepository(),
+          FakeProfileRepository(),
+      )
 
   private fun stubGetEvent(result: Result<PersonalEvent>) {
     runBlocking { whenever(eventsRepository.getEvent(USER_ID, EVENT_ID)).thenReturn(result) }

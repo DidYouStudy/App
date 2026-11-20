@@ -1,8 +1,10 @@
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Copilot
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
 package com.android.sample.ui.eventplanning
 
+import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.PersonalEvent
 import java.time.ZoneId
@@ -31,12 +33,11 @@ internal data class EventDetailsDisplay(
 internal data class EventTaskDisplay(val text: String, val isCompleted: Boolean)
 
 /**
- * Maps a [PersonalEvent] to its [EventDetailsDisplay], formatting times in [zone].
+ * Maps an [Event] to its [EventDetailsDisplay], formatting times in [zone].
  *
- * NOTE: assumes [PersonalEvent] exposes `details` (type, subject, location, description, startsAt,
- * endsAt) like the group session model; adjust only here if the field names differ.
+ * Only a [PersonalEvent] has a checklist; other kinds show no tasks.
  */
-internal fun PersonalEvent.toDisplay(
+internal fun Event.toDisplay(
     zone: ZoneId = ZoneId.systemDefault(),
     locale: Locale = Locale.getDefault(),
 ): EventDetailsDisplay {
@@ -50,6 +51,9 @@ internal fun PersonalEvent.toDisplay(
       endTimeLabel = timeFormatter.format(details.endsAt),
       location = details.location?.takeIf { it.isNotBlank() },
       description = details.description?.takeIf { it.isNotBlank() },
-      tasks = tasks.map { EventTaskDisplay(it.text, it.isCompleted) },
+      tasks =
+          (this as? PersonalEvent)?.tasks.orEmpty().map {
+            EventTaskDisplay(it.text, it.isCompleted)
+          },
   )
 }
