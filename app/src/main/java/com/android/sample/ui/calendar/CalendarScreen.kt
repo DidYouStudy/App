@@ -250,6 +250,14 @@ fun CalendarScreenErrorReloadPreview() {
   }
 }
 
+/** Renders a preview of the calendar screen while a week's events are loading. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true)
+@Composable
+fun CalendarScreenLoadingPreview() {
+  TODO("#327: loading preview")
+}
+
 /** Creates deterministic date state for the calendar screen previews. */
 private fun previewUiState(
     error: CalendarViewModelError? = null,

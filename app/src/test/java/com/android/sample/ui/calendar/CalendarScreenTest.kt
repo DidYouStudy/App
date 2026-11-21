@@ -1,11 +1,13 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.calendar
 
 import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
@@ -563,17 +565,147 @@ class CalendarScreenTest {
         .assertIsDisplayed()
   }
 
+  /** S1: a loading week shows the indicator over the grid, with its content description. */
+  @Test
+  fun weekLoadingShowsIndicatorOverGrid() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    setScreen(calendarUiState(LocalDate.of(2026, 10, 28), isLoading = true))
+
+    composeTestRule
+        .onNodeWithTag(CalendarTestTags.LOADING)
+        .assertIsDisplayed()
+        .assertContentDescriptionEquals(context.getString(R.string.calendar_loading_description))
+    composeTestRule.onNodeWithTag(CalendarTestTags.TIME_GRID).assertIsDisplayed()
+  }
+
+  /** S2: a loaded week shows no loading indicator. */
+  @Test
+  fun loadedWeekHidesLoadingIndicator() {
+    setScreen(calendarUiState(LocalDate.of(2026, 10, 28), isLoading = false))
+
+    composeTestRule.onNodeWithTag(CalendarTestTags.LOADING).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(CalendarTestTags.TIME_GRID).assertIsDisplayed()
+  }
+
+  /** S3: a failed load shows the error and Retry, without the loading indicator. */
+  @Test
+  fun loadErrorHidesLoadingIndicator() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    setScreen(
+        calendarUiState(
+            LocalDate.of(2026, 10, 28),
+            error = CalendarViewModelError.LOAD_EVENTS_FAILED,
+            isLoading = false,
+        )
+    )
+
+    composeTestRule.onNodeWithTag(CalendarTestTags.LOADING).assertDoesNotExist()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.calendar_retry_button))
+        .assertIsDisplayed()
+  }
+
+  /** S4: while a retry runs, only the Retry button's own spinner shows. */
+  @Test
+  fun retryInProgressShowsOnlyButtonSpinner() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    setScreen(
+        calendarUiState(
+            LocalDate.of(2026, 10, 28),
+            error = CalendarViewModelError.LOAD_EVENTS_FAILED,
+            isLoading = true,
+        )
+    )
+
+    composeTestRule.onNodeWithTag(CalendarTestTags.LOADING).assertDoesNotExist()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.calendar_load_events_error))
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(context.getString(R.string.calendar_retry_button))
+        .assertDoesNotExist()
+  }
+
+  /** S5: the indicator returns when another week starts loading after one was loaded. */
+  @Test
+  fun indicatorReturnsWhenAnotherWeekLoads() {
+    val firstWeek = calendarUiState(LocalDate.of(2026, 10, 28), isLoading = true)
+    var uiState by mutableStateOf(firstWeek)
+    composeTestRule.setContent {
+      CalendarScreen(
+          uiState = uiState,
+          onToday = {},
+          onPreviousWeek = {},
+          onNextWeek = {},
+          onRetry = {},
+      )
+    }
+    composeTestRule.onNodeWithTag(CalendarTestTags.LOADING).assertIsDisplayed()
+
+    uiState = firstWeek.copy(isLoading = false)
+    composeTestRule.onNodeWithTag(CalendarTestTags.LOADING).assertDoesNotExist()
+
+    uiState = calendarUiState(LocalDate.of(2026, 11, 4), isLoading = true)
+    composeTestRule.onNodeWithTag(CalendarTestTags.LOADING).assertIsDisplayed()
+  }
+
+  /** S6: the week arrows stay clickable while a week loads. */
+  @Test
+  fun weekNavigationWorksWhileLoading() {
+    var previousClicks = 0
+    var nextClicks = 0
+    composeTestRule.setContent {
+      CalendarScreen(
+          uiState = calendarUiState(LocalDate.of(2026, 10, 28), isLoading = true),
+          onToday = {},
+          onPreviousWeek = { previousClicks++ },
+          onNextWeek = { nextClicks++ },
+          onRetry = {},
+      )
+    }
+
+    composeTestRule.onNodeWithTag(CalendarTestTags.PREVIOUS_WEEK).performClick()
+    composeTestRule.onNodeWithTag(CalendarTestTags.NEXT_WEEK).performClick()
+
+    composeTestRule.runOnIdle {
+      assertEquals(1, previousClicks)
+      assertEquals(1, nextClicks)
+    }
+  }
+
+  /** S7: the loading preview renders the loading indicator. */
+  @Test
+  fun calendarScreenLoadingPreviewShowsIndicator() {
+    composeTestRule.setContent { CalendarScreenLoadingPreview() }
+
+    composeTestRule.onNodeWithTag(CalendarTestTags.LOADING).assertIsDisplayed()
+  }
+
+  /** Renders the screen with no-op callbacks for state-only assertions. */
+  private fun setScreen(uiState: CalendarUiState) {
+    composeTestRule.setContent {
+      CalendarScreen(
+          uiState = uiState,
+          onToday = {},
+          onPreviousWeek = {},
+          onNextWeek = {},
+          onRetry = {},
+      )
+    }
+  }
+
   /** Creates predictable weekly display state for screen tests. */
   private fun calendarUiState(
       today: LocalDate,
       error: CalendarViewModelError? = null,
+      isLoading: Boolean = false,
   ): CalendarUiState {
     val weekDates = CalendarDateHelper().weekDates(today)
     return CalendarUiState(
         today = today,
         weekStart = weekDates.first(),
         weekDates = weekDates,
-        isLoading = false,
+        isLoading = isLoading,
         error = error,
     )
   }

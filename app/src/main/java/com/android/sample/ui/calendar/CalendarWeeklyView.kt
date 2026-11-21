@@ -76,6 +76,7 @@ object CalendarTestTags {
   const val TIME_GRID = "calendar_timeGrid"
   const val ADD_BUTTON = "calendar_addButton"
   const val TODAY_BUTTON = "calendar_todayButton"
+  const val LOADING = "calendar_loading"
 
   /** Creates a stable tag for an event card in a specific day column. */
   fun eventCard(eventId: String, dayIndex: Int): String =
