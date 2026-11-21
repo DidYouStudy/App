@@ -35,6 +35,8 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.sample.R
@@ -182,13 +184,23 @@ fun CalendarScreen(
             }
           }
         } else {
-          CalendarWeeklyView(
-              uiState = uiState,
-              onPreviousWeek = onPreviousWeek,
-              onNextWeek = onNextWeek,
-              modifier = Modifier.padding(paddingValues),
-              onEventClick = onEventClick,
-          )
+          Box(Modifier.padding(paddingValues)) {
+            CalendarWeeklyView(
+                uiState = uiState,
+                onPreviousWeek = onPreviousWeek,
+                onNextWeek = onNextWeek,
+                onEventClick = onEventClick,
+            )
+            if (uiState.isLoading) {
+              val loadingDescription = stringResource(R.string.calendar_loading_description)
+              CircularProgressIndicator(
+                  modifier =
+                      Modifier.align(Alignment.Center).testTag(CalendarTestTags.LOADING).semantics {
+                        contentDescription = loadingDescription
+                      },
+              )
+            }
+          }
         }
       },
   )
@@ -255,7 +267,15 @@ fun CalendarScreenErrorReloadPreview() {
 @Preview(showBackground = true)
 @Composable
 fun CalendarScreenLoadingPreview() {
-  TODO("#327: loading preview")
+  DidYouStudyTheme {
+    CalendarScreen(
+        uiState = previewUiState(isLoading = true).copy(events = emptyList()),
+        onToday = {},
+        onPreviousWeek = {},
+        onNextWeek = {},
+        onRetry = {},
+    )
+  }
 }
 
 /** Creates deterministic date state for the calendar screen previews. */
