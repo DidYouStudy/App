@@ -673,6 +673,28 @@ class CalendarScreenTest {
     }
   }
 
+  /** S8: a swipe starting on the indicator still scrolls the grid and hides the add button. */
+  @Test
+  fun swipeOnLoadingIndicatorScrollsGrid() {
+    setScreen(calendarUiState(LocalDate.of(2026, 10, 28), isLoading = true))
+    composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).assertIsDisplayed()
+    val spinner = composeTestRule.onNodeWithTag(CalendarTestTags.LOADING).getUnclippedBoundsInRoot()
+    val grid = composeTestRule.onNodeWithTag(CalendarTestTags.TIME_GRID).getUnclippedBoundsInRoot()
+    val labelTopBefore =
+        composeTestRule.onNodeWithTag(CalendarTestTags.hourLabel(12)).getUnclippedBoundsInRoot().top
+
+    // Start the swipe on the indicator's centre, in the grid's own coordinates.
+    composeTestRule.onNodeWithTag(CalendarTestTags.TIME_GRID).performTouchInput {
+      val startY = ((spinner.top + spinner.bottom) / 2 - grid.top).toPx()
+      swipeUp(startY = startY, endY = startY - 400f)
+    }
+
+    val labelTopAfter =
+        composeTestRule.onNodeWithTag(CalendarTestTags.hourLabel(12)).getUnclippedBoundsInRoot().top
+    assertTrue("grid did not scroll", labelTopAfter < labelTopBefore)
+    composeTestRule.onNodeWithTag(CalendarTestTags.ADD_BUTTON).assertDoesNotExist()
+  }
+
   /** S7: the loading preview renders the loading indicator. */
   @Test
   fun calendarScreenLoadingPreviewShowsIndicator() {
