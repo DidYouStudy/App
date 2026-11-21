@@ -113,6 +113,7 @@ class CalendarViewModel(
   init {
     viewModelScope.launch {
       var lastHandledRetryRequest = retryRequest.value
+      var lastObservedOwnerId: String? = null
       try {
         combine(
                 authRepository.currentUser,
@@ -122,9 +123,16 @@ class CalendarViewModel(
               Triple(user, weekStart, retryCount)
             }
             .collectLatest { (user, weekStart, retryCount) ->
-              val isRetry = retryCount != lastHandledRetryRequest
+              val ownerId = user?.uid
+              // A retry can arrive in the same emission as an account or week change.
+              val isRetry =
+                  retryCount != lastHandledRetryRequest &&
+                      ownerId != null &&
+                      ownerId == lastObservedOwnerId &&
+                      weekStart == _uiState.value.weekStart
               lastHandledRetryRequest = retryCount
-              observeWeek(user?.uid, weekStart, isRetry)
+              lastObservedOwnerId = ownerId
+              observeWeek(ownerId, weekStart, isRetry)
             }
       } catch (exception: CancellationException) {
         throw exception
@@ -142,7 +150,7 @@ class CalendarViewModel(
   ) {
     if (isRetry) {
       // Keep the error visible while the retry runs; success clears it in [updateEvents].
-      _uiState.update { it.copy(isLoading = ownerId != null) }
+      _uiState.update { it.copy(isLoading = true) }
     } else {
       // Clear stale events whenever the user or selected week changes.
       _uiState.value =
