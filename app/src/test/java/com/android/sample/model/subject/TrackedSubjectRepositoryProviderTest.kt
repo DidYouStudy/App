@@ -1,48 +1,65 @@
 // Co-authored-by: Gemini 3.6 Flash
 package com.android.sample.model.subject
 
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.FirebaseFirestore
 import org.junit.After
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.mockito.MockedStatic
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.mockStatic
+import org.mockito.Mockito.times
+import org.mockito.Mockito.`when`
 
-/** Tests provider default instantiation, override injection, and clearing logic. */
 class TrackedSubjectRepositoryProviderTest {
+  private lateinit var firebase: MockedStatic<FirebaseFirestore>
+  private lateinit var firebaseAuth: MockedStatic<FirebaseAuth>
 
   @Before
   fun setUp() {
     TrackedSubjectRepositoryProvider.setRepository(null)
+    val firestore = mock(FirebaseFirestore::class.java)
+    val auth = mock(FirebaseAuth::class.java)
+    `when`(firestore.collection("users")).thenReturn(mock(CollectionReference::class.java))
+    firebase = mockStatic(FirebaseFirestore::class.java)
+    firebase.`when`<FirebaseFirestore> { FirebaseFirestore.getInstance() }.thenReturn(firestore)
+    firebaseAuth = mockStatic(FirebaseAuth::class.java)
+    firebaseAuth.`when`<FirebaseAuth> { FirebaseAuth.getInstance() }.thenReturn(auth)
   }
 
   @After
   fun tearDown() {
     TrackedSubjectRepositoryProvider.setRepository(null)
+    firebase.close()
+    firebaseAuth.close()
   }
 
-  /** Without an override, the provider creates and caches a default in-memory repository. */
   @Test
-  fun withoutOverride_createsOneInMemoryRepositoryAndSharesIt() {
+  fun withoutOverride_createsOneFirestoreRepositoryAndSharesIt() {
     val first = TrackedSubjectRepositoryProvider.getRepository()
 
-    assertTrue(first is InMemoryTrackedSubjectRepository)
+    assertTrue(first is TrackedSubjectRepositoryFirestore)
     assertSame(first, TrackedSubjectRepositoryProvider.getRepository())
+    firebase.verify({ FirebaseFirestore.getInstance() }, times(1))
   }
 
-  /** An injected override repository is returned on every call. */
   @Test
-  fun override_isReturnedOnEveryCall() {
+  fun override_isReturnedOnEveryCallWithoutTouchingFirestore() {
     val injected = mock(TrackedSubjectRepository::class.java)
 
     TrackedSubjectRepositoryProvider.setRepository(injected)
 
     assertSame(injected, TrackedSubjectRepositoryProvider.getRepository())
     assertSame(injected, TrackedSubjectRepositoryProvider.getRepository())
+    firebase.verifyNoInteractions()
+    firebaseAuth.verifyNoInteractions()
   }
 
-  /** Setting an override replaces an existing repository default. */
   @Test
   fun override_replacesAnAlreadyCreatedDefault() {
     TrackedSubjectRepositoryProvider.getRepository()
@@ -53,20 +70,18 @@ class TrackedSubjectRepositoryProviderTest {
     assertSame(injected, TrackedSubjectRepositoryProvider.getRepository())
   }
 
-  /** Clearing an override restores a default in-memory repository instance. */
   @Test
-  fun clearingOverride_restoresAnInMemoryRepository() {
+  fun clearingOverride_restoresAFirestoreRepository() {
     val injected = mock(TrackedSubjectRepository::class.java)
     TrackedSubjectRepositoryProvider.setRepository(injected)
 
     TrackedSubjectRepositoryProvider.setRepository(null)
 
     val restored = TrackedSubjectRepositoryProvider.getRepository()
-    assertTrue(restored is InMemoryTrackedSubjectRepository)
+    assertTrue(restored is TrackedSubjectRepositoryFirestore)
     assertNotSame(injected, restored)
   }
 
-  /** Clearing discards the cached default so the next call creates a fresh repository. */
   @Test
   fun clearing_discardsTheCachedDefault() {
     val first = TrackedSubjectRepositoryProvider.getRepository()
@@ -74,7 +89,7 @@ class TrackedSubjectRepositoryProviderTest {
     TrackedSubjectRepositoryProvider.setRepository(null)
 
     val second = TrackedSubjectRepositoryProvider.getRepository()
-    assertTrue(second is InMemoryTrackedSubjectRepository)
+    assertTrue(second is TrackedSubjectRepositoryFirestore)
     assertNotSame(first, second)
   }
 }
