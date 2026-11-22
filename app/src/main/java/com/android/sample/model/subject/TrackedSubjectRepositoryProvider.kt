@@ -5,10 +5,13 @@ package com.android.sample.model.subject
 object TrackedSubjectRepositoryProvider {
   private var repository: TrackedSubjectRepository? = null
 
-  /** Returns the shared Firestore repository, creating it on first use. */
+  /**
+   * Returns the shared repository, defaulting to an in-memory instance until Firestore is
+   * configured.
+   */
   @Synchronized
   fun getRepository(): TrackedSubjectRepository =
-      repository ?: TrackedSubjectRepositoryFirestore().also { repository = it }
+      repository ?: InMemoryTrackedSubjectRepository().also { repository = it }
 
   /** Replaces the shared repository; null makes the next call create a new default. */
   @Synchronized
