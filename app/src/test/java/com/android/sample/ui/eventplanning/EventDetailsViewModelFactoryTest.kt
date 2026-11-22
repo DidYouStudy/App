@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.eventplanning
 
@@ -8,6 +9,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.event.EventsRepositoryProvider
 import com.android.sample.model.event.InMemoryEventsRepository
+import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
+import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
+import com.android.sample.model.profile.FakeProfileRepository
+import com.android.sample.model.profile.ProfileRepositoryProvider
 import com.android.sample.ui.auth.TestAuthRepository
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -24,12 +29,22 @@ class EventDetailsViewModelFactoryTest {
 
   private val authRepository = TestAuthRepository()
   private val eventsRepository = InMemoryEventsRepository()
-  private val factory = EventDetailsViewModelFactory(authRepository, eventsRepository)
+  private val groupSessionsRepository = InMemoryGroupSessionsRepository()
+  private val profileRepository = FakeProfileRepository()
+  private val factory =
+      EventDetailsViewModelFactory(
+          authRepository,
+          eventsRepository,
+          groupSessionsRepository,
+          profileRepository,
+      )
 
   @After
   fun clearProviders() {
     AuthRepositoryProvider.setRepository(null)
     EventsRepositoryProvider.setRepository(null)
+    GroupSessionsRepositoryProvider.setRepository(null)
+    ProfileRepositoryProvider.setRepository(null)
   }
 
   @Test
@@ -51,6 +66,8 @@ class EventDetailsViewModelFactoryTest {
   fun eventDetailsViewModelUsesProvidersAndSurvivesRecomposition() {
     AuthRepositoryProvider.setRepository(authRepository)
     EventsRepositoryProvider.setRepository(eventsRepository)
+    GroupSessionsRepositoryProvider.setRepository(groupSessionsRepository)
+    ProfileRepositoryProvider.setRepository(profileRepository)
 
     val trigger = mutableStateOf(0)
     val received = mutableListOf<EventDetailsViewModel>()

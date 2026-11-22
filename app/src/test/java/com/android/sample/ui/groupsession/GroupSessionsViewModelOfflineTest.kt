@@ -61,6 +61,7 @@ class GroupSessionsViewModelOfflineTest {
   private lateinit var authRepository: TestAuthRepository
   private lateinit var connectivity: FakeConnectivityObserver
   private lateinit var cache: CachedSessionsRepository
+  private val testCampusCenter = Location(0.0, 0.0)
 
   @Before
   fun setUp() {
@@ -794,6 +795,7 @@ class GroupSessionsViewModelOfflineTest {
             profileRepository = FakeProfileRepository(),
             locationProvider = FakeLocationProvider(),
             connectivityObserver = connectivity,
+            campusCenter = testCampusCenter,
         )
 
     val viewModel = factory.create(GroupSessionsViewModel::class.java)
@@ -815,6 +817,7 @@ class GroupSessionsViewModelOfflineTest {
             repository = cache,
             profileRepository = FakeProfileRepository(),
             locationProvider = FakeLocationProvider(),
+            campusCenter = testCampusCenter,
         )
 
     val viewModel = factory.create(GroupSessionsViewModel::class.java)
@@ -869,6 +872,7 @@ class GroupSessionsViewModelOfflineTest {
           locationProvider = locationProvider,
           campusLocationRepository = campusLocationRepository,
           connectivityObserver = connectivityObserver,
+          campusCenter = testCampusCenter,
       )
 
   private fun visibleIds(viewModel: GroupSessionsViewModel): List<String> =
@@ -1043,6 +1047,10 @@ class GroupSessionsViewModelOfflineTest {
 
     /** Username updates are outside the scope of these offline ViewModel tests. */
     override suspend fun updateUsername(userId: String, username: String): Result<UserProfile> =
+        Result.failure(UnsupportedOperationException("Not needed in this test"))
+
+    /** Picture updates are outside the scope of these offline ViewModel tests. */
+    override suspend fun updateProfilePictureUrl(userId: String, url: String): Result<Unit> =
         Result.failure(UnsupportedOperationException("Not needed in this test"))
   }
 

@@ -81,8 +81,31 @@ firebase deploy --only firestore:rules --project <project-id>
 ```
 
 where `<project-id>` is the `project_id` in `app/google-services.json`.
-`firebase emulators:start` runs the Auth and Firestore emulators configured in
-`firebase.json`, and the Firestore emulator enforces the same rules.
+`firebase emulators:start` runs the Auth, Firestore and Storage emulators configured in
+`firebase.json`. The Firestore emulator enforces `firestore.rules` and the Storage emulator
+enforces `storage.rules`.
+
+### Profile picture storage
+Profile pictures are stored in Cloud Storage as `profilePictures/{uid}_a.jpg` or
+`profilePictures/{uid}_b.jpg`; the download URL is saved in the user's profile document. A new
+picture is uploaded to the slot the profile does not point to, because replacing a file invalidates
+its old URL: if saving the new URL then fails, the profile still points to a picture that loads.
+`storage.rules` is the source of truth for who can read and
+write them: only the owner can upload, and only a JPEG under 1 MB. Change the rules in a PR, never
+in the console, since the next deploy overwrites console edits.
+
+Before the feature works on a real Firebase project, a maintainer must:
+
+1. Enable Storage in the Firebase console (Build → Storage → Get started). Check the project's
+   plan first: Firebase may require the Blaze plan for new default buckets.
+2. Deploy the rules, with the same CLI setup as for Firestore:
+
+```bash
+firebase deploy --only storage --project <project-id>
+```
+
+Until both are done, picture uploads fail or follow whatever rules the bucket currently has. The
+local Storage emulator needs neither step (port 9199, see *Running backend tests*).
 
 ### Private event persistence
 
@@ -128,13 +151,14 @@ are still restricted to the current signed-in owner. No custom sync engine is us
 #### Running backend tests
 
 Keep the existing in-memory/unit tests and run the separate real-SDK suite with an Android
-emulator plus Firebase Auth and Firestore emulators (ports 9099 and 8080). Tests create isolated
-named Firebase apps pointing only to `demo-didyoustudy`, accessed through Android's `10.0.2.2`.
-A debug-only network policy permits HTTP to that emulator host; release policy is unchanged.
+emulator plus the Firebase Auth, Firestore and Storage emulators (ports 9099, 8080 and 9199).
+Tests create isolated named Firebase apps pointing only to `demo-didyoustudy`, accessed through
+Android's `10.0.2.2`. A debug-only network policy permits HTTP to that emulator host; release
+policy is unchanged.
 
 ```bash
 ./gradlew check ktfmtCheck
-firebase emulators:exec --only auth,firestore --project demo-didyoustudy \
+firebase emulators:exec --only auth,firestore,storage --project demo-didyoustudy \
   './gradlew connectedDebugAndroidTest'
 ```
 
@@ -161,8 +185,9 @@ Wait for it to become enabled, then smoke-test the query against the project. Th
 does not prove that production indexes have been deployed. `firestore.indexes.json` also disables
 unneeded single-field indexing for the subject catalog map and event tasks.
 
-No manual collection creation, new sign-in provider, Cloud Function or Storage setup is required.
-The parent `users/{uid}` document need not exist. Deployment is a maintainer step, not performed
+No manual collection creation, new sign-in provider or Cloud Function is required for events and
+subjects; profile pictures do need Storage (see *Profile picture storage*). The parent
+`users/{uid}` document need not exist. Deployment is a maintainer step, not performed
 by the test suite.
 
 ## App name

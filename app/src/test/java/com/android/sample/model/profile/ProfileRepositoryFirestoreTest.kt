@@ -555,6 +555,41 @@ class ProfileRepositoryFirestoreTest {
     `when`(transaction.get(document)).thenReturn(snapshot)
   }
 
+  // Updates only the profilePictureUrl field of the user's own profile document.
+  @Test
+  fun updateProfilePictureUrl_updatesOnlyThePictureUrlField() = runTest {
+    `when`(document.update("profilePictureUrl", "https://example.test/a.jpg"))
+        .thenReturn(Tasks.forResult<Void>(null))
+
+    val result = repository.updateProfilePictureUrl("user123", "https://example.test/a.jpg")
+
+    assertTrue(result.isSuccess)
+    verify(collection).document("user123")
+    verify(document).update("profilePictureUrl", "https://example.test/a.jpg")
+  }
+
+  // Rejects a blank user ID without accessing Firestore.
+  @Test
+  fun updateProfilePictureUrl_returnsInvalidUserIdFailure_whenUserIdIsBlank() = runTest {
+    val result = repository.updateProfilePictureUrl("   ", "https://example.test/a.jpg")
+
+    assertProfileError(result, ProfileError.INVALID_USER_ID)
+    verify(collection, never()).document(any())
+  }
+
+  // Maps a failed update, such as a missing profile document, to the Firestore profile error.
+  @Test
+  fun updateProfilePictureUrl_returnsFirestoreFailure_whenFirestoreTaskFails() = runTest {
+    val exception = firestoreException("Update failed")
+    `when`(document.update("profilePictureUrl", "https://example.test/a.jpg"))
+        .thenReturn(Tasks.forException<Void>(exception))
+
+    val result = repository.updateProfilePictureUrl("user123", "https://example.test/a.jpg")
+
+    assertProfileError(result, ProfileError.FIRESTORE_FAILURE)
+    assertEquals(exception, result.exceptionOrNull()?.cause)
+  }
+
   private fun stubTransaction(transaction: Transaction) {
     `when`(firestore.runTransaction<UserProfile>(any())).thenAnswer { invocation ->
       val function = invocation.getArgument<Transaction.Function<UserProfile>>(0)

@@ -1,9 +1,11 @@
 // Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.model.location
 
 import android.Manifest
 import android.app.Application
 import android.os.Looper
+import android.os.SystemClock
 import androidx.test.core.app.ApplicationProvider
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationAvailability
@@ -12,6 +14,7 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.Tasks
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.toList
@@ -48,6 +51,7 @@ class AndroidLocationProviderTest {
   private val rolex = Location(latitude = 46.5183, longitude = 6.5681)
 
   private val client: FusedLocationProviderClient = mock {
+    on { lastLocation }.doReturn(Tasks.forResult(null))
     on { requestLocationUpdates(any<LocationRequest>(), any<LocationCallback>(), any<Looper>()) }
         .doReturn(Tasks.forResult(null))
     on { removeLocationUpdates(any<LocationCallback>()) }.doReturn(Tasks.forResult(null))
@@ -77,21 +81,72 @@ class AndroidLocationProviderTest {
   private fun resultOf(location: Location): LocationResult =
       LocationResult.create(listOf(platformLocation(location.latitude, location.longitude)))
 
-  private fun platformLocation(latitude: Double, longitude: Double): android.location.Location =
+  private fun platformLocation(
+      latitude: Double,
+      longitude: Double,
+      elapsedRealtimeNanos: Long = CURRENT_ELAPSED_NANOS,
+  ): android.location.Location =
       android.location.Location("test").apply {
         this.latitude = latitude
         this.longitude = longitude
+        this.elapsedRealtimeNanos = elapsedRealtimeNanos
       }
 
   private fun availability(available: Boolean): LocationAvailability =
       mock<LocationAvailability> { on { isLocationAvailable } doReturn available }
 
-  private fun providerWithPermission(granted: Boolean = true) =
-      AndroidLocationProvider(client) { granted }
+  private fun providerWithPermission(
+      granted: Boolean = true,
+      elapsedRealtimeNanos: () -> Long = { CURRENT_ELAPSED_NANOS },
+  ) = AndroidLocationProvider(client, { granted }, elapsedRealtimeNanos)
 
   @Test
   fun emitsNullUntilTheFirstFix() = runTest {
     val collection = collect(providerWithPermission())
+
+    assertEquals(listOf<Location?>(null), collection.emissions)
+  }
+
+  @Test
+  fun emitsLastKnownLocationImmediatelyWhenAvailable() = runTest {
+    whenever(client.lastLocation)
+        .doReturn(Tasks.forResult(platformLocation(rolex.latitude, rolex.longitude)))
+
+    val collection = collect(providerWithPermission())
+    shadowOf(Looper.getMainLooper()).idle()
+
+    assertEquals(listOf(null, rolex), collection.emissions)
+  }
+
+  @Test
+  fun ignoresStaleLastKnownLocation() = runTest {
+    val staleNanos =
+        CURRENT_ELAPSED_NANOS -
+            TimeUnit.MILLISECONDS.toNanos(AndroidLocationProvider.MAX_LAST_LOCATION_AGE_MILLIS + 1)
+    whenever(client.lastLocation)
+        .doReturn(
+            Tasks.forResult(
+                platformLocation(rolex.latitude, rolex.longitude, elapsedRealtimeNanos = staleNanos)
+            )
+        )
+
+    val collection = collect(providerWithPermission())
+    shadowOf(Looper.getMainLooper()).idle()
+
+    assertEquals(listOf<Location?>(null), collection.emissions)
+  }
+
+  @Test
+  fun ignoresLastKnownLocationWithMissingTimestamp() = runTest {
+    whenever(client.lastLocation)
+        .doReturn(
+            Tasks.forResult(
+                platformLocation(rolex.latitude, rolex.longitude, elapsedRealtimeNanos = 0L)
+            )
+        )
+
+    val collection = collect(providerWithPermission())
+    shadowOf(Looper.getMainLooper()).idle()
 
     assertEquals(listOf<Location?>(null), collection.emissions)
   }
@@ -197,7 +252,7 @@ class AndroidLocationProviderTest {
   @Test
   fun checksThePermissionAgainOnEachCollection() = runTest {
     var granted = false
-    val provider = AndroidLocationProvider(client) { granted }
+    val provider = AndroidLocationProvider(client, hasLocationPermission = { granted })
     collect(provider)
 
     granted = true
@@ -287,5 +342,10 @@ class AndroidLocationProviderTest {
 
     assertEquals(listOf<Location?>(null), collection.emissions)
     assertTrue(collection.job.isCompleted)
+  }
+
+  private companion object {
+    val CURRENT_ELAPSED_NANOS: Long =
+        SystemClock.elapsedRealtimeNanos() + TimeUnit.MINUTES.toNanos(10)
   }
 }

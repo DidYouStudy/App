@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.model.location
 
 import android.Manifest
@@ -6,6 +7,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Looper
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationAvailability
@@ -14,6 +16,7 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -34,10 +37,13 @@ import kotlinx.coroutines.flow.distinctUntilChanged
  * @param client the Fused Location client that delivers the updates.
  * @param hasLocationPermission returns whether the app may read the location right now; checked
  *   every time a collection starts.
+ * @param elapsedRealtimeNanos monotonic clock in nanoseconds used to bound the age of cached
+ *   `lastLocation` fixes.
  */
 class AndroidLocationProvider(
     private val client: FusedLocationProviderClient,
     private val hasLocationPermission: () -> Boolean,
+    private val elapsedRealtimeNanos: () -> Long = SystemClock::elapsedRealtimeNanos,
 ) : LocationProvider {
 
   /**
@@ -77,6 +83,11 @@ class AndroidLocationProvider(
         }
 
     try {
+      // Immediately emit cached device coordinates only if recent enough, without waiting for the
+      // 10-second polling interval.
+      client.lastLocation.addOnSuccessListener { location ->
+        location?.takeIf(::isFreshLastLocation)?.toDomainLocation()?.let(::trySend)
+      }
       client
           .requestLocationUpdates(LOCATION_REQUEST, callback, Looper.getMainLooper())
           .addOnFailureListener { close() }
@@ -89,9 +100,23 @@ class AndroidLocationProvider(
     awaitClose { client.removeLocationUpdates(callback) }
   }
 
+  /**
+   * Returns whether a cached Play Services `lastLocation` fix is recent enough to emit instead of
+   * waiting for a fresh callback update.
+   */
+  private fun isFreshLastLocation(location: android.location.Location): Boolean {
+    val fixNanos = location.elapsedRealtimeNanos
+    if (fixNanos <= 0L) return false
+    val ageNanos = elapsedRealtimeNanos() - fixNanos
+    return ageNanos in 0L..TimeUnit.MILLISECONDS.toNanos(MAX_LAST_LOCATION_AGE_MILLIS)
+  }
+
   companion object {
     /** Time between two location updates: the low end of the 10 to 15 s the feature asks for. */
     const val UPDATE_INTERVAL_MILLIS = 10_000L
+
+    /** Maximum age of Play Services' cached `lastLocation` before it is ignored as stale. */
+    const val MAX_LAST_LOCATION_AGE_MILLIS = 60_000L
 
     /** Balanced power: roughly block-level accuracy, mostly from Wi-Fi and cell towers. */
     private val LOCATION_REQUEST: LocationRequest =

@@ -77,7 +77,6 @@ class SettingsScreenTest {
       SettingsScreen(
           viewModel = viewModel,
           onBackClick = { events += "back" },
-          onEditUsernameClick = { events += "editUsername" },
           onChangeProfilePictureClick = { events += "changeProfilePicture" },
           onModifyPreferencesClick = { events += "preferences" },
           onManageFriendsClick = { events += "friends" },
@@ -286,7 +285,6 @@ class SettingsScreenTest {
     setStatefulContent(createViewModel(), events)
 
     composeTestRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).performClick()
-    composeTestRule.onNodeWithTag(SettingsScreenTestTags.EDIT_USERNAME_BUTTON).performClick()
     composeTestRule
         .onNodeWithTag(SettingsScreenTestTags.CHANGE_PROFILE_PICTURE_BUTTON)
         .performClick()
@@ -294,7 +292,7 @@ class SettingsScreenTest {
     composeTestRule.onNodeWithTag(SettingsScreenTestTags.FRIENDS_BUTTON).performClick()
 
     assertEquals(
-        listOf("back", "editUsername", "changeProfilePicture", "preferences", "friends"),
+        listOf("back", "changeProfilePicture", "preferences", "friends"),
         events,
     )
   }

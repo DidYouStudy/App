@@ -2,11 +2,14 @@
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
+import android.content.Context
+import android.content.res.Resources
 import androidx.annotation.DimenRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -15,7 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -24,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.integerResource
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.res.ResourcesCompat
@@ -37,59 +40,65 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
 import kotlin.math.acos
-import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Map of the campus with one pin per room.
  *
  * It is the only composable that draws Google Maps, so the rest of the screen stays free of map
  * types, apart from the optional camera passed through for tests, and can be tested without the
- * real map. It holds no selection: tapping a pin moves the camera onto it and reports the room to
- * the caller, which decides what to show.
+ * real map. It holds no selection: tapping a pin reports the room to the caller, which decides what
+ * to show and drives all camera moves through [cameraDestination].
  *
  * Needs a Maps API key in the app manifest; without one the map stays blank.
  *
  * @param rooms Rooms to draw a pin for, at their coordinates.
- * @param cameraTarget Place to move the camera to whenever it changes, for moves the caller starts;
- *   null keeps the camera where the user left it.
- * @param onMarkerClick Called with the room name when a pin is tapped, after the camera starts
- *   moving onto it.
+ * @param onMarkerClick Called with the room name when a pin is tapped.
  * @param onMapClick Called when the map is tapped away from any pin.
+ * @param cameraDestination Destination to move the camera onto whenever it changes; null keeps the
+ *   camera where the user left it.
  * @param cameraPositionState Camera of the map, for a caller that needs to read or move it, such as
- *   instrumented tests; by default a camera on the campus centre at the default zoom.
+ *   instrumented tests; by default a camera on [campusCenter] at the default zoom.
+ * @param userLocation Current device location of the user, or null if not available or shared.
+ * @param hasLocationPermission Whether location permission is granted, enabling the native Google
+ *   Maps blue dot for user location.
+ * @param campusCenter Default campus centre coordinates used to initialize the camera when
+ *   [cameraPositionState] is not supplied; defaults to [defaultCampusCenter] from `map.xml`.
  */
 @Composable
 fun GroupSessionMapView(
     rooms: List<CampusLocation>,
-    cameraTarget: Location?,
     onMarkerClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     onMapClick: () -> Unit = {},
+    cameraDestination: CameraDestination? = null,
     cameraPositionState: CameraPositionState? = null,
+    userLocation: Location? = null,
+    hasLocationPermission: Boolean = false,
+    campusCenter: Location? = null,
 ) {
   // The real map cannot load in the IDE preview, so it shows a stand-in.
   if (LocalInspectionMode.current) {
-    MapPlaceholder(onMapClick, modifier)
+    MapPlaceholder(onMapClick, modifier, userLocation, hasLocationPermission)
     return
   }
 
-  val campusCenter =
-      LatLng(
-          floatResource(R.dimen.map_campus_center_latitude).toDouble(),
-          floatResource(R.dimen.map_campus_center_longitude).toDouble(),
-      )
+  val resolvedCampusCenter = (campusCenter ?: defaultCampusCenter()).toLatLng()
   val defaultZoom = floatResource(R.dimen.map_default_zoom)
   val focusZoom = floatResource(R.dimen.map_focus_zoom)
   val cameraAnimationMs = integerResource(R.integer.map_camera_animation_ms)
   val cameraPositionState =
       cameraPositionState
           ?: rememberCameraPositionState {
-            position = CameraPosition.fromLatLngZoom(campusCenter, defaultZoom)
+            position = CameraPosition.fromLatLngZoom(resolvedCampusCenter, defaultZoom)
           }
 
   // Moves the camera onto a place, zooming in if the map is further out than the focus zoom.
@@ -105,17 +114,33 @@ fun GroupSessionMapView(
       // failure.
     }
   }
-  val scope = rememberCoroutineScope()
+  val projectionTimeoutMs = integerResource(R.integer.map_projection_timeout_ms).milliseconds
+  val projectionPollIntervalMs =
+      integerResource(R.integer.map_projection_poll_interval_ms).milliseconds
 
-  LaunchedEffect(cameraTarget) { cameraTarget?.let { focusOn(it) } }
+  LaunchedEffect(cameraDestination) {
+    cameraDestination?.let { destination ->
+      withTimeoutOrNull(projectionTimeoutMs) {
+        while (cameraPositionState.projection == null) {
+          delay(projectionPollIntervalMs)
+        }
+      }
+      focusOn(destination.location)
+    }
+  }
 
-  // Disable on-screen zoom buttons so they do not overlap with bottom floating UI components.
-  val uiSettings = remember { MapUiSettings(zoomControlsEnabled = false) }
+  // Disable on-screen zoom and default my-location buttons so they do not overlap with floating UI.
+  val uiSettings = remember {
+    MapUiSettings(zoomControlsEnabled = false, myLocationButtonEnabled = false)
+  }
+  val mapProperties =
+      remember(hasLocationPermission) { MapProperties(isMyLocationEnabled = hasLocationPermission) }
 
   Box(modifier = modifier.fillMaxSize()) {
     GoogleMap(
         modifier = Modifier.fillMaxSize(),
         cameraPositionState = cameraPositionState,
+        properties = mapProperties,
         uiSettings = uiSettings,
         onMapClick = { onMapClick() },
     ) {
@@ -124,9 +149,9 @@ fun GroupSessionMapView(
             room.name,
             state = rememberUpdatedMarkerState(position = room.location.toLatLng()),
             onClick = {
-              scope.launch { focusOn(room.location) }
               onMarkerClick(room.name)
-              // Consumed: the camera move above replaces the map's default one.
+              // Consumed: the caller moves the camera via cameraDestination instead of Maps'
+              // default snap.
               true
             },
         ) {
@@ -194,7 +219,12 @@ internal fun dropletPath(size: Size, quarterTurn: Float, fullTurn: Float): Path 
  * Tapping it reports a map click, like the real map.
  */
 @Composable
-private fun MapPlaceholder(onMapClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun MapPlaceholder(
+    onMapClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    userLocation: Location? = null,
+    hasLocationPermission: Boolean = false,
+) {
   Box(
       modifier =
           modifier
@@ -203,10 +233,19 @@ private fun MapPlaceholder(onMapClick: () -> Unit, modifier: Modifier = Modifier
               .clickable { onMapClick() }
               .padding(Spacing.large)
   ) {
-    Text(
-        text = stringResource(R.string.group_session_map_preview_placeholder),
-        style = MaterialTheme.typography.titleMedium,
-    )
+    Column {
+      Text(
+          text = stringResource(R.string.group_session_map_preview_placeholder),
+          style = MaterialTheme.typography.titleMedium,
+      )
+      if (hasLocationPermission || userLocation != null) {
+        Text(
+            text = stringResource(R.string.group_session_user_location_placeholder),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.testTag(GroupSessionMapTestTags.USER_LOCATION_MARKER),
+        )
+      }
+    }
   }
 }
 
@@ -217,6 +256,33 @@ private fun MapPlaceholder(onMapClick: () -> Unit, modifier: Modifier = Modifier
 @Composable
 internal fun floatResource(@DimenRes id: Int): Float =
     ResourcesCompat.getFloat(LocalResources.current, id)
+
+/**
+ * Reads the default campus centre geographic coordinates from Android [resources], defined in
+ * `res/values/map.xml`.
+ */
+fun defaultCampusCenter(resources: Resources): Location =
+    Location(
+        ResourcesCompat.getFloat(resources, R.dimen.map_campus_center_latitude).toDouble(),
+        ResourcesCompat.getFloat(resources, R.dimen.map_campus_center_longitude).toDouble(),
+    )
+
+/**
+ * Reads the default campus centre geographic coordinates from [context], defined in
+ * `res/values/map.xml`.
+ */
+fun defaultCampusCenter(context: Context): Location = defaultCampusCenter(context.resources)
+
+/**
+ * Reads the default campus centre geographic coordinates in Compose from `res/values/map.xml`,
+ * reacting to configuration changes via [LocalResources].
+ */
+@Composable
+fun defaultCampusCenter(): Location =
+    Location(
+        floatResource(R.dimen.map_campus_center_latitude).toDouble(),
+        floatResource(R.dimen.map_campus_center_longitude).toDouble(),
+    )
 
 /** Google Maps positions use the same degrees as [Location]. */
 internal fun Location.toLatLng(): LatLng = LatLng(latitude, longitude)

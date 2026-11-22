@@ -1,6 +1,7 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: GitHub Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.sample.model.event
 
 import java.time.Instant
@@ -33,6 +34,12 @@ data class GroupSession(
     require(memberIds.distinct().size == memberIds.size) { "Member IDs must be unique" }
     require(memberIds.size <= MAX_MEMBERS) { "Group session must not exceed $MAX_MEMBERS members" }
   }
+
+  /**
+   * Returns the member IDs in display order: [createdBy] first, then the other [memberIds] in their
+   * stored order. Shared by every screen that lists who is in a session.
+   */
+  fun orderedMemberIds(): List<String> = listOf(createdBy) + memberIds.filter { it != createdBy }
 
   companion object {
     /** Maximum number of members allowed in a group session. */

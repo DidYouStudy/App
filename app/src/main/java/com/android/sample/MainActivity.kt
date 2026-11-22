@@ -172,7 +172,7 @@ fun DidYouStudyApp(
         startDestination = Screen.Dashboard.route,
         route = Screen.Dashboard.name,
     ) {
-      composable(Screen.Dashboard.route) {
+      composable(Screen.Dashboard.route) { entry ->
         DashboardScreen(
             navigationActions = navigationActions,
             onEventClick = {
@@ -186,6 +186,14 @@ fun DidYouStudyApp(
                   Screen.AddGroupSession,
                   applicationViewModel::canNavigateTo,
               )
+            },
+            onEventCardClick = { eventId ->
+              navController.runIfCurrentEntry(entry) {
+                navigationActions.navigateIfAllowed(
+                    Screen.EventDetails(eventId),
+                    applicationViewModel::canNavigateTo,
+                )
+              }
             },
         )
       }
@@ -312,11 +320,10 @@ fun DidYouStudyApp(
         route = Screen.Settings.name,
     ) {
       composable(Screen.Settings.route) {
-        // Profile editing and friends management are not built yet.
+        // Profile-picture editing and friends management are not built yet.
         val notImplemented = rememberNotImplementedToast()
         SettingsScreen(
             onBackClick = navigationActions::goBack,
-            onEditUsernameClick = notImplemented,
             onChangeProfilePictureClick = notImplemented,
             onModifyPreferencesClick = {
               navigationActions.navigateIfAllowed(

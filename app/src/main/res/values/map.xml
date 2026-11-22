@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Co-authored-by: Claude Sonnet 5.5 -->
+<!-- Co-authored-by: Gemini <noreply@google.com> -->
 <resources>
     <!-- Where the camera first looks: the centre of the EPFL campus. Read by GroupSessionMapView
          and GroupSessionMapContent. -->
@@ -13,6 +14,12 @@
 
     <!-- Duration of the camera animation to a new target, in milliseconds. -->
     <integer name="map_camera_animation_ms">600</integer>
+
+    <!-- Timeout waiting for map projection to become ready, in milliseconds. -->
+    <integer name="map_projection_timeout_ms">2000</integer>
+
+    <!-- Polling interval when waiting for map projection, in milliseconds. -->
+    <integer name="map_projection_poll_interval_ms">50</integer>
 
     <!-- Largest share of the screen height taken by the list of sessions opened from a pin. -->
     <item name="map_session_list_max_height_fraction" type="dimen" format="float">0.45</item>

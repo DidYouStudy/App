@@ -22,7 +22,38 @@ object UsernamePolicy {
   const val DEFAULT_ATTEMPTS = 5
 
   private const val FALLBACK_BASE = "user"
-  private val format = Regex("[A-Za-z0-9][A-Za-z0-9_.-]{${MIN_LENGTH - 1},${MAX_LENGTH - 1}}")
+
+  /** Ways a username can break the format; see [issue]. */
+  enum class Issue {
+    /** Shorter than [MIN_LENGTH]. */
+    TOO_SHORT,
+
+    /** Longer than [MAX_LENGTH]. */
+    TOO_LONG,
+
+    /** Contains a character outside letters, digits, `_`, `.`, `-`, or starts with a symbol. */
+    INVALID_CHARACTERS,
+  }
+
+  /**
+   * Finds the first way a user-typed username breaks the format.
+   *
+   * This is the single place where the format rules live; [validate] and the Settings dialog both
+   * rely on it.
+   *
+   * @param raw text entered by the user; surrounding whitespace is ignored.
+   * @return the first [Issue] found (invalid characters, then length), or `null` when valid.
+   */
+  fun issue(raw: String): Issue? {
+    val text = raw.trim()
+    val allowed = text.all { it.code < 128 && (it.isLetterOrDigit() || it in "_.-") }
+    return when {
+      !allowed || text.firstOrNull()?.isLetterOrDigit() == false -> Issue.INVALID_CHARACTERS
+      text.length < MIN_LENGTH -> Issue.TOO_SHORT
+      text.length > MAX_LENGTH -> Issue.TOO_LONG
+      else -> null
+    }
+  }
 
   /**
    * Validates a user-typed username.
@@ -30,7 +61,7 @@ object UsernamePolicy {
    * @param raw text entered by the user; surrounding whitespace is ignored.
    * @return the trimmed username when it follows the format, or `null` when it is invalid.
    */
-  fun validate(raw: String): String? = raw.trim().takeIf { format.matches(it) }
+  fun validate(raw: String): String? = raw.trim().takeIf { issue(it) == null }
 
   /**
    * Returns the case-insensitive key under which a username is reserved.

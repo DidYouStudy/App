@@ -1,5 +1,6 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.dashboard
 
 import androidx.compose.foundation.background
@@ -16,10 +17,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,10 +39,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.sample.R
+import com.android.sample.model.event.EventType
 import com.android.sample.ui.theme.CardTitleTextStyle
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
+import com.android.sample.ui.theme.color
+import com.android.sample.ui.theme.label
+import com.android.sample.ui.theme.onColor
 
 /**
  * One planned study slot shown in 'Your day' (display model with preformatted times, not a domain
@@ -46,8 +55,16 @@ import com.android.sample.ui.theme.Spacing
 data class DashboardSession(
     val startTime: String,
     val endTime: String,
-    val subject: String,
-)
+    val subject: String? = null,
+    val eventType: EventType = EventType.STUDY_SESSION,
+    val location: String? = null,
+    val id: String = "",
+    val isClickable: Boolean = true,
+) {
+  /** Formatted time range displayed as "start_time - end_time". */
+  val timeRange: String
+    get() = "$startTime - $endTime"
+}
 
 /** Placeholder-friendly stats; null values are shown as an em dash. */
 data class DashboardStats(
@@ -71,11 +88,27 @@ object DashboardContentTestTags {
   const val STAT_TOTAL_SESSIONS = "dashboard_statTotalSessions"
   const val STAT_AVERAGE_FOCUS = "dashboard_statAverageFocus"
   const val STATS_HINT = "dashboard_statsHint"
+  const val LOADING_INDICATOR = "dashboard_loadingIndicator"
+  const val ERROR_CONTAINER = "dashboard_errorContainer"
+  const val ERROR_TEXT = "dashboard_errorText"
+  const val RETRY_BUTTON = "dashboard_retryButton"
 
   /**
    * Tag of the session row at [index], one per row, so tests can target and order individual rows.
    */
   fun sessionItem(index: Int) = "dashboard_sessionItem_$index"
+
+  /** Tag for the time range text within the session row at [index]. */
+  fun sessionTime(index: Int) = "dashboard_sessionTime_$index"
+
+  /** Tag for the optional location text within the session row at [index]. */
+  fun sessionLocation(index: Int) = "dashboard_sessionLocation_$index"
+
+  /** Tag for the subject text within the session row at [index]. */
+  fun sessionSubject(index: Int) = "dashboard_sessionSubject_$index"
+
+  /** Tag for the event type label within the session row at [index]. */
+  fun sessionType(index: Int) = "dashboard_sessionType_$index"
 }
 
 /**
@@ -84,7 +117,7 @@ object DashboardContentTestTags {
  * @param sessions Sessions planned for today, in display order.
  * @param modifier Modifier applied to the scrollable content column.
  * @param stats Study statistics shown in the stats card.
- * @param onDayCardClick Called when the user taps the "Your day" card.
+ * @param onEventCardClick Called when the user taps an event card.
  * @param onStatsCardClick Called when the user taps the stats card.
  */
 @Composable
@@ -92,7 +125,7 @@ fun DashboardContent(
     sessions: List<DashboardSession>,
     modifier: Modifier = Modifier,
     stats: DashboardStats = DashboardStats(),
-    onDayCardClick: () -> Unit = {},
+    onEventCardClick: (String) -> Unit = {},
     onStatsCardClick: () -> Unit = {},
 ) {
   Column(
@@ -107,7 +140,7 @@ fun DashboardContent(
               .testTag(DashboardContentTestTags.CONTENT),
       verticalArrangement = Arrangement.spacedBy(Spacing.large),
   ) {
-    DashboardDayCard(sessions, onClick = onDayCardClick)
+    DashboardDayCard(sessions, onEventCardClick = onEventCardClick)
     DashboardStatsCard(stats, onClick = onStatsCardClick)
   }
 }
@@ -116,13 +149,13 @@ fun DashboardContent(
 @Composable
 private fun DashboardDayCard(
     sessions: List<DashboardSession>,
-    onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onEventCardClick: (String) -> Unit = {},
 ) {
   DashboardCard(
       testTag = DashboardContentTestTags.YOUR_DAY_CARD,
       clickLabel = stringResource(R.string.dashboard_your_day),
-      onClick = onClick,
+      onClick = null,
       modifier = modifier,
   ) {
     Text(
@@ -141,22 +174,24 @@ private fun DashboardDayCard(
           textAlign = TextAlign.Center,
           modifier = Modifier.fillMaxWidth().testTag(DashboardContentTestTags.EMPTY_DAY),
       )
-      Text(
-          text = stringResource(R.string.not_implemented),
-          style = MaterialTheme.typography.labelSmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
     } else {
       // One outlined row per session, in the order received.
       Column(verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
-        sessions.forEachIndexed { index, session -> DashboardSessionRow(session, index) }
+        sessions.forEachIndexed { index, session ->
+          DashboardSessionRow(
+              session = session,
+              index = index,
+              onClick = if (session.isClickable) ({ onEventCardClick(session.id) }) else null,
+          )
+        }
       }
     }
   }
 }
 
 /**
- * Applies the shared dashboard card surface and content spacing, and makes the whole card tappable.
+ * Applies the shared dashboard card surface and content spacing, and makes the whole card tappable
+ * when [onClick] is provided.
  *
  * The tap target is a separate layer drawn over the content rather than a `clickable` on the
  * column: `clickable` merges every descendant into one accessibility node, which would make
@@ -164,13 +199,14 @@ private fun DashboardDayCard(
  *
  * @param testTag Tag applied to the card container.
  * @param clickLabel Accessibility label announced for the card's tap target.
- * @param onClick Called when the user taps anywhere on the card.
+ * @param onClick Called when the user taps anywhere on the card, or null if individual elements
+ *   handle their own clicks.
  */
 @Composable
 private fun DashboardCard(
     testTag: String,
     clickLabel: String,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(Spacing.medium),
     content: @Composable ColumnScope.() -> Unit,
@@ -186,61 +222,96 @@ private fun DashboardCard(
         verticalArrangement = verticalArrangement,
         content = content,
     )
-    // Tap layer over the content; clipped so the ripple follows the rounded corners.
-    Box(
-        modifier =
-            Modifier.matchParentSize().clip(cardShape).clickable(onClick = onClick).semantics {
-              contentDescription = clickLabel
-            },
-    )
+    if (onClick != null) {
+      // Tap layer over the content; clipped so the ripple follows the rounded corners.
+      Box(
+          modifier =
+              Modifier.matchParentSize().clip(cardShape).clickable(onClick = onClick).semantics {
+                contentDescription = clickLabel
+              },
+      )
+    }
   }
 }
 
-/** Shows one planned session with its times and subject. */
+/** Shows one planned session with its time range, location, subject, and event type. */
 @Composable
 private fun DashboardSessionRow(
     session: DashboardSession,
     index: Int,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
 ) {
   val tileShape = RoundedCornerShape(Dimens.cornerMedium)
+  val backgroundColor = session.eventType.color
+  val contentColor = session.eventType.onColor
   Row(
       modifier =
           modifier
               .fillMaxWidth()
-              .background(MaterialTheme.colorScheme.surfaceContainer, tileShape)
-              .border(Dimens.borderThin, MaterialTheme.colorScheme.outlineVariant, tileShape)
+              .clip(tileShape)
+              .let { if (onClick != null) it.clickable(onClick = onClick) else it }
+              .background(backgroundColor, tileShape)
               .padding(Spacing.medium)
               .testTag(DashboardContentTestTags.sessionItem(index)),
       horizontalArrangement = Arrangement.spacedBy(Spacing.medium),
       verticalAlignment = Alignment.CenterVertically,
   ) {
-    // Left: fixed-width time column, start time in bold above the end time.
+    // Left: time range displayed as start_time - end_time, and location with pin icon under the
+    // times.
     Column(
-        modifier = Modifier.width(Dimens.sessionTimeColumnWidth),
+        modifier = Modifier.width(Dimens.sessionTimeRangeColumnWidth),
         verticalArrangement = Arrangement.spacedBy(Spacing.extraExtraSmall),
     ) {
       Text(
-          text = session.startTime,
+          text = session.timeRange,
           style = MaterialTheme.typography.bodyMedium,
+          fontWeight = FontWeight.Medium,
+          color = contentColor,
+          modifier = Modifier.testTag(DashboardContentTestTags.sessionTime(index)),
+      )
+      if (!session.location.isNullOrBlank()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.extraExtraSmall),
+        ) {
+          Icon(
+              imageVector = Icons.Outlined.LocationOn,
+              contentDescription = null,
+              tint = contentColor,
+              modifier = Modifier.size(Dimens.iconSizeSmall),
+          )
+          Text(
+              text = session.location,
+              style = MaterialTheme.typography.bodySmall,
+              color = contentColor,
+              modifier = Modifier.testTag(DashboardContentTestTags.sessionLocation(index)),
+          )
+        }
+      }
+    }
+    // Right: subject in bold and event type label, left-aligned in the remaining row space.
+    Column(
+        modifier = Modifier.weight(1f),
+        horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.spacedBy(Spacing.extraExtraSmall),
+    ) {
+      Text(
+          text = session.subject ?: stringResource(R.string.event_type_other),
+          style = MaterialTheme.typography.titleMedium,
           fontWeight = FontWeight.Bold,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          color = contentColor,
+          textAlign = TextAlign.Start,
+          modifier = Modifier.testTag(DashboardContentTestTags.sessionSubject(index)),
       )
       Text(
-          text = session.endTime,
-          style = MaterialTheme.typography.bodyMedium,
-          fontWeight = FontWeight.Normal,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          text = session.eventType.label(),
+          style = MaterialTheme.typography.labelSmall,
+          color = contentColor,
+          textAlign = TextAlign.Start,
+          modifier = Modifier.testTag(DashboardContentTestTags.sessionType(index)),
       )
     }
-    // Right: the subject takes the remaining width and wraps if it is long.
-    Text(
-        text = session.subject,
-        modifier = Modifier.weight(1f),
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.onSurface,
-    )
   }
 }
 
