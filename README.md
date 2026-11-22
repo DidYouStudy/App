@@ -168,7 +168,16 @@ it does not simulate forcibly killing the Android process or clearing app data.
 
 #### Publishing rules and indexes
 
-In Firebase Console, open **Build → Firestore Database → Rules**, replace the editor contents
+**Deploying the rules from GitHub Actions.** `firestore.rules` and `storage.rules` are deployed by
+the manual **Deploy Firebase rules** workflow (`.github/workflows/deploy-rules.yml`). Merging does
+not deploy them. Open **Actions → Deploy Firebase rules → Run workflow**, keep `main` selected
+(any other ref is skipped), tick **dry_run** to only validate auth, roles and rule compilation, and
+wait for a required reviewer to approve the `production` environment. The workflow does not deploy
+`firestore.indexes.json`. To roll back, revert the change on `main` and run the workflow again.
+Maintainers must create the `production` environment with a required reviewer and add the
+`FIREBASE_SERVICE_ACCOUNT` (full service-account JSON) and `FIREBASE_PROJECT_ID` secrets to it.
+
+The manual steps below remain a fallback. In Firebase Console, open **Build → Firestore Database → Rules**, replace the editor contents
 with the **entire repository `firestore.rules` file**, and click **Publish**. It includes the existing
 profile/preferences permissions as well as event/subject permissions; do not paste only the new
 matches. Keep any subsequent edits in this repository too.
