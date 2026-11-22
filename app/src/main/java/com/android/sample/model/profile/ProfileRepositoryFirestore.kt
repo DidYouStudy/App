@@ -2,9 +2,11 @@
 // Co-authored-by: Claude Code
 package com.android.sample.model.profile
 
+import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.Source
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
 
@@ -27,9 +29,14 @@ class ProfileRepositoryFirestore(
   /**
    * Reads a profile document without creating one.
    *
+   * The server is read first; the local cache is used only when the server is unreachable
+   * ([FirebaseFirestoreException.Code.UNAVAILABLE], e.g. offline), so other errors such as
+   * `PERMISSION_DENIED` are never hidden by stale data.
+   *
    * @param userId stable authentication identifier and profile document ID.
    * @return [Result.success] containing the stored profile, or `null` when absent; [Result.failure]
-   *   containing [ProfileException] with a stable [ProfileError] category.
+   *   containing [ProfileException] with a stable [ProfileError] category ([ProfileError.OFFLINE]
+   *   when the server is unreachable and nothing is cached).
    * @throws CancellationException when the coroutine is cancelled.
    */
   override suspend fun getProfile(userId: String): Result<UserProfile?> {
@@ -37,7 +44,7 @@ class ProfileRepositoryFirestore(
       return Result.failure(ProfileException(ProfileError.INVALID_USER_ID))
     }
     return execute {
-      val snapshot = collection.document(userId).get().await()
+      val snapshot = getWithCacheFallback(collection.document(userId))
       if (!snapshot.exists()) {
         null
       } else {
@@ -155,6 +162,29 @@ class ProfileRepositoryFirestore(
   }
 
   /**
+   * Reads [document] from the server, using the local cache only if the server is unreachable.
+   *
+   * @param document the profile document to read.
+   * @return the server snapshot, or the cached snapshot when the server read fails with
+   *   [FirebaseFirestoreException.Code.UNAVAILABLE].
+   * @throws FirebaseFirestoreException the original server error when it is not `UNAVAILABLE`, or
+   *   when nothing is cached either (the cache error is discarded so callers see the real cause).
+   * @throws CancellationException when the coroutine is cancelled.
+   */
+  private suspend fun getWithCacheFallback(document: DocumentReference): DocumentSnapshot =
+      try {
+        document.get().await()
+      } catch (exception: FirebaseFirestoreException) {
+        if (exception.code != FirebaseFirestoreException.Code.UNAVAILABLE) throw exception
+        try {
+          document.get(Source.CACHE).await()
+        } catch (cacheError: Exception) {
+          if (cacheError is CancellationException) throw cacheError
+          throw exception
+        }
+      }
+
+  /**
    * Executes a Firestore operation and maps persistence failures to profile-domain errors.
    *
    * Successful values are wrapped in [Result.success]. Coroutine cancellation is rethrown so
@@ -173,7 +203,11 @@ class ProfileRepositoryFirestore(
     } catch (exception: ProfileException) {
       Result.failure(exception)
     } catch (exception: FirebaseFirestoreException) {
-      Result.failure(ProfileException(ProfileError.FIRESTORE_FAILURE, exception))
+      // An unreachable server is reported separately so the UI can say "offline", not "failed".
+      val error =
+          if (exception.code == FirebaseFirestoreException.Code.UNAVAILABLE) ProfileError.OFFLINE
+          else ProfileError.FIRESTORE_FAILURE
+      Result.failure(ProfileException(error, exception))
     } catch (exception: Exception) {
       Result.failure(ProfileException(ProfileError.UNKNOWN, exception))
     }

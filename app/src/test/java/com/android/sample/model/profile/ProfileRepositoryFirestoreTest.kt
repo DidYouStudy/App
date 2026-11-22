@@ -10,6 +10,7 @@ import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.Source
 import com.google.firebase.firestore.Transaction
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -526,6 +527,108 @@ class ProfileRepositoryFirestoreTest {
     } catch (expected: CancellationException) {
       assertEquals("cancelled", expected.message)
     }
+  }
+
+  private fun unavailable() =
+      FirebaseFirestoreException("offline", FirebaseFirestoreException.Code.UNAVAILABLE)
+
+  private fun existingSnapshot(profile: UserProfile): DocumentSnapshot {
+    val snapshot = mock(DocumentSnapshot::class.java)
+    `when`(snapshot.exists()).thenReturn(true)
+    `when`(snapshot.toObject(UserProfile::class.java)).thenReturn(profile)
+    return snapshot
+  }
+
+  // Offline read: the server is unreachable, so the cached profile is returned.
+  @Test
+  fun getProfile_returnsCachedProfile_whenServerIsUnavailable() = runTest {
+    val cached = UserProfile("user123", username = "alice")
+    val cachedSnapshot = existingSnapshot(cached)
+    `when`(document.get()).thenReturn(Tasks.forException(unavailable()))
+    `when`(document.get(Source.CACHE)).thenReturn(Tasks.forResult(cachedSnapshot))
+
+    val result = repository.getProfile("user123")
+
+    assertEquals(cached, result.getOrNull())
+  }
+
+  // The cache is not consulted when the server answers.
+  @Test
+  fun getProfile_doesNotReadCache_whenServerAnswers() = runTest {
+    val server = UserProfile("user123", username = "fresh")
+    val serverSnapshot = existingSnapshot(server)
+    `when`(document.get()).thenReturn(Tasks.forResult(serverSnapshot))
+
+    val result = repository.getProfile("user123")
+
+    assertEquals(server, result.getOrNull())
+    verify(document, never()).get(Source.CACHE)
+  }
+
+  // Other server errors are not hidden by stale cached data.
+  @Test
+  fun getProfile_returnsFailure_whenServerFailsWithOtherCode_withoutReadingCache() = runTest {
+    `when`(document.get()).thenReturn(Tasks.forException(firestoreException("denied")))
+
+    val result = repository.getProfile("user123")
+
+    assertProfileError(result, ProfileError.FIRESTORE_FAILURE)
+    verify(document, never()).get(Source.CACHE)
+  }
+
+  // Offline with nothing cached: the failure reports the real cause (offline), not the cache miss.
+  @Test
+  fun getProfile_returnsOfflineFailure_whenServerUnavailableAndNothingCached() = runTest {
+    val server = unavailable()
+    `when`(document.get()).thenReturn(Tasks.forException(server))
+    `when`(document.get(Source.CACHE)).thenReturn(Tasks.forException(unavailable()))
+
+    val result = repository.getProfile("user123")
+
+    assertProfileError(result, ProfileError.OFFLINE)
+    assertSame(server, result.exceptionOrNull()?.cause)
+  }
+
+  // Cancellation while reading the cache is propagated, not turned into a failure.
+  @Test
+  fun getProfile_propagatesCancellation_whenCacheReadIsCancelled() = runTest {
+    `when`(document.get()).thenReturn(Tasks.forException(unavailable()))
+    `when`(document.get(Source.CACHE)).thenReturn(Tasks.forCanceled())
+
+    try {
+      repository.getProfile("user123")
+      fail("Expected cancellation")
+    } catch (expected: CancellationException) {
+      // Expected.
+    }
+  }
+
+  // Losing the connection during the save transaction is reported as OFFLINE.
+  @Test
+  fun updateUsername_returnsOffline_whenTransactionIsUnavailable() = runTest {
+    `when`(firestore.runTransaction<UserProfile>(any()))
+        .thenReturn(Tasks.forException(unavailable()))
+
+    assertProfileError(repository.updateUsername("user123", "Alice"), ProfileError.OFFLINE)
+  }
+
+  // Other storage failures keep the generic Firestore category.
+  @Test
+  fun updateUsername_keepsFirestoreFailure_forOtherCodes() = runTest {
+    `when`(firestore.runTransaction<UserProfile>(any()))
+        .thenReturn(
+            Tasks.forException(
+                FirebaseFirestoreException(
+                    "aborted",
+                    FirebaseFirestoreException.Code.ABORTED,
+                )
+            )
+        )
+
+    assertProfileError(
+        repository.updateUsername("user123", "Alice"),
+        ProfileError.FIRESTORE_FAILURE,
+    )
   }
 
   private fun reservationRef(key: String): DocumentReference {
