@@ -4,6 +4,10 @@ name: Deploy Firebase rules
 # Manual only: a team member starts this from the Actions tab.
 # It deploys firestore.rules and storage.rules from main and nothing else.
 on:
+  # TEMPORARY: proves the workflow from this PR with a forced dry run. Remove before merge.
+  pull_request:
+    paths:
+      - ".github/workflows/deploy-rules.yml"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -24,7 +28,8 @@ jobs:
   deploy-rules:
     name: Deploy firestore.rules and storage.rules
     # Only reviewed main can reach production, whatever ref the dropdown offers.
-    if: github.ref == 'refs/heads/main'
+    # TEMPORARY: the pull_request clause lets the dry run run from the PR. Remove before merge.
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     # The "production" environment holds the secrets and requires a reviewer's approval
     # before the job starts (configured in Settings > Environments).
@@ -51,7 +56,8 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           # Environment secret: the Firebase project ID to deploy to.
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          DRY_RUN: ${{ inputs.dry_run }}
+          # TEMPORARY: a pull_request run is always a dry run, so it can never deploy.
+          DRY_RUN: ${{ github.event_name == 'pull_request' || inputs.dry_run }}
         run: |
           # Fail early with a clear message instead of a cryptic CLI error.
           if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
