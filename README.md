@@ -176,10 +176,10 @@ wait for a required reviewer to approve the `production` environment. The workfl
 `firestore.indexes.json`. To roll back, revert the change on `main` and run the workflow again.
 Maintainers must create the `production` environment with a required reviewer and add the
 `FIREBASE_SERVICE_ACCOUNT` (full service-account JSON) and `FIREBASE_PROJECT_ID` secrets to it.
-The service account needs Firebase Rules Admin, Service Usage Viewer (the CLI checks that the
-Firestore and Storage APIs are enabled) and a role that can read the default Storage bucket
-(`firebasestorage.defaultBucket.get`; Firebase Viewer was not enough). Prove any role change with a
-dry run before relying on it.
+The service account has these roles: Firebase Rules Admin (deploys the rules), Service Usage Viewer
+(the CLI checks that the Firestore and Storage APIs are enabled) and Reader (lets the CLI look up the
+default Storage bucket; Firebase Viewer was not enough). Prove any role change with a dry run before
+relying on it.
 
 The manual steps below remain a fallback. In Firebase Console, open **Build → Firestore Database → Rules**, replace the editor contents
 with the **entire repository `firestore.rules` file**, and click **Publish**. It includes the existing
