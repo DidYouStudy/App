@@ -20,16 +20,20 @@ import com.android.sample.ui.auth.TestAuthRepository
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -321,6 +325,61 @@ class DashboardViewModelCurrentSessionsTest {
     assertEquals(1, viewModel.uiState.value.sessions.size)
   }
 
+  /** Slow preferences do not delay sessions and later update the current ring. */
+  @Test
+  fun slowPreferencesDoNotDelaySessions() = runTest {
+    signIn()
+    eventsRepository.saveEvent(personal("slow", start, end))
+    clock.currentInstant = start.plusSeconds(45 * 60)
+    val pendingPreferences = CompletableDeferred<Result<UserPreferences?>>()
+    preferencesRepository.pendingResult = pendingPreferences
+    val viewModel = createViewModel()
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertEquals(1, viewModel.uiState.value.sessions.size)
+    assertEquals(1, viewModel.uiState.value.currentSessions.size)
+    assertEquals(RingMode.BREAK, viewModel.uiState.value.currentSessions[0].ring.mode)
+    pendingPreferences.complete(
+        Result.success(UserPreferences("alice", breakFrequencyMinutes = 30, breakLengthMinutes = 5))
+    )
+    assertEquals(RingMode.STUDYING, viewModel.uiState.value.currentSessions[0].ring.mode)
+    assertEquals(0.4f, viewModel.uiState.value.currentSessions[0].ring.progress, 1e-4f)
+  }
+
+  /** A tick during a pending user schedule cannot restore the previous user's sessions. */
+  @Test
+  fun userChangeDropsPreviousSessionsBeforeNewScheduleArrives() = runTest {
+    signIn()
+    eventsRepository.saveEvent(personal("alice-session", start, end))
+    val switchSchedule =
+        GetUserScheduleUseCase(
+            UserSwitchEventsRepository(eventsRepository),
+            groupSessionsRepository,
+            clock,
+        )
+    val viewModel = createViewModel(switchSchedule)
+    assertEquals(1, viewModel.uiState.value.currentSessions.size)
+    authRepository.currentUser.value = UserAccount("bob", null, null, null)
+    ticks.emit(Unit)
+    assertTrue(viewModel.uiState.value.currentSessions.isEmpty())
+  }
+
+  /** A new user's pending preferences do not inherit the previous user's settings. */
+  @Test
+  fun newUserPendingPreferencesUseDefaults() = runTest {
+    signIn()
+    clock.currentInstant = start.plusSeconds(45 * 60)
+    preferencesRepository.result =
+        Result.success(UserPreferences("alice", breakFrequencyMinutes = 30, breakLengthMinutes = 5))
+    eventsRepository.saveEvent(personal("alice-session", start, end))
+    eventsRepository.saveEvent(personal("bob-session", start, end, ownerId = "bob"))
+    val viewModel = createViewModel()
+    assertEquals(RingMode.STUDYING, viewModel.uiState.value.currentSessions[0].ring.mode)
+    val pendingPreferences = CompletableDeferred<Result<UserPreferences?>>()
+    preferencesRepository.pendingResult = pendingPreferences
+    authRepository.currentUser.value = UserAccount("bob", null, null, null)
+    assertEquals(RingMode.BREAK, viewModel.uiState.value.currentSessions[0].ring.mode)
+  }
+
   /** Clearing a provider-owned ViewModel cancels its minute-tick subscription. */
   @Test
   fun tickerStopsWhenViewModelIsCleared() = runTest {
@@ -374,10 +433,11 @@ class DashboardViewModelCurrentSessionsTest {
       startsAt: Instant,
       endsAt: Instant,
       type: EventType = EventType.STUDY_SESSION,
+      ownerId: String = "alice",
   ) =
       PersonalEvent(
           id,
-          "alice",
+          ownerId,
           EventDetails(type, "Subject", startsAt, endsAt),
           startsAt,
       )
@@ -402,12 +462,16 @@ class DashboardViewModelCurrentSessionsTest {
 
   private class RecordingPreferencesRepository : PreferencesRepository {
     var result: Result<UserPreferences?> = Result.success(null)
+    var pendingResult: CompletableDeferred<Result<UserPreferences?>>? = null
     var throwOnGetPreferences = false
     val userIds = mutableListOf<String>()
 
     override suspend fun getPreferences(userId: String): Result<UserPreferences?> {
       userIds += userId
       if (throwOnGetPreferences) throw IllegalStateException("offline")
+      pendingResult?.let {
+        return it.await()
+      }
       return result
     }
 
@@ -423,6 +487,18 @@ class DashboardViewModelCurrentSessionsTest {
         from: Instant,
         to: Instant,
     ): Flow<Result<List<PersonalEvent>>> = results
+  }
+
+  private class UserSwitchEventsRepository(
+      private val delegate: EventsRepository,
+  ) : EventsRepository by delegate {
+    override fun observeEvents(
+        ownerId: String,
+        from: Instant,
+        to: Instant,
+    ): Flow<Result<List<PersonalEvent>>> =
+        if (ownerId == "bob") flow { awaitCancellation() }
+        else delegate.observeEvents(ownerId, from, to)
   }
 
   private class FailingEventsRepository : EventsRepository by InMemoryEventsRepository() {
