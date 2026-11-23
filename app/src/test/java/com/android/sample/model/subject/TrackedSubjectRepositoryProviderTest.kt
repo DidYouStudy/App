@@ -16,6 +16,7 @@ import org.mockito.Mockito.mockStatic
 import org.mockito.Mockito.times
 import org.mockito.Mockito.`when`
 
+/** Tests provider default instantiation, override injection, and clearing logic. */
 class TrackedSubjectRepositoryProviderTest {
   private lateinit var firebase: MockedStatic<FirebaseFirestore>
   private lateinit var firebaseAuth: MockedStatic<FirebaseAuth>
@@ -39,6 +40,7 @@ class TrackedSubjectRepositoryProviderTest {
     firebaseAuth.close()
   }
 
+  /** Production default: one Firestore repository, created on first use and then shared. */
   @Test
   fun withoutOverride_createsOneFirestoreRepositoryAndSharesIt() {
     val first = TrackedSubjectRepositoryProvider.getRepository()
@@ -48,6 +50,7 @@ class TrackedSubjectRepositoryProviderTest {
     firebase.verify({ FirebaseFirestore.getInstance() }, times(1))
   }
 
+  /** An injected repository is returned on every call, and Firestore is never initialized. */
   @Test
   fun override_isReturnedOnEveryCallWithoutTouchingFirestore() {
     val injected = mock(TrackedSubjectRepository::class.java)
@@ -60,6 +63,7 @@ class TrackedSubjectRepositoryProviderTest {
     firebaseAuth.verifyNoInteractions()
   }
 
+  /** An override also replaces a default that was already created. */
   @Test
   fun override_replacesAnAlreadyCreatedDefault() {
     TrackedSubjectRepositoryProvider.getRepository()
@@ -70,6 +74,7 @@ class TrackedSubjectRepositoryProviderTest {
     assertSame(injected, TrackedSubjectRepositoryProvider.getRepository())
   }
 
+  /** Clearing an override restores the production default instead of keeping the fake. */
   @Test
   fun clearingOverride_restoresAFirestoreRepository() {
     val injected = mock(TrackedSubjectRepository::class.java)
@@ -82,6 +87,7 @@ class TrackedSubjectRepositoryProviderTest {
     assertNotSame(injected, restored)
   }
 
+  /** Clearing also discards a cached default, so the next call builds a fresh one. */
   @Test
   fun clearing_discardsTheCachedDefault() {
     val first = TrackedSubjectRepositoryProvider.getRepository()
