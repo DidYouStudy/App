@@ -1,6 +1,8 @@
 // Co-authored-by: Gemini 3.6 Flash
 package com.android.sample.model.subject
 
+import com.android.sample.model.event.SubjectCatalogFirestoreMapper
+import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -84,6 +86,27 @@ class TrackedSubjectRepositoryFirestoreTest {
     assertTrue(result.isSuccess)
   }
 
+  /** Observing decisions decodes Firestore snapshot and emits SubjectDecisions. */
+  @Test
+  fun observeDecisions_emitsValidSnapshotData() = runTest {
+    val snapshot = mock(DocumentSnapshot::class.java)
+    val key = SubjectCatalogFirestoreMapper.key("Analysis I")
+    `when`(snapshot.data)
+        .thenReturn(
+            mapOf("subjects" to mapOf(key to mapOf("spelling" to "Analysis I", "tracked" to true)))
+        )
+
+    `when`(trackedSubjectsDoc.addSnapshotListener(any())).thenAnswer { invocation ->
+      val listener = invocation.getArgument<EventListener<DocumentSnapshot>>(0)
+      listener.onEvent(snapshot, null)
+      mock(ListenerRegistration::class.java)
+    }
+
+    val result = repository.observeDecisions("user-1").first()
+    assertTrue(result.isSuccess)
+    assertTrue(result.getOrThrow().isTracked("Analysis I"))
+  }
+
   /** Firestore snapshot errors map to domain PERMISSION_DENIED exception. */
   @Test
   fun observeDecisions_handlesFirestoreError() = runTest {
@@ -119,5 +142,110 @@ class TrackedSubjectRepositoryFirestoreTest {
     assertTrue(result.isFailure)
     val exception = result.exceptionOrNull() as TrackedSubjectException
     assertEquals(TrackedSubjectError.INVALID_DATA, exception.error)
+  }
+
+  /** Observing decisions with a blank owner ID or slash fails with INVALID_ARGUMENT. */
+  @Test
+  fun observeDecisions_rejectsBlankOrInvalidOwnerId() = runTest {
+    val blankResult = repository.observeDecisions(" ").first()
+    assertTrue(blankResult.isFailure)
+    assertEquals(
+        TrackedSubjectError.INVALID_ARGUMENT,
+        (blankResult.exceptionOrNull() as TrackedSubjectException).error,
+    )
+
+    val slashResult = repository.observeDecisions("owner/slash").first()
+    assertTrue(slashResult.isFailure)
+    assertEquals(
+        TrackedSubjectError.INVALID_ARGUMENT,
+        (slashResult.exceptionOrNull() as TrackedSubjectException).error,
+    )
+  }
+
+  /** Saving decisions with invalid parameters rejects with INVALID_ARGUMENT. */
+  @Test
+  fun saveDecisions_rejectsInvalidParameters() = runTest {
+    val blankOwner = repository.saveDecisions(" ", mapOf("Analysis" to true))
+    assertEquals(
+        TrackedSubjectError.INVALID_ARGUMENT,
+        (blankOwner.exceptionOrNull() as TrackedSubjectException).error,
+    )
+
+    val blankSpelling = repository.saveDecisions("user-1", mapOf(" " to true))
+    assertEquals(
+        TrackedSubjectError.INVALID_ARGUMENT,
+        (blankSpelling.exceptionOrNull() as TrackedSubjectException).error,
+    )
+
+    val duplicateKey =
+        repository.saveDecisions("user-1", mapOf("Analysis I" to true, " analysis i " to false))
+    assertEquals(
+        TrackedSubjectError.INVALID_ARGUMENT,
+        (duplicateKey.exceptionOrNull() as TrackedSubjectException).error,
+    )
+  }
+
+  /** Saving decisions when auth user doesn't match owner returns PERMISSION_DENIED. */
+  @Test
+  fun saveDecisions_rejectsOwnerMismatch() = runTest {
+    val result = repository.saveDecisions("other-user", mapOf("Analysis" to true))
+    assertTrue(result.isFailure)
+    assertEquals(
+        TrackedSubjectError.PERMISSION_DENIED,
+        (result.exceptionOrNull() as TrackedSubjectException).error,
+    )
+  }
+
+  /** Failed acknowledgement task surfaces the underlying storage exception. */
+  @Test
+  fun saveDecisions_handlesAcknowledgementFailure() = runTest {
+    val failedTask = mock(Task::class.java) as Task<Void>
+    `when`(failedTask.isComplete).thenReturn(true)
+    `when`(failedTask.isSuccessful).thenReturn(false)
+    `when`(failedTask.exception)
+        .thenReturn(
+            FirebaseFirestoreException("Storage error", FirebaseFirestoreException.Code.UNAVAILABLE)
+        )
+    `when`(trackedSubjectsDoc.set(any(), eq(SetOptions.merge()))).thenReturn(failedTask)
+
+    val query = mock(Query::class.java)
+    `when`(metaCollection.whereEqualTo(any<FieldPath>(), any())).thenReturn(query)
+    `when`(query.get(any())).thenReturn(Tasks.forResult(mock(QuerySnapshot::class.java)))
+
+    val result = repository.saveDecisions("user-1", mapOf("Analysis I" to true))
+    assertTrue(result.isFailure)
+    val exception = result.exceptionOrNull() as TrackedSubjectException
+    assertEquals(TrackedSubjectError.STORAGE_FAILURE, exception.error)
+  }
+
+  /** Failed acknowledgement task with null exception returns STORAGE_FAILURE. */
+  @Test
+  fun saveDecisions_handlesAcknowledgementFailureWithNullException() = runTest {
+    val failedTask = mock(Task::class.java) as Task<Void>
+    `when`(failedTask.isComplete).thenReturn(true)
+    `when`(failedTask.isSuccessful).thenReturn(false)
+    `when`(failedTask.exception).thenReturn(null)
+    `when`(trackedSubjectsDoc.set(any(), eq(SetOptions.merge()))).thenReturn(failedTask)
+
+    val query = mock(Query::class.java)
+    `when`(metaCollection.whereEqualTo(any<FieldPath>(), any())).thenReturn(query)
+    `when`(query.get(any())).thenReturn(Tasks.forResult(mock(QuerySnapshot::class.java)))
+
+    val result = repository.saveDecisions("user-1", mapOf("Analysis I" to true))
+    assertTrue(result.isFailure)
+    val exception = result.exceptionOrNull() as TrackedSubjectException
+    assertEquals(TrackedSubjectError.STORAGE_FAILURE, exception.error)
+  }
+
+  /** Domain error handles general unexpected exceptions. */
+  @Test
+  fun observeDecisions_handlesUnexpectedException() = runTest {
+    `when`(trackedSubjectsDoc.addSnapshotListener(any()))
+        .thenThrow(RuntimeException("Unexpected error"))
+
+    val result = repository.observeDecisions("user-1").first()
+    assertTrue(result.isFailure)
+    val exception = result.exceptionOrNull() as TrackedSubjectException
+    assertEquals(TrackedSubjectError.UNKNOWN, exception.error)
   }
 }
