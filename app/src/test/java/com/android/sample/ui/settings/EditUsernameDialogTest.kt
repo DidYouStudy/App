@@ -58,7 +58,7 @@ class EditUsernameDialogTest {
         )
     // Created once: building it inside setContent would make a new ViewModel on every
     // recomposition.
-    val viewModel = SettingsViewModel(authRepository, repository)
+    val viewModel = SettingsViewModel(authRepository, repository, mock(), mock())
     composeTestRule.setContent {
       val uiState by viewModel.uiState.collectAsStateWithLifecycle()
       // Same wiring as SettingsScreen, but the dialog content is shown inline: a text field inside

@@ -14,9 +14,9 @@ import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.profile.AndroidImageCompressor
 import com.android.sample.model.profile.ImageCompressor
+import com.android.sample.model.profile.ProfileException
 import com.android.sample.model.profile.ProfilePictureRepository
 import com.android.sample.model.profile.ProfilePictureRepositoryProvider
-import com.android.sample.model.profile.ProfileException
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.ProfileRepositoryProvider
 import com.android.sample.model.profile.UsernamePolicy
@@ -100,13 +100,13 @@ class SettingsViewModel(
           val photoUrl =
               profile?.profilePictureUrl?.takeIf { it.isNotBlank() } ?: userAccount.photoUrl
 
-            // Another account replacing the shown one does not inherit its picture upload: that
-            // upload's result is discarded when it arrives (see onPictureSelected), so the indicator
-            // must not wait for it. The first account seen is not a replacement: a pick made before
-            // the profile loaded is still its own.
-            val previousUserId = observedUserId
-            val accountReplaced = previousUserId != null && previousUserId != userAccount.uid
-            observedUserId = userAccount.uid
+          // Another account replacing the shown one does not inherit its picture upload: that
+          // upload's result is discarded when it arrives (see onPictureSelected), so the indicator
+          // must not wait for it. The first account seen is not a replacement: a pick made before
+          // the profile loaded is still its own.
+          val previousUserId = observedUserId
+          val accountReplaced = previousUserId != null && previousUserId != userAccount.uid
+          observedUserId = userAccount.uid
 
           _uiState.update {
             it.copy(

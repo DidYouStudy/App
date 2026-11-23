@@ -88,9 +88,9 @@ fun SettingsScreen(
       onBackClick = onBackClick,
       onEditUsernameClick = viewModel::openUsernameEditor,
       onChangeProfilePictureClick = {
-          pickPicture.launch(
-              PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-          )
+        pickPicture.launch(
+            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+        )
       },
       onModifyPreferencesClick = onModifyPreferencesClick,
       onManageFriendsClick = onManageFriendsClick,

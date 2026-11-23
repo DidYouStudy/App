@@ -74,7 +74,8 @@ class SettingsViewModelUsernameTest {
     Dispatchers.resetMain()
   }
 
-  private fun viewModel() = SettingsViewModel(authRepository, repository)
+  /** Builds a ViewModel; the picture dependencies are unused mocks in these username tests. */
+  private fun viewModel() = SettingsViewModel(authRepository, repository, mock(), mock())
 
   /** Opens the dialog and types [input]. */
   private fun SettingsViewModel.type(input: String) {
@@ -371,7 +372,7 @@ class SettingsViewModelUsernameTest {
 
   @Test
   fun open_whileProfileIsLoading_doesNothing() = runTest {
-    val vm = SettingsViewModel(authRepository, repository)
+    val vm = viewModel()
     currentUser.value = null
     // A signed-out ViewModel finishes loading but has no user to edit.
     vm.openUsernameEditor()
