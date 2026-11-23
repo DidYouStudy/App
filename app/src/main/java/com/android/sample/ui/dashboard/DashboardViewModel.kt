@@ -45,7 +45,11 @@ enum class DashboardViewModelError {
   LOAD_SESSIONS_FAILED,
 }
 
-/** State holding today's study sessions, loading indicator, and any load error. */
+/**
+ * State holding today's study sessions, loading indicator, and any load error.
+ *
+ * @property currentSessions sessions covering the current minute with their ring states.
+ */
 data class DashboardUiState(
     val sessions: List<DashboardSession> = emptyList(),
     val currentSessions: List<CurrentSession> = emptyList(),
@@ -54,7 +58,12 @@ data class DashboardUiState(
     val midnightDelay: Duration = 0.toDuration(DurationUnit.SECONDS),
 )
 
-/** A dashboard session currently covering the injected clock time and its ring state. */
+/**
+ * A dashboard session currently covering the injected clock time and its ring state.
+ *
+ * @property session dashboard display data for the current session.
+ * @property ring computed study or break ring state.
+ */
 data class CurrentSession(val session: DashboardSession, val ring: RingState)
 
 /**

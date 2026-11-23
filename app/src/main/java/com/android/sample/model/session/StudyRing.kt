@@ -6,16 +6,23 @@ import java.time.Instant
 
 /** Identifies whether the current ring segment is study time or break time. */
 enum class RingMode {
+  /** The session is currently in a study segment. */
   STUDYING,
+  /** The session is currently in a break segment. */
   BREAK,
 }
 
 /** Describes the current segment and overall session progress. */
 data class RingState(
+    /** Whether the current segment is study time or break time. */
     val mode: RingMode,
+    /** Progress from 0 to 1 inside the current segment. */
     val progress: Float,
+    /** Time remaining in the current segment. */
     val segmentRemaining: Duration,
+    /** Time remaining in the overall session. */
     val sessionRemaining: Duration,
+    /** Whether the session has passed its end. */
     val isOvertime: Boolean,
 )
 

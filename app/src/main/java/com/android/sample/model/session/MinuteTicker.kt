@@ -12,7 +12,8 @@ fun minuteTicks(clock: Clock): Flow<Unit> = flow {
   while (true) {
     val now = clock.instant()
     val nextMinute = now.truncatedTo(ChronoUnit.MINUTES).plus(1, ChronoUnit.MINUTES)
-    delay(java.time.Duration.between(now, nextMinute).toMillis())
+    // Round up so sub-millisecond remainders cannot emit before the boundary.
+    delay((java.time.Duration.between(now, nextMinute).toNanos() + 999_999) / 1_000_000)
     emit(Unit)
   }
 }
