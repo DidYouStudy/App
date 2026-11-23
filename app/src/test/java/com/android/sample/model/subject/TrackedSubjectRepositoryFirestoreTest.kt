@@ -17,10 +17,15 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.firestore.SetOptions
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 import org.mockito.ArgumentMatchers.any
@@ -30,6 +35,7 @@ import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.Mockito.`when`
 
 /** Unit tests for [TrackedSubjectRepositoryFirestore] error handling and local barrier logic. */
+@OptIn(ExperimentalCoroutinesApi::class)
 class TrackedSubjectRepositoryFirestoreTest {
 
   private lateinit var db: FirebaseFirestore
@@ -125,6 +131,31 @@ class TrackedSubjectRepositoryFirestoreTest {
     assertTrue(result.isFailure)
     val exception = result.exceptionOrNull() as TrackedSubjectException
     assertEquals(TrackedSubjectError.PERMISSION_DENIED, exception.error)
+  }
+
+  /** Auth listener emitting user ID mismatch closes flow with PERMISSION_DENIED. */
+  @Test
+  fun observeDecisions_authStateChangedToOtherUser_emitsPermissionDenied() = runTest {
+    var authListener: FirebaseAuth.AuthStateListener? = null
+    `when`(auth.addAuthStateListener(any())).thenAnswer { invocation ->
+      authListener = invocation.getArgument<FirebaseAuth.AuthStateListener>(0)
+      null
+    }
+    `when`(trackedSubjectsDoc.addSnapshotListener(any()))
+        .thenReturn(mock(ListenerRegistration::class.java))
+
+    val flow = repository.observeDecisions("user-1")
+    val collectionJob =
+        launch(UnconfinedTestDispatcher(testScheduler)) {
+          val result = flow.first()
+          assertTrue(result.isFailure)
+          val exception = result.exceptionOrNull() as TrackedSubjectException
+          assertEquals(TrackedSubjectError.PERMISSION_DENIED, exception.error)
+        }
+
+    `when`(auth.currentUser).thenReturn(null)
+    authListener?.onAuthStateChanged(auth)
+    collectionJob.join()
   }
 
   /** Malformed document snapshot data maps to domain INVALID_DATA exception. */
@@ -247,5 +278,50 @@ class TrackedSubjectRepositoryFirestoreTest {
     assertTrue(result.isFailure)
     val exception = result.exceptionOrNull() as TrackedSubjectException
     assertEquals(TrackedSubjectError.UNKNOWN, exception.error)
+  }
+
+  /** Coroutine cancellation in execute is rethrown without domain mapping. */
+  @Test
+  fun execute_rethrowsCancellationException() = runTest {
+    `when`(trackedSubjectsDoc.set(any(), any())).thenThrow(CancellationException("Cancelled"))
+
+    try {
+      repository.saveDecisions("user-1", mapOf("Analysis" to true))
+      fail("Expected CancellationException to be rethrown")
+    } catch (e: CancellationException) {
+      assertEquals("Cancelled", e.message)
+    }
+  }
+
+  /** Coroutine cancellation in capture is rethrown without domain mapping. */
+  @Test
+  fun capture_rethrowsCancellationException() = runTest {
+    `when`(trackedSubjectsDoc.addSnapshotListener(any())).thenAnswer { invocation ->
+      val listener = invocation.getArgument<EventListener<DocumentSnapshot>>(0)
+      val snapshot = mock(DocumentSnapshot::class.java)
+      `when`(snapshot.data).thenThrow(CancellationException("Cancelled"))
+      listener.onEvent(snapshot, null)
+      mock(ListenerRegistration::class.java)
+    }
+
+    try {
+      repository.observeDecisions("user-1").first()
+      fail("Expected CancellationException to be rethrown")
+    } catch (e: CancellationException) {
+      assertEquals("Cancelled", e.message)
+    }
+  }
+
+  /** IllegalArgumentException in execute is mapped to INVALID_ARGUMENT error. */
+  @Test
+  fun domainError_mapsIllegalArgumentExceptionToInvalidArgument() = runTest {
+    `when`(trackedSubjectsDoc.set(any(), any()))
+        .thenThrow(IllegalArgumentException("Invalid argument thrown"))
+
+    val result = repository.saveDecisions("user-1", mapOf("Analysis" to true))
+    assertTrue(result.isFailure)
+    val exception = result.exceptionOrNull() as TrackedSubjectException
+    assertEquals(TrackedSubjectError.INVALID_ARGUMENT, exception.error)
+    assertTrue(exception.cause is IllegalArgumentException)
   }
 }
