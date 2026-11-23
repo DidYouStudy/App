@@ -55,9 +55,6 @@ object StudyRingCalculator {
         )
       }
       segmentStart = segmentEnd
-      if (!segmentStart.isBefore(end)) {
-        break
-      }
       if (mode == RingMode.STUDYING) {
         mode = RingMode.BREAK
         segmentLength = breakLength
@@ -66,6 +63,5 @@ object StudyRingCalculator {
         segmentLength = breakFrequency
       }
     }
-    error("The current time must be inside the session")
   }
 }

@@ -30,6 +30,7 @@ import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 import kotlin.time.toKotlinDuration
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -76,10 +77,8 @@ class DashboardViewModel(
   private val currentDate = MutableStateFlow(LocalDate.now(clock))
   private val retryRequest = MutableStateFlow(0L)
   private var latestEvents: List<Event> = emptyList()
-  private var breakFrequency =
-      JavaDuration.ofMinutes(PreferenceDefaults.DEFAULT_FREQUENCY_MINUTES.toLong())
-  private var breakLength =
-      JavaDuration.ofMinutes(PreferenceDefaults.DEFAULT_BREAK_MINUTES.toLong())
+  private var breakFrequency = defaultBreakSettings().first
+  private var breakLength = defaultBreakSettings().second
   private var observedStudentId: String? = null
 
   private val _uiState =
@@ -159,6 +158,7 @@ class DashboardViewModel(
     if (studentId != observedStudentId) {
       clearEvents()
       observedStudentId = studentId
+      resetBreakSettings()
     }
     if (isRetry) {
       _uiState.update { it.copy(isLoading = true) }
@@ -174,13 +174,30 @@ class DashboardViewModel(
     }
 
     try {
-      loadPreferences(studentId)
-      getUserSchedule(studentId, date).collect(::updateSessions)
+      coroutineScope {
+        launch {
+          loadPreferences(studentId)
+          updateCurrentSessions()
+        }
+        getUserSchedule(studentId, date).collect(::updateSessions)
+      }
     } catch (exception: CancellationException) {
       throw exception
     } catch (_: Exception) {
       showLoadError()
     }
+  }
+
+  /** Returns the default break settings used before preferences are available. */
+  private fun defaultBreakSettings(): Pair<JavaDuration, JavaDuration> =
+      JavaDuration.ofMinutes(PreferenceDefaults.DEFAULT_FREQUENCY_MINUTES.toLong()) to
+          JavaDuration.ofMinutes(PreferenceDefaults.DEFAULT_BREAK_MINUTES.toLong())
+
+  /** Resets break settings when observing a different user. */
+  private fun resetBreakSettings() {
+    val (frequency, length) = defaultBreakSettings()
+    breakFrequency = frequency
+    breakLength = length
   }
 
   /** Loads break settings, falling back silently to the documented defaults. */
