@@ -21,7 +21,7 @@ interface TrackedSubjectRepository {
    * [SubjectDecisions].
    *
    * @return a flow emitting [Result.failure] with [TrackedSubjectError.INVALID_ARGUMENT] when
-   *   [ownerId] is blank.
+   *   [ownerId] is blank or contains a slash ('/').
    */
   fun observeDecisions(ownerId: String): Flow<Result<SubjectDecisions>>
 
@@ -32,11 +32,11 @@ interface TrackedSubjectRepository {
    * overwritten with the new flag and latest spelling. Passing an empty map succeeds without
    * writing.
    *
-   * @param ownerId user ID, must not be blank.
+   * @param ownerId user ID, must not be blank or contain a slash ('/').
    * @param decisions map of subject spelling to tracked boolean flag.
    * @return [Result.success] on success, or [Result.failure] with
-   *   [TrackedSubjectError.INVALID_ARGUMENT] if [ownerId] is blank, any subject spelling is blank,
-   *   or two subjects share the same key.
+   *   [TrackedSubjectError.INVALID_ARGUMENT] if [ownerId] is blank or contains a slash ('/'), any
+   *   subject spelling is blank, or two subjects share the same key.
    */
   suspend fun saveDecisions(ownerId: String, decisions: Map<String, Boolean>): Result<Unit>
 }
