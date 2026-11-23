@@ -284,6 +284,24 @@ class DashboardViewModelCurrentSessionsTest {
     assertTrue(viewModel.uiState.value.currentSessions.isEmpty())
   }
 
+  /** Minute ticks continue to update sessions after crossing midnight. */
+  @Test
+  fun ticksStillWorkAfterMidnight() = runTest {
+    signIn()
+    val midnightSessionStart = Instant.parse("2026-10-28T23:00:00Z")
+    val midnightSessionEnd = Instant.parse("2026-10-29T00:00:00Z")
+    eventsRepository.saveEvent(personal("midnight", midnightSessionStart, midnightSessionEnd))
+    clock.currentInstant = Instant.parse("2026-10-28T22:59:00Z")
+    val viewModel = createViewModel()
+    assertTrue(viewModel.uiState.value.currentSessions.isEmpty())
+    clock.currentInstant = midnightSessionStart
+    viewModel.updateToday()
+    assertEquals(1, viewModel.uiState.value.currentSessions.size)
+    clock.currentInstant = midnightSessionEnd
+    ticks.emit(Unit)
+    assertTrue(viewModel.uiState.value.currentSessions.isEmpty())
+  }
+
   /** A schedule error clears a session that was previously current. */
   @Test
   fun errorAfterCurrentSessionClearsIt() = runTest {
@@ -380,6 +398,23 @@ class DashboardViewModelCurrentSessionsTest {
     assertEquals(RingMode.BREAK, viewModel.uiState.value.currentSessions[0].ring.mode)
   }
 
+  /** A previous user's late preferences cannot change the current user's ring. */
+  @Test
+  fun stalePreferencesOfPreviousUserAreIgnored() = runTest {
+    signIn()
+    clock.currentInstant = start.plusSeconds(45 * 60)
+    val alicePreferences = CompletableDeferred<Result<UserPreferences?>>()
+    preferencesRepository.pendingResults["alice"] = alicePreferences
+    eventsRepository.saveEvent(personal("bob-session", start, end, ownerId = "bob"))
+    val viewModel = createViewModel()
+    authRepository.currentUser.value = UserAccount("bob", null, null, null)
+    assertEquals(RingMode.BREAK, viewModel.uiState.value.currentSessions[0].ring.mode)
+    alicePreferences.complete(
+        Result.success(UserPreferences("alice", breakFrequencyMinutes = 30, breakLengthMinutes = 5))
+    )
+    assertEquals(RingMode.BREAK, viewModel.uiState.value.currentSessions[0].ring.mode)
+  }
+
   /** Clearing a provider-owned ViewModel cancels its minute-tick subscription. */
   @Test
   fun tickerStopsWhenViewModelIsCleared() = runTest {
@@ -463,12 +498,16 @@ class DashboardViewModelCurrentSessionsTest {
   private class RecordingPreferencesRepository : PreferencesRepository {
     var result: Result<UserPreferences?> = Result.success(null)
     var pendingResult: CompletableDeferred<Result<UserPreferences?>>? = null
+    val pendingResults = mutableMapOf<String, CompletableDeferred<Result<UserPreferences?>>>()
     var throwOnGetPreferences = false
     val userIds = mutableListOf<String>()
 
     override suspend fun getPreferences(userId: String): Result<UserPreferences?> {
       userIds += userId
       if (throwOnGetPreferences) throw IllegalStateException("offline")
+      pendingResults[userId]?.let {
+        return it.await()
+      }
       pendingResult?.let {
         return it.await()
       }

@@ -25,6 +25,15 @@ class MinuteTickerTest {
     assertTickTimes("2026-10-28T12:00:00Z", listOf(60_000L, 120_000L, 180_000L))
   }
 
+  /** Rounds a sub-millisecond wait up so emissions do not precede the boundary. */
+  @Test
+  fun subMillisecondRemainderWaitsUntilBoundary() = runTest {
+    assertTickTimes(
+        "2026-10-28T12:00:59.999500Z",
+        listOf(1L, 60_001L, 120_001L),
+    )
+  }
+
   private suspend fun kotlinx.coroutines.test.TestScope.assertTickTimes(
       base: String,
       expected: List<Long>,
