@@ -612,6 +612,60 @@ class ProfileRepositoryFirestoreTest {
     assertProfileError(repository.updateUsername("user123", "Alice"), ProfileError.OFFLINE)
   }
 
+  // A transaction that never completes is abandoned after the limit and reported as OFFLINE.
+  @Test
+  fun updateUsername_returnsOffline_whenTransactionExceedsTimeLimit() = runTest {
+    val pending = TaskCompletionSource<UserProfile>()
+    `when`(firestore.runTransaction<UserProfile>(any())).thenReturn(pending.task)
+    val timed = ProfileRepositoryFirestore(firestore, updateTimeoutMillis = 5_000)
+
+    val result = async { timed.updateUsername("user123", "Alice") }
+    testScheduler.advanceTimeBy(4_999)
+    runCurrent()
+    assertTrue(result.isActive)
+    testScheduler.advanceTimeBy(2)
+    runCurrent()
+
+    assertProfileError(result.await(), ProfileError.OFFLINE)
+  }
+
+  // A transaction that Firestore retries after we gave up must abort before writing anything.
+  @Test
+  fun updateUsername_abortsLateTransaction_afterTimeLimit() = runTest {
+    val captured = mutableListOf<Transaction.Function<UserProfile>>()
+    val pending = TaskCompletionSource<UserProfile>()
+    `when`(firestore.runTransaction<UserProfile>(any())).thenAnswer { invocation ->
+      captured += invocation.getArgument<Transaction.Function<UserProfile>>(0)
+      pending.task
+    }
+    val timed = ProfileRepositoryFirestore(firestore, updateTimeoutMillis = 5_000)
+
+    val result = async { timed.updateUsername("user123", "Alice") }
+    testScheduler.advanceTimeBy(5_001)
+    runCurrent()
+    assertProfileError(result.await(), ProfileError.OFFLINE)
+
+    val transaction = mock(Transaction::class.java)
+    try {
+      captured.single().apply(transaction)
+      fail("Expected the late transaction to abort")
+    } catch (expected: ProfileException) {
+      assertEquals(ProfileError.OFFLINE, expected.error)
+    }
+    verify(transaction, never()).update(any(DocumentReference::class.java), any<String>(), any())
+    verify(transaction, never()).set(any(DocumentReference::class.java), any<Any>())
+  }
+
+  // A transaction that finishes in time is unaffected by the limit.
+  @Test
+  fun updateUsername_succeeds_whenTransactionFinishesBeforeTimeLimit() = runTest {
+    val expected = UserProfile("user123", username = "Alice")
+    `when`(firestore.runTransaction<UserProfile>(any())).thenReturn(Tasks.forResult(expected))
+    val timed = ProfileRepositoryFirestore(firestore, updateTimeoutMillis = 5_000)
+
+    assertEquals(expected, timed.updateUsername("user123", "Alice").getOrNull())
+  }
+
   // Other storage failures keep the generic Firestore category.
   @Test
   fun updateUsername_keepsFirestoreFailure_forOtherCodes() = runTest {
