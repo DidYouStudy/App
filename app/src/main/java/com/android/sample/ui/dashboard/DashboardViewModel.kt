@@ -1,4 +1,5 @@
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.sample.ui.dashboard
 
 import androidx.compose.runtime.Composable
@@ -12,14 +13,18 @@ import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.event.Event
 import com.android.sample.model.event.GetUserScheduleUseCase
 import com.android.sample.model.event.GroupSession
+import com.android.sample.model.preferences.PreferenceDefaults
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.PreferencesRepositoryProvider
 import com.android.sample.model.session.RingState
+import com.android.sample.model.session.StudyRingCalculator
 import com.android.sample.model.session.minuteTicks
 import java.time.Clock
+import java.time.Duration as JavaDuration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
@@ -70,6 +75,12 @@ class DashboardViewModel(
 ) : ViewModel() {
   private val currentDate = MutableStateFlow(LocalDate.now(clock))
   private val retryRequest = MutableStateFlow(0L)
+  private var latestEvents: List<Event> = emptyList()
+  private var breakFrequency =
+      JavaDuration.ofMinutes(PreferenceDefaults.DEFAULT_FREQUENCY_MINUTES.toLong())
+  private var breakLength =
+      JavaDuration.ofMinutes(PreferenceDefaults.DEFAULT_BREAK_MINUTES.toLong())
+  private var observedStudentId: String? = null
 
   private val _uiState =
       MutableStateFlow(
@@ -122,6 +133,7 @@ class DashboardViewModel(
         showLoadError()
       }
     }
+    viewModelScope.launch { minuteTicks.collect { updateCurrentSessions() } }
   }
 
   /** Resets state or preserves error state during retry, then observes today's sessions. */
@@ -131,6 +143,8 @@ class DashboardViewModel(
       isRetry: Boolean,
   ) {
     if (studentId.isNullOrBlank()) {
+      clearEvents()
+      observedStudentId = null
       _uiState.value =
           DashboardUiState(
               sessions = emptyList(),
@@ -142,6 +156,10 @@ class DashboardViewModel(
       return
     }
 
+    if (studentId != observedStudentId) {
+      clearEvents()
+      observedStudentId = studentId
+    }
     if (isRetry) {
       _uiState.update { it.copy(isLoading = true) }
     } else {
@@ -156,6 +174,7 @@ class DashboardViewModel(
     }
 
     try {
+      loadPreferences(studentId)
       getUserSchedule(studentId, date).collect(::updateSessions)
     } catch (exception: CancellationException) {
       throw exception
@@ -164,27 +183,37 @@ class DashboardViewModel(
     }
   }
 
+  /** Loads break settings, falling back silently to the documented defaults. */
+  private suspend fun loadPreferences(studentId: String) {
+    val preferences =
+        try {
+          preferencesRepository.getPreferences(studentId).getOrNull()
+        } catch (exception: CancellationException) {
+          throw exception
+        } catch (_: Exception) {
+          null
+        }
+    breakFrequency =
+        JavaDuration.ofMinutes(
+            (preferences?.breakFrequencyMinutes ?: PreferenceDefaults.DEFAULT_FREQUENCY_MINUTES)
+                .toLong()
+        )
+    breakLength =
+        JavaDuration.ofMinutes(
+            (preferences?.breakLengthMinutes ?: PreferenceDefaults.DEFAULT_BREAK_MINUTES).toLong()
+        )
+  }
+
   /** Converts incoming domain [Event] items to display-ready [DashboardSession] models. */
   private fun updateSessions(result: Result<List<Event>>) {
     result.fold(
         onSuccess = { events ->
-          val timeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(clock.zone)
-          val sessions = events.map { event ->
-            DashboardSession(
-                id = event.id,
-                startTime = timeFormatter.format(event.details.startsAt),
-                endTime = timeFormatter.format(event.details.endsAt),
-                subject = event.details.subject,
-                eventType = event.details.type,
-                location = event.details.location,
-                // Group sessions stay non-clickable until Event Details supports them (#325/#326).
-                isClickable = event !is GroupSession,
-            )
-          }
+          latestEvents = events
+          val sessions = events.map(::toDashboardSession)
           _uiState.update {
             it.copy(
                 sessions = sessions,
-                currentSessions = emptyList(),
+                currentSessions = currentSessions(events),
                 isLoading = false,
                 error = null,
                 midnightDelay = calculateMidnightDelay(),
@@ -195,8 +224,56 @@ class DashboardViewModel(
     )
   }
 
+  /** Converts one domain event to the dashboard display model. */
+  private fun toDashboardSession(event: Event): DashboardSession {
+    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(clock.zone)
+    return DashboardSession(
+        id = event.id,
+        startTime = timeFormatter.format(event.details.startsAt),
+        endTime = timeFormatter.format(event.details.endsAt),
+        subject = event.details.subject,
+        eventType = event.details.type,
+        location = event.details.location,
+        // Group sessions stay non-clickable until Event Details supports them (#325/#326).
+        isClickable = event !is GroupSession,
+    )
+  }
+
+  /** Recomputes the current-session projection from the retained event list. */
+  private fun updateCurrentSessions() {
+    _uiState.update { it.copy(currentSessions = currentSessions(latestEvents)) }
+  }
+
+  /** Maps events covering the current minute to sessions with their ring state. */
+  private fun currentSessions(events: List<Event>): List<CurrentSession> {
+    val now = clock.instant().truncatedTo(ChronoUnit.MINUTES)
+    return events
+        .filter { event ->
+          !now.isBefore(event.details.startsAt) && now.isBefore(event.details.endsAt)
+        }
+        .map { event ->
+          CurrentSession(
+              session = toDashboardSession(event),
+              ring =
+                  StudyRingCalculator.compute(
+                      event.details.startsAt,
+                      event.details.endsAt,
+                      now,
+                      breakFrequency,
+                      breakLength,
+                  ),
+          )
+        }
+  }
+
+  /** Drops retained events so ticks cannot resurrect data from an old user or failed load. */
+  private fun clearEvents() {
+    latestEvents = emptyList()
+  }
+
   /** Clears stale sessions and sets the error state. */
   private fun showLoadError() {
+    clearEvents()
     _uiState.update {
       it.copy(
           sessions = emptyList(),

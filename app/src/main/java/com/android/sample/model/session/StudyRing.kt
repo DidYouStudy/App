@@ -28,5 +28,44 @@ object StudyRingCalculator {
       now: Instant,
       breakFrequency: Duration,
       breakLength: Duration,
-  ): RingState = throw NotImplementedError()
+  ): RingState {
+    require(end.isAfter(start))
+    require(!breakFrequency.isZero && !breakFrequency.isNegative)
+    require(!breakLength.isZero && !breakLength.isNegative)
+    require(!now.isBefore(start))
+
+    if (!now.isBefore(end)) {
+      return RingState(RingMode.STUDYING, 1f, Duration.ZERO, Duration.ZERO, isOvertime = true)
+    }
+
+    var segmentStart = start
+    var mode = RingMode.STUDYING
+    var segmentLength = breakFrequency
+    while (true) {
+      val segmentEnd = minOf(segmentStart.plus(segmentLength), end)
+      if (now.isBefore(segmentEnd)) {
+        val elapsed = Duration.between(segmentStart, now)
+        val actualSegmentLength = Duration.between(segmentStart, segmentEnd)
+        return RingState(
+            mode = mode,
+            progress = elapsed.toMillis().toFloat() / actualSegmentLength.toMillis().toFloat(),
+            segmentRemaining = Duration.between(now, segmentEnd),
+            sessionRemaining = Duration.between(now, end),
+            isOvertime = false,
+        )
+      }
+      segmentStart = segmentEnd
+      if (!segmentStart.isBefore(end)) {
+        break
+      }
+      if (mode == RingMode.STUDYING) {
+        mode = RingMode.BREAK
+        segmentLength = breakLength
+      } else {
+        mode = RingMode.STUDYING
+        segmentLength = breakFrequency
+      }
+    }
+    error("The current time must be inside the session")
+  }
 }
