@@ -108,14 +108,12 @@ class StudyRingCalculatorTest {
         5,
         sessionEnd = cutEnd,
     )
-    assertState(
-        instant("14:47:30"),
-        RingMode.BREAK,
-        0.5f,
-        2,
-        2,
-        sessionEnd = cutEnd,
-    )
+    val half = StudyRingCalculator.compute(start, cutEnd, instant("14:47:30"), frequency, length)
+    assertEquals(RingMode.BREAK, half.mode)
+    assertEquals(0.5f, half.progress, 1e-4f)
+    assertEquals(Duration.ofSeconds(150), half.segmentRemaining)
+    assertEquals(Duration.ofSeconds(150), half.sessionRemaining)
+    assertEquals(false, half.isOvertime)
   }
 
   /** A second cycle schedules another break and then study time. */
