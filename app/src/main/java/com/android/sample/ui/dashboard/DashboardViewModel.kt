@@ -12,6 +12,10 @@ import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.event.Event
 import com.android.sample.model.event.GetUserScheduleUseCase
 import com.android.sample.model.event.GroupSession
+import com.android.sample.model.preferences.PreferencesRepository
+import com.android.sample.model.preferences.PreferencesRepositoryProvider
+import com.android.sample.model.session.RingState
+import com.android.sample.model.session.minuteTicks
 import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -38,10 +42,14 @@ enum class DashboardViewModelError {
 /** State holding today's study sessions, loading indicator, and any load error. */
 data class DashboardUiState(
     val sessions: List<DashboardSession> = emptyList(),
+    val currentSessions: List<CurrentSession> = emptyList(),
     val isLoading: Boolean = true,
     val error: DashboardViewModelError? = null,
     val midnightDelay: Duration = 0.toDuration(DurationUnit.SECONDS),
 )
+
+/** A dashboard session currently covering the injected clock time and its ring state. */
+data class CurrentSession(val session: DashboardSession, val ring: RingState)
 
 /**
  * Owns dashboard data loading and observes the signed-in user's study sessions for today.
@@ -56,7 +64,9 @@ data class DashboardUiState(
 class DashboardViewModel(
     private val authRepository: AuthRepository,
     private val getUserSchedule: GetUserScheduleUseCase,
+    private val preferencesRepository: PreferencesRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
+    private val minuteTicks: kotlinx.coroutines.flow.Flow<Unit> = minuteTicks(clock),
 ) : ViewModel() {
   private val currentDate = MutableStateFlow(LocalDate.now(clock))
   private val retryRequest = MutableStateFlow(0L)
@@ -124,6 +134,7 @@ class DashboardViewModel(
       _uiState.value =
           DashboardUiState(
               sessions = emptyList(),
+              currentSessions = emptyList(),
               isLoading = false,
               error = null,
               midnightDelay = calculateMidnightDelay(),
@@ -137,6 +148,7 @@ class DashboardViewModel(
       _uiState.value =
           DashboardUiState(
               sessions = emptyList(),
+              currentSessions = emptyList(),
               isLoading = true,
               error = null,
               midnightDelay = calculateMidnightDelay(),
@@ -172,6 +184,7 @@ class DashboardViewModel(
           _uiState.update {
             it.copy(
                 sessions = sessions,
+                currentSessions = emptyList(),
                 isLoading = false,
                 error = null,
                 midnightDelay = calculateMidnightDelay(),
@@ -187,6 +200,7 @@ class DashboardViewModel(
     _uiState.update {
       it.copy(
           sessions = emptyList(),
+          currentSessions = emptyList(),
           isLoading = false,
           error = DashboardViewModelError.LOAD_SESSIONS_FAILED,
       )
@@ -198,7 +212,9 @@ class DashboardViewModel(
 class DashboardViewModelFactory(
     private val authRepository: AuthRepository,
     private val getUserSchedule: GetUserScheduleUseCase,
+    private val preferencesRepository: PreferencesRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
+    private val minuteTicks: kotlinx.coroutines.flow.Flow<Unit> = minuteTicks(clock),
 ) : ViewModelProvider.Factory {
   override fun <T : ViewModel> create(modelClass: Class<T>): T {
     require(modelClass == DashboardViewModel::class.java) {
@@ -208,7 +224,9 @@ class DashboardViewModelFactory(
     return DashboardViewModel(
         authRepository = authRepository,
         getUserSchedule = getUserSchedule,
+        preferencesRepository = preferencesRepository,
         clock = clock,
+        minuteTicks = minuteTicks,
     )
         as T
   }
@@ -222,5 +240,6 @@ fun dashboardViewModel(): DashboardViewModel =
             DashboardViewModelFactory(
                 authRepository = AuthRepositoryProvider.getRepository(LocalContext.current),
                 getUserSchedule = GetUserScheduleUseCase(),
+                preferencesRepository = PreferencesRepositoryProvider.getRepository(),
             )
     )
