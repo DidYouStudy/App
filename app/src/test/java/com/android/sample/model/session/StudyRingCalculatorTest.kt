@@ -112,8 +112,8 @@ class StudyRingCalculatorTest {
         instant("14:47:30"),
         RingMode.BREAK,
         0.5f,
-        3,
-        3,
+        2,
+        2,
         sessionEnd = cutEnd,
     )
   }

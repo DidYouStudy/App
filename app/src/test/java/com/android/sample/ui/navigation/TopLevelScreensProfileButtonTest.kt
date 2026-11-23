@@ -22,6 +22,9 @@ import com.android.sample.model.event.InMemoryEventsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
 import com.android.sample.model.location.FakeLocationProvider
+import com.android.sample.model.preferences.PreferencesRepository
+import com.android.sample.model.preferences.PreferencesRepositoryProvider
+import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.UserProfile
 import com.android.sample.ui.calendar.CalendarDateHelper
@@ -55,6 +58,7 @@ class TopLevelScreensProfileButtonTest {
     AuthRepositoryProvider.setRepository(fakeAuthRepository)
     EventsRepositoryProvider.setRepository(InMemoryEventsRepository())
     GroupSessionsRepositoryProvider.setRepository(EmptyGroupSessionsRepository())
+    PreferencesRepositoryProvider.setRepository(FakePreferencesRepository())
   }
 
   @After
@@ -62,6 +66,7 @@ class TopLevelScreensProfileButtonTest {
     AuthRepositoryProvider.setRepository(null)
     EventsRepositoryProvider.setRepository(null)
     GroupSessionsRepositoryProvider.setRepository(null)
+    PreferencesRepositoryProvider.setRepository(null)
   }
 
   private val fakeAuthRepository =
@@ -183,5 +188,13 @@ class TopLevelScreensProfileButtonTest {
 
     override suspend fun updateProfilePictureUrl(userId: String, url: String): Result<Unit> =
         Result.failure(UnsupportedOperationException("Not needed in this test"))
+  }
+
+  private class FakePreferencesRepository : PreferencesRepository {
+    override suspend fun getPreferences(userId: String): Result<UserPreferences?> =
+        Result.success(null)
+
+    override suspend fun savePreferences(preferences: UserPreferences): Result<Unit> =
+        Result.success(Unit)
   }
 }

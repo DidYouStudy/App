@@ -150,6 +150,7 @@ class DashboardViewModelCurrentSessionsTest {
     eventsRepository.saveEvent(personal("personal", start, end))
     val group = group("group", start.plusSeconds(30 * 60), end.plusSeconds(30 * 60))
     groupSessionsRepository.saveSession("alice", group)
+    clock.currentInstant = start.plusSeconds(45 * 60)
     val viewModel = createViewModel()
     assertEquals(
         listOf("personal", "group"),
@@ -272,10 +273,52 @@ class DashboardViewModelCurrentSessionsTest {
     signIn()
     eventsRepository.saveEvent(personal("tick", start, end))
     val viewModel = createViewModel()
+    assertEquals(1, viewModel.uiState.value.currentSessions.size)
     clock.currentInstant = end
     viewModel.updateToday()
     ticks.emit(Unit)
     assertTrue(viewModel.uiState.value.currentSessions.isEmpty())
+  }
+
+  /** A schedule error clears a session that was previously current. */
+  @Test
+  fun errorAfterCurrentSessionClearsIt() = runTest {
+    signIn()
+    val controlledEvents = ControlledEventsRepository()
+    val controlledSchedule =
+        GetUserScheduleUseCase(controlledEvents, groupSessionsRepository, clock)
+    val viewModel = createViewModel(controlledSchedule)
+    controlledEvents.results.emit(Result.success(listOf(personal("controlled", start, end))))
+    assertEquals(1, viewModel.uiState.value.currentSessions.size)
+    controlledEvents.results.emit(Result.failure(IllegalStateException("offline")))
+    assertTrue(viewModel.uiState.value.currentSessions.isEmpty())
+    assertEquals(DashboardViewModelError.LOAD_SESSIONS_FAILED, viewModel.uiState.value.error)
+  }
+
+  /** Signing out clears current sessions and a later tick keeps them empty. */
+  @Test
+  fun signOutWhileCurrentClearsAndStaysEmptyAfterTick() = runTest {
+    signIn()
+    eventsRepository.saveEvent(personal("signed-out", start, end))
+    val viewModel = createViewModel()
+    assertEquals(1, viewModel.uiState.value.currentSessions.size)
+    authRepository.currentUser.value = null
+    assertTrue(viewModel.uiState.value.currentSessions.isEmpty())
+    ticks.emit(Unit)
+    assertTrue(viewModel.uiState.value.currentSessions.isEmpty())
+  }
+
+  /** An exception while reading preferences falls back to the default schedule. */
+  @Test
+  fun preferencesThrowingUsesDefaults() = runTest {
+    signIn()
+    preferencesRepository.throwOnGetPreferences = true
+    eventsRepository.saveEvent(personal("throwing", start, end))
+    clock.currentInstant = start.plusSeconds(45 * 60)
+    val viewModel = createViewModel()
+    assertEquals(RingMode.BREAK, viewModel.uiState.value.currentSessions.single().ring.mode)
+    assertNull(viewModel.uiState.value.error)
+    assertEquals(1, viewModel.uiState.value.sessions.size)
   }
 
   /** Clearing a provider-owned ViewModel cancels its minute-tick subscription. */
@@ -359,15 +402,27 @@ class DashboardViewModelCurrentSessionsTest {
 
   private class RecordingPreferencesRepository : PreferencesRepository {
     var result: Result<UserPreferences?> = Result.success(null)
+    var throwOnGetPreferences = false
     val userIds = mutableListOf<String>()
 
     override suspend fun getPreferences(userId: String): Result<UserPreferences?> {
       userIds += userId
+      if (throwOnGetPreferences) throw IllegalStateException("offline")
       return result
     }
 
     override suspend fun savePreferences(preferences: UserPreferences): Result<Unit> =
         Result.success(Unit)
+  }
+
+  private class ControlledEventsRepository : EventsRepository by InMemoryEventsRepository() {
+    val results = MutableSharedFlow<Result<List<PersonalEvent>>>()
+
+    override fun observeEvents(
+        ownerId: String,
+        from: Instant,
+        to: Instant,
+    ): Flow<Result<List<PersonalEvent>>> = results
   }
 
   private class FailingEventsRepository : EventsRepository by InMemoryEventsRepository() {
