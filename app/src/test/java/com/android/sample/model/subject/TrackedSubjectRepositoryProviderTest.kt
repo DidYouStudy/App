@@ -9,6 +9,7 @@ import org.junit.Before
 import org.junit.Test
 import org.mockito.Mockito.mock
 
+/** Tests provider default instantiation, override injection, and clearing logic. */
 class TrackedSubjectRepositoryProviderTest {
 
   @Before
@@ -21,6 +22,7 @@ class TrackedSubjectRepositoryProviderTest {
     TrackedSubjectRepositoryProvider.setRepository(null)
   }
 
+  /** Without an override, the provider creates and caches a default in-memory repository. */
   @Test
   fun withoutOverride_createsOneInMemoryRepositoryAndSharesIt() {
     val first = TrackedSubjectRepositoryProvider.getRepository()
@@ -29,6 +31,7 @@ class TrackedSubjectRepositoryProviderTest {
     assertSame(first, TrackedSubjectRepositoryProvider.getRepository())
   }
 
+  /** An injected override repository is returned on every call. */
   @Test
   fun override_isReturnedOnEveryCall() {
     val injected = mock(TrackedSubjectRepository::class.java)
@@ -39,6 +42,7 @@ class TrackedSubjectRepositoryProviderTest {
     assertSame(injected, TrackedSubjectRepositoryProvider.getRepository())
   }
 
+  /** Setting an override replaces an existing repository default. */
   @Test
   fun override_replacesAnAlreadyCreatedDefault() {
     TrackedSubjectRepositoryProvider.getRepository()
@@ -49,6 +53,7 @@ class TrackedSubjectRepositoryProviderTest {
     assertSame(injected, TrackedSubjectRepositoryProvider.getRepository())
   }
 
+  /** Clearing an override restores a default in-memory repository instance. */
   @Test
   fun clearingOverride_restoresAnInMemoryRepository() {
     val injected = mock(TrackedSubjectRepository::class.java)
@@ -61,6 +66,7 @@ class TrackedSubjectRepositoryProviderTest {
     assertNotSame(injected, restored)
   }
 
+  /** Clearing discards the cached default so the next call creates a fresh repository. */
   @Test
   fun clearing_discardsTheCachedDefault() {
     val first = TrackedSubjectRepositoryProvider.getRepository()

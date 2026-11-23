@@ -7,6 +7,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/** Unit tests for [SubjectDecisions] container methods and matching logic. */
 class SubjectDecisionsTest {
 
   private fun decisions(vararg entries: Pair<String, Boolean>): SubjectDecisions {
@@ -16,6 +17,9 @@ class SubjectDecisionsTest {
     return SubjectDecisions(map)
   }
 
+  /**
+   * A subject is tracked only when it is decided and its flag is true, ignoring case/whitespace.
+   */
   @Test
   fun isTracked_returnsTrueOnlyWhenDecidedAndTracked() {
     val d = decisions("Analysis I" to true, "Physics" to false)
@@ -28,6 +32,7 @@ class SubjectDecisionsTest {
     assertTrue(d.isTracked("ANALYSIS I"))
   }
 
+  /** Checks whether a decision exists for a given subject ignoring case and surrounding spaces. */
   @Test
   fun isDecided_returnsTrueForDecidedSubjectsIgnoringCaseAndSpaces() {
     val d = decisions("Analysis I" to false)
@@ -37,6 +42,9 @@ class SubjectDecisionsTest {
     assertFalse(d.isDecided("Chemistry"))
   }
 
+  /**
+   * Filters out decided subjects and returns undecided ones preserving order of first appearance.
+   */
   @Test
   fun undecided_filtersDecidedAndDeduplicatesPreservingOrder() {
     val d = decisions("Analysis I" to true)
@@ -47,6 +55,7 @@ class SubjectDecisionsTest {
     assertEquals(listOf("Physics", "Chemistry"), result)
   }
 
+  /** Returns list of spellings for tracked subjects sorted in case-insensitive order. */
   @Test
   fun trackedSubjects_returnsSortedTrackedSubjectSpellingsIgnoringCase() {
     val d =

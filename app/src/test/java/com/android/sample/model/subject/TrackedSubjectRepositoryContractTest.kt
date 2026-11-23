@@ -12,6 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
+/** Behavior every [TrackedSubjectRepository] implementation must satisfy. */
 abstract class TrackedSubjectRepositoryContractTest {
 
   protected abstract fun createRepository(): TrackedSubjectRepository
@@ -30,12 +31,16 @@ abstract class TrackedSubjectRepositoryContractTest {
   private suspend fun current(ownerId: String = owner): SubjectDecisions =
       repository.observeDecisions(ownerId).first().getOrThrow()
 
+  /** An uninitialized user returns an empty [SubjectDecisions] container. */
   @Test
   fun observeDecisions_emitsEmptyInitially() = runTest {
     val decisions = current()
     assertTrue(decisions.decisions.isEmpty())
   }
 
+  /**
+   * Saving decisions merges new entries and overwrites existing key flags with trimmed spelling.
+   */
   @Test
   fun saveDecisions_savesAndMergesChoices() = runTest {
     repository.saveDecisions(owner, mapOf("Analysis I" to true, "Physics" to false)).getOrThrow()
@@ -54,6 +59,7 @@ abstract class TrackedSubjectRepositoryContractTest {
     assertEquals(listOf("Analysis I", "physics"), d2.trackedSubjects)
   }
 
+  /** Passing an empty map to saveDecisions succeeds without modifying existing decisions. */
   @Test
   fun saveDecisions_emptyMapSucceedsWithoutChanges() = runTest {
     repository.saveDecisions(owner, mapOf("Analysis I" to true)).getOrThrow()
@@ -62,6 +68,10 @@ abstract class TrackedSubjectRepositoryContractTest {
     assertTrue(current().isTracked("Analysis I"))
   }
 
+  /**
+   * Blank owner IDs, blank spellings, or duplicate normalized keys are rejected with
+   * INVALID_ARGUMENT.
+   */
   @Test
   fun saveDecisions_rejectsInvalidArguments() = runTest {
     assertEquals(
@@ -84,6 +94,7 @@ abstract class TrackedSubjectRepositoryContractTest {
     )
   }
 
+  /** Observing decisions with a blank owner ID or invalid path fails with INVALID_ARGUMENT. */
   @Test
   fun observeDecisions_rejectsBlankOwnerId() = runTest {
     assertEquals(
@@ -96,6 +107,7 @@ abstract class TrackedSubjectRepositoryContractTest {
     )
   }
 
+  /** Subject tracking decisions are strictly isolated per owner ID. */
   @Test
   fun decisions_areIsolatedPerOwner() = runTest {
     repository.saveDecisions(owner, mapOf("Analysis I" to true)).getOrThrow()
@@ -108,6 +120,7 @@ abstract class TrackedSubjectRepositoryContractTest {
     assertFalse(current(otherOwner).isTracked("Analysis I"))
   }
 
+  /** The decisions flow re-emits updated data whenever decisions change for the owner. */
   @OptIn(ExperimentalCoroutinesApi::class)
   @Test
   fun observeDecisions_reEmitsOnEveryChange() = runTest {
