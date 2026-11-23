@@ -50,7 +50,7 @@ class InMemoryTrackedSubjectRepository : TrackedSubjectRepository {
       val updatedMap = current.toMutableMap()
       for ((spelling, tracked) in decisions) {
         val key = SubjectCatalogFirestoreMapper.key(spelling)
-        updatedMap[key] = SubjectDecision(spelling = spelling, tracked = tracked)
+        updatedMap[key] = SubjectDecision(spelling = spelling.trim(), tracked = tracked)
       }
       byOwner + (ownerId to SubjectDecisions(updatedMap))
     }

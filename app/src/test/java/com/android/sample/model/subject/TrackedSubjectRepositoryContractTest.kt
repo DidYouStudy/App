@@ -51,6 +51,7 @@ abstract class TrackedSubjectRepositoryContractTest {
     val d2 = current()
     assertTrue(d2.isTracked("Analysis I"))
     assertTrue(d2.isTracked("Physics"))
+    assertEquals(listOf("Analysis I", "physics"), d2.trackedSubjects)
   }
 
   @Test
