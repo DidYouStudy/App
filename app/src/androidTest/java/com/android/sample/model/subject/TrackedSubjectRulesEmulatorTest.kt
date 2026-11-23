@@ -21,6 +21,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
+/** Emulator tests for Firestore security rules under `users/{userId}/meta/trackedSubjects`. */
 @RunWith(AndroidJUnit4::class)
 class TrackedSubjectRulesEmulatorTest {
 
@@ -69,18 +70,21 @@ class TrackedSubjectRulesEmulatorTest {
 
   private fun validPayload() = TrackedSubjectFirestoreMapper.encode(mapOf("Analysis I" to true))
 
+  /** Verifies document owner can write and read valid trackedSubjects payload. */
   @Test
   fun ownerCanReadAndWriteValidData() = runBlocking {
     doc().set(validPayload()).await()
     assertTrue(doc().get(Source.SERVER).await().exists())
   }
 
+  /** Verifies rules reject invalid document schemas (subjects not a map or extra keys). */
   @Test
   fun rejectsInvalidDataSchema() = runBlocking {
     denied { doc().set(mapOf("subjects" to "not-a-map")).await() }
     denied { doc().set(mapOf("subjects" to emptyMap<String, Any>(), "extraKey" to true)).await() }
   }
 
+  /** Verifies signed-out clients and non-owner users are denied access. */
   @Test
   fun deniesSignedOutAndOtherUsers() = runBlocking {
     doc().set(validPayload()).await()

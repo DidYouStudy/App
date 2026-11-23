@@ -27,6 +27,7 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.Mockito.`when`
 
+/** Unit tests for [TrackedSubjectRepositoryFirestore] error handling and local barrier logic. */
 class TrackedSubjectRepositoryFirestoreTest {
 
   private lateinit var db: FirebaseFirestore
@@ -59,6 +60,7 @@ class TrackedSubjectRepositoryFirestoreTest {
     repository = TrackedSubjectRepositoryFirestore(db, auth)
   }
 
+  /** An empty decision map succeeds without contacting Firestore. */
   @Test
   fun saveEmptyDecisionsBatchSucceedsWithoutFirestoreInteraction() = runTest {
     val result = repository.saveDecisions("user-1", emptyMap())
@@ -66,6 +68,7 @@ class TrackedSubjectRepositoryFirestoreTest {
     verifyNoInteractions(db)
   }
 
+  /** Saving decisions queues set with SetOptions.merge() and awaits the local cache barrier. */
   @Test
   fun saveDecisionsQueuesSetWithMergeAndWaitsOnCacheBarrier() = runTest {
     val setTask = Tasks.forResult<Void>(null)
@@ -81,6 +84,7 @@ class TrackedSubjectRepositoryFirestoreTest {
     assertTrue(result.isSuccess)
   }
 
+  /** Firestore snapshot errors map to domain PERMISSION_DENIED exception. */
   @Test
   fun observeDecisions_handlesFirestoreError() = runTest {
     `when`(trackedSubjectsDoc.addSnapshotListener(any())).thenAnswer { invocation ->
@@ -100,6 +104,7 @@ class TrackedSubjectRepositoryFirestoreTest {
     assertEquals(TrackedSubjectError.PERMISSION_DENIED, exception.error)
   }
 
+  /** Malformed document snapshot data maps to domain INVALID_DATA exception. */
   @Test
   fun observeDecisions_handlesInvalidData() = runTest {
     val snapshot = mock(DocumentSnapshot::class.java)

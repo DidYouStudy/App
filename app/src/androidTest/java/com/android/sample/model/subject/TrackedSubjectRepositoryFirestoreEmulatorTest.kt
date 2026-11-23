@@ -20,6 +20,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
+/** Emulator tests for [TrackedSubjectRepositoryFirestore] testing persistence and offline sync. */
 @RunWith(AndroidJUnit4::class)
 class TrackedSubjectRepositoryFirestoreEmulatorTest {
 
@@ -75,6 +76,7 @@ class TrackedSubjectRepositoryFirestoreEmulatorTest {
   private fun doc() =
       db.collection("users").document(uid).collection("meta").document("trackedSubjects")
 
+  /** Verifies saving decisions persists to Firestore server and can be observed. */
   @Test
   fun saveDecisionsAndServerRoundTrip() = runBlocking {
     repository.saveDecisions(uid, mapOf("Analysis I" to true, "Physics" to false)).getOrThrow()
@@ -88,6 +90,7 @@ class TrackedSubjectRepositoryFirestoreEmulatorTest {
     assertFalse(current.isTracked("Physics"))
   }
 
+  /** Verifies decisions saved offline are observed locally and synced when network is restored. */
   @Test
   fun offlineSaveDecisionsAndReconnectSync() = runBlocking {
     repository.saveDecisions(uid, mapOf("Analysis I" to true)).getOrThrow()
