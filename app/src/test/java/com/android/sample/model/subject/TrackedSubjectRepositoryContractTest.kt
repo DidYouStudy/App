@@ -70,10 +70,12 @@ abstract class TrackedSubjectRepositoryContractTest {
 
   /**
    * Blank owner IDs, blank spellings, or duplicate normalized keys are rejected with
-   * INVALID_ARGUMENT.
+   * INVALID_ARGUMENT and nothing is written.
    */
   @Test
   fun saveDecisions_rejectsInvalidArguments() = runTest {
+    repository.saveDecisions(owner, mapOf("Physics" to false)).getOrThrow()
+
     assertEquals(
         TrackedSubjectError.INVALID_ARGUMENT,
         repository.saveDecisions(" ", mapOf("Analysis" to true)).error(),
@@ -92,6 +94,8 @@ abstract class TrackedSubjectRepositoryContractTest {
             .saveDecisions(owner, mapOf("Analysis I" to true, " analysis i " to false))
             .error(),
     )
+
+    assertEquals(setOf("Physics"), current().decisions.values.map { it.spelling }.toSet())
   }
 
   /** Observing decisions with a blank owner ID or invalid path fails with INVALID_ARGUMENT. */
