@@ -12,7 +12,7 @@ internal object TrackedSubjectFirestoreMapper {
         decisions.entries.associate { (spelling, tracked) ->
           SubjectCatalogFirestoreMapper.key(spelling) to
               mapOf(
-                  "spelling" to spelling,
+                  "spelling" to spelling.trim(),
                   "tracked" to tracked,
               )
         }
