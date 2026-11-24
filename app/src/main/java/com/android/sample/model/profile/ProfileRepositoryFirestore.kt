@@ -7,6 +7,7 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Source
+import com.google.firebase.firestore.Transaction
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
@@ -116,47 +117,82 @@ class ProfileRepositoryFirestore(
     val validName =
         UsernamePolicy.validate(username)
             ?: return Result.failure(ProfileException(ProfileError.INVALID_USERNAME))
-    return execute {
-      val profileDocument = collection.document(userId)
-      val newKey = UsernamePolicy.key(validName)
-      val newReservation = usernames.document(newKey)
-      // Set once we give up waiting: a transaction that has not started writing by then aborts, so
-      // a late retry by Firestore cannot change the name after "offline" was reported. Retrying the
-      // same name afterwards is safe: the reservation already belongs to this user.
-      val gaveUp = AtomicBoolean(false)
-      try {
-        withTimeout(updateTimeoutMillis) {
-          firestore
-              .runTransaction { transaction ->
-                if (gaveUp.get()) throw ProfileException(ProfileError.OFFLINE)
-                // Firestore requires every read before the first write.
-                val profileSnapshot = transaction.get(profileDocument)
-                val reservationSnapshot = transaction.get(newReservation)
-                if (!profileSnapshot.exists()) {
-                  throw ProfileException(ProfileError.INVALID_PROFILE_DATA)
-                }
-                val profile = profileSnapshot.toUserProfile(userId)
-                val reservationExists = reservationSnapshot.exists()
-                if (reservationExists && reservationSnapshot.getString("uid") != userId) {
-                  throw ProfileException(ProfileError.USERNAME_TAKEN)
-                }
-                val oldKey = profile.username.takeIf { it.isNotBlank() }?.let(UsernamePolicy::key)
-                if (oldKey != null && oldKey != newKey) {
-                  transaction.delete(usernames.document(oldKey))
-                }
-                if (!reservationExists) {
-                  transaction.set(newReservation, mapOf("uid" to userId))
-                }
-                transaction.update(profileDocument, "username", validName)
-                profile.copy(username = validName)
-              }
-              .await()
-        }
-      } catch (timeout: TimeoutCancellationException) {
-        gaveUp.set(true)
-        throw ProfileException(ProfileError.OFFLINE, timeout)
+    return execute { runUsernameTransactionWithTimeout(userId, validName) }
+  }
+
+  /**
+   * Runs [applyUsernameChange] in a transaction, giving up after [updateTimeoutMillis].
+   *
+   * Transactions need the server, so offline they would otherwise keep retrying; on timeout the
+   * failure is reported as [ProfileError.OFFLINE].
+   *
+   * @param userId profile document ID.
+   * @param validName username already validated with [UsernamePolicy.validate].
+   * @return the updated profile.
+   * @throws ProfileException on timeout ([ProfileError.OFFLINE]) or any transaction failure.
+   */
+  private suspend fun runUsernameTransactionWithTimeout(
+      userId: String,
+      validName: String,
+  ): UserProfile {
+    // Set once we give up waiting: a transaction that has not started writing by then aborts, so
+    // a late retry by Firestore cannot change the name after "offline" was reported. Retrying the
+    // same name afterwards is safe: the reservation already belongs to this user.
+    val gaveUp = AtomicBoolean(false)
+    return try {
+      withTimeout(updateTimeoutMillis) {
+        firestore
+            .runTransaction { transaction ->
+              if (gaveUp.get()) throw ProfileException(ProfileError.OFFLINE)
+              applyUsernameChange(transaction, userId, validName)
+            }
+            .await()
       }
+    } catch (timeout: TimeoutCancellationException) {
+      gaveUp.set(true)
+      throw ProfileException(ProfileError.OFFLINE, timeout)
     }
+  }
+
+  /**
+   * Body of the username transaction: checks the reservation, frees the previous one, claims the
+   * new one and updates the profile.
+   *
+   * @param transaction the active Firestore transaction.
+   * @param userId profile document ID.
+   * @param validName username already validated with [UsernamePolicy.validate].
+   * @return the profile carrying the new username.
+   * @throws ProfileException with [ProfileError.INVALID_PROFILE_DATA] when the profile is missing,
+   *   or [ProfileError.USERNAME_TAKEN] when another user owns the name.
+   */
+  private fun applyUsernameChange(
+      transaction: Transaction,
+      userId: String,
+      validName: String,
+  ): UserProfile {
+    val profileDocument = collection.document(userId)
+    val newKey = UsernamePolicy.key(validName)
+    val newReservation = usernames.document(newKey)
+    // Firestore requires every read before the first write.
+    val profileSnapshot = transaction.get(profileDocument)
+    val reservationSnapshot = transaction.get(newReservation)
+    if (!profileSnapshot.exists()) {
+      throw ProfileException(ProfileError.INVALID_PROFILE_DATA)
+    }
+    val profile = profileSnapshot.toUserProfile(userId)
+    val reservationExists = reservationSnapshot.exists()
+    if (reservationExists && reservationSnapshot.getString("uid") != userId) {
+      throw ProfileException(ProfileError.USERNAME_TAKEN)
+    }
+    val oldKey = profile.username.takeIf { it.isNotBlank() }?.let(UsernamePolicy::key)
+    if (oldKey != null && oldKey != newKey) {
+      transaction.delete(usernames.document(oldKey))
+    }
+    if (!reservationExists) {
+      transaction.set(newReservation, mapOf("uid" to userId))
+    }
+    transaction.update(profileDocument, "username", validName)
+    return profile.copy(username = validName)
   }
 
   /**
