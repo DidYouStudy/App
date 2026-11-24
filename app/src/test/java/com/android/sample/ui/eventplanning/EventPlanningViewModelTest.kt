@@ -1365,6 +1365,8 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
             EventPlanningError.INVALID_EVENT_DATA to
                 R.string.event_planning_error_invalid_event_data,
             EventPlanningError.STORAGE_FAILURE to R.string.event_planning_error_storage_failure,
+            EventPlanningError.OFFLINE to R.string.event_planning_error_offline,
+            EventPlanningError.CONNECTION_LOST to R.string.event_planning_error_connection_lost,
         )
 
     assertEquals(EventPlanningError.entries.toSet(), expectedMappings.keys)
