@@ -444,7 +444,9 @@ class GroupSessionFilterSheetTest {
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(250)).performClick()
 
     composeTestRule
-        .onNodeWithText("Allow location access to filter by distance")
+        .onNodeWithText(
+            "Precise location is disabled. Enable it in Settings to filter by distance."
+        )
         .assertIsDisplayed()
     composeTestRule.runOnIdle {
       assertEquals(listOf(250), permissionNeeded)
@@ -466,7 +468,9 @@ class GroupSessionFilterSheetTest {
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(500)).performClick()
 
     composeTestRule
-        .onNodeWithText("Allow location access to filter by distance")
+        .onNodeWithText(
+            "Precise location is disabled. Enable it in Settings to filter by distance."
+        )
         .assertIsDisplayed()
     composeTestRule.runOnIdle {
       assertEquals(listOf(500), permissionNeeded)
@@ -488,7 +492,9 @@ class GroupSessionFilterSheetTest {
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(1000)).performClick()
 
     composeTestRule
-        .onNodeWithText("Allow location access to filter by distance")
+        .onNodeWithText(
+            "Precise location is disabled. Enable it in Settings to filter by distance."
+        )
         .assertIsDisplayed()
     composeTestRule.runOnIdle {
       assertEquals(listOf(1000), permissionNeeded)
@@ -744,12 +750,13 @@ class GroupSessionFilterSheetTest {
     composeTestRule.onNodeWithText("Show 1 session").assertIsDisplayed()
   }
 
-  /** Returns true when either supported location permission is granted. */
+  /** Returns true only when precise location permission is granted. */
   @Test
-  fun locationPermissionIsGrantedForFineOrCoarse() {
+  fun locationPermissionIsGrantedOnlyForFine() {
     assertTrue(isLocationPermissionGranted(mapOf(Manifest.permission.ACCESS_FINE_LOCATION to true)))
-    assertTrue(
-        isLocationPermissionGranted(mapOf(Manifest.permission.ACCESS_COARSE_LOCATION to true))
+    assertEquals(
+        false,
+        isLocationPermissionGranted(mapOf(Manifest.permission.ACCESS_COARSE_LOCATION to true)),
     )
     assertTrue(
         isLocationPermissionGranted(

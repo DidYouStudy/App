@@ -267,6 +267,14 @@
     <string name="group_session_view_mode_map">Map view</string>
     <string name="group_session_center_location_description">Center on user location</string>
     <string name="group_session_user_location_placeholder">User location marker</string>
+    <string name="group_session_precise_location_title">Use precise location</string>
+    <string name="group_session_precise_location_message">This app needs precise location to show your position on the map and filter nearby sessions. Approximate or disabled location acts as if no location was shared.</string>
+    <string name="group_session_precise_location_confirm">Continue</string>
+    <string name="group_session_precise_settings_title">Enable precise location in Settings</string>
+    <string name="group_session_precise_settings_message">Precise location is required for map and distance features. Open Settings, choose \"Allow only while using the app\", and enable \"Use precise location\".</string>
+    <string name="group_session_precise_settings_open">Open Settings</string>
+    <string name="group_session_precise_settings_dismiss">OK</string>
+    <string name="group_session_filter_precise_denied_hint">Precise location is disabled. Enable it in Settings to filter by distance.</string>
     <!-- %1$s: location room name, %2$s: formatted distance from user -->
     <string name="group_session_location_with_distance">%1$s • %2$s</string>
     <string name="event_type_study_session">Study session</string>
