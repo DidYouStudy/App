@@ -319,11 +319,11 @@ class AndroidLocationProviderTest {
   }
 
   @Test
-  fun hasLocationPermissionAcceptsTheApproximatePermissionAlone() {
+  fun hasLocationPermissionRejectsTheApproximatePermissionAlone() {
     val app = ApplicationProvider.getApplicationContext<Application>()
     shadowOf(app).grantPermissions(Manifest.permission.ACCESS_COARSE_LOCATION)
 
-    assertTrue(hasLocationPermission(app))
+    assertFalse(hasLocationPermission(app))
   }
 
   @Test
