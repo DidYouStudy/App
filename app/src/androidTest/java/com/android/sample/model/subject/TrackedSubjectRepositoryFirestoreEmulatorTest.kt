@@ -14,6 +14,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -88,6 +89,30 @@ class TrackedSubjectRepositoryFirestoreEmulatorTest {
     val current = withTimeout(15000) { repository.observeDecisions(uid).first().getOrThrow() }
     assertTrue(current.isTracked("Analysis I"))
     assertFalse(current.isTracked("Physics"))
+  }
+
+  /** Merging keeps the other subjects and overwrites one entry with the trimmed latest spelling. */
+  @Test
+  fun mergeKeepsOtherSubjectsAndUpdatesSpelling() = runBlocking {
+    repository.saveDecisions(uid, mapOf("Analysis I" to true, "Physics" to false)).getOrThrow()
+    repository.saveDecisions(uid, mapOf(" physics " to true)).getOrThrow()
+    sync()
+
+    val server = TrackedSubjectFirestoreMapper.decode(doc().get(Source.SERVER).await().data)
+    assertEquals(listOf("Analysis I", "physics"), server.trackedSubjects)
+  }
+
+  /** A rejected save (the same subject twice) writes nothing to the server. */
+  @Test
+  fun rejectedSaveWritesNothing() = runBlocking {
+    repository.saveDecisions(uid, mapOf("Physics" to false)).getOrThrow()
+    val rejected =
+        repository.saveDecisions(uid, mapOf("Analysis I" to true, " analysis i " to false))
+    assertTrue(rejected.isFailure)
+    sync()
+
+    val server = TrackedSubjectFirestoreMapper.decode(doc().get(Source.SERVER).await().data)
+    assertEquals(setOf("Physics"), server.decisions.values.map { it.spelling }.toSet())
   }
 
   /** Verifies decisions saved offline are observed locally and synced when network is restored. */
