@@ -127,6 +127,13 @@ service cloud.firestore {
         && request.resource.data.subjects is map;
     }
 
+    match /users/{userId}/meta/trackedSubjects {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId)
+        && request.resource.data.keys().hasOnly(['subjects'])
+        && request.resource.data.subjects is map;
+    }
+
     // Checks the complete stored schema and schedule constraints for a shared session. Every member
     // reads these values, so text lengths are bounded too.
     function validGroupSession() {
