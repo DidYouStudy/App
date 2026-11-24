@@ -7,6 +7,8 @@ package com.android.sample.ui.eventplanning
 import androidx.lifecycle.ViewModel
 import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
+import com.android.sample.model.connectivity.ConnectionLostException
+import com.android.sample.model.connectivity.FakeConnectivityObserver
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
@@ -1331,6 +1333,61 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     val state = viewModel.uiState.value
     assertFalse(state.isEventAdded)
     assertEquals(EventPlanningError.STORAGE_FAILURE, state.error)
+  }
+
+  @Test
+  fun addEvent_groupSessionOffline_doesNotCallRepository() = runTest {
+    val connectivity = FakeConnectivityObserver(initialOnline = false)
+    val viewModel = createViewModel(connectivityObserver = connectivity)
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+    viewModel.fillValidForm()
+
+    viewModel.addEvent()
+
+    assertEquals(EventPlanningError.OFFLINE, viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isEventAdded)
+    verify(groupSessionsRepository, never()).saveSession(any(), any())
+  }
+
+  @Test
+  fun deleteEvent_groupSessionOffline_doesNotCallRepository() = runTest {
+    val connectivity = FakeConnectivityObserver(initialOnline = false)
+    val viewModel = createViewModel(connectivityObserver = connectivity)
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+
+    viewModel.deleteEvent("session-1")
+
+    assertEquals(EventPlanningError.OFFLINE, viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isEventDeleted)
+    verify(groupSessionsRepository, never()).deleteSession(any(), any())
+  }
+
+  @Test
+  fun addEvent_groupSessionConnectionLost_exposesConnectionLostError() = runTest {
+    `when`(groupSessionsRepository.saveSession(any(), any()))
+        .thenReturn(Result.failure(ConnectionLostException()))
+    val viewModel = createViewModel()
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+    viewModel.fillValidForm()
+
+    viewModel.addEvent()
+
+    assertEquals(EventPlanningError.CONNECTION_LOST, viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isEventAdded)
+  }
+
+  @Test
+  fun personalEventRemainsWritableWhileOffline() = runTest {
+    val connectivity = FakeConnectivityObserver(initialOnline = false)
+    val viewModel = createViewModel(connectivityObserver = connectivity)
+    viewModel.setEventKind(EventKind.PERSONAL)
+    viewModel.fillValidForm()
+
+    viewModel.addEvent()
+
+    assertTrue(viewModel.uiState.value.isEventAdded)
+    assertNull(viewModel.uiState.value.error)
+    verify(eventsRepository).saveEvent(any())
   }
 
   /**

@@ -6,6 +6,9 @@ package com.android.sample.ui.groupsession
 
 import androidx.lifecycle.viewModelScope
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.connectivity.ConnectionLostException
+import com.android.sample.model.connectivity.ConnectivityObserver
+import com.android.sample.model.connectivity.FakeConnectivityObserver
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
@@ -631,6 +634,71 @@ class GroupSessionsViewModelTest {
 
     viewModel.leave(target.id)
     assertFalse(viewModel.uiState.value.sessions.single().isMember)
+  }
+
+  @Test
+  fun joinOffline_doesNotCallRepository() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val connectivity = FakeConnectivityObserver(initialOnline = false)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(listOf(session("target", BOB, listOf(BOB))))
+    val viewModel =
+        createViewModel(
+            sessionsRepository = sessionsRepository,
+            connectivityObserver = connectivity,
+        )
+    observe(viewModel)
+    runCurrent()
+
+    viewModel.join("target")
+
+    assertEquals(GroupSessionsError.OFFLINE, viewModel.uiState.value.error)
+    assertEquals(0, sessionsRepository.joinCalls)
+  }
+
+  @Test
+  fun leaveOffline_doesNotCallRepository() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val connectivity = FakeConnectivityObserver(initialOnline = false)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(
+            listOf(session("target", BOB, listOf(BOB, ALICE))),
+        )
+    val viewModel =
+        createViewModel(
+            sessionsRepository = sessionsRepository,
+            connectivityObserver = connectivity,
+        )
+    observe(viewModel)
+    runCurrent()
+
+    viewModel.leave("target")
+
+    assertEquals(GroupSessionsError.OFFLINE, viewModel.uiState.value.error)
+    assertEquals(0, sessionsRepository.leaveCalls)
+  }
+
+  @Test
+  fun joinConnectionLostReportsConnectionLostAndClearsProgress() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(listOf(session("a", BOB, listOf(BOB))))
+    val connectivity = FakeConnectivityObserver(initialOnline = true)
+    val viewModel =
+        createViewModel(
+            sessionsRepository = sessionsRepository,
+            connectivityObserver = connectivity,
+        )
+    observe(viewModel)
+    runCurrent()
+
+    viewModel.join("a")
+    runCurrent()
+    sessionsRepository.joinResult.complete(Result.failure(ConnectionLostException()))
+    runCurrent()
+
+    assertFalse(viewModel.uiState.value.sessions.single().isActionInProgress)
+    assertEquals(GroupSessionsError.CONNECTION_LOST, viewModel.uiState.value.error)
   }
 
   /** Marks only the requested session while joining and clears progress after success. */
@@ -1797,6 +1865,7 @@ class GroupSessionsViewModelTest {
       profiles: FakeProfileRepository = profileRepository,
       clock: Clock = MutableTestClock(now),
       campusCenter: Location = testCampusCenter,
+      connectivityObserver: ConnectivityObserver? = null,
   ): GroupSessionsViewModel =
       GroupSessionsViewModel(
           authRepository = authRepository,
@@ -1806,6 +1875,7 @@ class GroupSessionsViewModelTest {
           campusLocationRepository = campusLocationRepository,
           profileRepository = profiles,
           campusCenter = campusCenter,
+          connectivityObserver = connectivityObserver,
       )
 
   private fun visibleIds(viewModel: GroupSessionsViewModel): List<String> =
