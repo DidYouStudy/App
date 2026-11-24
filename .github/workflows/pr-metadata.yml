@@ -1,0 +1,53 @@
+# Co-authored-by: Claude Opus 5.5
+name: PR metadata
+
+# Fails a PR that has no milestone or no label, because both are often forgotten.
+# Re-runs as soon as a label or milestone is added or removed, so the check
+# turns green without pushing a new commit.
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+      - labeled
+      - unlabeled
+      - milestoned
+      - demilestoned
+
+# Only the event payload is read: no checkout, no token scopes needed.
+permissions: {}
+
+# A new event on the same PR replaces the older, now outdated run.
+concurrency:
+  group: pr-metadata-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Milestone and label set
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      # Reads the milestone and labels from the event payload and reports
+      # every missing field at once, so one fix is enough.
+      - name: Check milestone and labels
+        env:
+          MILESTONE: ${{ github.event.pull_request.milestone.title }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: |
+          missing=0
+          if [ -z "$MILESTONE" ]; then
+            echo "::error title=Missing milestone::Set the sprint milestone (e.g. M3) on this PR."
+            missing=1
+          else
+            echo "Milestone: $MILESTONE"
+          fi
+          if [ "$(echo "$LABELS" | jq 'length')" -eq 0 ]; then
+            echo "::error title=Missing label::Add at least one label (e.g. frontend, backend)."
+            missing=1
+          else
+            echo "Labels: $(echo "$LABELS" | jq -r 'join(", ")')"
+          fi
+          exit "$missing"
