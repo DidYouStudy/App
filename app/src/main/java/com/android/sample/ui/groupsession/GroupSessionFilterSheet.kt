@@ -313,47 +313,21 @@ fun GroupSessionFilterSheetContent(
     }
 
     FilterSectionLabel(R.string.group_session_filter_room_type_title)
-    // Keep the label and switch in one TalkBack node and make the whole row tappable.
-    Row(
-        modifier =
-            Modifier.fillMaxWidth()
-                .toggleable(
-                    value = filters.showLabs,
-                    role = Role.Switch,
-                    onValueChange = onShowLabsChanged,
-                )
-                .testTag(GroupSessionFilterSheetTestTags.LAB_SWITCH),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-      Text(stringResource(R.string.group_session_filter_show_labs))
-      Switch(checked = filters.showLabs, onCheckedChange = null)
-    }
+    FilterSwitchRow(
+        checked = filters.showLabs,
+        onCheckedChange = onShowLabsChanged,
+        labelRes = R.string.group_session_filter_show_labs,
+        testTag = GroupSessionFilterSheetTestTags.LAB_SWITCH,
+    )
 
     FilterSectionLabel(R.string.group_session_filter_availability_title)
-    // Keep the label and switch in one TalkBack node and make the whole row tappable.
-    Row(
-        modifier =
-            Modifier.fillMaxWidth()
-                .toggleable(
-                    value = filters.hideFullSessions,
-                    role = Role.Switch,
-                    onValueChange = onHideFullSessionsChange,
-                )
-                .testTag(GroupSessionFilterSheetTestTags.HIDE_FULL_SWITCH),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-      Column {
-        Text(stringResource(R.string.group_session_filter_hide_full_sessions))
-        Text(
-            text = stringResource(R.string.group_session_filter_hide_full_sessions_subtitle),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-      }
-      Switch(checked = filters.hideFullSessions, onCheckedChange = null)
-    }
+    FilterSwitchRow(
+        checked = filters.hideFullSessions,
+        onCheckedChange = onHideFullSessionsChange,
+        labelRes = R.string.group_session_filter_hide_full_sessions,
+        testTag = GroupSessionFilterSheetTestTags.HIDE_FULL_SWITCH,
+        subtitleRes = R.string.group_session_filter_hide_full_sessions_subtitle,
+    )
 
     Button(
         modifier =
@@ -382,6 +356,43 @@ private fun FilterSectionLabel(labelRes: Int) {
       fontWeight = FontWeight.Bold,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
   )
+}
+
+/**
+ * Displays one on/off filter as a label (with an optional subtitle) and a trailing switch.
+ *
+ * The whole row is a single toggleable node with [Role.Switch], so TalkBack reads the label and the
+ * state together and tapping the label toggles the switch too.
+ */
+@Composable
+private fun FilterSwitchRow(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    labelRes: Int,
+    testTag: String,
+    subtitleRes: Int? = null,
+) {
+  Row(
+      modifier =
+          Modifier.fillMaxWidth()
+              .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+              .testTag(testTag),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.SpaceBetween,
+  ) {
+    Column {
+      Text(stringResource(labelRes))
+      if (subtitleRes != null) {
+        Text(
+            text = stringResource(subtitleRes),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+    }
+    // The row handles the toggle, so the switch itself only shows the state.
+    Switch(checked = checked, onCheckedChange = null)
+  }
 }
 
 /** Displays a connected, equally sized row of selected filter choices. */
