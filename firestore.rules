@@ -58,10 +58,40 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
+    // Named limits shared by several rules. Keep them in sync with the Kotlin constants named in
+    // each comment.
+    // EventType.kt
+    function eventTypes() {
+      return ['STUDY_SESSION', 'COURSE', 'EXERCISE_SESSION', 'LAB', 'PROJECT', 'EXAM', 'OTHER'];
+    }
+    function maxEventDuration() {
+      return duration.value(24, 'h');
+    }
+    // GroupSession.MAX_MEMBERS
+    function maxMembers() {
+      return 30;
+    }
+    // EventTextLimits.SUBJECT, LOCATION and DESCRIPTION
+    function maxSubjectLength() {
+      return 100;
+    }
+    function maxLocationLength() {
+      return 100;
+    }
+    function maxDescriptionLength() {
+      return 500;
+    }
+
     // Top-level schema checks complement the domain mapper's nested task validation.
     function optionalText(data, field, nonblank) {
       return data.get(field, null) == null
         || (data[field] is string && (!nonblank || data[field].matches('.*[^\\s].*')));
+    }
+
+    // Like optionalText, and a present value has at most maxLength characters.
+    function boundedText(data, field, nonblank, maxLength) {
+      return optionalText(data, field, nonblank)
+        && (data.get(field, null) == null || data[field].size() <= maxLength);
     }
 
     function validEvent(userId) {
@@ -71,14 +101,14 @@ service cloud.firestore {
                             'createdAt', 'updatedAt', 'location', 'description', 'tasks',
                             'importKey'])
         && d.ownerId == userId
-        && d.type in ['STUDY_SESSION', 'COURSE', 'EXERCISE_SESSION', 'LAB', 'PROJECT', 'EXAM', 'OTHER']
+        && d.type in eventTypes()
         && optionalText(d, 'subject', true)
         && (d.type == 'OTHER' || d.get('subject', null) != null)
         && optionalText(d, 'location', true)
         && optionalText(d, 'description', false)
         && optionalText(d, 'importKey', true)
         && d.startsAt is timestamp && d.endsAt is timestamp
-        && d.endsAt > d.startsAt && d.endsAt - d.startsAt <= duration.value(24, 'h')
+        && d.endsAt > d.startsAt && d.endsAt - d.startsAt <= maxEventDuration()
         && d.createdAt is timestamp && d.updatedAt is timestamp
         && d.get('tasks', []) is list;
     }
@@ -97,7 +127,8 @@ service cloud.firestore {
         && request.resource.data.subjects is map;
     }
 
-    // Checks the complete stored schema and schedule constraints for a shared session.
+    // Checks the complete stored schema and schedule constraints for a shared session. Every member
+    // reads these values, so text lengths are bounded too.
     function validGroupSession() {
       let d = request.resource.data;
       return d.keys().hasAll(['createdBy', 'memberIds', 'type', 'startsAt', 'endsAt',
@@ -106,17 +137,17 @@ service cloud.firestore {
                              'endsAt', 'createdAt', 'updatedAt', 'location', 'description'])
         && optionalText(d, 'createdBy', true)
         && d.memberIds is list
-        && d.memberIds.size() >= 1 && d.memberIds.size() <= 30
+        && d.memberIds.size() >= 1 && d.memberIds.size() <= maxMembers()
         && d.memberIds.toSet().size() == d.memberIds.size()
         && d.createdBy in d.memberIds
         && d.type is string
-        && d.type in ['STUDY_SESSION', 'COURSE', 'EXERCISE_SESSION', 'LAB', 'PROJECT', 'EXAM', 'OTHER']
-        && optionalText(d, 'subject', true)
+        && d.type in eventTypes()
+        && boundedText(d, 'subject', true, maxSubjectLength())
         && (d.type == 'OTHER' || d.get('subject', null) != null)
-        && optionalText(d, 'location', true)
-        && optionalText(d, 'description', false)
+        && boundedText(d, 'location', true, maxLocationLength())
+        && boundedText(d, 'description', false, maxDescriptionLength())
         && d.startsAt is timestamp && d.endsAt is timestamp
-        && d.endsAt > d.startsAt && d.endsAt - d.startsAt <= duration.value(24, 'h')
+        && d.endsAt > d.startsAt && d.endsAt - d.startsAt <= maxEventDuration()
         && d.createdAt is timestamp && d.updatedAt is timestamp;
     }
 
@@ -128,7 +159,7 @@ service cloud.firestore {
         && resource.data.memberIds is list
         && request.resource.data.memberIds is list
         && request.resource.data.memberIds.size() >= 1
-        && request.resource.data.memberIds.size() <= 30
+        && request.resource.data.memberIds.size() <= maxMembers()
         && after.size() == request.resource.data.memberIds.size()
         && after.difference(before).hasOnly([userId])
         && before.difference(after).hasOnly([userId])
@@ -140,17 +171,23 @@ service cloud.firestore {
 
     match /groupSessions/{sessionId} {
       allow read: if request.auth != null;
+      // The phone's clock is not trusted: creation and edit times must be the server's time, which
+      // the app writes with FieldValue.serverTimestamp().
       allow create: if request.auth != null
         && validGroupSession()
         && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.memberIds == [request.auth.uid];
+        && request.resource.data.memberIds == [request.auth.uid]
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      // Joining and leaving keep updatedAt unchanged (canChangeOwnMembership allows only memberIds).
       allow update: if request.auth != null
         && validGroupSession()
         && (
           (resource.data.createdBy == request.auth.uid
             && request.resource.data.memberIds == resource.data.memberIds
             && request.resource.data.createdBy == resource.data.createdBy
-            && request.resource.data.createdAt == resource.data.createdAt)
+            && request.resource.data.createdAt == resource.data.createdAt
+            && request.resource.data.updatedAt == request.time)
           || canChangeOwnMembership(request.auth.uid)
         );
       allow delete: if request.auth != null && (resource == null || resource.data.createdBy == request.auth.uid);

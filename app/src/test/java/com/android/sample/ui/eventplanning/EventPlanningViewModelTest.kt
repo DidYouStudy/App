@@ -390,6 +390,37 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertEquals("a".repeat(100), viewModel.uiState.value.subject)
   }
 
+  /** Locations at the 100-character limit remain unchanged; firestore.rules denies longer ones. */
+  @Test
+  fun setLocation_keeps100Characters() = runTest {
+    val viewModel = createViewModel()
+
+    viewModel.setLocation("a".repeat(100))
+
+    assertEquals("a".repeat(100), viewModel.uiState.value.location)
+  }
+
+  /** Locations longer than 100 characters are truncated. */
+  @Test
+  fun setLocation_truncatesAt100Characters() = runTest {
+    val viewModel = createViewModel()
+
+    viewModel.setLocation("a".repeat(101))
+
+    assertEquals("a".repeat(100), viewModel.uiState.value.location)
+  }
+
+  /** Clearing the location still works after the limit was added. */
+  @Test
+  fun setLocation_clearsWithEmptyString() = runTest {
+    val viewModel = createViewModel()
+    viewModel.setLocation("BC 01")
+
+    viewModel.setLocation("")
+
+    assertEquals("", viewModel.uiState.value.location)
+  }
+
   /** setEventKind updates eventKind and toggles showTasksSection. */
   @Test
   fun setEventKind_updatesEventKindAndShowTasksSection() = runTest {

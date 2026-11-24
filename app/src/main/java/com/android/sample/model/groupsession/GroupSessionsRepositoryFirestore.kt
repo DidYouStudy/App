@@ -78,7 +78,12 @@ class GroupSessionsRepositoryFirestore(
     GroupSessionFirestoreMapper.decode(sessionId, requireNotNull(snapshot.data))
   }
 
-  /** Creates or edits a session atomically, waiting for the server transaction to finish. */
+  /**
+   * Creates or edits a session atomically, waiting for the server transaction to finish.
+   *
+   * The stored creation and edit times come from the server clock, because the security rules do
+   * not trust the phone's clock.
+   */
   override suspend fun saveSession(userId: String, session: GroupSession): Result<Unit> = execute {
     validateIds(userId, session.id, session.createdBy, *session.memberIds.toTypedArray())
     checkOwner(userId)
@@ -91,7 +96,7 @@ class GroupSessionsRepositoryFirestore(
             if (session.memberIds != listOf(session.createdBy)) {
               throw EventsException(EventsError.PERMISSION_DENIED)
             }
-            transaction.set(document, GroupSessionFirestoreMapper.encode(session))
+            transaction.set(document, createdFields(session))
           } else {
             val stored =
                 GroupSessionFirestoreMapper.decode(session.id, requireNotNull(snapshot.data))
@@ -164,9 +169,18 @@ class GroupSessionsRepositoryFirestore(
         .await()
   }
 
-  /** Builds the only fields a creator is allowed to edit on an existing session. */
+  /** Builds a new session document whose creation and edit times are set by the server. */
+  private fun createdFields(session: GroupSession): Map<String, Any?> =
+      GroupSessionFirestoreMapper.encode(session) +
+          mapOf(
+              GroupSessionFirestoreMapper.CREATED_AT to FieldValue.serverTimestamp(),
+              GroupSessionFirestoreMapper.UPDATED_AT to FieldValue.serverTimestamp(),
+          )
+
+  /** Builds the only fields a creator may edit, with the edit time set by the server. */
   private fun editableFields(session: GroupSession): Map<String, Any?> =
-      GroupSessionFirestoreMapper.encode(session).filterKeys { it in EDITABLE_FIELDS }
+      GroupSessionFirestoreMapper.encode(session).filterKeys { it in EDITABLE_FIELDS } +
+          (GroupSessionFirestoreMapper.UPDATED_AT to FieldValue.serverTimestamp())
 
   /** Decodes a transaction read and reports a missing document as NOT_FOUND. */
   private fun decodeExisting(
@@ -268,7 +282,6 @@ class GroupSessionsRepositoryFirestore(
       }
 
   private companion object {
-    val EDITABLE_FIELDS =
-        setOf("type", "subject", "startsAt", "endsAt", "updatedAt", "location", "description")
+    val EDITABLE_FIELDS = setOf("type", "subject", "startsAt", "endsAt", "location", "description")
   }
 }

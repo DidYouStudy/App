@@ -14,11 +14,13 @@ import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.EventListener
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
+import com.google.firebase.firestore.Transaction
 import java.time.Instant
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -222,6 +224,51 @@ class GroupSessionsRepositoryFirestoreTest {
     assertError(repository.getSession("id"), EventsError.INVALID_EVENT_DATA)
   }
 
+  /** A new session is stored with server creation and edit times, not the phone's. */
+  @Test
+  fun createStoresServerTimes() = runTest {
+    val transaction = runTransactionsWith(storedData = null)
+
+    repository.saveSession("owner", session("id")).getOrThrow()
+
+    val written = argumentCaptor<Map<String, Any?>>()
+    verify(transaction).set(eq(document), written.capture())
+    val expected =
+        GroupSessionFirestoreMapper.encode(session("id")) +
+            mapOf(
+                GroupSessionFirestoreMapper.CREATED_AT to FieldValue.serverTimestamp(),
+                GroupSessionFirestoreMapper.UPDATED_AT to FieldValue.serverTimestamp(),
+            )
+    assertEquals(expected, written.firstValue)
+  }
+
+  /** An edit sends only editable fields, with the server's time as the edit time. */
+  @Test
+  fun editStoresServerUpdatedAtAndKeepsCreatedAt() = runTest {
+    val stored = session("id")
+    val transaction = runTransactionsWith(GroupSessionFirestoreMapper.encode(stored))
+    val edited =
+        stored.copy(
+            details = stored.details.copy(description = "Bring notes"),
+            createdAt = Instant.parse("2020-01-01T00:00:00Z"),
+            updatedAt = Instant.parse("2030-01-01T00:00:00Z"),
+        )
+
+    repository.saveSession("owner", edited).getOrThrow()
+
+    val written = argumentCaptor<Map<String, Any>>()
+    verify(transaction).update(eq(document), written.capture())
+    assertEquals(
+        setOf("type", "subject", "startsAt", "endsAt", "location", "description", "updatedAt"),
+        written.firstValue.keys,
+    )
+    assertEquals("Bring notes", written.firstValue["description"])
+    assertEquals(
+        FieldValue.serverTimestamp(),
+        written.firstValue[GroupSessionFirestoreMapper.UPDATED_AT],
+    )
+  }
+
   /** Coroutine cancellation escapes instead of becoming a failed result. */
   @Test
   fun propagatesCancellation() = runTest {
@@ -234,6 +281,22 @@ class GroupSessionsRepositoryFirestoreTest {
     } catch (caught: CancellationException) {
       assertSame(cancellation, caught)
     }
+  }
+
+  /**
+   * Runs every Firestore transaction immediately on a mock transaction whose read of [document]
+   * returns [storedData], or a missing document when it is null. Returns that mock transaction.
+   */
+  private fun runTransactionsWith(storedData: Map<String, Any?>?): Transaction {
+    val transaction: Transaction = mock()
+    val snapshot: DocumentSnapshot = mock()
+    whenever(snapshot.exists()).thenReturn(storedData != null)
+    whenever(snapshot.data).thenReturn(storedData)
+    whenever(transaction.get(document)).thenReturn(snapshot)
+    whenever(firestore.runTransaction(any<Transaction.Function<Any?>>())).thenAnswer { invocation ->
+      Tasks.forResult(invocation.getArgument<Transaction.Function<Any?>>(0).apply(transaction))
+    }
+    return transaction
   }
 
   /** Builds a valid session with the requested ID. */

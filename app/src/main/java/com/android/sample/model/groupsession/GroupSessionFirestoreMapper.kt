@@ -9,6 +9,12 @@ import com.android.sample.model.event.GroupSession
 internal object GroupSessionFirestoreMapper {
   const val COLLECTION = "groupSessions"
 
+  /** Creation time field; `firestore.rules` requires the server time when a session is created. */
+  const val CREATED_AT = "createdAt"
+
+  /** Last-edit time field; `firestore.rules` requires the server time on every creator write. */
+  const val UPDATED_AT = "updatedAt"
+
   /** Encodes a session without storing its document ID. */
   fun encode(session: GroupSession): Map<String, Any?> =
       with(session) {
@@ -16,8 +22,8 @@ internal object GroupSessionFirestoreMapper {
             mapOf(
                 "createdBy" to createdBy,
                 "memberIds" to memberIds,
-                "createdAt" to EventFirestoreMapper.timestamp(createdAt),
-                "updatedAt" to EventFirestoreMapper.timestamp(updatedAt),
+                CREATED_AT to EventFirestoreMapper.timestamp(createdAt),
+                UPDATED_AT to EventFirestoreMapper.timestamp(updatedAt),
             )
       }
 
@@ -30,8 +36,8 @@ internal object GroupSessionFirestoreMapper {
           createdBy = data["createdBy"] as String,
           memberIds = memberIds,
           details = decodeDetails(data),
-          createdAt = instant(data["createdAt"]),
-          updatedAt = instant(data["updatedAt"]),
+          createdAt = instant(data[CREATED_AT]),
+          updatedAt = instant(data[UPDATED_AT]),
       )
     }
   }

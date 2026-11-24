@@ -5,6 +5,7 @@ package com.android.sample.model.groupsession
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.model.event.EventDetails
+import com.android.sample.model.event.EventTextLimits
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
 import com.google.firebase.FirebaseApp
@@ -24,6 +25,7 @@ import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -84,8 +86,8 @@ class GroupSessionsFirestoreRulesEmulatorTest {
             )
     set(document(creator, otherId), other)
     val editedOther = other + ("description" to "Open study time")
-    set(document(creator, otherId), editedOther)
-    assertEquals(editedOther, readData(outsider, otherId))
+    edit(document(creator, otherId), mapOf("description" to "Open study time"))
+    assertEquals(withoutTimes(editedOther), withoutTimes(readData(outsider, otherId)))
 
     val dayId = uniqueId()
     val exactDay =
@@ -95,7 +97,7 @@ class GroupSessionsFirestoreRulesEmulatorTest {
                 "endsAt" to timestamp(start.plusSeconds(24 * 3600)),
             )
     set(document(creator, dayId), exactDay)
-    assertEquals(exactDay, readData(outsider, dayId))
+    assertEquals(withoutTimes(exactDay), withoutTimes(readData(outsider, dayId)))
   }
 
   /** Any signed-in non-member can read a document and list the collection. */
@@ -104,7 +106,7 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     val id = createSession()
     val expected = sessionData(creator)
 
-    assertEquals(expected, readData(outsider, id))
+    assertEquals(withoutTimes(expected), withoutTimes(readData(outsider, id)))
     val listed = timed {
       outsider.db.collection(GroupSessionFirestoreMapper.COLLECTION).get(Source.SERVER).await()
     }
@@ -116,19 +118,17 @@ class GroupSessionsFirestoreRulesEmulatorTest {
   @Test
   fun creatorCanEditAndDeleteSession() = runBlocking {
     val id = createSession()
-    val expected =
-        sessionData(creator) +
-            mapOf(
-                "startsAt" to timestamp(start.plusSeconds(7200)),
-                "endsAt" to timestamp(end.plusSeconds(7200)),
-                "subject" to "Physics",
-                "location" to "Library",
-                "description" to "Problem set",
-                "updatedAt" to timestamp(created.plusSeconds(60)),
-            )
+    val changes =
+        mapOf(
+            "startsAt" to timestamp(start.plusSeconds(7200)),
+            "endsAt" to timestamp(end.plusSeconds(7200)),
+            "subject" to "Physics",
+            "location" to "Library",
+            "description" to "Problem set",
+        )
 
-    set(document(creator, id), expected)
-    assertEquals(expected, readData(member, id))
+    edit(document(creator, id), changes)
+    assertEquals(withoutTimes(sessionData(creator) + changes), withoutTimes(readData(member, id)))
     timed { document(creator, id).delete().await() }
     val deleted = timed { document(member, id).get(Source.SERVER).await() }
     assertFalse(deleted.exists())
@@ -166,7 +166,7 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     val joinedMembers = listOf(creator.uid, member.uid)
 
     val endedAt = Instant.ofEpochSecond(Instant.now().epochSecond - 3600)
-    update(
+    edit(
         document(creator, id),
         mapOf(
             "startsAt" to timestamp(endedAt.minusSeconds(3600)),
@@ -190,7 +190,7 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     }
     assertEquals(joinedMembers, readData(outsider, id)["memberIds"])
 
-    update(document(creator, id), mapOf("description" to "Session has ended"))
+    edit(document(creator, id), mapOf("description" to "Session has ended"))
     assertEquals("Session has ended", readData(outsider, id)["description"])
 
     update(
@@ -289,22 +289,17 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     )
     val expectedMembers = listOf(creator.uid, member.uid)
     val description = "Updated group session"
-    val updatedAt = timestamp(created.plusSeconds(60))
+    val createdAt = readData(outsider, id)["createdAt"] as Timestamp
 
-    update(
-        document(creator, id),
-        mapOf(
-            "description" to description,
-            "updatedAt" to updatedAt,
-        ),
-    )
+    edit(document(creator, id), mapOf("description" to description))
     val updatedData = readData(outsider, id)
     assertEquals(description, updatedData["description"])
-    assertEquals(updatedAt, updatedData["updatedAt"])
+    assertTrue((updatedData["updatedAt"] as Timestamp) > createdAt)
     assertEquals(expectedMembers, updatedData["memberIds"])
 
+    // A full replacement with valid times is denied only because its member list is stale.
     val beforeReplacement = readData(outsider, id)
-    denied { set(document(creator, id), sessionData(creator)) }
+    denied { set(document(creator, id), sessionData(creator) + ("createdAt" to createdAt)) }
     assertEquals(beforeReplacement, readData(outsider, id))
   }
 
@@ -339,7 +334,10 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     assertEquals(memberIds, readData(outsider, id)["memberIds"])
   }
 
-  /** The mapper's serialized document is accepted and decodes with its path ID. */
+  /**
+   * The mapper's serialized document, with server times as the repository writes it, is accepted
+   * and decodes with its path ID and the stored times.
+   */
   @Test
   fun mapperPayloadCanBeCreatedAndReadBack() = runBlocking {
     val session =
@@ -358,11 +356,80 @@ class GroupSessionsFirestoreRulesEmulatorTest {
         )
     val data = GroupSessionFirestoreMapper.encode(session)
 
-    set(document(creator, session.id), data)
+    // The phone's own times are rejected.
+    denied { set(document(creator, session.id), data) }
+    set(document(creator, session.id), data + serverTimes())
+    val stored = readData(member, session.id)
+    val storedTimestamp = stored["createdAt"] as Timestamp
+    val storedTime =
+        Instant.ofEpochSecond(storedTimestamp.seconds, storedTimestamp.nanoseconds.toLong())
+    assertEquals(stored["createdAt"], stored["updatedAt"])
+    assertNotEquals(timestamp(created), stored["createdAt"])
     assertEquals(
-        session,
-        GroupSessionFirestoreMapper.decode(session.id, readData(member, session.id)),
+        session.copy(createdAt = storedTime, updatedAt = storedTime),
+        GroupSessionFirestoreMapper.decode(session.id, stored),
     )
+  }
+
+  /** Creation and edit times must be the server's time; a phone-chosen time is denied. */
+  @Test
+  fun phoneChosenTimesAreDenied() = runBlocking {
+    val phoneTime = timestamp(Instant.ofEpochSecond(Instant.now().epochSecond))
+    listOf(
+            sessionData(creator) + ("createdAt" to phoneTime),
+            sessionData(creator) + ("updatedAt" to phoneTime),
+            sessionData(creator) + mapOf("createdAt" to phoneTime, "updatedAt" to phoneTime),
+        )
+        .forEach { data -> denied { set(document(creator, uniqueId()), data) } }
+
+    val id = createSession()
+    val before = readData(outsider, id)
+    // An edit must refresh updatedAt with the server time.
+    denied { update(document(creator, id), mapOf("description" to "No new time")) }
+    denied {
+      update(document(creator, id), mapOf("description" to "Phone time", "updatedAt" to phoneTime))
+    }
+    assertEquals(before, readData(outsider, id))
+  }
+
+  /** Joining and leaving do not need, and may not set, a new updatedAt. */
+  @Test
+  fun joinAndLeaveKeepUpdatedAt() = runBlocking {
+    val id = createSession()
+    val updatedAt = readData(outsider, id)["updatedAt"]
+
+    update(document(member, id), mapOf("memberIds" to FieldValue.arrayUnion(member.uid)))
+    assertEquals(updatedAt, readData(outsider, id)["updatedAt"])
+    denied {
+      update(
+          document(member, id),
+          mapOf(
+              "memberIds" to FieldValue.arrayRemove(member.uid),
+              "updatedAt" to FieldValue.serverTimestamp(),
+          ),
+      )
+    }
+    update(document(member, id), mapOf("memberIds" to FieldValue.arrayRemove(member.uid)))
+    assertEquals(updatedAt, readData(outsider, id)["updatedAt"])
+  }
+
+  /** Text exactly at the Kotlin limits is accepted on create and edit, counting characters. */
+  @Test
+  fun acceptsTextAtTheLimits() = runBlocking {
+    // "é" is two bytes in UTF-8: this proves the rules count characters, as the app does.
+    val atLimits =
+        mapOf(
+            "subject" to "é".repeat(EventTextLimits.SUBJECT),
+            "location" to "é".repeat(EventTextLimits.LOCATION),
+            "description" to "é".repeat(EventTextLimits.DESCRIPTION),
+        )
+    val id = uniqueId()
+    set(document(creator, id), sessionData(creator) + atLimits)
+    assertEquals(atLimits, readData(outsider, id).filterKeys { it in atLimits })
+
+    val editId = createSession()
+    edit(document(creator, editId), atLimits)
+    assertEquals(atLimits, readData(outsider, editId).filterKeys { it in atLimits })
   }
 
   /** Signed-out clients cannot read, list, create, update or delete. */
@@ -394,12 +461,13 @@ class GroupSessionsFirestoreRulesEmulatorTest {
             "endsAt" to timestamp(end.plusSeconds(60)),
             "location" to "Library",
             "description" to "Changed",
-            "updatedAt" to timestamp(created.plusSeconds(60)),
         )
 
+    // Even with a valid server edit time, a non-creator cannot edit.
     changes.forEach { (field, value) ->
-      denied { update(document(member, id), mapOf(field to value)) }
+      denied { edit(document(member, id), mapOf(field to value)) }
     }
+    denied { edit(document(member, id), emptyMap()) }
     denied { timed { document(member, id).delete().await() } }
   }
 
@@ -530,9 +598,10 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     )
 
     val joinedMembers = readData(outsider, id)["memberIds"]
+    // Edits below carry a valid server edit time, so only the rule under test can deny them.
     // The creator must remain a member.
     denied {
-      update(
+      edit(
           document(creator, id),
           mapOf("memberIds" to listOf(member.uid)),
       )
@@ -542,7 +611,7 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     val beforeCreatorRemovingMember = readData(outsider, id)["memberIds"]
     // The creator cannot change the member list.
     denied {
-      update(
+      edit(
           document(creator, id),
           mapOf("memberIds" to listOf(creator.uid)),
       )
@@ -552,7 +621,7 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     val creatorOnlyId = createSession()
     // The creator must remain a member and a session cannot be empty.
     denied {
-      update(
+      edit(
           document(creator, creatorOnlyId),
           mapOf("memberIds" to emptyList<String>()),
       )
@@ -563,41 +632,51 @@ class GroupSessionsFirestoreRulesEmulatorTest {
         listOf(
             "createdBy" to member.uid,
             "createdAt" to timestamp(created.plusSeconds(1)),
+            "createdAt" to FieldValue.serverTimestamp(),
         )
 
     listOf(creator, member).forEach { actor ->
       immutableChanges.forEach { (field, value) ->
-        denied { update(document(actor, id), mapOf(field to value)) }
+        denied { edit(document(actor, id), mapOf(field to value)) }
       }
     }
   }
 
-  /** Create and edit reject malformed types, subjects, schedules, locations and extra fields. */
+  /**
+   * Create and edit reject malformed types, subjects, schedules, locations, over-long text and
+   * extra fields.
+   */
   @Test
   fun rejectsInvalidDataOnCreateAndEdit() = runBlocking {
     val id = createSession()
-    val valid = sessionData(creator)
-    val invalid =
+    val newSession = sessionData(creator)
+    // A full replacement that is valid apart from the change under test.
+    val replacement = newSession + ("createdAt" to readData(outsider, id)["createdAt"])
+    set(document(creator, id), replacement)
+    val invalidChanges =
         listOf(
-            valid + ("createdBy" to outsider.uid),
-            valid + ("memberIds" to listOf(creator.uid, member.uid)),
-            valid + ("type" to 42),
-            valid + ("type" to "UNKNOWN"),
-            valid + ("subject" to " "),
-            valid + ("subject" to null),
-            valid + ("endsAt" to timestamp(start)),
-            valid + ("endsAt" to timestamp(start.plusSeconds(24 * 3600 + 1))),
-            valid + ("createdAt" to 42),
-            valid + ("updatedAt" to 42),
-            valid + ("startsAt" to 42),
-            valid + ("location" to " "),
-            valid + ("description" to 42),
-            valid + ("unexpected" to true),
+            "createdBy" to outsider.uid,
+            "memberIds" to listOf(creator.uid, member.uid),
+            "type" to 42,
+            "type" to "UNKNOWN",
+            "subject" to " ",
+            "subject" to null,
+            "subject" to "a".repeat(EventTextLimits.SUBJECT + 1),
+            "endsAt" to timestamp(start),
+            "endsAt" to timestamp(start.plusSeconds(24 * 3600 + 1)),
+            "createdAt" to 42,
+            "updatedAt" to 42,
+            "startsAt" to 42,
+            "location" to " ",
+            "location" to "a".repeat(EventTextLimits.LOCATION + 1),
+            "description" to 42,
+            "description" to "a".repeat(EventTextLimits.DESCRIPTION + 1),
+            "unexpected" to true,
         )
 
-    invalid.forEach { data ->
-      denied { set(document(creator, uniqueId()), data) }
-      denied { set(document(creator, id), data) }
+    invalidChanges.forEach { change ->
+      denied { set(document(creator, uniqueId()), newSession + change) }
+      denied { set(document(creator, id), replacement + change) }
     }
   }
 
@@ -653,7 +732,10 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     auth.createUserWithEmailAndPassword("$name@example.test", "EmulatorOnly123!").await().user!!.uid
   }
 
-  /** Builds a payload without depending on the mapper under test. */
+  /**
+   * Builds a new-session payload without depending on the mapper under test. Its times are server
+   * timestamps, as the rules require.
+   */
   private fun sessionData(owner: Client): Map<String, Any?> =
       mapOf(
           "createdBy" to owner.uid,
@@ -662,11 +744,20 @@ class GroupSessionsFirestoreRulesEmulatorTest {
           "subject" to "Analysis",
           "startsAt" to timestamp(start),
           "endsAt" to timestamp(end),
-          "createdAt" to timestamp(created),
-          "updatedAt" to timestamp(created),
           "location" to null,
           "description" to null,
+      ) + serverTimes()
+
+  /** Sets both creation and edit times to the server's time, as a new session must. */
+  private fun serverTimes(): Map<String, Any?> =
+      mapOf(
+          "createdAt" to FieldValue.serverTimestamp(),
+          "updatedAt" to FieldValue.serverTimestamp(),
       )
+
+  /** Drops the server-set times, which a test cannot predict, before comparing documents. */
+  private fun withoutTimes(data: Map<String, Any?>): Map<String, Any?> =
+      data - "createdAt" - "updatedAt"
 
   /** Resolves a session document for the specified authenticated user. */
   private fun document(client: Client, id: String): DocumentReference =
@@ -685,6 +776,11 @@ class GroupSessionsFirestoreRulesEmulatorTest {
   /** Updates a document with a timeout. */
   private suspend fun update(ref: DocumentReference, fields: Map<String, Any?>) {
     timed { ref.update(fields).await() }
+  }
+
+  /** Updates [fields] as a creator edit does, with the server's time as the new updatedAt. */
+  private suspend fun edit(ref: DocumentReference, fields: Map<String, Any?>) {
+    update(ref, fields + ("updatedAt" to FieldValue.serverTimestamp()))
   }
 
   /** Requires an actual Firestore permission-denied response. */
