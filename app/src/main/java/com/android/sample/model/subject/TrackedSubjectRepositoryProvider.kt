@@ -7,13 +7,10 @@ import androidx.annotation.VisibleForTesting
 object TrackedSubjectRepositoryProvider {
   private var repository: TrackedSubjectRepository? = null
 
-  /**
-   * Returns the shared repository, defaulting to an in-memory instance until Firestore is
-   * configured.
-   */
+  /** Returns the shared Firestore repository, creating it on first use. */
   @Synchronized
   fun getRepository(): TrackedSubjectRepository =
-      repository ?: InMemoryTrackedSubjectRepository().also { repository = it }
+      repository ?: TrackedSubjectRepositoryFirestore().also { repository = it }
 
   /** Replaces the shared repository; null makes the next call create a new default. */
   @VisibleForTesting
