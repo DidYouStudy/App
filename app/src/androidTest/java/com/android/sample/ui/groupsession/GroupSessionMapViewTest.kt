@@ -130,6 +130,7 @@ class GroupSessionMapViewTest {
       )
     }
     map.waitForMap()
+    map.waitForCameraStill()
 
     destination = CameraDestination(userLocation, trigger = 1)
 
@@ -151,6 +152,7 @@ class GroupSessionMapViewTest {
       )
     }
     map.waitForMap()
+    map.waitForCameraStill()
 
     destination = CameraDestination(campusCenter, trigger = 1)
 
