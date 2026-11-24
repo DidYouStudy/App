@@ -30,6 +30,11 @@ enum class UsernameError {
 
   /** The user's profile document is missing or unreadable ([ProfileError.INVALID_PROFILE_DATA]). */
   PROFILE_UNAVAILABLE,
+
+  /**
+   * The connection was lost during the save ([ProfileError.OFFLINE]); retrying once online works.
+   */
+  OFFLINE,
 }
 
 /** Returns the string resource shown under the username field for this error. */
@@ -42,6 +47,7 @@ fun UsernameError.toMessageRes(): Int =
       UsernameError.TAKEN -> R.string.settings_username_error_taken
       UsernameError.FAILURE -> R.string.settings_username_error_failure
       UsernameError.PROFILE_UNAVAILABLE -> R.string.settings_username_error_profile_unavailable
+      UsernameError.OFFLINE -> R.string.settings_username_error_offline
     }
 
 /**
@@ -85,5 +91,6 @@ fun ProfileError.toUsernameError(): UsernameError =
       ProfileError.USERNAME_TAKEN -> UsernameError.TAKEN
       ProfileError.INVALID_USERNAME -> UsernameError.INVALID_CHARACTERS
       ProfileError.INVALID_PROFILE_DATA -> UsernameError.PROFILE_UNAVAILABLE
+      ProfileError.OFFLINE -> UsernameError.OFFLINE
       else -> UsernameError.FAILURE
     }
