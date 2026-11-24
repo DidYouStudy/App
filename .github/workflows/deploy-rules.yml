@@ -1,0 +1,74 @@
+# Co-authored-by: Claude Sonnet 5.5
+name: Deploy Firebase rules
+
+# Manual only: a team member starts this from the Actions tab.
+# It deploys firestore.rules and storage.rules from main and nothing else.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Validate auth, roles and rules without deploying anything"
+        type: boolean
+        default: false
+
+# Never run two deployments at once, and never cancel one halfway through.
+concurrency:
+  group: deploy-rules
+  cancel-in-progress: false
+
+# The job only needs to read the repository.
+permissions:
+  contents: read
+
+jobs:
+  deploy-rules:
+    name: Deploy firestore.rules and storage.rules
+    # Only reviewed main can reach production, whatever ref the dropdown offers.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # The "production" environment holds the secrets and requires a reviewer's approval
+    # before the job starts (configured in Settings > Environments).
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+
+      # Same pinned version as ci.yml. --ignore-scripts: no dependency lifecycle scripts run.
+      - name: Install Firebase CLI
+        run: npm install -g --ignore-scripts firebase-tools@15.31.0
+
+      # Secrets are exposed only to this step, not to checkout or setup-node.
+      # The CLI reads the service account through GOOGLE_APPLICATION_CREDENTIALS. The file lives
+      # in the runner temp dir, outside the checkout, and is removed when the step ends.
+      - name: Deploy Firestore and Storage rules
+        env:
+          # Environment secret: full JSON of a service account allowed to deploy rules.
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          # Environment secret: the Firebase project ID to deploy to.
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          # Fail early with a clear message instead of a cryptic CLI error.
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::FIREBASE_SERVICE_ACCOUNT secret is not set"
+            exit 1
+          fi
+          if [ -z "$FIREBASE_PROJECT_ID" ]; then
+            echo "::error::FIREBASE_PROJECT_ID secret is not set"
+            exit 1
+          fi
+
+          credentials="$RUNNER_TEMP/firebase-service-account.json"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$credentials"
+          trap 'rm -f "$credentials"' EXIT
+
+          args=(--only firestore:rules,storage --project "$FIREBASE_PROJECT_ID" --non-interactive)
+          if [ "$DRY_RUN" = "true" ]; then
+            args+=(--dry-run)
+          fi
+          GOOGLE_APPLICATION_CREDENTIALS="$credentials" firebase deploy "${args[@]}"

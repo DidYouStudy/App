@@ -42,6 +42,7 @@ import com.android.sample.model.preferences.PreferencesRepositoryFirestore
 import com.android.sample.model.preferences.TimeOfDay
 import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.model.profile.ProfileRepositoryFirestore
+import com.android.sample.model.subject.TrackedSubjectRepositoryFirestore
 import com.android.sample.testing.FakeGoogleCredentialManager
 import com.android.sample.testing.RepositoryOverridesRule
 import com.android.sample.ui.auth.SignInScreenTestTags
@@ -120,6 +121,7 @@ class EndToEndTest {
                   profile = ProfileRepositoryFirestore(db),
                   events = EventsRepositoryFirestore(db, auth),
                   groupSessions = GroupSessionsRepositoryFirestore(db, auth),
+                  trackedSubjects = TrackedSubjectRepositoryFirestore(db, auth),
                   credentialManager = picker,
               )
           )
