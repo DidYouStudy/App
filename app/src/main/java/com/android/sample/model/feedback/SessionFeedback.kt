@@ -20,9 +20,13 @@ data class SessionFeedback(
 ) {
   /** Returns the total number of whole seconds in closed intervals. */
   val studiedSeconds: Long
-    get() = throw NotImplementedError()
+    get() = intervals.sumOf { interval ->
+      interval.endedAt?.let { endedAt ->
+        java.time.Duration.between(interval.startedAt, endedAt).seconds
+      } ?: 0L
+    }
 
   /** Returns whether the last interval is still open. */
   val isRunning: Boolean
-    get() = throw NotImplementedError()
+    get() = intervals.lastOrNull()?.endedAt == null && intervals.isNotEmpty()
 }

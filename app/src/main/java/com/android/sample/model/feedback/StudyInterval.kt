@@ -9,4 +9,8 @@ data class StudyInterval(
     val startedAt: Instant,
     /** The instant at which studying ended, or null while the interval is running. */
     val endedAt: Instant? = null,
-)
+) {
+  init {
+    require(endedAt == null || endedAt.isAfter(startedAt)) { "endedAt must be after startedAt" }
+  }
+}
