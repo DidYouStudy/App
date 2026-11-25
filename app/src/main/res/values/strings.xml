@@ -280,6 +280,9 @@
     <string name="group_session_view_mode_map">Map view</string>
     <string name="group_session_center_location_description">Center on user location</string>
     <string name="group_session_user_location_placeholder">User location marker</string>
+    <string name="group_session_filter_radius_label">Pins in this area</string>
+    <!-- %1$d: active distance filter radius in metres -->
+    <string name="group_session_filter_radius_placeholder">Filter radius: %1$d m</string>
     <!-- %1$s: location room name, %2$s: formatted distance from user -->
     <string name="group_session_location_with_distance">%1$s • %2$s</string>
     <string name="event_type_study_session">Study session</string>

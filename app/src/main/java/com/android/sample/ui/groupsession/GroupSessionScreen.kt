@@ -507,6 +507,7 @@ internal fun GroupSessionContent(
             campusCenter = state.campusCenter,
             onParticipantsClick = onParticipantsClick,
             actionsEnabled = !state.isOffline,
+            filterRadiusMeters = state.selectedRadiusMeters,
         )
         Column(
             modifier =

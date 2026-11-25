@@ -48,6 +48,9 @@ object GroupSessionMapTestTags {
 
   /** The marker representing the user's current location on the map. */
   const val USER_LOCATION_MARKER = "group_session_map_user_location_marker"
+
+  /** The circle representing the active distance filter radius on the map. */
+  const val FILTER_RADIUS_CIRCLE = "group_session_map_filter_radius_circle"
 }
 
 /**
@@ -70,6 +73,8 @@ object GroupSessionMapTestTags {
  *   that needs to read or move it, such as instrumented tests; by default the map makes its own.
  * @param actionsEnabled Whether the cards' join, leave and edit buttons can be pressed; false while
  *   the device is offline.
+ * @param filterRadiusMeters Active distance filter radius in metres, or null when no distance
+ *   filter is applied.
  */
 @Composable
 fun GroupSessionMapContent(
@@ -90,6 +95,7 @@ fun GroupSessionMapContent(
     campusCenter: Location? = null,
     onParticipantsClick: (String) -> Unit = {},
     actionsEnabled: Boolean = true,
+    filterRadiusMeters: Int? = null,
 ) {
   // Supports both state hosting (controlled by parent via selectedRoom/onSelectedRoomChange)
   // and self-contained state (uncontrolled, falling back to internalSelectedRoom initialized with
@@ -109,12 +115,17 @@ fun GroupSessionMapContent(
   val resolvedCampusCenter = campusCenter ?: defaultCampusCenter()
   var internalDestinationTrigger by remember { mutableIntStateOf(0) }
   var lastFocusedRoom by remember { mutableStateOf(selected?.room?.name) }
+  val hasInitialFilterCircle = filterArea(userLocation, filterRadiusMeters) != null
   var internalDestination by remember {
     mutableStateOf(
-        CameraDestination(
-            selected?.room?.location ?: resolvedCampusCenter,
-            internalDestinationTrigger,
-        )
+        if (selected == null && hasInitialFilterCircle) {
+          null
+        } else {
+          CameraDestination(
+              selected?.room?.location ?: resolvedCampusCenter,
+              internalDestinationTrigger,
+          )
+        }
     )
   }
 
@@ -158,6 +169,7 @@ fun GroupSessionMapContent(
         userLocation = userLocation,
         hasLocationPermission = hasLocationPermission,
         campusCenter = resolvedCampusCenter,
+        filterRadiusMeters = filterRadiusMeters,
     )
     if (selected != null) {
       SessionCardList(

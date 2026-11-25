@@ -35,6 +35,8 @@ import com.android.sample.model.location.CampusLocationType
 import com.android.sample.model.location.Location
 import java.time.Instant
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -108,6 +110,7 @@ class GroupSessionMapContentTest {
       userLocation: Location? = null,
       cameraDestination: CameraDestination? = null,
       hasLocationPermission: Boolean = false,
+      filterRadiusMeters: Int? = null,
       roomsToShow: List<RoomSessions> = rooms,
   ) {
     composeTestRule.setContent {
@@ -124,6 +127,7 @@ class GroupSessionMapContentTest {
             userLocation = userLocation,
             cameraDestination = cameraDestination,
             hasLocationPermission = hasLocationPermission,
+            filterRadiusMeters = filterRadiusMeters,
         )
       }
     }
@@ -198,6 +202,167 @@ class GroupSessionMapContentTest {
     composeTestRule
         .onNodeWithTag(GroupSessionMapTestTags.USER_LOCATION_MARKER, useUnmergedTree = true)
         .assertDoesNotExist()
+  }
+
+  @Test
+  fun filterArea_returnsNullWhenLocationOrRadiusMissingOrNonPositive() {
+    val location = Location(46.5191, 6.5668)
+    assertNull(filterArea(null, 500))
+    assertNull(filterArea(location, null))
+    assertNull(filterArea(null, null))
+    assertNull(filterArea(location, 0))
+    assertNull(filterArea(location, -100))
+  }
+
+  @Test
+  fun filterArea_returnsAreaWhenLocationAndPositiveRadiusAreSet() {
+    val location = Location(46.5191, 6.5668)
+    assertEquals(FilterArea(location, 500), filterArea(location, 500))
+  }
+
+  @Test
+  fun circleBounds_for500mAtCampusCenter_hasExpectedSpanAndSymmetry() {
+    val resources = ApplicationProvider.getApplicationContext<Context>().resources
+    val center = Location(46.5191, 6.5668)
+    val bounds = circleBounds(FilterArea(center, 500), resources)
+
+    val latSpan = bounds.northeast.latitude - bounds.southwest.latitude
+    val lngSpan = bounds.northeast.longitude - bounds.southwest.longitude
+
+    // 1000 m diameter along a meridian is ~0.0090 degrees of latitude.
+    assertEquals(0.0090, latSpan, 0.0002)
+    assertTrue(lngSpan > latSpan)
+    assertEquals(center.latitude, (bounds.northeast.latitude + bounds.southwest.latitude) / 2, 1e-6)
+    assertEquals(
+        center.longitude,
+        (bounds.northeast.longitude + bounds.southwest.longitude) / 2,
+        1e-6,
+    )
+  }
+
+  @Test
+  fun circleBounds_growsWithRadius() {
+    val resources = ApplicationProvider.getApplicationContext<Context>().resources
+    val center = Location(46.5191, 6.5668)
+    val small = circleBounds(FilterArea(center, 250), resources)
+    val large = circleBounds(FilterArea(center, 1000), resources)
+
+    assertTrue(large.northeast.latitude > small.northeast.latitude)
+    assertTrue(large.southwest.latitude < small.southwest.latitude)
+    assertTrue(large.northeast.longitude > small.northeast.longitude)
+    assertTrue(large.southwest.longitude < small.southwest.longitude)
+  }
+
+  @Test
+  fun content_withLocationAndRadius_displaysFilterRadiusCircleAndLabel() {
+    setContent(userLocation = Location(46.5191, 6.5668), filterRadiusMeters = 500)
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionMapTestTags.FILTER_RADIUS_CIRCLE, useUnmergedTree = true)
+        .assertExists()
+    composeTestRule.onNodeWithText("Pins in this area", useUnmergedTree = true).assertIsDisplayed()
+  }
+
+  @Test
+  fun content_withRadiusButNoLocation_doesNotDisplayFilterRadiusCircle() {
+    setContent(userLocation = null, hasLocationPermission = true, filterRadiusMeters = 500)
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionMapTestTags.FILTER_RADIUS_CIRCLE, useUnmergedTree = true)
+        .assertDoesNotExist()
+  }
+
+  @Test
+  fun content_withLocationButNullRadius_doesNotDisplayFilterRadiusCircle() {
+    setContent(userLocation = Location(46.5191, 6.5668), filterRadiusMeters = null)
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionMapTestTags.FILTER_RADIUS_CIRCLE, useUnmergedTree = true)
+        .assertDoesNotExist()
+  }
+
+  @Test
+  fun content_changingOrClearingRadius_updatesAndHidesFilterRadiusCircle() {
+    var radius by mutableStateOf<Int?>(250)
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalInspectionMode provides true) {
+        GroupSessionMapContent(
+            rooms = rooms,
+            now = now,
+            onJoin = {},
+            onLeave = {},
+            onEdit = {},
+            userLocation = Location(46.5191, 6.5668),
+            filterRadiusMeters = radius,
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithText("Filter radius: 250 m", useUnmergedTree = true).assertExists()
+
+    radius = 1000
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithText("Filter radius: 1000 m", useUnmergedTree = true).assertExists()
+
+    radius = null
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithTag(GroupSessionMapTestTags.FILTER_RADIUS_CIRCLE, useUnmergedTree = true)
+        .assertDoesNotExist()
+  }
+
+  @Test
+  fun resolveStableLocation_retainsLastKnownOnTransientNullWhenPermitted() {
+    val first = Location(46.5191, 6.5668)
+    val moved = Location(46.5200, 6.5675)
+
+    // Transient null keeps last known location when permission is granted.
+    assertEquals(first, resolveStableLocation(first, null, hasLocationPermission = true))
+    // New non-null location updates so the circle follows the user.
+    assertEquals(moved, resolveStableLocation(first, moved, hasLocationPermission = true))
+    // Never fabricates a location when none was known yet.
+    assertNull(resolveStableLocation(null, null, hasLocationPermission = true))
+  }
+
+  @Test
+  fun resolveStableLocation_usesCurrentDirectlyWhenPermissionNotGranted() {
+    val first = Location(46.5191, 6.5668)
+
+    assertNull(resolveStableLocation(first, null, hasLocationPermission = false))
+    assertEquals(first, resolveStableLocation(null, first, hasLocationPermission = false))
+  }
+
+  @Test
+  fun toLatLng_preservesLatitudeAndLongitude() {
+    val location = Location(46.5191, 6.5668)
+    val latLng = location.toLatLng()
+
+    assertEquals(location.latitude, latLng.latitude, 0.0)
+    assertEquals(location.longitude, latLng.longitude, 0.0)
+  }
+
+  @Test
+  fun roomsWithinFilterArea_returnsAllRoomsWhenAreaIsNull() {
+    assertEquals(listOf(aab, cm, bc), roomsWithinFilterArea(listOf(aab, cm, bc), null))
+  }
+
+  @Test
+  fun roomsWithinFilterArea_excludesRoomsOutsideRadiusAndKeepsRoomsInside() {
+    val center = Location(46.5191, 6.5668)
+    val insideRoom =
+        CampusLocation("IN 1", "IN", CampusLocationType.LECTURE_ROOM, 0, Location(46.5195, 6.5668))
+    val outsideRoom =
+        CampusLocation(
+            "OUT 1",
+            "OUT",
+            CampusLocationType.LECTURE_ROOM,
+            0,
+            Location(46.5300, 6.5668),
+        )
+
+    val filtered = roomsWithinFilterArea(listOf(insideRoom, outsideRoom), FilterArea(center, 500))
+
+    assertEquals(listOf(insideRoom), filtered)
   }
 
   @Test

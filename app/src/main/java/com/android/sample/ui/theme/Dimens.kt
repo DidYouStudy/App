@@ -144,6 +144,8 @@ object Dimens {
   val mapMarkerWidth = 32.dp
   val mapMarkerHeight = 40.dp
   val mapMarkerDotDiameter = 12.dp
+  val mapFilterRadiusStrokeWidth = 1.5.dp
+  val mapFilterRadiusCameraPadding = 48.dp
   val datePickerInputHeight = 260.dp
   val datePickerCalendarHeight = 512.dp
   val datePickerMaxLandscapeHeight = 120.dp
