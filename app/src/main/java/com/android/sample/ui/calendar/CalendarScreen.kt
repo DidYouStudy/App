@@ -1,6 +1,7 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.calendar
 
 import androidx.compose.animation.AnimatedVisibility
@@ -48,6 +49,7 @@ import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.sharedComponents.AddFabMenu
 import com.android.sample.ui.sharedComponents.MainTopAppBar
+import com.android.sample.ui.sharedComponents.rememberIsOffline
 import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
@@ -98,7 +100,9 @@ fun CalendarScreen(
   Scaffold(
       modifier = Modifier.nestedScroll(scrollConnection),
       topBar = {
+        val isOffline = rememberIsOffline()
         MainTopAppBar(
+            isOffline = isOffline,
             title = stringResource(R.string.calendar_title),
             onProfileClick = { navigationActions?.navigateTo(Screen.Settings) },
             actions = {

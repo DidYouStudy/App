@@ -43,6 +43,7 @@ import com.android.sample.ui.sharedComponents.IconTextRow
 import com.android.sample.ui.sharedComponents.PillActionButton
 import com.android.sample.ui.sharedComponents.SecondaryMediumTopAppBar
 import com.android.sample.ui.sharedComponents.TaskCheckRow
+import com.android.sample.ui.sharedComponents.rememberIsOffline
 import com.android.sample.ui.theme.Dimens
 
 /** Test tags for the Event details screen. */
@@ -144,7 +145,9 @@ internal fun EventDetailsStateless(
         )
       },
       topBar = {
+        val isOffline = rememberIsOffline()
         SecondaryMediumTopAppBar(
+            isOffline = isOffline,
             title = stringResource(R.string.event_details_title),
             onBackClick = onBack,
             backButtonDescription = stringResource(R.string.event_details_back_description),

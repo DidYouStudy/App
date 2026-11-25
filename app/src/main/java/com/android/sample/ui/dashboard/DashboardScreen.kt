@@ -3,6 +3,7 @@
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.dashboard
 
 import androidx.compose.foundation.layout.Arrangement
@@ -39,6 +40,7 @@ import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.sharedComponents.AddFabMenu
 import com.android.sample.ui.sharedComponents.MainTopAppBar
+import com.android.sample.ui.sharedComponents.rememberIsOffline
 import com.android.sample.ui.sharedComponents.rememberNotImplementedToast
 import com.android.sample.ui.theme.Spacing
 import kotlinx.coroutines.delay
@@ -117,7 +119,9 @@ fun DashboardScreen(
 ) {
   Scaffold(
       topBar = {
+        val isOffline = rememberIsOffline()
         MainTopAppBar(
+            isOffline = isOffline,
             title = stringResource(R.string.dashboard_title),
             onProfileClick = { navigationActions?.navigateTo(Screen.Settings) },
         )

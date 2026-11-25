@@ -2,9 +2,13 @@
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.eventplanning
 
 import android.content.Context
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -36,6 +40,7 @@ import com.android.sample.model.location.CampusLocationRepository
 import com.android.sample.model.location.CampusLocationType
 import com.android.sample.model.location.Location
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
+import com.android.sample.ui.sharedComponents.OfflineBannerTestTags
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -745,5 +750,36 @@ class AddEventScreenTest {
       )
     }
     composeTestRule.onNodeWithTag(Tags.ADD_TASK_BUTTON).assertDoesNotExist()
+  }
+
+  /** The add/edit screen shows the banner from the form state's offline flag only. */
+  @Test
+  fun statelessScreenShowsOfflineBannerOnlyWhileUiStateIsOffline() {
+    var uiState by mutableStateOf(EventPlanningUiState(isOffline = true))
+    composeTestRule.setContent {
+      EventPlanningScreenStateless(
+          uiState = uiState,
+          onBackClick = {},
+          onTypeChange = {},
+          onTypeClick = {},
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationClick = {},
+          onDescriptionChange = {},
+          onAddTask = {},
+          onToggleTask = {},
+          onDeleteTask = {},
+          onSaveClick = {},
+      )
+    }
+
+    composeTestRule.onNodeWithTag(OfflineBannerTestTags.OFFLINE_BANNER).assertIsDisplayed()
+
+    uiState = EventPlanningUiState(isOffline = false)
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(OfflineBannerTestTags.OFFLINE_BANNER).assertDoesNotExist()
   }
 }
