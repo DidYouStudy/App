@@ -3,9 +3,11 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.eventplanning
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -13,6 +15,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
+import com.android.sample.model.connectivity.AndroidConnectivityObserver
+import com.android.sample.model.connectivity.ConnectivityObserver
+import com.android.sample.model.connectivity.runOnlineWrite
 import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
@@ -86,6 +91,8 @@ enum class EventKind {
  * @property isEventDeleted same for a successful delete, cleared by
  *   [EventPlanningViewModel.onEventDeletedHandled].
  * @property hasSetCustomEndTime whether a custom end time has been set or loaded.
+ * @property isOffline whether the device currently has no internet connection. It belongs to the
+ *   device, so it survives form resets.
  */
 data class EventPlanningUiState(
     val eventKind: EventKind = EventKind.PERSONAL,
@@ -107,6 +114,7 @@ data class EventPlanningUiState(
     val isEventAdded: Boolean = false,
     val isEventEdited: Boolean = false,
     val isEventDeleted: Boolean = false,
+    val isOffline: Boolean = false,
     val error: EventPlanningError? = null,
 ) {
   /** Whether the task checklist section should be shown in the form. */
@@ -116,6 +124,13 @@ data class EventPlanningUiState(
   /** The subject is mandatory for every type except [EventType.OTHER] ("Subject (optional)"). */
   val isSubjectRequired: Boolean
     get() = type != EventType.OTHER
+
+  /**
+   * Whether saving or deleting is blocked because the device is offline. Group session writes are
+   * online-only; personal events are stored locally and are never blocked.
+   */
+  val isWriteBlockedOffline: Boolean
+    get() = isOffline && eventKind == EventKind.GROUP_SESSION
 
   /** Whether a request is running; the screen can disable its buttons meanwhile. */
   val isBusy: Boolean
@@ -137,6 +152,10 @@ data class EventPlanningUiState(
  * @param campusLocationRepository source of the campus locations shown by the location picker.
  * @param clock source of the current time (task completion, creation and update times) and of the
  *   time zone used to turn the picked date and times into instants.
+ * @param connectivityObserver source of the device's connectivity. It drives
+ *   [EventPlanningUiState.isOffline], blocks saving and deleting group sessions while offline, and
+ *   makes a group session write fail with a clear error if the connection drops while it runs. Null
+ *   when connectivity is not tracked: the form then never reports offline.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class EventPlanningViewModel(
@@ -153,6 +172,7 @@ class EventPlanningViewModel(
           override suspend fun savePreferences(preferences: UserPreferences): Result<Unit> =
               Result.success(Unit)
         },
+    private val connectivityObserver: ConnectivityObserver? = null,
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(EventPlanningUiState())
   val uiState: StateFlow<EventPlanningUiState> = _uiState.asStateFlow()
@@ -178,6 +198,7 @@ class EventPlanningViewModel(
   private var locationSearchJob: Job? = null
 
   init {
+    observeConnectivity()
     viewModelScope.launch {
       try {
         authRepository.currentUser
@@ -207,6 +228,20 @@ class EventPlanningViewModel(
         _uiState.update {
           it.withoutResults().copy(error = EventPlanningError.FAILED_TO_OBSERVE_USER)
         }
+      }
+    }
+  }
+
+  /**
+   * Keeps [EventPlanningUiState.isOffline] in step with the connectivity reported by
+   * [connectivityObserver] for as long as the ViewModel lives, so the form re-enables as soon as
+   * the connection returns. Does nothing when no observer was provided.
+   */
+  private fun observeConnectivity() {
+    val observer = connectivityObserver ?: return
+    viewModelScope.launch {
+      observer.observeIsOnline().collect { isOnline ->
+        _uiState.update { it.copy(isOffline = !isOnline) }
       }
     }
   }
@@ -345,6 +380,7 @@ class EventPlanningViewModel(
           eventKind = kind,
           isLoading = true,
           recommendedSubjects = it.recommendedSubjects,
+          isOffline = it.isOffline,
       )
     }
     viewModelScope.launch {
@@ -394,6 +430,10 @@ class EventPlanningViewModel(
    * [uiState]. The event starts on the picked date; an end time earlier than the start time means
    * it ends the next day, while an end time equal to the start time is rejected. On success the
    * form is reset and [EventPlanningUiState.isEventAdded] is set.
+   *
+   * A group session is online-only: while offline nothing is sent and [EventPlanningError.OFFLINE]
+   * is set; if the connection drops, or the server does not answer in time, while it is being
+   * saved, [EventPlanningError.CONNECTION_LOST] is set and the form stays editable for a retry.
    */
   fun addEvent() = save(isEditing = false)
 
@@ -401,7 +441,8 @@ class EventPlanningViewModel(
    * Replaces the event loaded by [loadEvent] with the current form. The event keeps its ID and
    * creation time; its update time becomes now. Times, including the next-day rule, and failures
    * behave as in [addEvent]; on success the form is reset and [EventPlanningUiState.isEventEdited]
-   * is set.
+   * is set. Group sessions are online-only, with the same offline and connection-lost errors as
+   * [addEvent].
    */
   fun editEvent() {
     if (editingEvent == null) {
@@ -413,10 +454,15 @@ class EventPlanningViewModel(
 
   /**
    * Deletes the signed-in user's event [eventId]; deleting an event that does not exist also
-   * succeeds. On success the form is reset and [EventPlanningUiState.isEventDeleted] is set.
+   * succeeds. On success the form is reset and [EventPlanningUiState.isEventDeleted] is set. Group
+   * sessions are online-only, with the same offline and connection-lost errors as [addEvent].
    */
   fun deleteEvent(eventId: String) {
     if (_uiState.value.isBusy) return
+    if (_uiState.value.isWriteBlockedOffline) {
+      fail(EventPlanningError.OFFLINE)
+      return
+    }
 
     val userId = currentUserId
     if (userId == null) {
@@ -431,7 +477,10 @@ class EventPlanningViewModel(
         val result =
             when (kind) {
               EventKind.PERSONAL -> eventsRepository.deleteEvent(userId, eventId)
-              EventKind.GROUP_SESSION -> groupSessionsRepository.deleteSession(userId, eventId)
+              EventKind.GROUP_SESSION ->
+                  runOnlineWrite(connectivityObserver) {
+                    groupSessionsRepository.deleteSession(userId, eventId)
+                  }
             }
         result
             .onSuccess {
@@ -441,6 +490,7 @@ class EventPlanningViewModel(
                 EventPlanningUiState(
                     eventKind = it.eventKind,
                     recommendedSubjects = it.recommendedSubjects,
+                    isOffline = it.isOffline,
                     isEventDeleted = true,
                 )
               }
@@ -488,6 +538,7 @@ class EventPlanningViewModel(
       EventPlanningUiState(
           eventKind = kind ?: it.eventKind,
           recommendedSubjects = it.recommendedSubjects,
+          isOffline = it.isOffline,
       )
     }
   }
@@ -543,6 +594,10 @@ class EventPlanningViewModel(
   private fun save(isEditing: Boolean) {
     val state = _uiState.value
     if (state.isBusy) return
+    if (state.isWriteBlockedOffline) {
+      fail(EventPlanningError.OFFLINE)
+      return
+    }
 
     val userId = currentUserId
     if (userId == null) {
@@ -563,7 +618,10 @@ class EventPlanningViewModel(
         val result =
             when (state.eventKind) {
               EventKind.PERSONAL -> savePersonalEvent(userId, details, state.tasks, now, isEditing)
-              EventKind.GROUP_SESSION -> saveGroupSession(userId, details, now, isEditing)
+              EventKind.GROUP_SESSION ->
+                  runOnlineWrite(connectivityObserver) {
+                    saveGroupSession(userId, details, now, isEditing)
+                  }
             }
         result
             .onSuccess {
@@ -573,6 +631,7 @@ class EventPlanningViewModel(
                 EventPlanningUiState(
                     eventKind = it.eventKind,
                     recommendedSubjects = it.recommendedSubjects,
+                    isOffline = it.isOffline,
                     isEventAdded = !isEditing,
                     isEventEdited = isEditing,
                 )
@@ -703,6 +762,7 @@ class EventPlanningViewModelFactory(
     private val groupSessionsRepository: GroupSessionsRepository,
     private val preferencesRepository: PreferencesRepository =
         PreferencesRepositoryProvider.getRepository(),
+    private val connectivityObserver: ConnectivityObserver? = null,
 ) : ViewModelProvider.Factory {
   /**
    * Creates an EventsPlanningViewModel and rejects unrelated ViewModel types rather than casting
@@ -720,6 +780,7 @@ class EventPlanningViewModelFactory(
         groupSessionsRepository,
         Clock.systemDefaultZone(),
         preferencesRepository,
+        connectivityObserver,
     )
         as T
   }
@@ -731,15 +792,18 @@ class EventPlanningViewModelFactory(
  * as their default.
  */
 @Composable
-fun eventsPlanningViewModel(): EventPlanningViewModel =
-    viewModel(
-        factory =
-            EventPlanningViewModelFactory(
-                authRepository = AuthRepositoryProvider.getRepository(LocalContext.current),
-                eventsRepository = EventsRepositoryProvider.getRepository(),
-                campusLocationRepository =
-                    CampusLocationRepositoryProvider.getRepository(LocalContext.current),
-                groupSessionsRepository = GroupSessionsRepositoryProvider.getRepository(),
-                preferencesRepository = PreferencesRepositoryProvider.getRepository(),
-            )
-    )
+fun eventsPlanningViewModel(): EventPlanningViewModel {
+  val context = LocalContext.current
+  val connectivityObserver = remember(context) { AndroidConnectivityObserver.create(context) }
+  return viewModel(
+      factory =
+          EventPlanningViewModelFactory(
+              authRepository = AuthRepositoryProvider.getRepository(context),
+              eventsRepository = EventsRepositoryProvider.getRepository(),
+              campusLocationRepository = CampusLocationRepositoryProvider.getRepository(context),
+              groupSessionsRepository = GroupSessionsRepositoryProvider.getRepository(),
+              preferencesRepository = PreferencesRepositoryProvider.getRepository(),
+              connectivityObserver = connectivityObserver,
+          )
+  )
+}
