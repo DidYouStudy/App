@@ -191,6 +191,43 @@ class AddEventScreenTest {
   }
 
   @Test
+  fun statelessGroupSessionOfflineDisablesSaveAndShowsOfflineMessage() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var saveClicked = false
+    val uiState =
+        EventPlanningUiState(
+            eventKind = EventKind.GROUP_SESSION,
+            isOffline = true,
+        )
+
+    composeTestRule.setContent {
+      EventPlanningScreenStateless(
+          uiState = uiState,
+          onBackClick = {},
+          onTypeChange = {},
+          onTypeClick = {},
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationClick = {},
+          onDescriptionChange = {},
+          onAddTask = {},
+          onToggleTask = {},
+          onDeleteTask = {},
+          onSaveClick = { saveClicked = true },
+      )
+    }
+
+    composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).assertIsNotEnabled()
+    composeTestRule
+        .onNodeWithTag(Tags.OFFLINE_MESSAGE)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.event_planning_offline_message))
+    assertFalse(saveClicked)
+  }
+
+  @Test
   fun statefulScreenWiresViewModelTopBarAndEventSavedCallback() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     var backClicked = false

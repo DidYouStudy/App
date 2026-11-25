@@ -146,6 +146,12 @@
     <string name="event_planning_error_permission_denied">You are not allowed to change this event</string>
     <string name="event_planning_error_invalid_event_data">The stored event is corrupted</string>
     <string name="event_planning_error_storage_failure">Your events could not be stored on this device</string>
+    <!-- Group session writes need the server, so they are blocked while the device is offline -->
+    <string name="event_planning_error_offline">You\'re offline. Group sessions can only be saved or deleted when you are online.</string>
+    <!-- Shown when the connection drops, or the server does not answer, in the middle of a group session save or delete -->
+    <string name="event_planning_error_connection_lost">Connection lost. Your change may not have been saved. Check your connection and try again.</string>
+    <!-- Shown on the group session form while offline, in place of an error -->
+    <string name="event_planning_offline_message">You\'re offline. Reconnect to save changes to this group session.</string>
     <string name="confirm">OK</string>
     <string name="cancel">Cancel</string>
 
@@ -173,6 +179,10 @@
     <string name="group_session_error_location_load">Could not load locations. Please try again.</string>
     <string name="group_session_error_join">Could not join session. Please try again.</string>
     <string name="group_session_error_leave">Could not leave session. Please try again.</string>
+    <!-- Shown when a join, leave, create or edit is attempted without a connection -->
+    <string name="group_session_error_offline">You\'re offline. Reconnect to join, leave, create or edit group sessions.</string>
+    <!-- Shown when the connection drops, or the server does not answer, in the middle of a join or leave -->
+    <string name="group_session_error_connection_lost">Connection lost. Your change may not have been saved. Check your connection and try again.</string>
     <string name="group_session_search_icon_description">Search</string>
     <string name="group_session_filter_icon_description">Filter sessions</string>
     <string name="group_session_search_placeholder">Search group sessions</string>
@@ -232,7 +242,8 @@
     <string name="group_session_loading">Loading sessions&#8230;</string>
     <string name="group_session_empty">No active sessions</string>
     <!-- Shown on the Group sessions screen while the device has no internet connection -->
-    <string name="group_session_offline_indicator">No internet connection. Showing only saved sessions.</string>
+    <!-- Also tells the student why join, leave, create and edit are disabled -->
+    <string name="group_session_offline_indicator">No internet connection. Showing only saved sessions; joining, leaving, creating and editing are unavailable.</string>
     <string name="group_session_subject_fallback">Other</string>
     <string name="group_session_host_self">Your session (Host)</string>
     <!-- %1$s: display name of the session host -->

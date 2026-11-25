@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.eventplanning
 
+import com.android.sample.model.connectivity.ConnectionLostException
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
@@ -52,6 +53,16 @@ class EventViewModelHelperTest {
     assertEquals(
         EventPlanningError.FAILED_TO_LOAD_EVENT,
         exception.toEventPlanningError(EventPlanningError.FAILED_TO_LOAD_EVENT),
+    )
+  }
+
+  @Test
+  fun toEventPlanningError_connectionLostOverridesEveryDefault() {
+    val exception = ConnectionLostException()
+
+    assertEquals(
+        EventPlanningError.CONNECTION_LOST,
+        exception.toEventPlanningError(EventPlanningError.FAILED_TO_ADD_EVENT),
     )
   }
 
