@@ -173,9 +173,15 @@ class UserAvatarTest {
   fun loadedPicture_replacesTheFallbackAndFillsACircle() {
     showAvatar(PICTURE_URL)
 
-    composeTestRule.waitUntil { succeeded.get() > 0 }
+    // Coil can report success just before the screen updates, so also wait for the fallback to go.
+    composeTestRule.waitUntil {
+      succeeded.get() > 0 &&
+          composeTestRule
+              .onAllNodesWithText(PROFILE_PICTURE_FALLBACK)
+              .fetchSemanticsNodes()
+              .isEmpty()
+    }
     composeTestRule.waitForIdle()
-    composeTestRule.onNodeWithText(PROFILE_PICTURE_FALLBACK).assertDoesNotExist()
 
     val pixels = composeTestRule.onNodeWithTag(AVATAR).captureToImage().asAndroidBitmap()
     // Near the top edge: red only if the wide picture was cropped to fill, not fitted inside.
