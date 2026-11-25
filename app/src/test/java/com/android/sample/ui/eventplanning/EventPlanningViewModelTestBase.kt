@@ -6,6 +6,7 @@ package com.android.sample.ui.eventplanning
 
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.connectivity.ConnectivityObserver
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsRepository
@@ -97,6 +98,7 @@ abstract class EventPlanningViewModelTestBase {
       groupSessionsRepo: GroupSessionsRepository = groupSessionsRepository,
       clk: Clock = clock,
       prefsRepo: PreferencesRepository = preferencesRepository,
+      connectivityObserver: ConnectivityObserver? = null,
   ) =
       EventPlanningViewModel(
           authRepo,
@@ -105,6 +107,7 @@ abstract class EventPlanningViewModelTestBase {
           groupSessionsRepo,
           clk,
           prefsRepo,
+          connectivityObserver,
       )
 
   /** Returns the sessions passed to saveSession after verifying the expected number of saves. */

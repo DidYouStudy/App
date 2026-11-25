@@ -27,7 +27,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -107,6 +109,33 @@ class CalendarViewModelTest {
     assertEquals(LocalDate.of(2026, 10, 26), viewModel.uiState.value.weekStart)
     assertEquals(Instant.parse("2026-10-25T23:00:00Z"), eventsRepository.queries.last().from)
     assertEquals(listOf("alice", "alice", "alice"), eventsRepository.queries.map { it.ownerId })
+  }
+
+  /** A week change clears the previous week's events and shows loading until the new week loads. */
+  @Test
+  fun weekChangeShowsLoadingUntilNewWeekLoads() = runTest {
+    authRepository.currentUser.value = account("alice")
+    eventsRepository.saveEvent(event("algebra", "alice", LocalDate.of(2026, 10, 28))).getOrThrow()
+    val nextWeekSessions = MutableStateFlow<Result<List<GroupSession>>?>(null)
+    groupSessionsRepository =
+        mock<GroupSessionsRepository>().also {
+          whenever(it.observeSessions(any()))
+              .thenReturn(flowOf(Result.success(emptyList())), nextWeekSessions.filterNotNull())
+        }
+    val viewModel = createViewModel()
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertEquals(1, viewModel.uiState.value.events.size)
+
+    viewModel.nextWeek()
+
+    assertTrue(viewModel.uiState.value.isLoading)
+    assertTrue(viewModel.uiState.value.events.isEmpty())
+    assertNull(viewModel.uiState.value.error)
+
+    nextWeekSessions.value = Result.success(emptyList())
+
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertNull(viewModel.uiState.value.error)
   }
 
   /** Today navigation selects the week containing today from the injected clock. */
@@ -296,6 +325,82 @@ class CalendarViewModelTest {
     assertNull(viewModel.uiState.value.error)
     assertEquals(listOf(personalEvent), viewModel.uiState.value.events)
     assertEquals(listOf(initialQuery, initialQuery), eventsRepository.queries)
+  }
+
+  /** R3: a retry on its own keeps the error visible while the same week reloads. */
+  @Test
+  fun retryAloneKeepsErrorVisibleWhileReloading() = runTest {
+    authRepository.currentUser.value = account("alice")
+    val retrySessions = MutableStateFlow<Result<List<GroupSession>>?>(null)
+    groupSessionsRepository =
+        mock<GroupSessionsRepository>().also {
+          whenever(it.observeSessions(any()))
+              .thenReturn(
+                  flowOf(Result.failure(IllegalStateException("Group sessions unavailable"))),
+                  retrySessions.filterNotNull(),
+              )
+        }
+    val viewModel = createViewModel()
+    assertEquals(CalendarViewModelError.LOAD_EVENTS_FAILED, viewModel.uiState.value.error)
+
+    viewModel.retryEvents()
+
+    assertTrue(viewModel.uiState.value.isLoading)
+    assertEquals(CalendarViewModelError.LOAD_EVENTS_FAILED, viewModel.uiState.value.error)
+  }
+
+  /** R1: a retry that lands in the same update as a week change loads the new week fresh. */
+  @Test
+  fun retryTogetherWithWeekChangeLoadsNewWeekFresh() = runTest {
+    // A standard dispatcher lets the retry and the week change reach the ViewModel together.
+    Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+    authRepository.currentUser.value = account("alice")
+    val nextWeekSessions = MutableStateFlow<Result<List<GroupSession>>?>(null)
+    groupSessionsRepository =
+        mock<GroupSessionsRepository>().also {
+          whenever(it.observeSessions(any()))
+              .thenReturn(
+                  flowOf(Result.failure(IllegalStateException("Group sessions unavailable"))),
+                  nextWeekSessions.filterNotNull(),
+              )
+        }
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+    assertEquals(CalendarViewModelError.LOAD_EVENTS_FAILED, viewModel.uiState.value.error)
+
+    viewModel.retryEvents()
+    viewModel.nextWeek()
+    advanceUntilIdle()
+
+    assertEquals(LocalDate.of(2026, 11, 2), viewModel.uiState.value.weekStart)
+    assertTrue(viewModel.uiState.value.isLoading)
+    assertNull(viewModel.uiState.value.error)
+    assertTrue(viewModel.uiState.value.events.isEmpty())
+  }
+
+  /** R2: a retry that lands in the same update as an account change drops the old user's events. */
+  @Test
+  fun retryTogetherWithAccountChangeClearsPreviousUserEvents() = runTest {
+    Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+    authRepository.currentUser.value = account("alice")
+    eventsRepository.saveEvent(event("algebra", "alice", LocalDate.of(2026, 10, 28))).getOrThrow()
+    val bobSessions = MutableStateFlow<Result<List<GroupSession>>?>(null)
+    groupSessionsRepository =
+        mock<GroupSessionsRepository>().also {
+          whenever(it.observeSessions(any()))
+              .thenReturn(flowOf(Result.success(emptyList())), bobSessions.filterNotNull())
+        }
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+    assertEquals(1, viewModel.uiState.value.events.size)
+
+    viewModel.retryEvents()
+    authRepository.currentUser.value = account("bob")
+    advanceUntilIdle()
+
+    assertTrue(viewModel.uiState.value.isLoading)
+    assertTrue(viewModel.uiState.value.events.isEmpty())
+    assertNull(viewModel.uiState.value.error)
   }
 
   /** Creates the shared schedule use case over deterministic test repositories. */

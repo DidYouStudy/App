@@ -68,6 +68,8 @@ object GroupSessionMapTestTags {
  *   none. Mainly for tests of the cards, which cannot tap a pin on the stand-in map.
  * @param cameraPositionState Camera of the map, passed on to [GroupSessionMapView] for a caller
  *   that needs to read or move it, such as instrumented tests; by default the map makes its own.
+ * @param actionsEnabled Whether the cards' join, leave and edit buttons can be pressed; false while
+ *   the device is offline.
  */
 @Composable
 fun GroupSessionMapContent(
@@ -87,6 +89,7 @@ fun GroupSessionMapContent(
     hasLocationPermission: Boolean = false,
     campusCenter: Location? = null,
     onParticipantsClick: (String) -> Unit = {},
+    actionsEnabled: Boolean = true,
 ) {
   // Supports both state hosting (controlled by parent via selectedRoom/onSelectedRoomChange)
   // and self-contained state (uncontrolled, falling back to internalSelectedRoom initialized with
@@ -165,6 +168,7 @@ fun GroupSessionMapContent(
           onEdit = onEdit,
           onLocationClick = onLocationClick,
           onParticipantsClick = onParticipantsClick,
+          actionsEnabled = actionsEnabled,
           modifier =
               Modifier.align(Alignment.BottomCenter)
                   .heightIn(max = maxHeight * maxListHeightFraction),
@@ -184,6 +188,7 @@ private fun SessionCardList(
     modifier: Modifier = Modifier,
     onLocationClick: (GroupSessionItem) -> Unit = {},
     onParticipantsClick: (String) -> Unit,
+    actionsEnabled: Boolean = true,
 ) {
   Surface(
       modifier = modifier.fillMaxWidth(),
@@ -205,6 +210,7 @@ private fun SessionCardList(
             onEdit = onEdit,
             onLocationClick = onLocationClick,
             onParticipantsClick = { onParticipantsClick(item.session.id) },
+            actionsEnabled = actionsEnabled,
         )
       }
     }
