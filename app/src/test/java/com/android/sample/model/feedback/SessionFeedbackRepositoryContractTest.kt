@@ -233,6 +233,16 @@ abstract class SessionFeedbackRepositoryContractTest {
     assertEquals(listOf(StudyInterval(start)), current()?.intervals)
   }
 
+  /** Removing a missing task count creates nothing, while a value creates the record. */
+  @Test
+  fun saveTasksCompleted_nullOnMissingRecordCreatesNothing() = runTest {
+    repository.saveTasksCompleted(owner, target, null).getOrThrow()
+    assertNull(current())
+
+    repository.saveTasksCompleted(owner, target, 2).getOrThrow()
+    assertEquals(2, current()?.tasksCompleted)
+  }
+
   /** Deleting an existing or missing record succeeds, and an existing observer sees null. */
   @Test
   fun deleteFeedback_removesExistingAndAcceptsMissing() = runTest {
