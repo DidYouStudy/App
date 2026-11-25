@@ -7,6 +7,7 @@ import android.graphics.drawable.ColorDrawable
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import coil3.ImageLoader
@@ -103,7 +104,7 @@ class SettingsProfilePictureTest {
 
     composeTestRule.waitUntil { requestedUrls.isNotEmpty() }
     composeTestRule.waitForIdle()
-    assertAvatarIsDisplayed()
+    composeTestRule.onNodeWithTag(SettingsScreenTestTags.DEFAULT_AVATAR_ICON).assertIsDisplayed()
   }
 
   private companion object {

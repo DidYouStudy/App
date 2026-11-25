@@ -60,6 +60,7 @@ object SettingsScreenTestTags {
   // Profile card
   const val PROFILE_CARD = "settings_profile_card"
   const val AVATAR = "settings_avatar"
+  const val DEFAULT_AVATAR_ICON = "settings_default_avatar_icon"
   const val GREETING = "settings_greeting"
   const val LOADING_INDICATOR = "settings_loading_indicator"
   const val PICTURE_UPLOADING_INDICATOR = "settings_picture_uploading_indicator"
@@ -211,7 +212,11 @@ internal fun ProfileCard(
 /** Displays the generic person icon used as the avatar placeholder. */
 @Composable
 internal fun DefaultAvatarIcon() {
-  Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+  // The tag tells the placeholder apart from a loaded picture, which has the same description.
+  Box(
+      modifier = Modifier.fillMaxSize().testTag(SettingsScreenTestTags.DEFAULT_AVATAR_ICON),
+      contentAlignment = Alignment.Center,
+  ) {
     Icon(
         imageVector = Icons.Outlined.Person,
         contentDescription = stringResource(R.string.settings_profile_picture),
