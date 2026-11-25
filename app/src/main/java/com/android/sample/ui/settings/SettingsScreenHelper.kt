@@ -33,6 +33,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -103,7 +107,8 @@ internal fun SettingsHeader(onBackClick: () -> Unit, isOffline: Boolean = false)
  *
  * @param username Name shown in the greeting.
  * @param profilePictureUrl URL of the user's profile picture, if available; the avatar shows the
- *   default icon when it is blank, while the picture loads, and if it cannot be loaded.
+ *   default icon when it is blank, while the picture loads, and if it cannot be loaded. A progress
+ *   indicator surrounds the avatar while the picture loads.
  * @param isLoading Whether the profile information is loading.
  * @param isUploadingPicture Whether a new picture is being uploaded: the avatar then shows a
  *   progress indicator and the profile-picture action is disabled.
@@ -183,6 +188,9 @@ internal fun ProfileCard(
                 .testTag(SettingsScreenTestTags.AVATAR),
         contentAlignment = Alignment.Center,
     ) {
+      // Reset for each new URL, so the ring is already there when the upload indicator turns off.
+      var isImageLoading by
+          remember(profilePictureUrl) { mutableStateOf(!profilePictureUrl.isNullOrBlank()) }
       if (profilePictureUrl.isNullOrBlank()) {
         DefaultAvatarIcon()
       } else {
@@ -191,14 +199,18 @@ internal fun ProfileCard(
             contentDescription = stringResource(R.string.settings_profile_picture),
             modifier = Modifier.fillMaxSize().clip(CircleShape),
             contentScale = ContentScale.Crop,
+            onLoading = { isImageLoading = true },
+            onSuccess = { isImageLoading = false },
+            onError = { isImageLoading = false },
             // The default icon stands in while the picture loads and if it cannot be loaded.
             loading = { DefaultAvatarIcon() },
             error = { DefaultAvatarIcon() },
         )
       }
 
-      // A ring around the avatar while the new picture is prepared, uploaded and saved.
-      if (isUploadingPicture) {
+      // A ring around the avatar while a new picture is prepared, uploaded and saved, and while
+      // any picture is downloaded.
+      if (isUploadingPicture || isImageLoading) {
         CircularProgressIndicator(
             modifier =
                 Modifier.fillMaxSize().testTag(SettingsScreenTestTags.PICTURE_UPLOADING_INDICATOR),
