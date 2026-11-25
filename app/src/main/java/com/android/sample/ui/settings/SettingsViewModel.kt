@@ -15,6 +15,7 @@ import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.connectivity.AndroidConnectivityObserver
 import com.android.sample.model.connectivity.ConnectivityObserver
+import com.android.sample.model.connectivity.runOnlineWrite
 import com.android.sample.model.profile.AndroidImageCompressor
 import com.android.sample.model.profile.ImageCompressor
 import com.android.sample.model.profile.ProfileException
@@ -187,7 +188,8 @@ class SettingsViewModel(
    * [SettingsUiState.profilePictureUrl] changes only once all three steps have succeeded. Does
    * nothing when [uri] is null (the user closed the picker without choosing), or while a previous
    * picture is still uploading. Any failure is reported as [SettingsError.UPLOAD_PICTURE_FAILED]
-   * and the previous URL is kept.
+   * and the previous URL is kept. The same happens when the device goes offline, or the change
+   * takes longer than the time limit of [runOnlineWrite].
    *
    * If the signed-in account changes during the upload (sign-out, or another account signing in),
    * the result belongs to the previous user and is not written to the state, which by then shows
@@ -206,7 +208,8 @@ class SettingsViewModel(
     val currentUrl = _uiState.value.profilePictureUrl
     _uiState.update { it.copy(isUploadingPicture = true) }
     viewModelScope.launch {
-      val result = uploadPicture(userId, uri, currentUrl)
+      // Bounded, so an offline or stalled upload cannot keep the spinner running.
+      val result = runOnlineWrite(connectivityObserver) { uploadPicture(userId, uri, currentUrl) }
       // Users see only the translated message; the cause goes to the log for debugging.
       result.exceptionOrNull()?.let { Log.w(TAG, "Failed to change the profile picture", it) }
       if (authRepository.currentUserId != userId) return@launch

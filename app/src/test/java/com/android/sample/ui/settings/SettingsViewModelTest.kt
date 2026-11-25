@@ -1,9 +1,12 @@
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: Claude Opus 5.5
+// Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.settings
 
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.connectivity.ConnectivityObserver
+import com.android.sample.model.connectivity.ONLINE_WRITE_TIMEOUT
 import com.android.sample.model.profile.ImageCompressor
 import com.android.sample.model.profile.ProfileError
 import com.android.sample.model.profile.ProfileException
@@ -15,6 +18,7 @@ import com.android.sample.model.profile.UserProfile
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -563,13 +567,46 @@ class SettingsViewModelTest {
     verify(imageCompressor, Mockito.never()).compress(any())
   }
 
+  /** An upload that never answers is given up after the timeout and no new picture is shown. */
+  @Test
+  fun onPictureSelected_stalledUpload_failsAfterTheTimeout() = runTest {
+    stubPictureSteps()
+    whenever(profilePictureRepository.uploadProfilePicture(USER_ID, JPEG_BYTES, null))
+        .doSuspendableAnswer { awaitCancellation() }
+    val viewModel = createViewModel()
+    viewModel.onPictureSelected(PICKED_URI)
+
+    testScheduler.advanceTimeBy(ONLINE_WRITE_TIMEOUT.inWholeMilliseconds - 1)
+    assertTrue(viewModel.uiState.value.isUploadingPicture)
+    testScheduler.advanceTimeBy(2)
+
+    assertFalse(viewModel.uiState.value.isUploadingPicture)
+    assertEquals(SettingsError.UPLOAD_PICTURE_FAILED, viewModel.uiState.value.error)
+    assertNull(viewModel.uiState.value.profilePictureUrl)
+  }
+
+  /** Losing the connection ends the change at once, without waiting for the timeout. */
+  @Test
+  fun onPictureSelected_goingOffline_failsWithoutWaitingForTheTimeout() = runTest {
+    val isOnline = MutableStateFlow(true)
+    val viewModel =
+        startPendingPictureChange(CompletableDeferred(), ConnectivityObserver { isOnline })
+
+    isOnline.value = false
+
+    assertFalse(viewModel.uiState.value.isUploadingPicture)
+    assertEquals(SettingsError.UPLOAD_PICTURE_FAILED, viewModel.uiState.value.error)
+    assertEquals(OLD_PICTURE_URL, viewModel.uiState.value.profilePictureUrl)
+  }
+
   /** Creates the ViewModel with this test's mocked repositories and compressor. */
-  private fun createViewModel() =
+  private fun createViewModel(connectivityObserver: ConnectivityObserver? = null) =
       SettingsViewModel(
           authRepository,
           profileRepository,
           profilePictureRepository,
           imageCompressor,
+          connectivityObserver,
       )
 
   /**
@@ -577,10 +614,12 @@ class SettingsViewModelTest {
    * stays pending until [compression] is completed, so the test decides what happens meanwhile.
    *
    * @param compression completed by the test to let the pending compression finish.
+   * @param connectivityObserver connectivity seen by the ViewModel, if any.
    * @return the ViewModel, with the upload indicator on.
    */
   private suspend fun startPendingPictureChange(
-      compression: CompletableDeferred<Result<ByteArray>>
+      compression: CompletableDeferred<Result<ByteArray>>,
+      connectivityObserver: ConnectivityObserver? = null,
   ): SettingsViewModel {
     `when`(profileRepository.getProfile(USER_ID))
         .thenReturn(
@@ -592,7 +631,7 @@ class SettingsViewModelTest {
         UserAccount(uid = USER_ID, email = null, displayName = null, photoUrl = null)
     stubPictureSteps(currentUrl = OLD_PICTURE_URL)
     whenever(imageCompressor.compress(PICKED_URI)).doSuspendableAnswer { compression.await() }
-    val viewModel = createViewModel()
+    val viewModel = createViewModel(connectivityObserver)
     viewModel.onPictureSelected(PICKED_URI)
     assertTrue(viewModel.uiState.value.isUploadingPicture)
     return viewModel
