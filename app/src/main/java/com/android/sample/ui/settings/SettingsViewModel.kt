@@ -239,22 +239,31 @@ class SettingsViewModel(
    * @param uri location of the picked image.
    * @param currentUrl the picture URL that user's profile shows, taken when the pick was made; it
    *   must belong to [userId], so it is not read here, after the state may have changed account.
-   * @return the URL the new picture can be loaded from, or the failure of the step that failed.
+   * @return the URL the new picture can be loaded from, or the failure of the step that failed,
+   *   including an exception a step threw instead of returning it.
+   * @throws CancellationException when the coroutine is cancelled, also by the time limit.
    */
   private suspend fun uploadPicture(
       userId: String,
       uri: String,
       currentUrl: String?,
   ): Result<String> {
-    val jpegBytes =
-        imageCompressor.compress(uri).getOrElse {
-          return Result.failure(it)
-        }
-    val url =
-        profilePictureRepository.uploadProfilePicture(userId, jpegBytes, currentUrl).getOrElse {
-          return Result.failure(it)
-        }
-    return profileRepository.updateProfilePictureUrl(userId, url).map { url }
+    return try {
+      val jpegBytes =
+          imageCompressor.compress(uri).getOrElse {
+            return Result.failure(it)
+          }
+      val url =
+          profilePictureRepository.uploadProfilePicture(userId, jpegBytes, currentUrl).getOrElse {
+            return Result.failure(it)
+          }
+      profileRepository.updateProfilePictureUrl(userId, url).map { url }
+    } catch (exception: CancellationException) {
+      throw exception
+    } catch (exception: Exception) {
+      // The steps should return their failures; one that throws must not crash the app.
+      Result.failure(exception)
+    }
   }
 
   /** Opens the "Edit username" dialog pre-filled with the current username. */

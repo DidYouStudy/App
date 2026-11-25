@@ -567,6 +567,21 @@ class SettingsViewModelTest {
     verify(imageCompressor, Mockito.never()).compress(any())
   }
 
+  /** A step that throws instead of returning a failure is reported like any other failure. */
+  @Test
+  fun onPictureSelected_stepThrows_reportsTheError() = runTest {
+    stubPictureSteps()
+    whenever(profilePictureRepository.uploadProfilePicture(USER_ID, JPEG_BYTES, null))
+        .doSuspendableAnswer { throw IllegalStateException("boom") }
+    val viewModel = createViewModel()
+
+    viewModel.onPictureSelected(PICKED_URI)
+
+    assertFalse(viewModel.uiState.value.isUploadingPicture)
+    assertEquals(SettingsError.UPLOAD_PICTURE_FAILED, viewModel.uiState.value.error)
+    assertNull(viewModel.uiState.value.profilePictureUrl)
+  }
+
   /** An upload that never answers is given up after the timeout and no new picture is shown. */
   @Test
   fun onPictureSelected_stalledUpload_failsAfterTheTimeout() = runTest {
