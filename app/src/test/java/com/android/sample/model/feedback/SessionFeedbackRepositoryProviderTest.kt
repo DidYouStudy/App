@@ -29,12 +29,12 @@ class SessionFeedbackRepositoryProviderTest {
     assertSame(first, SessionFeedbackRepositoryProvider.getRepository())
   }
 
-  /** An injected repository is returned and setRepository returns the same instance. */
+  /** An injected repository is returned on every call. */
   @Test
-  fun setRepository_returnsAndSharesInjectedRepository() {
+  fun setRepository_sharesInjectedRepository() {
     val injected = InMemorySessionFeedbackRepository()
 
-    assertSame(injected, SessionFeedbackRepositoryProvider.setRepository(injected))
+    SessionFeedbackRepositoryProvider.setRepository(injected)
     assertSame(injected, SessionFeedbackRepositoryProvider.getRepository())
   }
 
@@ -44,7 +44,8 @@ class SessionFeedbackRepositoryProviderTest {
     val injected = InMemorySessionFeedbackRepository()
     SessionFeedbackRepositoryProvider.setRepository(injected)
 
-    val replacement = SessionFeedbackRepositoryProvider.setRepository(null)
+    SessionFeedbackRepositoryProvider.setRepository(null)
+    val replacement = SessionFeedbackRepositoryProvider.getRepository()
 
     assertNotSame(injected, replacement)
     assertTrue(replacement is InMemorySessionFeedbackRepository)

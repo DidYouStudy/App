@@ -88,6 +88,16 @@ abstract class SessionFeedbackRepositoryContractTest {
     assertEquals(listOf(StudyInterval(start, end), StudyInterval(end)), current()?.intervals)
   }
 
+  /** A blank subject is normalized to null when a record is first created. */
+  @Test
+  fun startInterval_storesBlankSubjectAsNull() = runTest {
+    repository
+        .startInterval(owner, FeedbackTarget(event, EventType.STUDY_SESSION, "   "), start)
+        .getOrThrow()
+
+    assertNull(current()?.subject)
+  }
+
   /** Invalid starts reject duplicate, out-of-order, and over-limit intervals without mutation. */
   @Test
   fun startInterval_rejectsInvalidIntervalsWithoutChangingRecord() = runTest {
@@ -171,6 +181,19 @@ abstract class SessionFeedbackRepositoryContractTest {
         SessionFeedback(event, EventType.STUDY_SESSION, "Analysis I", comment = emojiText),
         current(),
     )
+  }
+
+  /** A 501-character ASCII comment is rejected without changing the existing record. */
+  @Test
+  fun saveComment_rejectsOneCharacterOverLimitWithoutChangingRecord() = runTest {
+    repository.saveComment(owner, target, "existing").getOrThrow()
+    val before = current()
+
+    assertError(
+        repository.saveComment(owner, target, "a".repeat(FeedbackLimits.COMMENT + 1)),
+        FeedbackError.INVALID_ARGUMENT,
+    )
+    assertEquals(before, current())
   }
 
   /** Comments can create a record, and removing one from a missing record creates nothing. */

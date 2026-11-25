@@ -39,6 +39,50 @@ class SessionFeedbackTest {
     assertEquals(3280L, feedback.studiedSeconds)
   }
 
+  /** Each interval is floored separately before durations are summed. */
+  @Test
+  fun studiedSeconds_floorsEachIntervalSeparately() {
+    val shortIntervals =
+        listOf(
+            StudyInterval(
+                java.time.Instant.parse(
+                    "2026-11-02T13:07:30.600Z"
+                ), // 14:07:30.600 Zurich local time
+                java.time.Instant.parse(
+                    "2026-11-02T13:07:31.400Z"
+                ), // 14:07:31.400 Zurich local time
+            ),
+            StudyInterval(
+                java.time.Instant.parse(
+                    "2026-11-02T13:08:00.600Z"
+                ), // 14:08:00.600 Zurich local time
+                java.time.Instant.parse(
+                    "2026-11-02T13:08:01.400Z"
+                ), // 14:08:01.400 Zurich local time
+            ),
+        )
+    val almostTwoSeconds =
+        listOf(
+            StudyInterval(
+                java.time.Instant.parse(
+                    "2026-11-02T13:07:30.000Z"
+                ), // 14:07:30.000 Zurich local time
+                java.time.Instant.parse(
+                    "2026-11-02T13:07:31.900Z"
+                ), // 14:07:31.900 Zurich local time
+            )
+        )
+
+    assertEquals(
+        0L,
+        SessionFeedback("event", EventType.STUDY_SESSION, null, shortIntervals).studiedSeconds,
+    )
+    assertEquals(
+        1L,
+        SessionFeedback("event", EventType.STUDY_SESSION, null, almostTwoSeconds).studiedSeconds,
+    )
+  }
+
   /** Running state follows the final interval rather than any earlier interval. */
   @Test
   fun isRunning_isTrueOnlyForAnOpenLastInterval() {

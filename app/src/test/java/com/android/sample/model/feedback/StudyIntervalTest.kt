@@ -1,6 +1,7 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.sample.model.feedback
 
+import com.android.sample.model.event.EventType
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Test
