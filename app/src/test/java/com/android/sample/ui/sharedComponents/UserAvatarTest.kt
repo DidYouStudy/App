@@ -126,7 +126,7 @@ class UserAvatarTest {
         pictureUrl = pictureUrl,
         modifier = Modifier.size(Dimens.avatarSizeMedium).testTag(AVATAR),
     ) {
-      Text(FALLBACK)
+      Text(PROFILE_PICTURE_FALLBACK)
     }
   }
 
@@ -141,7 +141,7 @@ class UserAvatarTest {
     }
     composeTestRule.waitForIdle()
 
-    composeTestRule.onAllNodesWithText(FALLBACK).assertCountEquals(2)
+    composeTestRule.onAllNodesWithText(PROFILE_PICTURE_FALLBACK).assertCountEquals(2)
     assertEquals(0, started.get())
   }
 
@@ -152,7 +152,7 @@ class UserAvatarTest {
     showAvatar(PICTURE_URL)
 
     composeTestRule.waitUntil { started.get() > 0 }
-    composeTestRule.onNodeWithText(FALLBACK).assertIsDisplayed()
+    composeTestRule.onNodeWithText(PROFILE_PICTURE_FALLBACK).assertIsDisplayed()
     assertEquals(0, succeeded.get() + failed.get())
   }
 
@@ -164,7 +164,7 @@ class UserAvatarTest {
 
     composeTestRule.waitUntil { failed.get() > 0 }
     composeTestRule.waitForIdle()
-    composeTestRule.onNodeWithText(FALLBACK).assertIsDisplayed()
+    composeTestRule.onNodeWithText(PROFILE_PICTURE_FALLBACK).assertIsDisplayed()
   }
 
   /** A loaded picture replaces the fallback, fills the avatar and is cropped to a circle. */
@@ -175,7 +175,7 @@ class UserAvatarTest {
 
     composeTestRule.waitUntil { succeeded.get() > 0 }
     composeTestRule.waitForIdle()
-    composeTestRule.onNodeWithText(FALLBACK).assertDoesNotExist()
+    composeTestRule.onNodeWithText(PROFILE_PICTURE_FALLBACK).assertDoesNotExist()
 
     val pixels = composeTestRule.onNodeWithTag(AVATAR).captureToImage().asAndroidBitmap()
     // Near the top edge: red only if the wide picture was cropped to fill, not fitted inside.
@@ -186,7 +186,7 @@ class UserAvatarTest {
 
   private companion object {
     const val AVATAR = "userAvatarUnderTest"
-    const val FALLBACK = "fallback"
+    const val PROFILE_PICTURE_FALLBACK = "fallback"
     const val PICTURE_URL = "https://example.com/picture.jpg"
   }
 }
