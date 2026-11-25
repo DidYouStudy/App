@@ -111,6 +111,33 @@ class CalendarViewModelTest {
     assertEquals(listOf("alice", "alice", "alice"), eventsRepository.queries.map { it.ownerId })
   }
 
+  /** A week change clears the previous week's events and shows loading until the new week loads. */
+  @Test
+  fun weekChangeShowsLoadingUntilNewWeekLoads() = runTest {
+    authRepository.currentUser.value = account("alice")
+    eventsRepository.saveEvent(event("algebra", "alice", LocalDate.of(2026, 10, 28))).getOrThrow()
+    val nextWeekSessions = MutableStateFlow<Result<List<GroupSession>>?>(null)
+    groupSessionsRepository =
+        mock<GroupSessionsRepository>().also {
+          whenever(it.observeSessions(any()))
+              .thenReturn(flowOf(Result.success(emptyList())), nextWeekSessions.filterNotNull())
+        }
+    val viewModel = createViewModel()
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertEquals(1, viewModel.uiState.value.events.size)
+
+    viewModel.nextWeek()
+
+    assertTrue(viewModel.uiState.value.isLoading)
+    assertTrue(viewModel.uiState.value.events.isEmpty())
+    assertNull(viewModel.uiState.value.error)
+
+    nextWeekSessions.value = Result.success(emptyList())
+
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertNull(viewModel.uiState.value.error)
+  }
+
   /** Today navigation selects the week containing today from the injected clock. */
   @Test
   fun navigateToTodayUsesInjectedClock() = runTest {

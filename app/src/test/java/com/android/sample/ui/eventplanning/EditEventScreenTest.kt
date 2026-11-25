@@ -246,6 +246,27 @@ class EditEventScreenTest {
   }
 
   @Test
+  fun editStatelessGroupSessionOfflineDisablesSaveAndDeleteAndShowsOfflineMessage() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    setEditStatelessScreen(
+        uiState =
+            EventPlanningUiState(
+                eventKind = EventKind.GROUP_SESSION,
+                isEditing = true,
+                isOffline = true,
+            ),
+        onDeleteClick = {},
+    )
+
+    composeTestRule
+        .onNodeWithTag(Tags.OFFLINE_MESSAGE)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.event_planning_offline_message))
+    composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(Tags.DELETE_BUTTON).assertIsNotEnabled()
+  }
+
+  @Test
   fun editStatelessScreenHidesDeleteActionWhenNoCallbackIsProvided() {
     setEditStatelessScreen(uiState = EventPlanningUiState(isEditing = true))
 
