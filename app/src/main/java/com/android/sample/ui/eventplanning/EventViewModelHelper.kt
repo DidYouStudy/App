@@ -1,9 +1,11 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Copilot
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.eventplanning
 
 import com.android.sample.R
+import com.android.sample.model.connectivity.ConnectionLostException
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventsError
@@ -30,7 +32,15 @@ enum class EventPlanningError {
   EVENT_NOT_FOUND,
   PERMISSION_DENIED,
   INVALID_EVENT_DATA,
-  STORAGE_FAILURE;
+  STORAGE_FAILURE,
+
+  /** A group session write was attempted while the device is offline; writes are online-only. */
+  OFFLINE,
+
+  /**
+   * The connection dropped, or the server did not answer, in the middle of a group session write.
+   */
+  CONNECTION_LOST;
 
   /** Whether this error came from validating fields entered in the event form. */
   val isInputValidationError: Boolean
@@ -69,11 +79,19 @@ val EventPlanningError.stringResource: Int
         EventPlanningError.PERMISSION_DENIED -> R.string.event_planning_error_permission_denied
         EventPlanningError.INVALID_EVENT_DATA -> R.string.event_planning_error_invalid_event_data
         EventPlanningError.STORAGE_FAILURE -> R.string.event_planning_error_storage_failure
+        EventPlanningError.OFFLINE -> R.string.event_planning_error_offline
+        EventPlanningError.CONNECTION_LOST -> R.string.event_planning_error_connection_lost
       }
 
-/** Turns a repository failure into a stable [EventPlanningError] category for the UI. */
+/**
+ * Turns a repository failure into a stable [EventPlanningError] category for the UI. A
+ * [ConnectionLostException] (connection dropped or no answer in time) maps to
+ * [EventPlanningError.CONNECTION_LOST] whatever the [default].
+ */
 fun Throwable.toEventPlanningError(default: EventPlanningError): EventPlanningError =
-    if (this is EventsException) {
+    if (this is ConnectionLostException) {
+      EventPlanningError.CONNECTION_LOST
+    } else if (this is EventsException) {
       when (error) {
         EventsError.INVALID_ARGUMENT -> EventPlanningError.INVALID_EVENT
         EventsError.NOT_FOUND -> EventPlanningError.EVENT_NOT_FOUND

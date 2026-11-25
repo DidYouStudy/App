@@ -1,6 +1,7 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Copilot
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.eventplanning
 
 import androidx.annotation.StringRes
@@ -227,6 +228,9 @@ internal fun EventPlanningScreen(
  *
  * Displays the top bar, form or loading indicator, and pinned Save action. In edit mode, it also
  * displays the optional Delete action. Form state and all user actions are supplied by the caller.
+ * While [EventPlanningUiState.isWriteBlockedOffline] (a group session with no connection) Save and
+ * Delete are disabled and a "you're offline" message is shown; they come back when the connection
+ * does.
  *
  * @param modifier Modifier applied to the screen scaffold.
  * @param uiState Current form values, operation state and any validation or persistence error.
@@ -322,12 +326,26 @@ fun EventPlanningScreenStateless(
               )
             }
 
+            // Group session writes are online-only: tell the student why Save is disabled.
+            if (uiState.isWriteBlockedOffline && uiState.error == null) {
+              Text(
+                  text = stringResource(R.string.event_planning_offline_message),
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                  style = MaterialTheme.typography.bodyMedium,
+                  modifier =
+                      Modifier.padding(bottom = Dimens.errorVerticalPadding)
+                          .testTag(Tags.OFFLINE_MESSAGE),
+              )
+            }
+
             // changed the old save button to a shared one between save and delete and refactored it
             // to the shared folder
             PillActionButton(
                 onClick = onSaveClick,
                 enabled =
-                    if (isEditing) uiState.isEditing && !uiState.isBusy else !uiState.isSaving,
+                    !uiState.isWriteBlockedOffline &&
+                        (if (isEditing) uiState.isEditing && !uiState.isBusy
+                        else !uiState.isSaving),
                 isInProgress = uiState.isSaving,
                 label = stringResource(R.string.event_planning_save_button),
                 containerColor = MaterialTheme.colorScheme.primary,
@@ -341,7 +359,7 @@ fun EventPlanningScreenStateless(
               Spacer(modifier = Modifier.height(Spacing.extraSmall))
               PillActionButton(
                   onClick = onDeleteClick,
-                  enabled = uiState.isEditing && !uiState.isBusy,
+                  enabled = uiState.isEditing && !uiState.isBusy && !uiState.isWriteBlockedOffline,
                   isInProgress = uiState.isDeleting,
                   label = stringResource(R.string.event_planning_delete_button),
                   containerColor = MaterialTheme.colorScheme.error,
