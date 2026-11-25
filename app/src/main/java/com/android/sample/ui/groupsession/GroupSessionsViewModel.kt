@@ -114,6 +114,7 @@ private fun GroupSessionsError?.withoutLoadFailure() = takeUnless {
  * One row of the list, including membership, creator relationship, and the known host username.
  *
  * [hostName] is null until a nonblank username has been loaded for another user's profile.
+ * [hostPictureUrl] comes from the same profile; it is also null when that host has no picture.
  */
 data class GroupSessionItem(
     val session: GroupSession,
@@ -122,6 +123,7 @@ data class GroupSessionItem(
     val hostName: String? = null,
     val proximity: SessionWithProximity = SessionWithProximity(session, null, null, null),
     val isActionInProgress: Boolean = false,
+    val hostPictureUrl: String? = null,
 )
 
 /** A session enriched with its resolved room and optional distance from the user. */
@@ -132,13 +134,18 @@ data class SessionWithProximity(
     val formattedDistance: String?,
 )
 
-/** A visible roster row and the outcome of looking up its profile username. */
+/**
+ * A visible roster row and the outcome of looking up its profile username.
+ *
+ * [profilePictureUrl] is null without a loaded username, or when the member has no picture.
+ */
 data class GroupSessionParticipant(
     val userId: String,
     val username: String?,
     val isHost: Boolean,
     val isCurrentUser: Boolean,
     val isUnavailable: Boolean = false,
+    val profilePictureUrl: String? = null,
 )
 
 /** The open roster, including the full count while individual profiles are loading. */
@@ -234,12 +241,16 @@ class GroupSessionsViewModel(
   private var authGeneration = 0L
   private var observedSessions: List<GroupSession> = emptyList()
   private var campusLocationsByName: Map<String, CampusLocation> = emptyMap()
-  private val usernamesByUserId = mutableMapOf<String, String>()
+  /** Profiles that have a username, kept until a refresh or a change of signed-in user. */
+  private val profilesByUserId = mutableMapOf<String, CachedProfile>()
   private val usernameLookupsInProgress = mutableSetOf<String>()
   /** Session IDs whose join or leave request is currently running. */
   private val actionRequestsInProgress = mutableSetOf<String>()
   private var participantsSessionId: String? = null
   private val participantNamesWithoutUsername = mutableMapOf<String, ParticipantNameStatus>()
+
+  /** What the screen shows of a member; [profilePictureUrl] is null rather than blank. */
+  private data class CachedProfile(val username: String, val profilePictureUrl: String?)
 
   private enum class ParticipantNameStatus {
     UNKNOWN,
@@ -259,7 +270,7 @@ class GroupSessionsViewModel(
             if (userChanged) {
               currentUserId = userId
               authGeneration += 1
-              usernamesByUserId.clear()
+              profilesByUserId.clear()
               usernameLookupsInProgress.clear()
               actionRequestsInProgress.clear()
               clearParticipants()
@@ -476,7 +487,7 @@ class GroupSessionsViewModel(
    */
   fun refresh() {
     viewModelScope.launch {
-      usernamesByUserId.clear()
+      profilesByUserId.clear()
       refreshVersion.update { it + 1 }
     }
   }
@@ -629,7 +640,7 @@ class GroupSessionsViewModel(
     if (currentUserId == null) return
     val requestGeneration = authGeneration
     for (userId in userIds) {
-      if (userId in usernamesByUserId || !usernameLookupsInProgress.add(userId)) continue
+      if (userId in profilesByUserId || !usernameLookupsInProgress.add(userId)) continue
       viewModelScope.launch { resolveUsername(userId, requestGeneration) }
     }
   }
@@ -640,9 +651,11 @@ class GroupSessionsViewModel(
       val result = profileRepository.getProfile(userId)
       if (requestGeneration != authGeneration) return
 
-      val username = result.getOrNull()?.username?.takeIf { it.isNotBlank() }
+      val profile = result.getOrNull()
+      val username = profile?.username?.takeIf { it.isNotBlank() }
       if (username != null) {
-        usernamesByUserId[userId] = username
+        val pictureUrl = profile.profilePictureUrl?.takeIf { it.isNotBlank() }
+        profilesByUserId[userId] = CachedProfile(username, pictureUrl)
         updateVisibleSessions()
         return
       }
@@ -670,7 +683,8 @@ class GroupSessionsViewModel(
     val session = selectedParticipantsSession() ?: return
     val orderedIds = session.orderedMemberIds()
     val rows = orderedIds.mapNotNull { userId ->
-      val username = usernamesByUserId[userId]
+      val profile = profilesByUserId[userId]
+      val username = profile?.username
       val status = participantNamesWithoutUsername[userId]
       if (username == null && status == null) return@mapNotNull null
       GroupSessionParticipant(
@@ -679,6 +693,7 @@ class GroupSessionsViewModel(
           isHost = userId == session.createdBy,
           isCurrentUser = userId == currentUserId,
           isUnavailable = username == null && status == ParticipantNameStatus.UNAVAILABLE,
+          profilePictureUrl = profile?.profilePictureUrl,
       )
     }
     _uiState.update {
@@ -708,15 +723,16 @@ class GroupSessionsViewModel(
       val matchingSessions =
           observedSessions
               .map { session ->
+                // The user's own card names no host, so it carries no host picture either.
+                val host =
+                    profilesByUserId[session.createdBy].takeUnless { session.createdBy == userId }
                 GroupSessionItem(
                     session = session,
                     isMember = userId in session.memberIds,
                     isCreator = userId == session.createdBy,
                     proximity = session.proximity(state.userLocation),
-                    hostName =
-                        usernamesByUserId[session.createdBy].takeUnless {
-                          session.createdBy == userId
-                        },
+                    hostName = host?.username,
+                    hostPictureUrl = host?.profilePictureUrl,
                     isActionInProgress = session.id in actionRequestsInProgress,
                 )
               }

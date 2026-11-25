@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Gemini <noreply@google.com>
 // Co-authored-by: OpenAI Codex
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.groupsession
 
 import androidx.lifecycle.viewModelScope
@@ -1852,6 +1853,94 @@ class GroupSessionsViewModelTest {
     viewModel.dismissParticipants()
     runCurrent()
     assertNull(viewModel.uiState.value.participantsSheet)
+  }
+
+  /**
+   * Participant rows and the host line get the URL from the profile already read for the username.
+   * There is no URL when it is missing or blank, or when the member has no username.
+   */
+  @Test
+  fun pictureUrlsReachParticipantRowsAndHostLineWithoutExtraReads() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    listOf(
+            UserProfile(uid = BOB, username = "Bob", profilePictureUrl = "bob.jpg"),
+            UserProfile(uid = ALICE, username = "Alice", profilePictureUrl = "alice.jpg"),
+            UserProfile(uid = "none", username = "None"),
+            UserProfile(uid = "blank", username = "Blank", profilePictureUrl = "  "),
+            UserProfile(uid = "nameless", username = " ", profilePictureUrl = "nameless.jpg"),
+        )
+        .forEach { profileRepository.enqueue(it.uid, Result.success(it)) }
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val members = listOf(BOB, ALICE, "none", "blank", "nameless")
+    val session = session("roster", BOB, members)
+    emissions.emit(Result.success(listOf(session)))
+    runCurrent()
+    viewModel.openParticipants(session.id)
+    runCurrent()
+
+    val rows = requireNotNull(viewModel.uiState.value.participantsSheet).rows
+    assertEquals(
+        mapOf(
+            BOB to "bob.jpg",
+            ALICE to "alice.jpg",
+            "none" to null,
+            "blank" to null,
+            "nameless" to null,
+        ),
+        rows.associate { it.userId to it.profilePictureUrl },
+    )
+    assertEquals("bob.jpg", viewModel.uiState.value.sessions.single().hostPictureUrl)
+    assertEquals(members.sorted(), profileRepository.getProfileUserIds.sorted())
+  }
+
+  /** A session you created has no host picture URL, even once your own profile is cached. */
+  @Test
+  fun ownSessionCardHasNoHostPictureUrl() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    profileRepository.enqueue(
+        ALICE,
+        Result.success(UserProfile(uid = ALICE, username = "Alice", profilePictureUrl = "a.jpg")),
+    )
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val own = session("own", ALICE)
+    emissions.emit(Result.success(listOf(own)))
+    runCurrent()
+    viewModel.openParticipants(own.id)
+    runCurrent()
+    // A new snapshot rebuilds the cards after the profile has been cached.
+    emissions.emit(Result.success(listOf(own)))
+    runCurrent()
+
+    val row = requireNotNull(viewModel.uiState.value.participantsSheet).rows.single()
+    assertEquals("a.jpg", row.profilePictureUrl)
+    assertNull(viewModel.uiState.value.sessions.single().hostPictureUrl)
+  }
+
+  /** Refresh reads the host profile again, so a removed picture is not shown from the cache. */
+  @Test
+  fun refreshDropsAPictureUrlTheHostRemoved() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    profileRepository.enqueue(
+        BOB,
+        Result.success(UserProfile(uid = BOB, username = "Bob", profilePictureUrl = "bob.jpg")),
+    )
+    profileRepository.enqueue(BOB, Result.success(UserProfile(uid = BOB, username = "Bob")))
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val hosted = session("hosted", BOB)
+    emissions.emit(Result.success(listOf(hosted)))
+    runCurrent()
+    assertEquals("bob.jpg", viewModel.uiState.value.sessions.single().hostPictureUrl)
+
+    viewModel.refresh()
+    runCurrent()
+    emissions.emit(Result.success(listOf(hosted)))
+    runCurrent()
+
+    assertEquals("Bob", viewModel.uiState.value.sessions.single().hostName)
+    assertNull(viewModel.uiState.value.sessions.single().hostPictureUrl)
   }
 
   /** Collects the state like a visible screen does, until the test ends or the job is cancelled. */
