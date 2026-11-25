@@ -113,7 +113,9 @@ class CalendarViewModel(
   init {
     viewModelScope.launch {
       var lastHandledRetryRequest = retryRequest.value
+      // The user and week of the previous emission: a retry only counts for that same pair.
       var lastObservedOwnerId: String? = null
+      var lastObservedWeekStart: LocalDate? = null
       try {
         combine(
                 authRepository.currentUser,
@@ -129,9 +131,10 @@ class CalendarViewModel(
                   retryCount != lastHandledRetryRequest &&
                       ownerId != null &&
                       ownerId == lastObservedOwnerId &&
-                      weekStart == _uiState.value.weekStart
+                      weekStart == lastObservedWeekStart
               lastHandledRetryRequest = retryCount
               lastObservedOwnerId = ownerId
+              lastObservedWeekStart = weekStart
               observeWeek(ownerId, weekStart, isRetry)
             }
       } catch (exception: CancellationException) {
