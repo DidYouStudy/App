@@ -256,7 +256,8 @@ class EventPlanningViewModel(
       } catch (exception: Exception) {
         currentUserId = null
         _uiState.update {
-          it.withoutResults().copy(error = EventPlanningError.FAILED_TO_OBSERVE_USER)
+          it.withoutResults()
+              .copy(error = exception.toUserError(EventPlanningError.FAILED_TO_OBSERVE_USER))
         }
       }
     }
