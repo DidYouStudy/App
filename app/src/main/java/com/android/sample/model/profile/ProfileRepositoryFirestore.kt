@@ -2,11 +2,17 @@
 // Co-authored-by: Claude Code
 package com.android.sample.model.profile
 
+import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.Source
+import com.google.firebase.firestore.Transaction
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeout
 
 /**
  * Firestore implementation of [ProfileRepository].
@@ -15,9 +21,13 @@ import kotlinx.coroutines.tasks.await
  * ViewModels depend only on [ProfileRepository].
  *
  * @param firestore Firestore client used for profile reads and transactions.
+ * @param updateTimeoutMillis longest time [updateUsername] waits for its transaction before giving
+ *   up with [ProfileError.OFFLINE]; transactions need the server, so offline they would otherwise
+ *   keep retrying.
  */
 class ProfileRepositoryFirestore(
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
+    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
+    private val updateTimeoutMillis: Long = UPDATE_TIMEOUT_MILLIS,
 ) : ProfileRepository {
   private val collection = firestore.collection("profiles")
 
@@ -27,9 +37,14 @@ class ProfileRepositoryFirestore(
   /**
    * Reads a profile document without creating one.
    *
+   * The server is read first; the local cache is used only when the server is unreachable
+   * ([FirebaseFirestoreException.Code.UNAVAILABLE], e.g. offline), so other errors such as
+   * `PERMISSION_DENIED` are never hidden by stale data.
+   *
    * @param userId stable authentication identifier and profile document ID.
    * @return [Result.success] containing the stored profile, or `null` when absent; [Result.failure]
-   *   containing [ProfileException] with a stable [ProfileError] category.
+   *   containing [ProfileException] with a stable [ProfileError] category ([ProfileError.OFFLINE]
+   *   when the server is unreachable and nothing is cached).
    * @throws CancellationException when the coroutine is cancelled.
    */
   override suspend fun getProfile(userId: String): Result<UserProfile?> {
@@ -37,7 +52,7 @@ class ProfileRepositoryFirestore(
       return Result.failure(ProfileException(ProfileError.INVALID_USER_ID))
     }
     return execute {
-      val snapshot = collection.document(userId).get().await()
+      val snapshot = getWithCacheFallback(collection.document(userId))
       if (!snapshot.exists()) {
         null
       } else {
@@ -91,7 +106,8 @@ class ProfileRepositoryFirestore(
    * @param username requested username; validated with [UsernamePolicy.validate].
    * @return [Result.success] containing the updated profile; [Result.failure] containing
    *   [ProfileException] with [ProfileError.INVALID_USER_ID], [ProfileError.INVALID_USERNAME],
-   *   [ProfileError.USERNAME_TAKEN] or a storage failure category.
+   *   [ProfileError.USERNAME_TAKEN], [ProfileError.OFFLINE] (also when the transaction takes longer
+   *   than [updateTimeoutMillis]) or a storage failure category.
    * @throws CancellationException when the coroutine is cancelled.
    */
   override suspend fun updateUsername(userId: String, username: String): Result<UserProfile> {
@@ -101,35 +117,82 @@ class ProfileRepositoryFirestore(
     val validName =
         UsernamePolicy.validate(username)
             ?: return Result.failure(ProfileException(ProfileError.INVALID_USERNAME))
-    return execute {
-      val profileDocument = collection.document(userId)
-      val newKey = UsernamePolicy.key(validName)
-      val newReservation = usernames.document(newKey)
-      firestore
-          .runTransaction { transaction ->
-            // Firestore requires every read before the first write.
-            val profileSnapshot = transaction.get(profileDocument)
-            val reservationSnapshot = transaction.get(newReservation)
-            if (!profileSnapshot.exists()) {
-              throw ProfileException(ProfileError.INVALID_PROFILE_DATA)
+    return execute { runUsernameTransactionWithTimeout(userId, validName) }
+  }
+
+  /**
+   * Runs [applyUsernameChange] in a transaction, giving up after [updateTimeoutMillis].
+   *
+   * Transactions need the server, so offline they would otherwise keep retrying; on timeout the
+   * failure is reported as [ProfileError.OFFLINE].
+   *
+   * @param userId profile document ID.
+   * @param validName username already validated with [UsernamePolicy.validate].
+   * @return the updated profile.
+   * @throws ProfileException on timeout ([ProfileError.OFFLINE]) or any transaction failure.
+   */
+  private suspend fun runUsernameTransactionWithTimeout(
+      userId: String,
+      validName: String,
+  ): UserProfile {
+    // Set once we give up waiting: a transaction that has not started writing by then aborts, so
+    // a late retry by Firestore cannot change the name after "offline" was reported. Retrying the
+    // same name afterwards is safe: the reservation already belongs to this user.
+    val gaveUp = AtomicBoolean(false)
+    return try {
+      withTimeout(updateTimeoutMillis) {
+        firestore
+            .runTransaction { transaction ->
+              if (gaveUp.get()) throw ProfileException(ProfileError.OFFLINE)
+              applyUsernameChange(transaction, userId, validName)
             }
-            val profile = profileSnapshot.toUserProfile(userId)
-            val reservationExists = reservationSnapshot.exists()
-            if (reservationExists && reservationSnapshot.getString("uid") != userId) {
-              throw ProfileException(ProfileError.USERNAME_TAKEN)
-            }
-            val oldKey = profile.username.takeIf { it.isNotBlank() }?.let(UsernamePolicy::key)
-            if (oldKey != null && oldKey != newKey) {
-              transaction.delete(usernames.document(oldKey))
-            }
-            if (!reservationExists) {
-              transaction.set(newReservation, mapOf("uid" to userId))
-            }
-            transaction.update(profileDocument, "username", validName)
-            profile.copy(username = validName)
-          }
-          .await()
+            .await()
+      }
+    } catch (timeout: TimeoutCancellationException) {
+      gaveUp.set(true)
+      throw ProfileException(ProfileError.OFFLINE, timeout)
     }
+  }
+
+  /**
+   * Body of the username transaction: checks the reservation, frees the previous one, claims the
+   * new one and updates the profile.
+   *
+   * @param transaction the active Firestore transaction.
+   * @param userId profile document ID.
+   * @param validName username already validated with [UsernamePolicy.validate].
+   * @return the profile carrying the new username.
+   * @throws ProfileException with [ProfileError.INVALID_PROFILE_DATA] when the profile is missing,
+   *   or [ProfileError.USERNAME_TAKEN] when another user owns the name.
+   */
+  private fun applyUsernameChange(
+      transaction: Transaction,
+      userId: String,
+      validName: String,
+  ): UserProfile {
+    val profileDocument = collection.document(userId)
+    val newKey = UsernamePolicy.key(validName)
+    val newReservation = usernames.document(newKey)
+    // Firestore requires every read before the first write.
+    val profileSnapshot = transaction.get(profileDocument)
+    val reservationSnapshot = transaction.get(newReservation)
+    if (!profileSnapshot.exists()) {
+      throw ProfileException(ProfileError.INVALID_PROFILE_DATA)
+    }
+    val profile = profileSnapshot.toUserProfile(userId)
+    val reservationExists = reservationSnapshot.exists()
+    if (reservationExists && reservationSnapshot.getString("uid") != userId) {
+      throw ProfileException(ProfileError.USERNAME_TAKEN)
+    }
+    val oldKey = profile.username.takeIf { it.isNotBlank() }?.let(UsernamePolicy::key)
+    if (oldKey != null && oldKey != newKey) {
+      transaction.delete(usernames.document(oldKey))
+    }
+    if (!reservationExists) {
+      transaction.set(newReservation, mapOf("uid" to userId))
+    }
+    transaction.update(profileDocument, "username", validName)
+    return profile.copy(username = validName)
   }
 
   /**
@@ -155,6 +218,29 @@ class ProfileRepositoryFirestore(
   }
 
   /**
+   * Reads [document] from the server, using the local cache only if the server is unreachable.
+   *
+   * @param document the profile document to read.
+   * @return the server snapshot, or the cached snapshot when the server read fails with
+   *   [FirebaseFirestoreException.Code.UNAVAILABLE].
+   * @throws FirebaseFirestoreException the original server error when it is not `UNAVAILABLE`, or
+   *   when nothing is cached either (the cache error is discarded so callers see the real cause).
+   * @throws CancellationException when the coroutine is cancelled.
+   */
+  private suspend fun getWithCacheFallback(document: DocumentReference): DocumentSnapshot =
+      try {
+        document.get().await()
+      } catch (exception: FirebaseFirestoreException) {
+        if (exception.code != FirebaseFirestoreException.Code.UNAVAILABLE) throw exception
+        try {
+          document.get(Source.CACHE).await()
+        } catch (cacheError: Exception) {
+          if (cacheError is CancellationException) throw cacheError
+          throw exception
+        }
+      }
+
+  /**
    * Executes a Firestore operation and maps persistence failures to profile-domain errors.
    *
    * Successful values are wrapped in [Result.success]. Coroutine cancellation is rethrown so
@@ -173,7 +259,11 @@ class ProfileRepositoryFirestore(
     } catch (exception: ProfileException) {
       Result.failure(exception)
     } catch (exception: FirebaseFirestoreException) {
-      Result.failure(ProfileException(ProfileError.FIRESTORE_FAILURE, exception))
+      // An unreachable server is reported separately so the UI can say "offline", not "failed".
+      val error =
+          if (exception.code == FirebaseFirestoreException.Code.UNAVAILABLE) ProfileError.OFFLINE
+          else ProfileError.FIRESTORE_FAILURE
+      Result.failure(ProfileException(error, exception))
     } catch (exception: Exception) {
       Result.failure(ProfileException(ProfileError.UNKNOWN, exception))
     }
@@ -204,5 +294,10 @@ class ProfileRepositoryFirestore(
       throw ProfileException(ProfileError.INVALID_PROFILE_DATA)
     }
     return profile
+  }
+
+  private companion object {
+    /** Default [updateTimeoutMillis]: a bit above the ~8 s an offline transaction takes to fail. */
+    const val UPDATE_TIMEOUT_MILLIS = 10_000L
   }
 }
