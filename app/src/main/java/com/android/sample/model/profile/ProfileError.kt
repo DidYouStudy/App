@@ -24,6 +24,12 @@ enum class ProfileError {
   /** Another user already owns the requested username (compared case-insensitively). */
   USERNAME_TAKEN,
 
+  /**
+   * The server could not be reached ([com.google.firebase.firestore.FirebaseFirestoreException.Code
+   * .UNAVAILABLE]), typically because the device is offline. Retrying once connected may work.
+   */
+  OFFLINE,
+
   /** The operation failed for an unexpected reason. */
   UNKNOWN,
 

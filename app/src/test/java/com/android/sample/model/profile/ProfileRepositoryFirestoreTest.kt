@@ -10,6 +10,7 @@ import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.Source
 import com.google.firebase.firestore.Transaction
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -526,6 +527,162 @@ class ProfileRepositoryFirestoreTest {
     } catch (expected: CancellationException) {
       assertEquals("cancelled", expected.message)
     }
+  }
+
+  private fun unavailable() =
+      FirebaseFirestoreException("offline", FirebaseFirestoreException.Code.UNAVAILABLE)
+
+  private fun existingSnapshot(profile: UserProfile): DocumentSnapshot {
+    val snapshot = mock(DocumentSnapshot::class.java)
+    `when`(snapshot.exists()).thenReturn(true)
+    `when`(snapshot.toObject(UserProfile::class.java)).thenReturn(profile)
+    return snapshot
+  }
+
+  // Offline read: the server is unreachable, so the cached profile is returned.
+  @Test
+  fun getProfile_returnsCachedProfile_whenServerIsUnavailable() = runTest {
+    val cached = UserProfile("user123", username = "alice")
+    val cachedSnapshot = existingSnapshot(cached)
+    `when`(document.get()).thenReturn(Tasks.forException(unavailable()))
+    `when`(document.get(Source.CACHE)).thenReturn(Tasks.forResult(cachedSnapshot))
+
+    val result = repository.getProfile("user123")
+
+    assertEquals(cached, result.getOrNull())
+  }
+
+  // The cache is not consulted when the server answers.
+  @Test
+  fun getProfile_doesNotReadCache_whenServerAnswers() = runTest {
+    val server = UserProfile("user123", username = "fresh")
+    val serverSnapshot = existingSnapshot(server)
+    `when`(document.get()).thenReturn(Tasks.forResult(serverSnapshot))
+
+    val result = repository.getProfile("user123")
+
+    assertEquals(server, result.getOrNull())
+    verify(document, never()).get(Source.CACHE)
+  }
+
+  // Other server errors are not hidden by stale cached data.
+  @Test
+  fun getProfile_returnsFailure_whenServerFailsWithOtherCode_withoutReadingCache() = runTest {
+    `when`(document.get()).thenReturn(Tasks.forException(firestoreException("denied")))
+
+    val result = repository.getProfile("user123")
+
+    assertProfileError(result, ProfileError.FIRESTORE_FAILURE)
+    verify(document, never()).get(Source.CACHE)
+  }
+
+  // Offline with nothing cached: the failure reports the real cause (offline), not the cache miss.
+  @Test
+  fun getProfile_returnsOfflineFailure_whenServerUnavailableAndNothingCached() = runTest {
+    val server = unavailable()
+    `when`(document.get()).thenReturn(Tasks.forException(server))
+    `when`(document.get(Source.CACHE)).thenReturn(Tasks.forException(unavailable()))
+
+    val result = repository.getProfile("user123")
+
+    assertProfileError(result, ProfileError.OFFLINE)
+    assertSame(server, result.exceptionOrNull()?.cause)
+  }
+
+  // Cancellation while reading the cache is propagated, not turned into a failure.
+  @Test
+  fun getProfile_propagatesCancellation_whenCacheReadIsCancelled() = runTest {
+    `when`(document.get()).thenReturn(Tasks.forException(unavailable()))
+    `when`(document.get(Source.CACHE)).thenReturn(Tasks.forCanceled())
+
+    try {
+      repository.getProfile("user123")
+      fail("Expected cancellation")
+    } catch (expected: CancellationException) {
+      // Expected.
+    }
+  }
+
+  // Losing the connection during the save transaction is reported as OFFLINE.
+  @Test
+  fun updateUsername_returnsOffline_whenTransactionIsUnavailable() = runTest {
+    `when`(firestore.runTransaction<UserProfile>(any()))
+        .thenReturn(Tasks.forException(unavailable()))
+
+    assertProfileError(repository.updateUsername("user123", "Alice"), ProfileError.OFFLINE)
+  }
+
+  // A transaction that never completes is abandoned after the limit and reported as OFFLINE.
+  @Test
+  fun updateUsername_returnsOffline_whenTransactionExceedsTimeLimit() = runTest {
+    val pending = TaskCompletionSource<UserProfile>()
+    `when`(firestore.runTransaction<UserProfile>(any())).thenReturn(pending.task)
+    val timed = ProfileRepositoryFirestore(firestore, updateTimeoutMillis = 5_000)
+
+    val result = async { timed.updateUsername("user123", "Alice") }
+    testScheduler.advanceTimeBy(4_999)
+    runCurrent()
+    assertTrue(result.isActive)
+    testScheduler.advanceTimeBy(2)
+    runCurrent()
+
+    assertProfileError(result.await(), ProfileError.OFFLINE)
+  }
+
+  // A transaction that Firestore retries after we gave up must abort before writing anything.
+  @Test
+  fun updateUsername_abortsLateTransaction_afterTimeLimit() = runTest {
+    val captured = mutableListOf<Transaction.Function<UserProfile>>()
+    val pending = TaskCompletionSource<UserProfile>()
+    `when`(firestore.runTransaction<UserProfile>(any())).thenAnswer { invocation ->
+      captured += invocation.getArgument<Transaction.Function<UserProfile>>(0)
+      pending.task
+    }
+    val timed = ProfileRepositoryFirestore(firestore, updateTimeoutMillis = 5_000)
+
+    val result = async { timed.updateUsername("user123", "Alice") }
+    testScheduler.advanceTimeBy(5_001)
+    runCurrent()
+    assertProfileError(result.await(), ProfileError.OFFLINE)
+
+    val transaction = mock(Transaction::class.java)
+    try {
+      captured.single().apply(transaction)
+      fail("Expected the late transaction to abort")
+    } catch (expected: ProfileException) {
+      assertEquals(ProfileError.OFFLINE, expected.error)
+    }
+    verify(transaction, never()).update(any(DocumentReference::class.java), any<String>(), any())
+    verify(transaction, never()).set(any(DocumentReference::class.java), any<Any>())
+  }
+
+  // A transaction that finishes in time is unaffected by the limit.
+  @Test
+  fun updateUsername_succeeds_whenTransactionFinishesBeforeTimeLimit() = runTest {
+    val expected = UserProfile("user123", username = "Alice")
+    `when`(firestore.runTransaction<UserProfile>(any())).thenReturn(Tasks.forResult(expected))
+    val timed = ProfileRepositoryFirestore(firestore, updateTimeoutMillis = 5_000)
+
+    assertEquals(expected, timed.updateUsername("user123", "Alice").getOrNull())
+  }
+
+  // Other storage failures keep the generic Firestore category.
+  @Test
+  fun updateUsername_keepsFirestoreFailure_forOtherCodes() = runTest {
+    `when`(firestore.runTransaction<UserProfile>(any()))
+        .thenReturn(
+            Tasks.forException(
+                FirebaseFirestoreException(
+                    "aborted",
+                    FirebaseFirestoreException.Code.ABORTED,
+                )
+            )
+        )
+
+    assertProfileError(
+        repository.updateUsername("user123", "Alice"),
+        ProfileError.FIRESTORE_FAILURE,
+    )
   }
 
   private fun reservationRef(key: String): DocumentReference {
