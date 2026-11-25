@@ -417,9 +417,8 @@ class SettingsViewModelTest {
         currentUrl = OLD_PICTURE_URL,
         saved = Result.failure(ProfileException(ProfileError.FIRESTORE_FAILURE)),
     )
-    `when`(profileRepository.getProfile(USER_ID)).thenReturn(Result.success(null))
     currentUserFlow.value =
-        UserAccount(uid = USER_ID, email = null, displayName = null, photoUrl = OLD_PICTURE_URL)
+        UserAccount(uid = USER_ID, email = null, displayName = null, photoUrl = null)
     val viewModel = createViewModel()
 
     viewModel.onPictureSelected(PICKED_URI)
@@ -450,21 +449,36 @@ class SettingsViewModelTest {
     assertEquals(PICTURE_URL, viewModel.uiState.value.profilePictureUrl)
   }
 
-  /** The picture that replaced the first one is the "current" one for the next change. */
+  /** A picture changed since the screen loaded is the one the upload must avoid. */
   @Test
-  fun onPictureSelected_secondChange_passesTheFirstNewUrlAsCurrent() = runTest {
-    stubPictureSteps()
+  fun onPictureSelected_outdatedScreen_passesTheUrlReadFromTheProfile() = runTest {
+    stubPictureSteps(currentUrl = OLD_PICTURE_URL)
+    currentUserFlow.value =
+        UserAccount(uid = USER_ID, email = null, displayName = null, photoUrl = null)
     val viewModel = createViewModel()
-    viewModel.onPictureSelected(PICKED_URI)
-    `when`(profilePictureRepository.uploadProfilePicture(USER_ID, JPEG_BYTES, PICTURE_URL))
-        .thenReturn(Result.success(SECOND_PICTURE_URL))
-    `when`(profileRepository.updateProfilePictureUrl(USER_ID, SECOND_PICTURE_URL))
-        .thenReturn(Result.success(Unit))
+    assertEquals(OLD_PICTURE_URL, viewModel.uiState.value.profilePictureUrl)
+    stubPictureSteps(currentUrl = SECOND_PICTURE_URL)
 
     viewModel.onPictureSelected(PICKED_URI)
 
-    verify(profilePictureRepository).uploadProfilePicture(USER_ID, JPEG_BYTES, PICTURE_URL)
-    assertEquals(SECOND_PICTURE_URL, viewModel.uiState.value.profilePictureUrl)
+    verify(profilePictureRepository).uploadProfilePicture(USER_ID, JPEG_BYTES, SECOND_PICTURE_URL)
+    assertEquals(PICTURE_URL, viewModel.uiState.value.profilePictureUrl)
+  }
+
+  /** Without knowing which picture is current, nothing is uploaded. */
+  @Test
+  fun onPictureSelected_profileReadFailure_skipsTheUpload() = runTest {
+    stubPictureSteps()
+    whenever(profileRepository.getProfile(USER_ID))
+        .thenReturn(Result.failure(ProfileException(ProfileError.FIRESTORE_FAILURE)))
+    val viewModel = createViewModel()
+
+    viewModel.onPictureSelected(PICKED_URI)
+
+    assertEquals(SettingsError.UPLOAD_PICTURE_FAILED, viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isUploadingPicture)
+    verify(profilePictureRepository, Mockito.never())
+        .uploadProfilePicture(any(), any(), anyOrNull())
   }
 
   /**
@@ -672,8 +686,8 @@ class SettingsViewModelTest {
   /**
    * Makes each step of the picture change return the given result; all succeed by default.
    *
-   * @param currentUrl the picture URL the ViewModel is expected to pass to the upload: the one the
-   *   profile shows when the picture is changed, null when it has none.
+   * @param currentUrl the picture URL stored in the profile, which the ViewModel is expected to
+   *   pass to the upload; null when it has none.
    */
   private suspend fun stubPictureSteps(
       compressed: Result<ByteArray> = Result.success(JPEG_BYTES),
@@ -681,6 +695,12 @@ class SettingsViewModelTest {
       saved: Result<Unit> = Result.success(Unit),
       currentUrl: String? = null,
   ) {
+    `when`(profileRepository.getProfile(USER_ID))
+        .thenReturn(
+            Result.success(
+                UserProfile(uid = USER_ID, username = "Name", profilePictureUrl = currentUrl)
+            )
+        )
     `when`(imageCompressor.compress(PICKED_URI)).thenReturn(compressed)
     `when`(profilePictureRepository.uploadProfilePicture(USER_ID, JPEG_BYTES, currentUrl))
         .thenReturn(uploaded)

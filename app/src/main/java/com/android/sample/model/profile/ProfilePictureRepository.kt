@@ -27,8 +27,9 @@ fun interface ProfilePictureRepository {
    *
    * @param userId stable authentication identifier; it names the stored picture.
    * @param jpegBytes the already compressed JPEG image.
-   * @param currentUrl the picture URL the profile references now, or null if it has none. The
-   *   upload avoids the file this URL points to.
+   * @param currentUrl the picture URL the profile references now, or null if it has none. Read it
+   *   from the freshly loaded profile, not from a cached copy. The upload avoids the file this URL
+   *   points to.
    * @return [Result.success] containing the URL the picture can be loaded from; [Result.failure]
    *   containing a [ProfilePictureException].
    * @throws kotlinx.coroutines.CancellationException when the coroutine is cancelled. Cancellation

@@ -204,12 +204,10 @@ class SettingsViewModel(
       _uiState.update { it.copy(error = SettingsError.UPLOAD_PICTURE_FAILED) }
       return
     }
-    // Read together with the user ID: later, the state may show another account's picture.
-    val currentUrl = _uiState.value.profilePictureUrl
     _uiState.update { it.copy(isUploadingPicture = true) }
     viewModelScope.launch {
       // Bounded, so an offline or stalled upload cannot keep the spinner running.
-      val result = runOnlineWrite(connectivityObserver) { uploadPicture(userId, uri, currentUrl) }
+      val result = runOnlineWrite(connectivityObserver) { uploadPicture(userId, uri) }
       // Users see only the translated message; the cause goes to the log for debugging.
       result.exceptionOrNull()?.let { Log.w(TAG, "Failed to change the profile picture", it) }
       if (authRepository.currentUserId != userId) return@launch
@@ -230,29 +228,29 @@ class SettingsViewModel(
    * Compresses the image, uploads it and saves its URL in the profile, stopping at the first
    * failure.
    *
-   * [currentUrl] is passed to the upload so that the current picture is not overwritten: a new
-   * image goes to a different file, and the current URL keeps working until the new one is saved.
-   * If the save fails, the profile therefore still points to a picture that loads, and the user can
-   * simply pick again.
+   * The profile is read just before the upload, and its picture URL is passed on so that the
+   * current picture is not overwritten: a new image goes to a different file, and the current URL
+   * keeps working until the new one is saved. The URL on screen is not used, because it can be out
+   * of date or not loaded yet. If the read fails, nothing is uploaded.
    *
    * @param userId authentication ID of the user whose picture is replaced.
    * @param uri location of the picked image.
-   * @param currentUrl the picture URL that user's profile shows, taken when the pick was made; it
-   *   must belong to [userId], so it is not read here, after the state may have changed account.
    * @return the URL the new picture can be loaded from, or the failure of the step that failed,
    *   including an exception a step threw instead of returning it.
    * @throws CancellationException when the coroutine is cancelled, also by the time limit.
    */
-  private suspend fun uploadPicture(
-      userId: String,
-      uri: String,
-      currentUrl: String?,
-  ): Result<String> {
+  private suspend fun uploadPicture(userId: String, uri: String): Result<String> {
     return try {
       val jpegBytes =
           imageCompressor.compress(uri).getOrElse {
             return Result.failure(it)
           }
+      // By userId, not from the screen, which may show another account by now.
+      val profile =
+          profileRepository.getProfile(userId).getOrElse {
+            return Result.failure(it)
+          }
+      val currentUrl = profile?.profilePictureUrl
       val url =
           profilePictureRepository.uploadProfilePicture(userId, jpegBytes, currentUrl).getOrElse {
             return Result.failure(it)
