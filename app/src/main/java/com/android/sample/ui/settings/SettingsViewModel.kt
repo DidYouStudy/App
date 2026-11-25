@@ -62,10 +62,9 @@ data class SettingsUiState(
  * Manages Settings screen state by observing the authenticated user and fetching their profile.
  *
  * Exposes profile information (resolving custom Firestore profile values with Google Auth fallback
- * defaults) and actions like signing out. [connectivityObserver] drives [SettingsUiState.isOffline]
- * while [uiState] has a collector; with the default null nothing is observed and the screen never
- * shows the offline banner.
- * defaults) and actions like signing out and changing the profile picture.
+ * defaults) and actions like signing out and changing the profile picture. [connectivityObserver]
+ * drives [SettingsUiState.isOffline] while [uiState] has a collector; with the default null nothing
+ * is observed and the screen never shows the offline banner.
  *
  * @param authRepository source of the signed-in user.
  * @param profileRepository reads the profile and saves the new picture URL in it.
@@ -99,7 +98,7 @@ class SettingsViewModel(
           // safely prevent null pointer exception and stops the loading state
           currentUserId = userAccount?.uid
           if (userAccount == null) {
-              observedUserId = null
+            observedUserId = null
             // Keep the connectivity indication: it does not depend on who is signed in.
             _uiState.value =
                 SettingsUiState(isLoading = false, isOffline = _uiState.value.isOffline)
@@ -376,7 +375,7 @@ class SettingsViewModelFactory(
         profileRepository,
         profilePictureRepository,
         imageCompressor,
-        connectivityObserver
+        connectivityObserver,
     )
         as T
   }
@@ -390,7 +389,7 @@ class SettingsViewModelFactory(
 fun settingsViewModel(): SettingsViewModel {
   // The application context lives as long as the process, so the ViewModel never holds an Activity.
   val context = LocalContext.current.applicationContext
-    val connectivityObserver = remember(context) { AndroidConnectivityObserver.create(context) }
+  val connectivityObserver = remember(context) { AndroidConnectivityObserver.create(context) }
   return viewModel(
       factory =
           SettingsViewModelFactory(
