@@ -368,9 +368,9 @@ private fun FilterSectionLabel(labelRes: Int) {
 private fun FilterSwitchRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    labelRes: Int,
+    @StringRes labelRes: Int,
     testTag: String,
-    subtitleRes: Int? = null,
+    @StringRes subtitleRes: Int? = null,
 ) {
   Row(
       modifier =
