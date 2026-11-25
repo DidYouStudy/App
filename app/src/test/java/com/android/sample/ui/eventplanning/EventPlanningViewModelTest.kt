@@ -22,9 +22,11 @@ import com.android.sample.model.location.CampusLocation
 import com.android.sample.model.location.CampusLocationFilter
 import com.android.sample.model.location.CampusLocationType
 import com.android.sample.model.location.Location
+import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.model.subject.SubjectDecision
 import com.android.sample.model.subject.SubjectDecisions
+import com.android.sample.model.subject.TrackedSubjectRepository
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -1169,6 +1171,30 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     viewModel.setStartTime(LocalTime.of(15, 0))
     assertEquals(LocalTime.of(15, 0), viewModel.uiState.value.startTime)
     assertEquals(LocalTime.of(18, 0), viewModel.uiState.value.endTime)
+  }
+
+  /** Default parameter repository instances support optional operations. */
+  @Test
+  fun defaultRepositories_exerciseOptionalMethods() = runTest {
+    val vm =
+        EventPlanningViewModel(
+            authRepository = authRepository,
+            eventsRepository = eventsRepository,
+            campusLocationRepository = campusLocationRepository,
+            groupSessionsRepository = groupSessionsRepository,
+            clock = clock,
+        )
+
+    val prefsField = EventPlanningViewModel::class.java.getDeclaredField("preferencesRepository")
+    prefsField.isAccessible = true
+    val prefsRepo = prefsField.get(vm) as PreferencesRepository
+    assertTrue(prefsRepo.savePreferences(UserPreferences(userId = "u1")).isSuccess)
+
+    val trackedField =
+        EventPlanningViewModel::class.java.getDeclaredField("trackedSubjectRepository")
+    trackedField.isAccessible = true
+    val trackedRepo = trackedField.get(vm) as TrackedSubjectRepository
+    assertTrue(trackedRepo.saveDecisions("u1", mapOf("A" to true)).isSuccess)
   }
 
   // factory tests

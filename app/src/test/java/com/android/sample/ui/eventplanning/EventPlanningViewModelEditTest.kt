@@ -455,6 +455,23 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     assertNothingSaved()
   }
 
+  /** Editing an event whose original schedule produces invalid details reports INVALID_EVENT. */
+  @Test
+  fun editEvent_invalidDetails_reportsInvalidEventError() = runTest {
+    val invalidDetails: EventDetails = mock()
+    whenever(invalidDetails.type).thenReturn(EventType.STUDY_SESSION)
+    whenever(invalidDetails.subject).thenReturn("Algebra")
+    whenever(invalidDetails.startsAt).thenReturn(now.plusSeconds(3600))
+    whenever(invalidDetails.endsAt).thenReturn(now)
+    val invalidEvent = PersonalEvent("stored-1", "user123", invalidDetails, createdAt)
+
+    val viewModel = loadedViewModel(invalidEvent)
+    viewModel.editEvent()
+
+    assertEquals(EventPlanningError.INVALID_EVENT, viewModel.uiState.value.error)
+    assertNothingSaved()
+  }
+
   @Test
   fun editEvent_failure_keepsFormSoItCanBeRetriedUnderTheSameId() = runTest {
     whenever(eventsRepository.saveEvent(any()))
