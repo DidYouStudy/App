@@ -90,11 +90,13 @@ class InMemorySessionFeedbackRepository : SessionFeedbackRepository {
     if (normalized != null && normalized.length > FeedbackLimits.COMMENT) {
       return Result.failure(FeedbackException(FeedbackError.INVALID_ARGUMENT))
     }
-    if (normalized == null && !data.value.containsKey(FeedbackKey(ownerId, target.eventId))) {
-      return Result.success(Unit)
-    }
     return updateRecord(ownerId, target.eventId) { current ->
-      Result.success((current ?: newFeedback(target)).copy(comment = normalized))
+      if (current == null && normalized == null) {
+        // Keep an empty delete atomic with the record lookup.
+        Result.success(null)
+      } else {
+        Result.success((current ?: newFeedback(target)).copy(comment = normalized))
+      }
     }
   }
 
@@ -111,7 +113,12 @@ class InMemorySessionFeedbackRepository : SessionFeedbackRepository {
       return Result.failure(FeedbackException(FeedbackError.INVALID_ARGUMENT))
     }
     return updateRecord(ownerId, target.eventId) { current ->
-      Result.success((current ?: newFeedback(target)).copy(tasksCompleted = count))
+      if (current == null && count == null) {
+        // Do not create a record for an empty save.
+        Result.success(null)
+      } else {
+        Result.success((current ?: newFeedback(target)).copy(tasksCompleted = count))
+      }
     }
   }
 
