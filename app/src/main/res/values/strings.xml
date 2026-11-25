@@ -204,7 +204,6 @@
     <string name="group_session_filter_show_labs">Show “Lab” room type</string>
     <string name="group_session_filter_hide_full_sessions">Hide full sessions</string>
     <string name="group_session_filter_hide_full_sessions_subtitle">Only show sessions with open spots</string>
-    <string name="group_session_filter_permission_rationale">Allow location access to filter by distance</string>
     <plurals name="group_session_filter_show_sessions">
         <item quantity="one">Show %d session</item>
         <item quantity="other">Show %d sessions</item>
