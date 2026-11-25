@@ -13,6 +13,7 @@ import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.TaskCompletionSource
 import com.google.android.gms.tasks.Tasks
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -149,6 +150,19 @@ class AndroidLocationProviderTest {
     shadowOf(Looper.getMainLooper()).idle()
 
     assertEquals(listOf<Location?>(null), collection.emissions)
+  }
+
+  @Test
+  fun dropsLastKnownLocationWhenLiveUpdateAlreadyArrived() = runTest {
+    val lastLocationSource = TaskCompletionSource<android.location.Location?>()
+    whenever(client.lastLocation).doReturn(lastLocationSource.task)
+
+    val collection = collect(providerWithPermission())
+    registeredCallback().onLocationResult(resultOf(bcBuilding))
+    lastLocationSource.setResult(platformLocation(rolex.latitude, rolex.longitude))
+    shadowOf(Looper.getMainLooper()).idle()
+
+    assertEquals(listOf(null, bcBuilding), collection.emissions)
   }
 
   @Test

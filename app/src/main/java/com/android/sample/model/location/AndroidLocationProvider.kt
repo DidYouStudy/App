@@ -71,10 +71,14 @@ class AndroidLocationProvider(
       return@callbackFlow
     }
 
+    var liveUpdateReceived = false
     val callback =
         object : LocationCallback() {
           override fun onLocationResult(result: LocationResult) {
-            result.lastLocation?.toDomainLocation()?.let { trySend(it) }
+            result.lastLocation?.toDomainLocation()?.let {
+              liveUpdateReceived = true
+              trySend(it)
+            }
           }
 
           override fun onLocationAvailability(availability: LocationAvailability) {
@@ -83,10 +87,12 @@ class AndroidLocationProvider(
         }
 
     try {
-      // Immediately emit cached device coordinates only if recent enough, without waiting for the
-      // 10-second polling interval.
+      // Immediately emit cached device coordinates only if recent enough and no live update has
+      // already been delivered, without waiting for the 10-second polling interval.
       client.lastLocation.addOnSuccessListener { location ->
-        location?.takeIf(::isFreshLastLocation)?.toDomainLocation()?.let(::trySend)
+        if (!liveUpdateReceived) {
+          location?.takeIf(::isFreshLastLocation)?.toDomainLocation()?.let(::trySend)
+        }
       }
       client
           .requestLocationUpdates(LOCATION_REQUEST, callback, Looper.getMainLooper())
