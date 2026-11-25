@@ -81,13 +81,15 @@ object SettingsScreenTestTags {
  * Displays the Settings app bar and invokes the supplied back action.
  *
  * @param onBackClick Called when the navigation button is tapped.
+ * @param isOffline Whether to show the "You're offline" banner under the bar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun SettingsHeader(onBackClick: () -> Unit) {
+internal fun SettingsHeader(onBackClick: () -> Unit, isOffline: Boolean = false) {
   SecondaryMediumTopAppBar(
       title = stringResource(id = R.string.settings_header),
       onBackClick = onBackClick,
+      isOffline = isOffline,
   )
 }
 

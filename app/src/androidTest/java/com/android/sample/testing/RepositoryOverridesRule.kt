@@ -14,6 +14,9 @@ import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.PreferencesRepositoryProvider
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.ProfileRepositoryProvider
+import com.android.sample.model.subject.InMemoryTrackedSubjectRepository
+import com.android.sample.model.subject.TrackedSubjectRepository
+import com.android.sample.model.subject.TrackedSubjectRepositoryProvider
 import org.junit.rules.ExternalResource
 
 /**
@@ -36,6 +39,7 @@ class RepositoryOverridesRule(
     private val profile: ProfileRepository,
     private val events: EventsRepository,
     private val groupSessions: GroupSessionsRepository,
+    private val trackedSubjects: TrackedSubjectRepository = InMemoryTrackedSubjectRepository(),
     private val credentialManager: CredentialManager? = null,
     private val onboardingStore: OnboardingStore? = null,
 ) : ExternalResource() {
@@ -48,6 +52,7 @@ class RepositoryOverridesRule(
     ProfileRepositoryProvider.setRepository(profile)
     EventsRepositoryProvider.setRepository(events)
     GroupSessionsRepositoryProvider.setRepository(groupSessions)
+    TrackedSubjectRepositoryProvider.setRepository(trackedSubjects)
     OnboardingStoreProvider.setStore(onboardingStore)
   }
 
@@ -59,6 +64,7 @@ class RepositoryOverridesRule(
     ProfileRepositoryProvider.setRepository(null)
     EventsRepositoryProvider.setRepository(null)
     GroupSessionsRepositoryProvider.setRepository(null)
+    TrackedSubjectRepositoryProvider.setRepository(null)
     OnboardingStoreProvider.setStore(null)
   }
 }
