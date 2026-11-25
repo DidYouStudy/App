@@ -5,7 +5,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 
@@ -49,8 +49,11 @@ suspend fun <T> runOnlineWrite(
           // exception.
           val watcher = connectivityObserver?.let { observer ->
             launch {
-              observer.observeIsOnline().first { isOnline -> !isOnline }
-              throw ConnectionLostException()
+              // firstOrNull: a flow that completes without ever reporting offline (e.g. a custom
+              // or test observer) yields null instead of throwing NoSuchElementException, and is
+              // not treated as a lost connection.
+              val wentOffline = observer.observeIsOnline().firstOrNull { isOnline -> !isOnline }
+              if (wentOffline != null) throw ConnectionLostException()
             }
           }
           try {
