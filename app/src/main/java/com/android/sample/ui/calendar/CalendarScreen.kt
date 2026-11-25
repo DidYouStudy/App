@@ -2,6 +2,7 @@
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.calendar
 
 import androidx.compose.animation.AnimatedVisibility
@@ -36,6 +37,8 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.sample.R
@@ -186,13 +189,23 @@ fun CalendarScreen(
             }
           }
         } else {
-          CalendarWeeklyView(
-              uiState = uiState,
-              onPreviousWeek = onPreviousWeek,
-              onNextWeek = onNextWeek,
-              modifier = Modifier.padding(paddingValues),
-              onEventClick = onEventClick,
-          )
+          Box(Modifier.padding(paddingValues)) {
+            CalendarWeeklyView(
+                uiState = uiState,
+                onPreviousWeek = onPreviousWeek,
+                onNextWeek = onNextWeek,
+                onEventClick = onEventClick,
+            )
+            if (uiState.isLoading) {
+              val loadingDescription = stringResource(R.string.calendar_loading_description)
+              CircularProgressIndicator(
+                  modifier =
+                      Modifier.align(Alignment.Center).testTag(CalendarTestTags.LOADING).semantics {
+                        contentDescription = loadingDescription
+                      },
+              )
+            }
+          }
         }
       },
   )
@@ -246,6 +259,22 @@ fun CalendarScreenErrorReloadPreview() {
     CalendarScreen(
         uiState =
             previewUiState(error = CalendarViewModelError.LOAD_EVENTS_FAILED, isLoading = true),
+        onToday = {},
+        onPreviousWeek = {},
+        onNextWeek = {},
+        onRetry = {},
+    )
+  }
+}
+
+/** Renders a preview of the calendar screen while a week's events are loading. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true)
+@Composable
+fun CalendarScreenLoadingPreview() {
+  DidYouStudyTheme {
+    CalendarScreen(
+        uiState = previewUiState(isLoading = true).copy(events = emptyList()),
         onToday = {},
         onPreviousWeek = {},
         onNextWeek = {},
