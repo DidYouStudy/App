@@ -173,6 +173,22 @@ class GroupSessionMapContentRealMapTest {
     assert(!isShown("Maths"))
   }
 
+  /** Tapping a pin in [GroupSessionMapContent] focuses the camera on its room at focus zoom. */
+  @Test
+  fun tappingAPin_focusesCameraOnItsRoomAtLeastToFocusZoom() {
+    showContent()
+    val focusZoom = ResourcesCompat.getFloat(targetContext.resources, R.dimen.map_focus_zoom)
+
+    map.tapPinUntil(aab.location.toLatLng()) { listIsShown() }
+    composeTestRule.waitUntil(MapTestDriver.TIMEOUT_MS) {
+      val position = camera.position
+      !camera.isMoving &&
+          kotlin.math.abs(position.target.latitude - aab.location.latitude) < 0.0002 &&
+          kotlin.math.abs(position.target.longitude - aab.location.longitude) < 0.0002 &&
+          position.zoom >= focusZoom - 0.05f
+    }
+  }
+
   @Test
   fun tappingTheMapAwayFromPins_closesTheList() {
     showContent()
