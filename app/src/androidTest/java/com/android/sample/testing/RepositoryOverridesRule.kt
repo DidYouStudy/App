@@ -16,6 +16,9 @@ import com.android.sample.model.profile.ProfilePictureRepository
 import com.android.sample.model.profile.ProfilePictureRepositoryProvider
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.ProfileRepositoryProvider
+import com.android.sample.model.subject.InMemoryTrackedSubjectRepository
+import com.android.sample.model.subject.TrackedSubjectRepository
+import com.android.sample.model.subject.TrackedSubjectRepositoryProvider
 import org.junit.rules.ExternalResource
 
 /**
@@ -39,6 +42,7 @@ class RepositoryOverridesRule(
     private val profilePicture: ProfilePictureRepository,
     private val events: EventsRepository,
     private val groupSessions: GroupSessionsRepository,
+    private val trackedSubjects: TrackedSubjectRepository = InMemoryTrackedSubjectRepository(),
     private val credentialManager: CredentialManager? = null,
     private val onboardingStore: OnboardingStore? = null,
 ) : ExternalResource() {
@@ -52,6 +56,7 @@ class RepositoryOverridesRule(
     ProfilePictureRepositoryProvider.setRepository(profilePicture)
     EventsRepositoryProvider.setRepository(events)
     GroupSessionsRepositoryProvider.setRepository(groupSessions)
+    TrackedSubjectRepositoryProvider.setRepository(trackedSubjects)
     OnboardingStoreProvider.setStore(onboardingStore)
   }
 
@@ -64,6 +69,7 @@ class RepositoryOverridesRule(
     ProfilePictureRepositoryProvider.setRepository(null)
     EventsRepositoryProvider.setRepository(null)
     GroupSessionsRepositoryProvider.setRepository(null)
+    TrackedSubjectRepositoryProvider.setRepository(null)
     OnboardingStoreProvider.setStore(null)
   }
 }

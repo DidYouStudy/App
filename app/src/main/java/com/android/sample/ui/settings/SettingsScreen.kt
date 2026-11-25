@@ -95,6 +95,7 @@ fun SettingsScreen(
       onModifyPreferencesClick = onModifyPreferencesClick,
       onManageFriendsClick = onManageFriendsClick,
       onLogoutClick = { viewModel.signOut() },
+      isOffline = uiState.isOffline,
   )
 
   // The dialog is driven by the ViewModel, so its content survives recomposition and rotation.
@@ -126,6 +127,7 @@ fun SettingsScreen(
  * @param onModifyPreferencesClick Called when the user opens preference settings.
  * @param onManageFriendsClick Called when the user opens friend management.
  * @param onLogoutClick Called when the user taps the logout button.
+ * @param isOffline Whether to show the "You're offline" banner under the header.
  */
 @Composable
 fun SettingsScreenStateless(
@@ -141,13 +143,14 @@ fun SettingsScreenStateless(
     onModifyPreferencesClick: () -> Unit = {},
     onManageFriendsClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {},
+    isOffline: Boolean = false,
 ) {
   Scaffold(
       modifier = modifier.fillMaxSize().testTag(SettingsScreenTestTags.SCREEN),
       containerColor = MaterialTheme.colorScheme.background,
       // The header and the footer handle the system insets themselves.
       contentWindowInsets = WindowInsets(0, 0, 0, 0),
-      topBar = { SettingsHeader(onBackClick = onBackClick) },
+      topBar = { SettingsHeader(onBackClick = onBackClick, isOffline = isOffline) },
       snackbarHost = {
         SnackbarHost(snackbarHostState, modifier = Modifier.navigationBarsPadding())
       },
