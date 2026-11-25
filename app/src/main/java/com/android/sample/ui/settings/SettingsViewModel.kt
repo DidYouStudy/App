@@ -13,8 +13,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
-import com.android.sample.model.connectivity.AndroidConnectivityObserver
 import com.android.sample.model.connectivity.ConnectivityObserver
+import com.android.sample.model.connectivity.ConnectivityObserverProvider
+import com.android.sample.model.connectivity.collectWhileObserved
 import com.android.sample.model.profile.ProfileException
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.ProfileRepositoryProvider
@@ -23,10 +24,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -125,13 +122,9 @@ class SettingsViewModel(
   private fun observeConnectivityWhileObserved() {
     val observer = connectivityObserver ?: return
     viewModelScope.launch {
-      _uiState.subscriptionCount
-          .map { it > 0 }
-          .distinctUntilChanged()
-          .collectLatest { isObserved ->
-            val connectivity = if (isObserved) observer.observeIsOnline() else emptyFlow()
-            connectivity.collect { isOnline -> _uiState.update { it.copy(isOffline = !isOnline) } }
-          }
+      observer.collectWhileObserved(_uiState.subscriptionCount) { isOnline ->
+        _uiState.update { it.copy(isOffline = !isOnline) }
+      }
     }
   }
 
@@ -276,7 +269,7 @@ class SettingsViewModelFactory(
 @Composable
 fun settingsViewModel(): SettingsViewModel {
   val context = LocalContext.current
-  val connectivityObserver = remember(context) { AndroidConnectivityObserver.create(context) }
+  val connectivityObserver = remember(context) { ConnectivityObserverProvider.getObserver(context) }
   return viewModel(
       factory =
           SettingsViewModelFactory(

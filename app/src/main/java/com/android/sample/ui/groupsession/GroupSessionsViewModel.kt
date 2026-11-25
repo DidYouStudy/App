@@ -15,9 +15,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
-import com.android.sample.model.connectivity.AndroidConnectivityObserver
 import com.android.sample.model.connectivity.ConnectionLostException
 import com.android.sample.model.connectivity.ConnectivityObserver
+import com.android.sample.model.connectivity.ConnectivityObserverProvider
+import com.android.sample.model.connectivity.collectWhileObserved
 import com.android.sample.model.connectivity.runOnlineWrite
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
@@ -562,13 +563,9 @@ class GroupSessionsViewModel(
   private fun observeConnectivityWhileObserved() {
     val observer = connectivityObserver ?: return
     viewModelScope.launch {
-      _uiState.subscriptionCount
-          .map { it > 0 }
-          .distinctUntilChanged()
-          .collectLatest { isObserved ->
-            val connectivity = if (isObserved) observer.observeIsOnline() else emptyFlow()
-            connectivity.collect { isOnline -> _uiState.update { it.copy(isOffline = !isOnline) } }
-          }
+      observer.collectWhileObserved(_uiState.subscriptionCount) { isOnline ->
+        _uiState.update { it.copy(isOffline = !isOnline) }
+      }
     }
   }
 
@@ -841,7 +838,7 @@ class GroupSessionsViewModelFactory(
 fun groupSessionsViewModel(): GroupSessionsViewModel {
   val context = LocalContext.current
   val locationProvider = remember(context) { AndroidLocationProvider.create(context) }
-  val connectivityObserver = remember(context) { AndroidConnectivityObserver.create(context) }
+  val connectivityObserver = remember(context) { ConnectivityObserverProvider.getObserver(context) }
   val campusCenter = defaultCampusCenter()
   return viewModel(
       factory =
