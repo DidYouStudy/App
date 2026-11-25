@@ -16,12 +16,15 @@ import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.GroupSession
+import com.android.sample.model.event.SubjectCatalogFirestoreMapper
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.location.CampusLocation
 import com.android.sample.model.location.CampusLocationFilter
 import com.android.sample.model.location.CampusLocationType
 import com.android.sample.model.location.Location
 import com.android.sample.model.preferences.UserPreferences
+import com.android.sample.model.subject.SubjectDecision
+import com.android.sample.model.subject.SubjectDecisions
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -184,6 +187,48 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
 
     assertEquals(emptyList<String>(), viewModel.uiState.value.recommendedSubjects)
     assertNull(viewModel.uiState.value.error)
+  }
+
+  /**
+   * Subject suggestions combine catalog subjects and tracked subject decisions, deduplicating by
+   * key.
+   */
+  @Test
+  fun subjects_combineCatalogAndTrackedSubjectDecisions() = runTest {
+    val catalogFlow = flowOf(Result.success(listOf("Analysis I", "Physics")))
+    val trackedFlow =
+        flowOf(
+            Result.success(
+                SubjectDecisions(
+                    mapOf(
+                        SubjectCatalogFirestoreMapper.key("Linear Algebra") to
+                            SubjectDecision("Linear Algebra", true),
+                        SubjectCatalogFirestoreMapper.key("Physics") to
+                            SubjectDecision(" physics ", true),
+                    )
+                )
+            )
+        )
+    `when`(eventsRepository.observeSubjects("user123")).thenReturn(catalogFlow)
+    `when`(trackedSubjectRepository.observeDecisions("user123")).thenReturn(trackedFlow)
+
+    val viewModel = createViewModel()
+
+    assertEquals(
+        listOf("Analysis I", "Physics", "Linear Algebra"),
+        viewModel.uiState.value.recommendedSubjects,
+    )
+  }
+
+  /** An unhandled exception during subject observation sets the observation error. */
+  @Test
+  fun subjects_streamException_setsObservationError() = runTest {
+    `when`(eventsRepository.observeSubjects("user123"))
+        .thenReturn(flow { throw RuntimeException("Stream failed") })
+
+    val viewModel = createViewModel()
+
+    assertEquals(EventPlanningError.FAILED_TO_OBSERVE_USER, viewModel.uiState.value.error)
   }
 
   // ---------------------------------------------------------------- location search
