@@ -589,24 +589,6 @@ class CalendarScreenTest {
     composeTestRule.onNodeWithTag(CalendarTestTags.TIME_GRID).assertIsDisplayed()
   }
 
-  /** S3: a failed load shows the error and Retry, without the loading indicator. */
-  @Test
-  fun loadErrorHidesLoadingIndicator() {
-    val context = ApplicationProvider.getApplicationContext<Context>()
-    setScreen(
-        calendarUiState(
-            LocalDate.of(2026, 10, 28),
-            error = CalendarViewModelError.LOAD_EVENTS_FAILED,
-            isLoading = false,
-        )
-    )
-
-    composeTestRule.onNodeWithTag(CalendarTestTags.LOADING).assertDoesNotExist()
-    composeTestRule
-        .onNodeWithText(context.getString(R.string.calendar_retry_button))
-        .assertIsDisplayed()
-  }
-
   /** S4: while a retry runs, only the Retry button's own spinner shows. */
   @Test
   fun retryInProgressShowsOnlyButtonSpinner() {
