@@ -136,6 +136,8 @@ class InMemorySessionFeedbackRepository : SessionFeedbackRepository {
   ): Result<Unit> {
     var failure: FeedbackException? = null
     data.update { records ->
+      // MutableStateFlow may retry this lambda after a concurrent state change.
+      failure = null
       val key = FeedbackKey(ownerId, eventId)
       val result = transform(records[key])
       result.exceptionOrNull()?.let {
