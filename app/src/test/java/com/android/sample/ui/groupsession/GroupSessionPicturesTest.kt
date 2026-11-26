@@ -4,20 +4,27 @@ package com.android.sample.ui.groupsession
 import android.content.Context
 import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertWidthIsEqualTo
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import coil3.ImageLoader
@@ -34,15 +41,18 @@ import com.android.sample.R
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
+import com.android.sample.model.profile.UsernamePolicy
 import com.android.sample.ui.theme.Dimens
 import java.time.Instant
 import java.util.concurrent.ConcurrentLinkedQueue
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.annotation.GraphicsMode
 
 /**
  * UI tests for the profile pictures of group sessions. Coil's loader is replaced by a fake that
@@ -168,6 +178,36 @@ class GroupSessionPicturesTest {
     assertEquals(emptyList<String>(), requested.toList())
   }
 
+  /** The longest host name stays on one line beside the avatar, cut off with an ellipsis. */
+  @Test
+  @GraphicsMode(GraphicsMode.Mode.NATIVE) // Measures text as a device does.
+  fun hostLine_cutsOffALongNameBesideTheAvatar() {
+    val name = "W".repeat(UsernamePolicy.MAX_LENGTH)
+    composeTestRule.setContent {
+      GroupSessionCard(
+          item = card("1", hostName = name, pictureUrl = null),
+          now = NOW,
+          onJoin = {},
+          onLeave = {},
+          onEdit = {},
+          modifier = Modifier.width(NARROW_CARD_WIDTH),
+      )
+    }
+    val hostLine =
+        composeTestRule.onNodeWithText(context.getString(R.string.group_session_hosted_by, name))
+
+    val layouts = mutableListOf<TextLayoutResult>()
+    hostLine.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+    assertEquals(1, layouts.single().lineCount)
+    assertTrue(layouts.single().isLineEllipsized(0))
+
+    val avatar = composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.HOST_AVATAR)
+    avatar.assertWidthIsEqualTo(Dimens.avatarSizeSmall)
+    val textBounds = hostLine.getUnclippedBoundsInRoot()
+    assertTrue(avatar.getUnclippedBoundsInRoot().right <= textBounds.left)
+    assertTrue(textBounds.right <= NARROW_CARD_WIDTH)
+  }
+
   /** Shows [items] as session cards, all composed so that off-screen ones can be asserted. */
   private fun showCards(vararg items: GroupSessionItem) {
     composeTestRule.setContent {
@@ -236,5 +276,7 @@ class GroupSessionPicturesTest {
     val NOW: Instant = Instant.parse("2026-01-05T12:00:00Z")
     const val PICTURE_URL = "https://example.com/picture.jpg"
     const val BROKEN_URL = "https://example.com/broken.jpg"
+    /** The width of a card on a 320 dp phone, inside the list's padding. */
+    val NARROW_CARD_WIDTH = 288.dp
   }
 }

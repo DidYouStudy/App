@@ -910,6 +910,9 @@ internal fun GroupSessionCard(
                     if (item.isCreator) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = if (item.isCreator) FontWeight.Bold else FontWeight.Normal,
+                // A long name is cut off; the participants sheet shows it in full.
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
           }
         }
