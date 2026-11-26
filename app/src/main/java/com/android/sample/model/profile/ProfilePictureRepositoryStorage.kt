@@ -45,7 +45,8 @@ class ProfilePictureRepositoryStorage(
    *   overwrite the live slot (see [ProfilePictureRepository.uploadProfilePicture]).
    * @return [Result.success] containing the download URL; [Result.failure] containing
    *   [ProfilePictureException] with a stable [ProfilePictureError] category.
-   * @throws CancellationException when the coroutine is cancelled.
+   * @throws CancellationException when the coroutine is cancelled; a running upload is cancelled
+   *   too.
    */
   override suspend fun uploadProfilePicture(
       userId: String,
@@ -64,7 +65,14 @@ class ProfilePictureRepositoryStorage(
           storage.reference.child("$folder/${userId}_${freeSlot(userId, currentUrl)}.jpg")
       // The Storage rules only accept image/jpeg, so the type is always declared explicitly.
       val metadata = StorageMetadata.Builder().setContentType(contentType).build()
-      reference.putBytes(jpegBytes, metadata).await()
+      val upload = reference.putBytes(jpegBytes, metadata)
+      try {
+        upload.await()
+      } catch (exception: CancellationException) {
+        // Cancelling await() leaves the task running; stop it so it cannot overwrite a later one.
+        upload.cancel()
+        throw exception
+      }
       reference.downloadUrl.await().toString()
     }
   }
