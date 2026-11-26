@@ -283,13 +283,13 @@ class GroupSessionMapContentRealMapTest {
   fun filterRadius_tappingInsideCircleClosesOpenSessionList() {
     val userLocation = Location(46.5191, 6.5668)
     showContent(userLocation = userLocation, filterRadiusMeters = 500)
-    map.waitForCameraStill()
+    waitForCircleInView(userLocation, 500)
 
     map.tapPinUntil(aab.location.toLatLng()) { listIsShown() }
     map.waitForCameraStill()
 
-    // Tap inside the circle north of the pins, away from the bottom session list.
-    map.tapAt(LatLng(46.5200, 6.5668))
+    // Tap inside the circle north of the pin, in the half of the screen the list does not cover.
+    map.tapAt(LatLng(46.5194, 6.5660))
 
     composeTestRule.waitUntil(MapTestDriver.TIMEOUT_MS) { !listIsShown() }
   }
