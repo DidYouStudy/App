@@ -1,5 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
-package com.android.sample.model.feedback
+package com.android.sample.model.studylog
 
 import com.android.sample.model.event.EventType
 import java.time.Instant
@@ -13,16 +13,16 @@ import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
-/** Behavior every [SessionFeedbackRepository] implementation must satisfy. */
-abstract class SessionFeedbackRepositoryContractTest {
-  protected abstract fun createRepository(): SessionFeedbackRepository
+/** Behavior every [StudyLogRepository] implementation must satisfy. */
+abstract class StudyLogRepositoryContractTest {
+  protected abstract fun createRepository(): StudyLogRepository
 
-  private lateinit var repository: SessionFeedbackRepository
+  private lateinit var repository: StudyLogRepository
   private val owner = "owner-1"
   private val otherOwner = "owner-2"
   private val event = "event-1"
   private val otherEvent = "event-2"
-  private val target = FeedbackTarget(event, EventType.STUDY_SESSION, " Analysis I ")
+  private val target = StudyLogTarget(event, EventType.STUDY_SESSION, " Analysis I ")
   private val start = Instant.parse("2026-11-02T13:07:30Z") // 14:07:30 Zurich local time
   private val end = Instant.parse("2026-11-02T13:50:00Z") // 14:50:00 Zurich local time
   private val resume = Instant.parse("2026-11-02T14:00:00Z") // 15:00:00 Zurich local time
@@ -33,30 +33,30 @@ abstract class SessionFeedbackRepositoryContractTest {
     repository = createRepository()
   }
 
-  private fun Result<*>.error() = (exceptionOrNull() as FeedbackException).error
+  private fun Result<*>.error() = (exceptionOrNull() as StudyLogException).error
 
-  private suspend fun current(ownerId: String = owner, eventId: String = event): SessionFeedback? =
-      repository.observeFeedback(ownerId, eventId).first().getOrThrow()
+  private suspend fun current(ownerId: String = owner, eventId: String = event): StudyLog? =
+      repository.observeLog(ownerId, eventId).first().getOrThrow()
 
-  private fun assertError(result: Result<*>, error: FeedbackError) {
+  private fun assertError(result: Result<*>, error: StudyLogError) {
     assertEquals(error, result.error())
   }
 
   /** Observing an absent record emits null and each relevant mutation emits a new record. */
   @OptIn(ExperimentalCoroutinesApi::class)
   @Test
-  fun observeFeedback_emitsInitialAndRelevantChangesOnly() = runTest {
-    val own = mutableListOf<SessionFeedback?>()
-    val otherEventValues = mutableListOf<SessionFeedback?>()
-    val otherOwnerValues = mutableListOf<SessionFeedback?>()
+  fun observeLog_emitsInitialAndRelevantChangesOnly() = runTest {
+    val own = mutableListOf<StudyLog?>()
+    val otherEventValues = mutableListOf<StudyLog?>()
+    val otherOwnerValues = mutableListOf<StudyLog?>()
     backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-      repository.observeFeedback(owner, event).collect { own += it.getOrThrow() }
+      repository.observeLog(owner, event).collect { own += it.getOrThrow() }
     }
     backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-      repository.observeFeedback(owner, otherEvent).collect { otherEventValues += it.getOrThrow() }
+      repository.observeLog(owner, otherEvent).collect { otherEventValues += it.getOrThrow() }
     }
     backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-      repository.observeFeedback(otherOwner, event).collect { otherOwnerValues += it.getOrThrow() }
+      repository.observeLog(otherOwner, event).collect { otherOwnerValues += it.getOrThrow() }
     }
 
     assertEquals(listOf(null), own)
@@ -76,12 +76,12 @@ abstract class SessionFeedbackRepositoryContractTest {
   fun startInterval_createsRecordAndKeepsMetadataOnLaterStarts() = runTest {
     repository.startInterval(owner, target, start).getOrThrow()
     assertEquals(
-        SessionFeedback(event, EventType.STUDY_SESSION, "Analysis I", listOf(StudyInterval(start))),
+        StudyLog(event, EventType.STUDY_SESSION, "Analysis I", listOf(StudyInterval(start))),
         current(),
     )
     repository.stopInterval(owner, event, end).getOrThrow()
     repository
-        .startInterval(owner, FeedbackTarget(event, EventType.COURSE, " Edited "), end)
+        .startInterval(owner, StudyLogTarget(event, EventType.COURSE, " Edited "), end)
         .getOrThrow()
     assertEquals(EventType.STUDY_SESSION, current()?.eventType)
     assertEquals("Analysis I", current()?.subject)
@@ -92,7 +92,7 @@ abstract class SessionFeedbackRepositoryContractTest {
   @Test
   fun startInterval_storesBlankSubjectAsNull() = runTest {
     repository
-        .startInterval(owner, FeedbackTarget(event, EventType.STUDY_SESSION, "   "), start)
+        .startInterval(owner, StudyLogTarget(event, EventType.STUDY_SESSION, "   "), start)
         .getOrThrow()
 
     assertNull(current()?.subject)
@@ -103,11 +103,11 @@ abstract class SessionFeedbackRepositoryContractTest {
   fun startInterval_rejectsInvalidIntervalsWithoutChangingRecord() = runTest {
     repository.startInterval(owner, target, start).getOrThrow()
     val beforeRunning = current()
-    assertError(repository.startInterval(owner, target, resume), FeedbackError.ALREADY_STARTED)
+    assertError(repository.startInterval(owner, target, resume), StudyLogError.ALREADY_STARTED)
     assertEquals(beforeRunning, current())
     repository.stopInterval(owner, event, end).getOrThrow()
     val beforeOutOfOrder = current()
-    assertError(repository.startInterval(owner, target, start), FeedbackError.INVALID_ARGUMENT)
+    assertError(repository.startInterval(owner, target, start), StudyLogError.INVALID_ARGUMENT)
     assertEquals(beforeOutOfOrder, current())
     repository.startInterval(owner, target, end).getOrThrow()
     repository.stopInterval(owner, event, resumeEnd).getOrThrow()
@@ -120,7 +120,7 @@ abstract class SessionFeedbackRepositoryContractTest {
     val beforeLimit = current()
     assertError(
         repository.startInterval(owner, target, resumeEnd.plusSeconds(100)),
-        FeedbackError.INVALID_ARGUMENT,
+        StudyLogError.INVALID_ARGUMENT,
     )
     assertEquals(beforeLimit, current())
   }
@@ -128,16 +128,16 @@ abstract class SessionFeedbackRepositoryContractTest {
   /** Stopping closes the open interval and rejects missing, closed, and invalid stops. */
   @Test
   fun stopInterval_closesAndRejectsInvalidStopsWithoutChangingRecord() = runTest {
-    assertError(repository.stopInterval(owner, event, end), FeedbackError.NOT_STARTED)
+    assertError(repository.stopInterval(owner, event, end), StudyLogError.NOT_STARTED)
     assertNull(current())
     repository.startInterval(owner, target, start).getOrThrow()
     val beforeInvalid = current()
-    assertError(repository.stopInterval(owner, event, start), FeedbackError.INVALID_ARGUMENT)
+    assertError(repository.stopInterval(owner, event, start), StudyLogError.INVALID_ARGUMENT)
     assertEquals(beforeInvalid, current())
     repository.stopInterval(owner, event, end).getOrThrow()
     assertEquals(listOf(StudyInterval(start, end)), current()?.intervals)
     val beforeClosed = current()
-    assertError(repository.stopInterval(owner, event, resumeEnd), FeedbackError.NOT_STARTED)
+    assertError(repository.stopInterval(owner, event, resumeEnd), StudyLogError.NOT_STARTED)
     assertEquals(beforeClosed, current())
   }
 
@@ -168,17 +168,17 @@ abstract class SessionFeedbackRepositoryContractTest {
     repository.saveComment(owner, target, "   ").getOrThrow()
     assertNull(current()?.comment)
 
-    val accented = "é".repeat(FeedbackLimits.COMMENT)
+    val accented = "é".repeat(StudyLogLimits.COMMENT)
     repository.saveComment(owner, target, accented).getOrThrow()
     assertEquals(accented, current()?.comment)
-    val emojiText = "😀".repeat(FeedbackLimits.COMMENT / 2)
+    val emojiText = "😀".repeat(StudyLogLimits.COMMENT / 2)
     repository.saveComment(owner, target, emojiText).getOrThrow()
-    assertEquals(FeedbackLimits.COMMENT, emojiText.length)
+    assertEquals(StudyLogLimits.COMMENT, emojiText.length)
     val tooLong = emojiText + "😀"
-    assertEquals(FeedbackLimits.COMMENT + 2, tooLong.length)
-    assertError(repository.saveComment(owner, target, tooLong), FeedbackError.INVALID_ARGUMENT)
+    assertEquals(StudyLogLimits.COMMENT + 2, tooLong.length)
+    assertError(repository.saveComment(owner, target, tooLong), StudyLogError.INVALID_ARGUMENT)
     assertEquals(
-        SessionFeedback(event, EventType.STUDY_SESSION, "Analysis I", comment = emojiText),
+        StudyLog(event, EventType.STUDY_SESSION, "Analysis I", comment = emojiText),
         current(),
     )
   }
@@ -190,8 +190,8 @@ abstract class SessionFeedbackRepositoryContractTest {
     val before = current()
 
     assertError(
-        repository.saveComment(owner, target, "a".repeat(FeedbackLimits.COMMENT + 1)),
-        FeedbackError.INVALID_ARGUMENT,
+        repository.saveComment(owner, target, "a".repeat(StudyLogLimits.COMMENT + 1)),
+        StudyLogError.INVALID_ARGUMENT,
     )
     assertEquals(before, current())
   }
@@ -227,7 +227,7 @@ abstract class SessionFeedbackRepositoryContractTest {
     repository.saveTasksCompleted(owner, target, null).getOrThrow()
     assertNull(current()?.tasksCompleted)
     val before = current()
-    assertError(repository.saveTasksCompleted(owner, target, -1), FeedbackError.INVALID_ARGUMENT)
+    assertError(repository.saveTasksCompleted(owner, target, -1), StudyLogError.INVALID_ARGUMENT)
     assertEquals(before, current())
     assertEquals("note", current()?.comment)
     assertEquals(listOf(StudyInterval(start)), current()?.intervals)
@@ -245,53 +245,53 @@ abstract class SessionFeedbackRepositoryContractTest {
 
   /** Deleting an existing or missing record succeeds, and an existing observer sees null. */
   @Test
-  fun deleteFeedback_removesExistingAndAcceptsMissing() = runTest {
+  fun deleteLog_removesExistingAndAcceptsMissing() = runTest {
     repository.startInterval(owner, target, start).getOrThrow()
-    repository.deleteFeedback(owner, event).getOrThrow()
+    repository.deleteLog(owner, event).getOrThrow()
     assertNull(current())
-    repository.deleteFeedback(owner, event).getOrThrow()
+    repository.deleteLog(owner, event).getOrThrow()
     assertNull(current())
   }
 
   /** Blank or slash-containing paths fail consistently in every repository operation. */
   @Test
   fun operations_rejectInvalidOwnerAndEventIds() = runTest {
-    assertError(repository.observeFeedback(" ", event).first(), FeedbackError.INVALID_ARGUMENT)
+    assertError(repository.observeLog(" ", event).first(), StudyLogError.INVALID_ARGUMENT)
     assertError(
-        repository.observeFeedback(owner, "event/id").first(),
-        FeedbackError.INVALID_ARGUMENT,
+        repository.observeLog(owner, "event/id").first(),
+        StudyLogError.INVALID_ARGUMENT,
     )
-    assertError(repository.startInterval(" ", target, start), FeedbackError.INVALID_ARGUMENT)
+    assertError(repository.startInterval(" ", target, start), StudyLogError.INVALID_ARGUMENT)
     assertError(
         repository.startInterval(
             owner,
-            FeedbackTarget("event/id", EventType.STUDY_SESSION, null),
+            StudyLogTarget("event/id", EventType.STUDY_SESSION, null),
             start,
         ),
-        FeedbackError.INVALID_ARGUMENT,
+        StudyLogError.INVALID_ARGUMENT,
     )
-    assertError(repository.stopInterval("owner/id", event, end), FeedbackError.INVALID_ARGUMENT)
-    assertError(repository.stopInterval(owner, " ", end), FeedbackError.INVALID_ARGUMENT)
-    assertError(repository.saveComment("owner/id", target, "x"), FeedbackError.INVALID_ARGUMENT)
+    assertError(repository.stopInterval("owner/id", event, end), StudyLogError.INVALID_ARGUMENT)
+    assertError(repository.stopInterval(owner, " ", end), StudyLogError.INVALID_ARGUMENT)
+    assertError(repository.saveComment("owner/id", target, "x"), StudyLogError.INVALID_ARGUMENT)
     assertError(
         repository.saveComment(
             owner,
-            FeedbackTarget("event/id", EventType.STUDY_SESSION, null),
+            StudyLogTarget("event/id", EventType.STUDY_SESSION, null),
             "x",
         ),
-        FeedbackError.INVALID_ARGUMENT,
+        StudyLogError.INVALID_ARGUMENT,
     )
-    assertError(repository.saveTasksCompleted(" ", target, 1), FeedbackError.INVALID_ARGUMENT)
+    assertError(repository.saveTasksCompleted(" ", target, 1), StudyLogError.INVALID_ARGUMENT)
     assertError(
         repository.saveTasksCompleted(
             owner,
-            FeedbackTarget("event/id", EventType.STUDY_SESSION, null),
+            StudyLogTarget("event/id", EventType.STUDY_SESSION, null),
             1,
         ),
-        FeedbackError.INVALID_ARGUMENT,
+        StudyLogError.INVALID_ARGUMENT,
     )
-    assertError(repository.deleteFeedback("owner/id", event), FeedbackError.INVALID_ARGUMENT)
-    assertError(repository.deleteFeedback(owner, "event/id"), FeedbackError.INVALID_ARGUMENT)
+    assertError(repository.deleteLog("owner/id", event), StudyLogError.INVALID_ARGUMENT)
+    assertError(repository.deleteLog(owner, "event/id"), StudyLogError.INVALID_ARGUMENT)
   }
 
   /** Records are isolated by both owner and event identifiers. */
@@ -299,10 +299,10 @@ abstract class SessionFeedbackRepositoryContractTest {
   fun records_areIsolatedPerOwnerAndEvent() = runTest {
     repository.saveComment(owner, target, "one").getOrThrow()
     repository
-        .saveTasksCompleted(otherOwner, FeedbackTarget(event, EventType.COURSE, "Physics"), 3)
+        .saveTasksCompleted(otherOwner, StudyLogTarget(event, EventType.COURSE, "Physics"), 3)
         .getOrThrow()
     repository
-        .startInterval(owner, FeedbackTarget(otherEvent, EventType.EXAM, null), start)
+        .startInterval(owner, StudyLogTarget(otherEvent, EventType.EXAM, null), start)
         .getOrThrow()
 
     assertEquals("one", current(owner, event)?.comment)

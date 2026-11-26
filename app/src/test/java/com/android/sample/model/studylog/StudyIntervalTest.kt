@@ -1,5 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
-package com.android.sample.model.feedback
+package com.android.sample.model.studylog
 
 import com.android.sample.model.event.EventType
 import java.time.Instant
@@ -39,12 +39,11 @@ class StudyIntervalTest {
 
     assertEquals(
         3280L,
-        SessionFeedback("event", EventType.STUDY_SESSION, null, listOf(first, second))
-            .studiedSeconds,
+        StudyLog("event", EventType.STUDY_SESSION, null, listOf(first, second)).studiedSeconds,
     )
     assertEquals(
         3880L,
-        SessionFeedback(
+        StudyLog(
                 "event",
                 EventType.STUDY_SESSION,
                 null,
@@ -59,32 +58,31 @@ class StudyIntervalTest {
     )
     assertEquals(
         3280L,
-        SessionFeedback("event", EventType.STUDY_SESSION, null, listOf(first, second, open))
+        StudyLog("event", EventType.STUDY_SESSION, null, listOf(first, second, open))
             .studiedSeconds,
     )
-    assertEquals(0L, SessionFeedback("event", EventType.STUDY_SESSION, null).studiedSeconds)
+    assertEquals(0L, StudyLog("event", EventType.STUDY_SESSION, null).studiedSeconds)
   }
 
-  /** A feedback record is running exactly when its last interval is open. */
+  /** A study log record is running exactly when its last interval is open. */
   @Test
   fun isRunning_dependsOnLastInterval() {
     val start = Instant.parse("2026-11-02T13:07:30Z") // 14:07:30 Zurich local time
     val end = Instant.parse("2026-11-02T13:50:00Z") // 14:50:00 Zurich local time
 
-    assertEquals(false, SessionFeedback("event", EventType.STUDY_SESSION, null).isRunning)
+    assertEquals(false, StudyLog("event", EventType.STUDY_SESSION, null).isRunning)
     assertEquals(
         true,
-        SessionFeedback("event", EventType.STUDY_SESSION, null, listOf(StudyInterval(start)))
-            .isRunning,
+        StudyLog("event", EventType.STUDY_SESSION, null, listOf(StudyInterval(start))).isRunning,
     )
     assertEquals(
         false,
-        SessionFeedback("event", EventType.STUDY_SESSION, null, listOf(StudyInterval(start, end)))
+        StudyLog("event", EventType.STUDY_SESSION, null, listOf(StudyInterval(start, end)))
             .isRunning,
     )
     assertEquals(
         true,
-        SessionFeedback(
+        StudyLog(
                 "event",
                 EventType.STUDY_SESSION,
                 null,

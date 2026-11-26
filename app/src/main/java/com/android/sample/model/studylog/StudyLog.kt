@@ -1,15 +1,15 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
-package com.android.sample.model.feedback
+package com.android.sample.model.studylog
 
 import com.android.sample.model.event.EventType
 
-/** Feedback recorded for one student's personal session. */
-data class SessionFeedback(
-    /** The event to which this feedback belongs. */
+/** study log recorded for one student's personal session. */
+data class StudyLog(
+    /** The event to which this study log belongs. */
     val eventId: String,
-    /** The event type stored when feedback was first created. */
+    /** The event type stored when study log was first created. */
     val eventType: EventType,
-    /** The normalized subject stored when feedback was first created. */
+    /** The normalized subject stored when study log was first created. */
     val subject: String?,
     /**
      * The student's focus intervals. Each gap between intervals is a break. An open interval is not

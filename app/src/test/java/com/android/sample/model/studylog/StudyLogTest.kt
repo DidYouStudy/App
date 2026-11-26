@@ -1,17 +1,17 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
-package com.android.sample.model.feedback
+package com.android.sample.model.studylog
 
 import com.android.sample.model.event.EventType
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** Tests computed properties on [SessionFeedback]. */
-class SessionFeedbackTest {
+/** Tests computed properties on [StudyLog]. */
+class StudyLogTest {
   /** A closed interval's duration is measured in whole seconds. */
   @Test
   fun studiedSeconds_usesWholeSeconds() {
-    val feedback =
-        SessionFeedback(
+    val studyLog =
+        StudyLog(
             eventId = "event",
             eventType = EventType.STUDY_SESSION,
             subject = "Analysis I",
@@ -36,7 +36,7 @@ class SessionFeedbackTest {
                 ),
         )
 
-    assertEquals(3280L, feedback.studiedSeconds)
+    assertEquals(3280L, studyLog.studiedSeconds)
   }
 
   /** Each interval is floored separately before durations are summed. */
@@ -75,11 +75,11 @@ class SessionFeedbackTest {
 
     assertEquals(
         0L,
-        SessionFeedback("event", EventType.STUDY_SESSION, null, shortIntervals).studiedSeconds,
+        StudyLog("event", EventType.STUDY_SESSION, null, shortIntervals).studiedSeconds,
     )
     assertEquals(
         1L,
-        SessionFeedback("event", EventType.STUDY_SESSION, null, almostTwoSeconds).studiedSeconds,
+        StudyLog("event", EventType.STUDY_SESSION, null, almostTwoSeconds).studiedSeconds,
     )
   }
 
@@ -92,14 +92,14 @@ class SessionFeedbackTest {
             java.time.Instant.parse("2026-11-02T13:50:00Z"), // 14:50:00 Zurich local time
         )
 
-    assertEquals(false, SessionFeedback("event", EventType.STUDY_SESSION, null).isRunning)
+    assertEquals(false, StudyLog("event", EventType.STUDY_SESSION, null).isRunning)
     assertEquals(
         false,
-        SessionFeedback("event", EventType.STUDY_SESSION, null, listOf(closed)).isRunning,
+        StudyLog("event", EventType.STUDY_SESSION, null, listOf(closed)).isRunning,
     )
     assertEquals(
         true,
-        SessionFeedback(
+        StudyLog(
                 "event",
                 EventType.STUDY_SESSION,
                 null,

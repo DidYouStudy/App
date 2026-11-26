@@ -1,5 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
-package com.android.sample.model.feedback
+package com.android.sample.model.studylog
 
 import java.time.Instant
 
