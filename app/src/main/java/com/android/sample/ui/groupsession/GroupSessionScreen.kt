@@ -236,26 +236,6 @@ fun GroupSessionScreen(
   val campusCenter = defaultCampusCenter()
   var cameraDestination by remember { mutableStateOf<CameraDestination?>(null) }
   var cameraDestinationTrigger by remember { mutableIntStateOf(0) }
-  var hasCenteredOnUserLocation by rememberSaveable {
-    mutableStateOf(hasLocationPermission && uiState.userLocation != null)
-  }
-
-  // Center on the user's location once it becomes available after entering MAP mode (e.g. after
-  // granting permission or waiting for the first GPS fix), unless a target was already chosen.
-  LaunchedEffect(viewMode, hasLocationPermission, uiState.userLocation) {
-    val userLoc = uiState.userLocation
-    if (
-        viewMode == GroupSessionViewMode.MAP &&
-            hasLocationPermission &&
-            userLoc != null &&
-            !hasCenteredOnUserLocation
-    ) {
-      hasCenteredOnUserLocation = true
-      if (selectedRoom == null && cameraDestination == null) {
-        cameraDestination = CameraDestination(userLoc, ++cameraDestinationTrigger)
-      }
-    }
-  }
 
   val onCenterLocationClick: () -> Unit = {
     val userLoc = uiState.userLocation
@@ -348,9 +328,6 @@ fun GroupSessionScreen(
             onViewModeChange = { newMode ->
               if (newMode == GroupSessionViewMode.LIST) {
                 cameraDestination = null
-                hasCenteredOnUserLocation = false
-              } else {
-                hasCenteredOnUserLocation = hasLocationPermission && uiState.userLocation != null
               }
               viewMode = newMode
             },
@@ -364,7 +341,6 @@ fun GroupSessionScreen(
             onLocationClick = { item ->
               selectedRoom = item.proximity.campusLocation?.name ?: item.session.details.location
               cameraDestination = null
-              hasCenteredOnUserLocation = true
               viewMode = GroupSessionViewMode.MAP
             },
             onQueryChange = viewModel::onQueryChange,

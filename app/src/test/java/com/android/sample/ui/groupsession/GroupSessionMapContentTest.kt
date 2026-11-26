@@ -33,7 +33,6 @@ import com.android.sample.model.event.GroupSession
 import com.android.sample.model.location.CampusLocation
 import com.android.sample.model.location.CampusLocationType
 import com.android.sample.model.location.Location
-import com.google.android.gms.maps.model.LatLng
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -346,45 +345,6 @@ class GroupSessionMapContentTest {
     listOf(Size(32f, 32f), Size(32f, 20f), Size(32f, 16f), Size.Zero).forEach { size ->
       assertBounds(Rect(0f, 0f, size.width, size.width), dropletBounds(size), DROPLET_EXACT)
     }
-  }
-
-  @Test
-  fun resolveInitialCameraTarget_prefersUserLocationOnlyWhenPermissionAndFixExist() {
-    val userLocation = Location(46.5205, 6.5678)
-    val campusCenter = Location(46.5191, 6.5668)
-
-    assertEquals(
-        LatLng(userLocation.latitude, userLocation.longitude),
-        resolveInitialCameraTarget(
-            hasLocationPermission = true,
-            userLocation = userLocation,
-            campusCenter = campusCenter,
-        ),
-    )
-    assertEquals(
-        LatLng(campusCenter.latitude, campusCenter.longitude),
-        resolveInitialCameraTarget(
-            hasLocationPermission = false,
-            userLocation = userLocation,
-            campusCenter = campusCenter,
-        ),
-    )
-    assertEquals(
-        LatLng(campusCenter.latitude, campusCenter.longitude),
-        resolveInitialCameraTarget(
-            hasLocationPermission = true,
-            userLocation = null,
-            campusCenter = campusCenter,
-        ),
-    )
-    assertEquals(
-        LatLng(campusCenter.latitude, campusCenter.longitude),
-        resolveInitialCameraTarget(
-            hasLocationPermission = false,
-            userLocation = null,
-            campusCenter = campusCenter,
-        ),
-    )
   }
 
   private companion object {

@@ -65,14 +65,12 @@ import kotlinx.coroutines.withTimeoutOrNull
  * @param cameraDestination Destination to move the camera onto whenever it changes; null keeps the
  *   camera where the user left it.
  * @param cameraPositionState Camera of the map, for a caller that needs to read or move it, such as
- *   instrumented tests; by default a camera on [userLocation] (when [hasLocationPermission] is true
- *   and [userLocation] is available) or [campusCenter] at the default zoom.
+ *   instrumented tests; by default a camera on [campusCenter] at the default zoom.
  * @param userLocation Current device location of the user, or null if not available or shared.
  * @param hasLocationPermission Whether location permission is granted, enabling the native Google
  *   Maps blue dot for user location.
  * @param campusCenter Default campus centre coordinates used to initialize the camera when
- *   [cameraPositionState] is not supplied and [userLocation] is unavailable; defaults to
- *   [defaultCampusCenter] from `map.xml`.
+ *   [cameraPositionState] is not supplied; defaults to [defaultCampusCenter] from `map.xml`.
  */
 @Composable
 fun GroupSessionMapView(
@@ -92,14 +90,13 @@ fun GroupSessionMapView(
     return
   }
 
-  val initialTarget = resolveInitialCameraTarget(hasLocationPermission, userLocation, campusCenter)
   val defaultZoom = floatResource(R.dimen.map_default_zoom)
   val focusZoom = floatResource(R.dimen.map_focus_zoom)
   val cameraAnimationMs = integerResource(R.integer.map_camera_animation_ms)
   val cameraPositionState =
       cameraPositionState
           ?: rememberCameraPositionState {
-            position = CameraPosition.fromLatLngZoom(initialTarget, defaultZoom)
+            position = CameraPosition.fromLatLngZoom(campusCenter.toLatLng(), defaultZoom)
           }
 
   // Moves the camera onto a destination: either resets to default zoom on unfocus, or zooms in on
@@ -282,21 +279,6 @@ fun defaultCampusCenter(): Location =
         floatResource(R.dimen.map_campus_center_latitude).toDouble(),
         floatResource(R.dimen.map_campus_center_longitude).toDouble(),
     )
-
-/**
- * Chooses the initial camera target for [GroupSessionMapView]: the user's location when location
- * permission is granted and a fix is available, otherwise [campusCenter].
- */
-internal fun resolveInitialCameraTarget(
-    hasLocationPermission: Boolean,
-    userLocation: Location?,
-    campusCenter: Location,
-): LatLng =
-    if (hasLocationPermission && userLocation != null) {
-      userLocation.toLatLng()
-    } else {
-      campusCenter.toLatLng()
-    }
 
 /** Google Maps positions use the same degrees as [Location]. */
 internal fun Location.toLatLng(): LatLng = LatLng(latitude, longitude)
