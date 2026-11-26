@@ -1,7 +1,9 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.sample.model.studylog
 
+import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
+import java.time.Instant
 
 /** study log recorded for one student's personal session. */
 data class StudyLog(
@@ -11,13 +13,17 @@ data class StudyLog(
     val eventType: EventType,
     /** The normalized subject stored when study log was first created. */
     val subject: String?,
+    /** The planned start time stored when study log was first created. */
+    val plannedStart: Instant,
+    /** The planned end time stored when study log was first created. */
+    val plannedEnd: Instant,
     /**
      * The student's focus intervals. Each gap between intervals is a break. An open interval is not
      * counted in [studiedSeconds].
      */
     val intervals: List<StudyInterval> = emptyList(),
-    /** The number of completed tasks, or null when not recorded. */
-    val tasksCompleted: Int? = null,
+    /** The task snapshot stored for this study log. */
+    val tasks: List<EventTask> = emptyList(),
     /** The optional normalized comment. */
     val comment: String? = null,
 ) {

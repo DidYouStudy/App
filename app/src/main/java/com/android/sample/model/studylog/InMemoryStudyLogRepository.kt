@@ -1,6 +1,7 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.sample.model.studylog
 
+import com.android.sample.model.event.EventTask
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +22,14 @@ class InMemoryStudyLogRepository : StudyLogRepository {
           ?: data
               .map { records -> Result.success(records[StudyLogKey(ownerId, eventId)]) }
               .distinctUntilChanged()
+
+  override fun observeLogs(
+      ownerId: String,
+      from: Instant,
+      to: Instant,
+  ): Flow<Result<List<StudyLog>>> {
+    throw NotImplementedError("Period observation is implemented in part 2")
+  }
 
   /** Starts an interval for a personal event. */
   override suspend fun startInterval(
@@ -100,26 +109,12 @@ class InMemoryStudyLogRepository : StudyLogRepository {
     }
   }
 
-  /** Saves or removes the completed-task count for a personal event. */
-  override suspend fun saveTasksCompleted(
+  override suspend fun saveTasks(
       ownerId: String,
       target: StudyLogTarget,
-      count: Int?,
+      tasks: List<EventTask>,
   ): Result<Unit> {
-    invalidIds(ownerId, target.eventId)?.let {
-      return Result.failure(it)
-    }
-    if (count != null && count < 0) {
-      return Result.failure(StudyLogException(StudyLogError.INVALID_ARGUMENT))
-    }
-    return updateRecord(ownerId, target.eventId) { current ->
-      if (current == null && count == null) {
-        // Do not create a record for an empty save.
-        Result.success(null)
-      } else {
-        Result.success((current ?: newStudyLog(target)).copy(tasksCompleted = count))
-      }
-    }
+    throw NotImplementedError("Task snapshots are implemented in part 2")
   }
 
   /** Deletes study log for a personal event. */
@@ -159,8 +154,10 @@ class InMemoryStudyLogRepository : StudyLogRepository {
 
   private fun newStudyLog(target: StudyLogTarget): StudyLog =
       StudyLog(
-          target.eventId,
-          target.eventType,
-          target.subject?.trim()?.takeUnless { it.isBlank() },
+          eventId = target.eventId,
+          eventType = target.eventType,
+          subject = target.subject?.trim()?.takeUnless { it.isBlank() },
+          plannedStart = target.plannedStart,
+          plannedEnd = target.plannedEnd,
       )
 }

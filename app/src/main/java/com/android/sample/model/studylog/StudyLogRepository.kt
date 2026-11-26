@@ -20,6 +20,14 @@ interface StudyLogRepository {
   fun observeLog(ownerId: String, eventId: String): Flow<Result<StudyLog?>>
 
   /**
+   * Observes logs planned in the half-open interval [[from], [to]) for one owner.
+   *
+   * Returns [StudyLogError.INVALID_ARGUMENT] for an invalid owner ID or when [from] is not before
+   * [to].
+   */
+  fun observeLogs(ownerId: String, from: Instant, to: Instant): Flow<Result<List<StudyLog>>>
+
+  /**
    * Starts a new interval, creating the study log record if needed.
    *
    * If the app is killed while an interval runs, nothing closes it. The caller (#77) is responsible
@@ -61,16 +69,11 @@ interface StudyLogRepository {
       comment: String?,
   ): Result<Unit>
 
-  /**
-   * Saves or removes the completed-task count for an event.
-   *
-   * Returns [StudyLogError.INVALID_ARGUMENT] for a blank ID or an ID containing `/`, or when the
-   * count is negative. A null count removes it. A failed call changes nothing.
-   */
-  suspend fun saveTasksCompleted(
+  /** Replaces the task snapshot for an event. */
+  suspend fun saveTasks(
       ownerId: String,
       target: StudyLogTarget,
-      count: Int?,
+      tasks: List<com.android.sample.model.event.EventTask>,
   ): Result<Unit>
 
   /**

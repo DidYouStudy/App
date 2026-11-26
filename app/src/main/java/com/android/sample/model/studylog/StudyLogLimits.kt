@@ -8,4 +8,7 @@ object StudyLogLimits {
 
   /** Maximum number of intervals in one study log record. */
   const val MAX_INTERVALS = 50
+
+  /** Maximum number of tasks in one study log record. */
+  const val MAX_TASKS = 50
 }

@@ -15,6 +15,8 @@ class StudyLogTest {
             eventId = "event",
             eventType = EventType.STUDY_SESSION,
             subject = "Analysis I",
+            plannedStart = java.time.Instant.parse("2026-11-02T13:00:00Z"),
+            plannedEnd = java.time.Instant.parse("2026-11-02T14:00:00Z"),
             intervals =
                 listOf(
                     StudyInterval(
@@ -75,11 +77,27 @@ class StudyLogTest {
 
     assertEquals(
         0L,
-        StudyLog("event", EventType.STUDY_SESSION, null, shortIntervals).studiedSeconds,
+        StudyLog(
+                "event",
+                EventType.STUDY_SESSION,
+                null,
+                java.time.Instant.parse("2026-11-02T13:00:00Z"),
+                java.time.Instant.parse("2026-11-02T14:00:00Z"),
+                shortIntervals,
+            )
+            .studiedSeconds,
     )
     assertEquals(
         1L,
-        StudyLog("event", EventType.STUDY_SESSION, null, almostTwoSeconds).studiedSeconds,
+        StudyLog(
+                "event",
+                EventType.STUDY_SESSION,
+                null,
+                java.time.Instant.parse("2026-11-02T13:00:00Z"),
+                java.time.Instant.parse("2026-11-02T14:00:00Z"),
+                almostTwoSeconds,
+            )
+            .studiedSeconds,
     )
   }
 
@@ -92,10 +110,28 @@ class StudyLogTest {
             java.time.Instant.parse("2026-11-02T13:50:00Z"), // 14:50:00 Zurich local time
         )
 
-    assertEquals(false, StudyLog("event", EventType.STUDY_SESSION, null).isRunning)
     assertEquals(
         false,
-        StudyLog("event", EventType.STUDY_SESSION, null, listOf(closed)).isRunning,
+        StudyLog(
+                "event",
+                EventType.STUDY_SESSION,
+                null,
+                java.time.Instant.parse("2026-11-02T13:00:00Z"),
+                java.time.Instant.parse("2026-11-02T14:00:00Z"),
+            )
+            .isRunning,
+    )
+    assertEquals(
+        false,
+        StudyLog(
+                "event",
+                EventType.STUDY_SESSION,
+                null,
+                java.time.Instant.parse("2026-11-02T13:00:00Z"),
+                java.time.Instant.parse("2026-11-02T14:00:00Z"),
+                listOf(closed),
+            )
+            .isRunning,
     )
     assertEquals(
         true,
@@ -103,6 +139,8 @@ class StudyLogTest {
                 "event",
                 EventType.STUDY_SESSION,
                 null,
+                java.time.Instant.parse("2026-11-02T13:00:00Z"),
+                java.time.Instant.parse("2026-11-02T14:00:00Z"),
                 listOf(closed, StudyInterval(closed.endedAt!!)),
             )
             .isRunning,

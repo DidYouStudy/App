@@ -1,6 +1,7 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.sample.model.studylog
 
+import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
 import java.time.Instant
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -10,6 +11,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Test
 
@@ -22,7 +24,10 @@ abstract class StudyLogRepositoryContractTest {
   private val otherOwner = "owner-2"
   private val event = "event-1"
   private val otherEvent = "event-2"
-  private val target = StudyLogTarget(event, EventType.STUDY_SESSION, " Analysis I ")
+  private val plannedStart = Instant.parse("2026-11-02T13:00:00Z") // 14:00 Zurich local time
+  private val plannedEnd = Instant.parse("2026-11-02T14:00:00Z") // 15:00 Zurich local time
+  private val target =
+      StudyLogTarget(event, EventType.STUDY_SESSION, " Analysis I ", plannedStart, plannedEnd)
   private val start = Instant.parse("2026-11-02T13:07:30Z") // 14:07:30 Zurich local time
   private val end = Instant.parse("2026-11-02T13:50:00Z") // 14:50:00 Zurich local time
   private val resume = Instant.parse("2026-11-02T14:00:00Z") // 15:00:00 Zurich local time
@@ -71,28 +76,216 @@ abstract class StudyLogRepositoryContractTest {
     assertEquals("note", own.last()?.comment)
   }
 
+  /**
+   * Period observation uses planned-start boundaries, owner isolation, ordering, and re-emission.
+   */
+  @OptIn(ExperimentalCoroutinesApi::class)
+  @Test
+  fun observeLogs_filtersSortsAndReemitsRelevantChanges() = runTest {
+    val firstTarget =
+        StudyLogTarget(
+            "first",
+            EventType.STUDY_SESSION,
+            "First",
+            Instant.parse("2026-11-23T09:00:00Z"),
+            Instant.parse("2026-11-23T10:00:00Z"),
+        )
+    val secondTarget =
+        StudyLogTarget(
+            "second",
+            EventType.COURSE,
+            "Second",
+            Instant.parse("2026-11-25T13:00:00Z"),
+            Instant.parse("2026-11-25T14:00:00Z"),
+        )
+    val thirdTarget =
+        StudyLogTarget(
+            "third",
+            EventType.EXAM,
+            "Third",
+            Instant.parse("2026-11-30T08:00:00Z"),
+            Instant.parse("2026-11-30T09:00:00Z"),
+        )
+    repository.startInterval(owner, firstTarget, start).getOrThrow()
+    repository.startInterval(owner, secondTarget, start).getOrThrow()
+    repository.startInterval(owner, thirdTarget, start).getOrThrow()
+    repository.startInterval(otherOwner, firstTarget, start).getOrThrow()
+
+    val values = mutableListOf<List<StudyLog>>()
+    backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+      repository
+          .observeLogs(
+              owner,
+              Instant.parse("2026-11-23T00:00:00Z"),
+              Instant.parse("2026-11-30T00:00:00Z"),
+          )
+          .collect { values += it.getOrThrow() }
+    }
+
+    assertEquals(
+        listOf(
+            StudyLog(
+                "first",
+                EventType.STUDY_SESSION,
+                "First",
+                Instant.parse("2026-11-23T09:00:00Z"),
+                Instant.parse("2026-11-23T10:00:00Z"),
+                listOf(StudyInterval(start)),
+            ),
+            StudyLog(
+                "second",
+                EventType.COURSE,
+                "Second",
+                Instant.parse("2026-11-25T13:00:00Z"),
+                Instant.parse("2026-11-25T14:00:00Z"),
+                listOf(StudyInterval(start)),
+            ),
+        ),
+        values.single(),
+    )
+    assertEquals(
+        listOf(
+            StudyLog(
+                "first",
+                EventType.STUDY_SESSION,
+                "First",
+                Instant.parse("2026-11-23T09:00:00Z"),
+                Instant.parse("2026-11-23T10:00:00Z"),
+                listOf(StudyInterval(start)),
+            ),
+            StudyLog(
+                "second",
+                EventType.COURSE,
+                "Second",
+                Instant.parse("2026-11-25T13:00:00Z"),
+                Instant.parse("2026-11-25T14:00:00Z"),
+                listOf(StudyInterval(start)),
+            ),
+        ),
+        repository
+            .observeLogs(
+                owner,
+                Instant.parse("2026-11-23T00:00:00Z"),
+                Instant.parse("2026-11-30T08:00:00Z"),
+            )
+            .first()
+            .getOrThrow(),
+    )
+    assertEquals(
+        listOf(
+            StudyLog(
+                "third",
+                EventType.EXAM,
+                "Third",
+                Instant.parse("2026-11-30T08:00:00Z"),
+                Instant.parse("2026-11-30T09:00:00Z"),
+                listOf(StudyInterval(start)),
+            )
+        ),
+        repository
+            .observeLogs(
+                owner,
+                Instant.parse("2026-11-30T08:00:00Z"),
+                Instant.parse("2026-12-01T00:00:00Z"),
+            )
+            .first()
+            .getOrThrow(),
+    )
+    repository.saveComment(owner, firstTarget, "changed").getOrThrow()
+    assertEquals(2, values.size)
+    assertEquals("changed", values.last().first().comment)
+  }
+
+  /**
+   * Period observation excludes the upper boundary, includes the lower boundary, and validates
+   * input.
+   */
+  @Test
+  fun observeLogs_handlesBoundariesAndInvalidRanges() = runTest {
+    assertError(
+        repository
+            .observeLogs(
+                owner,
+                Instant.parse("2026-11-30T00:00:00Z"),
+                Instant.parse("2026-11-30T00:00:00Z"),
+            )
+            .first(),
+        StudyLogError.INVALID_ARGUMENT,
+    )
+    assertError(
+        repository
+            .observeLogs(
+                "owner/id",
+                Instant.parse("2026-11-23T00:00:00Z"),
+                Instant.parse("2026-11-30T00:00:00Z"),
+            )
+            .first(),
+        StudyLogError.INVALID_ARGUMENT,
+    )
+  }
+
   /** Starting a missing record stores normalized target metadata and one open interval. */
   @Test
   fun startInterval_createsRecordAndKeepsMetadataOnLaterStarts() = runTest {
     repository.startInterval(owner, target, start).getOrThrow()
     assertEquals(
-        StudyLog(event, EventType.STUDY_SESSION, "Analysis I", listOf(StudyInterval(start))),
+        StudyLog(
+            event,
+            EventType.STUDY_SESSION,
+            "Analysis I",
+            plannedStart,
+            plannedEnd,
+            listOf(StudyInterval(start)),
+        ),
         current(),
     )
     repository.stopInterval(owner, event, end).getOrThrow()
     repository
-        .startInterval(owner, StudyLogTarget(event, EventType.COURSE, " Edited "), end)
+        .startInterval(
+            owner,
+            StudyLogTarget(
+                event,
+                EventType.COURSE,
+                " Edited ",
+                Instant.parse("2026-11-03T13:00:00Z"),
+                Instant.parse("2026-11-03T14:00:00Z"),
+            ),
+            end,
+        )
         .getOrThrow()
     assertEquals(EventType.STUDY_SESSION, current()?.eventType)
     assertEquals("Analysis I", current()?.subject)
+    assertEquals(plannedStart, current()?.plannedStart)
+    assertEquals(plannedEnd, current()?.plannedEnd)
     assertEquals(listOf(StudyInterval(start, end), StudyInterval(end)), current()?.intervals)
+  }
+
+  /** A target rejects a planned end that is not after its planned start. */
+  @Test
+  fun studyLogTarget_rejectsNonIncreasingPlannedTimes() {
+    assertThrows(IllegalArgumentException::class.java) {
+      StudyLogTarget(event, EventType.STUDY_SESSION, null, plannedStart, plannedStart)
+    }
+    assertThrows(IllegalArgumentException::class.java) {
+      StudyLogTarget(event, EventType.STUDY_SESSION, null, plannedEnd, plannedStart)
+    }
   }
 
   /** A blank subject is normalized to null when a record is first created. */
   @Test
   fun startInterval_storesBlankSubjectAsNull() = runTest {
     repository
-        .startInterval(owner, StudyLogTarget(event, EventType.STUDY_SESSION, "   "), start)
+        .startInterval(
+            owner,
+            StudyLogTarget(
+                event,
+                EventType.STUDY_SESSION,
+                "   ",
+                plannedStart,
+                plannedEnd,
+            ),
+            start,
+        )
         .getOrThrow()
 
     assertNull(current()?.subject)
@@ -178,7 +371,14 @@ abstract class StudyLogRepositoryContractTest {
     assertEquals(StudyLogLimits.COMMENT + 2, tooLong.length)
     assertError(repository.saveComment(owner, target, tooLong), StudyLogError.INVALID_ARGUMENT)
     assertEquals(
-        StudyLog(event, EventType.STUDY_SESSION, "Analysis I", comment = emojiText),
+        StudyLog(
+            event,
+            EventType.STUDY_SESSION,
+            "Analysis I",
+            plannedStart,
+            plannedEnd,
+            comment = emojiText,
+        ),
         current(),
     )
   }
@@ -205,42 +405,55 @@ abstract class StudyLogRepositoryContractTest {
     assertEquals("note", current()?.comment)
   }
 
-  /** Comment changes preserve interval and task data, and interval changes preserve comments. */
+  /**
+   * Comment changes preserve interval and task snapshots, and interval changes preserve comments.
+   */
   @Test
   fun saveComment_andIntervals_preserveOtherFields() = runTest {
     repository.startInterval(owner, target, start).getOrThrow()
-    repository.saveTasksCompleted(owner, target, 2).getOrThrow()
+    val tasks = listOf(EventTask("Read chapter", end), EventTask("Solve exercises"))
+    repository.saveTasks(owner, target, tasks).getOrThrow()
     repository.saveComment(owner, target, "note").getOrThrow()
     repository.stopInterval(owner, event, end).getOrThrow()
     assertEquals("note", current()?.comment)
-    assertEquals(2, current()?.tasksCompleted)
+    assertEquals(tasks, current()?.tasks)
     assertEquals(listOf(StudyInterval(start, end)), current()?.intervals)
   }
 
-  /** Task counts accept zero and null, while negative counts leave the full record unchanged. */
+  /** Saving tasks replaces the complete snapshot and preserves unrelated fields. */
   @Test
-  fun saveTasksCompleted_validatesAndPreservesOtherFields() = runTest {
+  fun saveTasks_replacesSnapshotAndPreservesOtherFields() = runTest {
     repository.startInterval(owner, target, start).getOrThrow()
     repository.saveComment(owner, target, "note").getOrThrow()
-    repository.saveTasksCompleted(owner, target, 0).getOrThrow()
-    assertEquals(0, current()?.tasksCompleted)
-    repository.saveTasksCompleted(owner, target, null).getOrThrow()
-    assertNull(current()?.tasksCompleted)
-    val before = current()
-    assertError(repository.saveTasksCompleted(owner, target, -1), StudyLogError.INVALID_ARGUMENT)
-    assertEquals(before, current())
+    val first = listOf(EventTask("Read chapter", end), EventTask("Solve exercises"))
+    repository.saveTasks(owner, target, first).getOrThrow()
+    assertEquals(first, current()?.tasks)
+    val second = listOf(EventTask("Review notes", resumeEnd))
+    repository.saveTasks(owner, target, second).getOrThrow()
+    assertEquals(second, current()?.tasks)
     assertEquals("note", current()?.comment)
     assertEquals(listOf(StudyInterval(start)), current()?.intervals)
   }
 
-  /** Removing a missing task count creates nothing, while a value creates the record. */
+  /** An empty task save on a missing event does not create a study log. */
   @Test
-  fun saveTasksCompleted_nullOnMissingRecordCreatesNothing() = runTest {
-    repository.saveTasksCompleted(owner, target, null).getOrThrow()
+  fun saveTasks_emptyOnMissingRecordCreatesNothing() = runTest {
+    repository.saveTasks(owner, target, emptyList()).getOrThrow()
     assertNull(current())
+  }
 
-    repository.saveTasksCompleted(owner, target, 2).getOrThrow()
-    assertEquals(2, current()?.tasksCompleted)
+  /** Oversized task snapshots reject atomically by count and text length. */
+  @Test
+  fun saveTasks_rejectsOversizedInputWithoutChangingRecord() = runTest {
+    repository.startInterval(owner, target, start).getOrThrow()
+    repository.saveComment(owner, target, "note").getOrThrow()
+    val before = current()
+    val tooMany = List(51) { EventTask("Task $it") }
+    assertError(repository.saveTasks(owner, target, tooMany), StudyLogError.INVALID_ARGUMENT)
+    assertEquals(before, current())
+    val tooLong = listOf(EventTask("a".repeat(201)))
+    assertError(repository.saveTasks(owner, target, tooLong), StudyLogError.INVALID_ARGUMENT)
+    assertEquals(before, current())
   }
 
   /** Deleting an existing or missing record succeeds, and an existing observer sees null. */
@@ -265,7 +478,13 @@ abstract class StudyLogRepositoryContractTest {
     assertError(
         repository.startInterval(
             owner,
-            StudyLogTarget("event/id", EventType.STUDY_SESSION, null),
+            StudyLogTarget(
+                "event/id",
+                EventType.STUDY_SESSION,
+                null,
+                plannedStart,
+                plannedEnd,
+            ),
             start,
         ),
         StudyLogError.INVALID_ARGUMENT,
@@ -276,17 +495,29 @@ abstract class StudyLogRepositoryContractTest {
     assertError(
         repository.saveComment(
             owner,
-            StudyLogTarget("event/id", EventType.STUDY_SESSION, null),
+            StudyLogTarget(
+                "event/id",
+                EventType.STUDY_SESSION,
+                null,
+                plannedStart,
+                plannedEnd,
+            ),
             "x",
         ),
         StudyLogError.INVALID_ARGUMENT,
     )
-    assertError(repository.saveTasksCompleted(" ", target, 1), StudyLogError.INVALID_ARGUMENT)
+    assertError(repository.saveTasks(" ", target, emptyList()), StudyLogError.INVALID_ARGUMENT)
     assertError(
-        repository.saveTasksCompleted(
+        repository.saveTasks(
             owner,
-            StudyLogTarget("event/id", EventType.STUDY_SESSION, null),
-            1,
+            StudyLogTarget(
+                "event/id",
+                EventType.STUDY_SESSION,
+                null,
+                plannedStart,
+                plannedEnd,
+            ),
+            emptyList(),
         ),
         StudyLogError.INVALID_ARGUMENT,
     )
@@ -299,14 +530,28 @@ abstract class StudyLogRepositoryContractTest {
   fun records_areIsolatedPerOwnerAndEvent() = runTest {
     repository.saveComment(owner, target, "one").getOrThrow()
     repository
-        .saveTasksCompleted(otherOwner, StudyLogTarget(event, EventType.COURSE, "Physics"), 3)
+        .saveTasks(
+            otherOwner,
+            StudyLogTarget(
+                event,
+                EventType.COURSE,
+                "Physics",
+                plannedStart,
+                plannedEnd,
+            ),
+            listOf(EventTask("Task")),
+        )
         .getOrThrow()
     repository
-        .startInterval(owner, StudyLogTarget(otherEvent, EventType.EXAM, null), start)
+        .startInterval(
+            owner,
+            StudyLogTarget(otherEvent, EventType.EXAM, null, plannedStart, plannedEnd),
+            start,
+        )
         .getOrThrow()
 
     assertEquals("one", current(owner, event)?.comment)
-    assertEquals(3, current(otherOwner, event)?.tasksCompleted)
+    assertEquals(listOf(EventTask("Task")), current(otherOwner, event)?.tasks)
     assertEquals(EventType.EXAM, current(owner, otherEvent)?.eventType)
     assertNull(current(otherOwner, otherEvent))
   }

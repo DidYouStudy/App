@@ -39,7 +39,15 @@ class StudyIntervalTest {
 
     assertEquals(
         3280L,
-        StudyLog("event", EventType.STUDY_SESSION, null, listOf(first, second)).studiedSeconds,
+        StudyLog(
+                "event",
+                EventType.STUDY_SESSION,
+                null,
+                Instant.parse("2026-11-02T13:00:00Z"),
+                Instant.parse("2026-11-02T14:00:00Z"),
+                listOf(first, second),
+            )
+            .studiedSeconds,
     )
     assertEquals(
         3880L,
@@ -47,6 +55,8 @@ class StudyIntervalTest {
                 "event",
                 EventType.STUDY_SESSION,
                 null,
+                Instant.parse("2026-11-02T13:00:00Z"),
+                Instant.parse("2026-11-02T14:00:00Z"),
                 listOf(
                     StudyInterval(
                         Instant.parse("2026-11-02T13:07:30Z"), // 14:07:30 Zurich local time
@@ -58,10 +68,27 @@ class StudyIntervalTest {
     )
     assertEquals(
         3280L,
-        StudyLog("event", EventType.STUDY_SESSION, null, listOf(first, second, open))
+        StudyLog(
+                "event",
+                EventType.STUDY_SESSION,
+                null,
+                Instant.parse("2026-11-02T13:00:00Z"),
+                Instant.parse("2026-11-02T14:00:00Z"),
+                listOf(first, second, open),
+            )
             .studiedSeconds,
     )
-    assertEquals(0L, StudyLog("event", EventType.STUDY_SESSION, null).studiedSeconds)
+    assertEquals(
+        0L,
+        StudyLog(
+                "event",
+                EventType.STUDY_SESSION,
+                null,
+                Instant.parse("2026-11-02T13:00:00Z"),
+                Instant.parse("2026-11-02T14:00:00Z"),
+            )
+            .studiedSeconds,
+    )
   }
 
   /** A study log record is running exactly when its last interval is open. */
@@ -70,14 +97,15 @@ class StudyIntervalTest {
     val start = Instant.parse("2026-11-02T13:07:30Z") // 14:07:30 Zurich local time
     val end = Instant.parse("2026-11-02T13:50:00Z") // 14:50:00 Zurich local time
 
-    assertEquals(false, StudyLog("event", EventType.STUDY_SESSION, null).isRunning)
-    assertEquals(
-        true,
-        StudyLog("event", EventType.STUDY_SESSION, null, listOf(StudyInterval(start))).isRunning,
-    )
     assertEquals(
         false,
-        StudyLog("event", EventType.STUDY_SESSION, null, listOf(StudyInterval(start, end)))
+        StudyLog(
+                "event",
+                EventType.STUDY_SESSION,
+                null,
+                Instant.parse("2026-11-02T13:00:00Z"),
+                Instant.parse("2026-11-02T14:00:00Z"),
+            )
             .isRunning,
     )
     assertEquals(
@@ -86,6 +114,32 @@ class StudyIntervalTest {
                 "event",
                 EventType.STUDY_SESSION,
                 null,
+                Instant.parse("2026-11-02T13:00:00Z"),
+                Instant.parse("2026-11-02T14:00:00Z"),
+                listOf(StudyInterval(start)),
+            )
+            .isRunning,
+    )
+    assertEquals(
+        false,
+        StudyLog(
+                "event",
+                EventType.STUDY_SESSION,
+                null,
+                Instant.parse("2026-11-02T13:00:00Z"),
+                Instant.parse("2026-11-02T14:00:00Z"),
+                listOf(StudyInterval(start, end)),
+            )
+            .isRunning,
+    )
+    assertEquals(
+        true,
+        StudyLog(
+                "event",
+                EventType.STUDY_SESSION,
+                null,
+                Instant.parse("2026-11-02T13:00:00Z"),
+                Instant.parse("2026-11-02T14:00:00Z"),
                 listOf(
                     StudyInterval(start, end),
                     StudyInterval(

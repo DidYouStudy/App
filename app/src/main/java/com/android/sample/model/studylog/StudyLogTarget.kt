@@ -11,4 +11,12 @@ data class StudyLogTarget(
     val eventType: EventType,
     /** The event subject, if any. */
     val subject: String?,
-)
+    /** The planned start time frozen into a newly created study log. */
+    val plannedStart: java.time.Instant,
+    /** The planned end time frozen into a newly created study log. */
+    val plannedEnd: java.time.Instant,
+) {
+  init {
+    require(plannedEnd.isAfter(plannedStart)) { "Planned end must be after planned start" }
+  }
+}
