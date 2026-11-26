@@ -17,11 +17,17 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Source
+import java.net.HttpURLConnection
+import java.net.URL
 import java.time.Instant
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import org.json.JSONArray
+import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -432,6 +438,33 @@ class GroupSessionsFirestoreRulesEmulatorTest {
     assertEquals(atLimits, readData(outsider, editId).filterKeys { it in atLimits })
   }
 
+  /**
+   * A session stored before the length limits, with text over them, can still be joined and left.
+   * Its creator can edit it only by bringing the text back within the limits.
+   */
+  @Test
+  fun overLimitStoredSessionCanBeJoinedAndLeft() = runBlocking {
+    val id = uniqueId()
+    writeBypassingRules(
+        id,
+        mapOf(
+            "subject" to "a".repeat(EventTextLimits.SUBJECT + 1),
+            "location" to "a".repeat(EventTextLimits.LOCATION + 1),
+            "description" to "a".repeat(EventTextLimits.DESCRIPTION + 1),
+        ),
+    )
+
+    update(document(member, id), mapOf("memberIds" to FieldValue.arrayUnion(member.uid)))
+    assertEquals(listOf(creator.uid, member.uid), readData(outsider, id)["memberIds"])
+    update(document(member, id), mapOf("memberIds" to FieldValue.arrayRemove(member.uid)))
+    assertEquals(listOf(creator.uid), readData(outsider, id)["memberIds"])
+
+    denied { edit(document(creator, id), mapOf("type" to EventType.LAB.name)) }
+    val shortened = mapOf("subject" to "Analysis", "location" to "BC 01", "description" to "Short")
+    edit(document(creator, id), shortened)
+    assertEquals(shortened, readData(outsider, id).filterKeys { it in shortened })
+  }
+
   /** Signed-out clients cannot read, list, create, update or delete. */
   @Test
   fun signedOutClientCannotAccessSessions() = runBlocking {
@@ -781,6 +814,55 @@ class GroupSessionsFirestoreRulesEmulatorTest {
   /** Updates [fields] as a creator edit does, with the server's time as the new updatedAt. */
   private suspend fun edit(ref: DocumentReference, fields: Map<String, Any?>) {
     update(ref, fields + ("updatedAt" to FieldValue.serverTimestamp()))
+  }
+
+  /**
+   * Stores a session owned by [creator] with [text] fields, skipping the security rules.
+   *
+   * The emulator's REST API accepts the `Bearer owner` token as an admin, which is how a document
+   * written before a rule existed can be recreated. The client SDKs cannot skip the rules.
+   */
+  private suspend fun writeBypassingRules(id: String, text: Map<String, String>) {
+    fun string(value: String) = JSONObject().put("stringValue", value)
+    fun time(value: Instant) = JSONObject().put("timestampValue", value.toString())
+    val fields =
+        JSONObject()
+            .put("createdBy", string(creator.uid))
+            .put(
+                "memberIds",
+                JSONObject()
+                    .put(
+                        "arrayValue",
+                        JSONObject().put("values", JSONArray().put(string(creator.uid))),
+                    ),
+            )
+            .put("type", string(EventType.COURSE.name))
+            .put("startsAt", time(start))
+            .put("endsAt", time(end))
+            .put("createdAt", time(created))
+            .put("updatedAt", time(created))
+    text.forEach { (field, value) -> fields.put(field, string(value)) }
+    val url =
+        URL(
+            "http://10.0.2.2:8080/v1/projects/demo-didyoustudy/databases/(default)/documents/" +
+                "${GroupSessionFirestoreMapper.COLLECTION}?documentId=$id"
+        )
+    withContext(Dispatchers.IO) {
+      val connection = url.openConnection() as HttpURLConnection
+      try {
+        connection.requestMethod = "POST"
+        connection.doOutput = true
+        connection.setRequestProperty("Authorization", "Bearer owner")
+        connection.setRequestProperty("Content-Type", "application/json")
+        connection.outputStream.use {
+          it.write(JSONObject().put("fields", fields).toString().toByteArray())
+        }
+        val status = connection.responseCode
+        check(status in 200..299) { "Admin write failed: HTTP $status" }
+      } finally {
+        connection.disconnect()
+      }
+    }
   }
 
   /** Requires an actual Firestore permission-denied response. */

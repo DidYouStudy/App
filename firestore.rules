@@ -149,13 +149,22 @@ service cloud.firestore {
         && d.createdBy in d.memberIds
         && d.type is string
         && d.type in eventTypes()
-        && boundedText(d, 'subject', true, maxSubjectLength())
+        && optionalText(d, 'subject', true)
         && (d.type == 'OTHER' || d.get('subject', null) != null)
-        && boundedText(d, 'location', true, maxLocationLength())
-        && boundedText(d, 'description', false, maxDescriptionLength())
+        && optionalText(d, 'location', true)
+        && optionalText(d, 'description', false)
         && d.startsAt is timestamp && d.endsAt is timestamp
         && d.endsAt > d.startsAt && d.endsAt - d.startsAt <= maxEventDuration()
         && d.createdAt is timestamp && d.updatedAt is timestamp;
+    }
+
+    // Length limits, checked only on create and creator edit. Join and leave can change only
+    // memberIds, so a stored session whose text predates the limits can still be joined and left.
+    function validGroupSessionText() {
+      let d = request.resource.data;
+      return boundedText(d, 'subject', true, maxSubjectLength())
+        && boundedText(d, 'location', true, maxLocationLength())
+        && boundedText(d, 'description', false, maxDescriptionLength());
     }
 
     // Allows a non-creator to toggle only their own membership without touching other data.
@@ -182,6 +191,7 @@ service cloud.firestore {
       // the app writes with FieldValue.serverTimestamp().
       allow create: if request.auth != null
         && validGroupSession()
+        && validGroupSessionText()
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.memberIds == [request.auth.uid]
         && request.resource.data.createdAt == request.time
@@ -191,6 +201,7 @@ service cloud.firestore {
         && validGroupSession()
         && (
           (resource.data.createdBy == request.auth.uid
+            && validGroupSessionText()
             && request.resource.data.memberIds == resource.data.memberIds
             && request.resource.data.createdBy == resource.data.createdBy
             && request.resource.data.createdAt == resource.data.createdAt
