@@ -217,7 +217,7 @@ fun GroupSessionFilterSheetContent(
     )
     if (showPermissionRationale && !hasLocationPermission) {
       Text(
-          text = stringResource(R.string.group_session_filter_permission_rationale),
+          text = stringResource(R.string.group_session_filter_precise_denied_hint),
           modifier = Modifier.testTag(GroupSessionFilterSheetTestTags.PERMISSION_RATIONALE),
           color = MaterialTheme.colorScheme.error,
           style = MaterialTheme.typography.bodyMedium,
@@ -478,7 +478,6 @@ internal fun GroupSessionFilterSheetDarkPreview() {
   }
 }
 
-/** Returns whether either requested location permission was granted. */
+/** Returns whether precise location permission was granted. */
 fun isLocationPermissionGranted(results: Map<String, Boolean>): Boolean =
-    results[android.Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-        results[android.Manifest.permission.ACCESS_COARSE_LOCATION] == true
+    results[android.Manifest.permission.ACCESS_FINE_LOCATION] == true
