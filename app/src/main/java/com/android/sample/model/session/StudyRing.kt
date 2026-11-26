@@ -24,9 +24,15 @@ data class RingState(
     val sessionRemaining: Duration,
     /** Whether the session has passed its end. */
     val isOvertime: Boolean,
-    /** Exact end of the current study or break period. */
+    /**
+     * Exact end of the current study or break period. The card uses this to show a countdown with
+     * seconds; [segmentRemaining] is computed at the start of the current minute.
+     */
     val segmentEndsAt: Instant,
-    /** Exact end of the session. */
+    /**
+     * Exact end of the session. The card uses this to show a countdown with seconds;
+     * [sessionRemaining] is computed at the start of the current minute.
+     */
     val sessionEndsAt: Instant,
 )
 
@@ -52,8 +58,8 @@ object StudyRingCalculator {
           Duration.ZERO,
           Duration.ZERO,
           isOvertime = true,
-          segmentEndsAt = Instant.EPOCH,
-          sessionEndsAt = Instant.EPOCH,
+          segmentEndsAt = end,
+          sessionEndsAt = end,
       )
     }
 
@@ -71,8 +77,8 @@ object StudyRingCalculator {
             segmentRemaining = Duration.between(now, segmentEnd),
             sessionRemaining = Duration.between(now, end),
             isOvertime = false,
-            segmentEndsAt = Instant.EPOCH,
-            sessionEndsAt = Instant.EPOCH,
+            segmentEndsAt = segmentEnd,
+            sessionEndsAt = end,
         )
       }
       segmentStart = segmentEnd

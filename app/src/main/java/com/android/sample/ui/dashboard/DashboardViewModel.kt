@@ -74,7 +74,10 @@ data class CurrentSession(val session: DashboardSession, val ring: RingState)
  *
  * @property authRepository source for the current authenticated user.
  * @property getUserSchedule use case combining personal events and joined group sessions.
+ * @property preferencesRepository source for break settings, read in parallel with the schedule;
+ *   documented defaults are used until preferences arrive.
  * @property clock provider for current time and time zone calculations.
+ * @property minuteTicks emits at each minute boundary; injected for tests.
  */
 class DashboardViewModel(
     private val authRepository: AuthRepository,
@@ -311,7 +314,16 @@ class DashboardViewModel(
   }
 }
 
-/** Factory creating [DashboardViewModel] with injected dependencies. */
+/**
+ * Factory creating [DashboardViewModel] with injected dependencies.
+ *
+ * @property authRepository source for the current authenticated user.
+ * @property getUserSchedule use case combining personal events and joined group sessions.
+ * @property preferencesRepository source for break settings, read in parallel with the schedule;
+ *   documented defaults are used until preferences arrive.
+ * @property clock provider for current time and time zone calculations.
+ * @property minuteTicks emits at each minute boundary; injected for tests.
+ */
 class DashboardViewModelFactory(
     private val authRepository: AuthRepository,
     private val getUserSchedule: GetUserScheduleUseCase,
