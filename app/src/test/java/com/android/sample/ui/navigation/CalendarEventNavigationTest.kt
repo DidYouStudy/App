@@ -1,6 +1,9 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.ui.navigation
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -19,6 +22,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.DidYouStudyApp
 import com.android.sample.model.auth.AuthRepositoryProvider
@@ -58,7 +62,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowNetworkCapabilities
 
 /** Exercises Calendar, Details, and Edit through the production navigation graph. */
 @RunWith(AndroidJUnit4::class)
@@ -93,6 +99,7 @@ class CalendarEventNavigationTest {
     ProfileRepositoryProvider.setRepository(mock<ProfileRepository>())
     EventsRepositoryProvider.setRepository(events)
     GroupSessionsRepositoryProvider.setRepository(groupSessions)
+    reportValidatedInternet()
 
     composeRule.setContent { DidYouStudyApp() }
     composeRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
@@ -462,6 +469,22 @@ class CalendarEventNavigationTest {
   }
 
   /** Edits a field whose value is also visible on Details. */
+  /**
+   * Robolectric's default network has no validated internet, so the app would treat the device as
+   * offline and block group session writes. Reports a validated connection instead.
+   */
+  private fun reportValidatedInternet() {
+    val connectivity =
+        ApplicationProvider.getApplicationContext<Context>()
+            .getSystemService(ConnectivityManager::class.java)
+    val capabilities =
+        ShadowNetworkCapabilities.newInstance().also {
+          shadowOf(it).addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+          shadowOf(it).addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        }
+    shadowOf(connectivity).setNetworkCapabilities(connectivity.activeNetwork, capabilities)
+  }
+
   private fun replaceDescription(value: String) {
     composeRule
         .onNodeWithTag(EditTags.DESCRIPTION_INPUT)
