@@ -1399,7 +1399,7 @@ class GroupSessionScreenTest {
     composeTestRule.waitForIdle()
     assertEquals(2, launchCount)
 
-    // Second refusal shows the Settings fallback dialog and persists the flag.
+    // Second refusal shows the Settings fallback dialog and persists DENIED_TWICE.
     composeTestRule
         .onNodeWithTag(GroupSessionScreenTestTags.PRECISE_SETTINGS_DISMISS)
         .performClick()
@@ -1413,7 +1413,7 @@ class GroupSessionScreenTest {
     assertEquals(2, launchCount)
 
     // Switch to LIST, grant precise location in Settings, and resume: should refresh location
-    // and clear the persisted two-refusal flag.
+    // and transition the persisted state to GRANTED.
     composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.LIST_VIEW_BUTTON).performClick()
     composeTestRule.waitForIdle()
     val collectionsBeforeResume = collectionCount

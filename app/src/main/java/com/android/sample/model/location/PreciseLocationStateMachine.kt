@@ -200,6 +200,27 @@ interface PreciseLocationStateStore {
   fun reset()
 }
 
+/**
+ * In-memory [PreciseLocationStateStore] suitable for JVM unit tests and Compose previews.
+ *
+ * @param initialState Starting state returned by [getState] until updated or [reset].
+ */
+class InMemoryPreciseLocationStateStore(
+    initialState: PreciseLocationState = PreciseLocationState.INIT,
+) : PreciseLocationStateStore {
+  private var state: PreciseLocationState = initialState
+
+  override fun getState(): PreciseLocationState = state
+
+  override fun setState(state: PreciseLocationState) {
+    this.state = state
+  }
+
+  override fun reset() {
+    state = PreciseLocationState.INIT
+  }
+}
+
 /** [SharedPreferences]-backed implementation of [PreciseLocationStateStore]. */
 class SharedPreferencesPreciseLocationStateStore(
     context: Context,

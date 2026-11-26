@@ -29,8 +29,15 @@ import com.android.sample.model.location.CampusLocationRepository
 import com.android.sample.model.location.CampusLocationRepositoryProvider
 import com.android.sample.model.location.CampusLocationType
 import com.android.sample.model.location.DistanceCalculator
+import com.android.sample.model.location.InMemoryPreciseLocationStateStore
 import com.android.sample.model.location.Location
 import com.android.sample.model.location.LocationProvider
+import com.android.sample.model.location.PreciseLocationAction
+import com.android.sample.model.location.PreciseLocationState
+import com.android.sample.model.location.PreciseLocationStateMachine
+import com.android.sample.model.location.PreciseLocationStateStore
+import com.android.sample.model.location.PreciseLocationTransition
+import com.android.sample.model.location.SharedPreferencesPreciseLocationStateStore
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.ProfileRepositoryProvider
 import java.time.Clock
@@ -152,6 +159,18 @@ data class GroupSessionParticipantsSheet(
     get() = rows.any { it.isUnavailable }
 }
 
+/** Transient permission dialog currently requested by [GroupSessionsViewModel]. */
+enum class ActivePermissionDialog {
+  /** No permission dialog is displayed. */
+  NONE,
+
+  /** First-refusal rationale dialog explaining why precise location is required. */
+  EXPLANATION,
+
+  /** Second-refusal dialog directing the user to system App Info Settings. */
+  SETTINGS,
+}
+
 /**
  * State of the Group sessions screen; [sessions] is already searched and filtered.
  *
@@ -160,7 +179,9 @@ data class GroupSessionParticipantsSheet(
  * default value, so that every new state has to supply the current time. Laboratory rooms are
  * hidden by default and shown only when [showLabRoomType] is enabled. [isOffline] is true while the
  * device has no internet connection; [sessions] then holds the sessions already loaded and saved on
- * the device, and the screen shows an offline indication.
+ * the device, and the screen shows an offline indication. [preciseLocationState],
+ * [permissionDialog], and [pendingPermissionPrompt] capture the MVVM precise-location permission
+ * state so the screen only dispatches OS prompts and renders dialogs.
  */
 data class GroupSessionsUiState(
     val now: Instant,
@@ -180,7 +201,14 @@ data class GroupSessionsUiState(
     val error: GroupSessionsError? = null,
     val isOffline: Boolean = false,
     val participantsSheet: GroupSessionParticipantsSheet? = null,
-)
+    val preciseLocationState: PreciseLocationState = PreciseLocationState.INIT,
+    val permissionDialog: ActivePermissionDialog = ActivePermissionDialog.NONE,
+    val pendingPermissionPrompt: Boolean = false,
+) {
+  /** Whether precise location (`ACCESS_FINE_LOCATION`) is currently granted. */
+  val hasPreciseLocationPermission: Boolean
+    get() = preciseLocationState == PreciseLocationState.GRANTED
+}
 
 /**
  * Observes public upcoming sessions for the signed-in user and exposes searched, filtered UI state.
@@ -214,11 +242,14 @@ class GroupSessionsViewModel(
     private val locationProvider: LocationProvider,
     private val campusLocationRepository: CampusLocationRepository? = null,
     private val connectivityObserver: ConnectivityObserver? = null,
+    private val preciseLocationStateStore: PreciseLocationStateStore =
+        InMemoryPreciseLocationStateStore(),
 ) : ViewModel() {
   private val _uiState =
       MutableStateFlow(
           GroupSessionsUiState(
               now = clock.instant(),
+              preciseLocationState = preciseLocationStateStore.getState(),
           )
       )
   /** The current loading, list, search, filter, and categorized-error state. */
@@ -226,6 +257,9 @@ class GroupSessionsViewModel(
 
   private val refreshVersion = MutableStateFlow(0)
   private val locationRefreshTrigger = MutableStateFlow(0)
+  private var pendingSettingsReturn = false
+  private var isSettingsReturnProbe = false
+  private var pendingLocationRadius: Int? = null
   private var currentUserId: String? = null
   /** Distinguishes action requests made during different observed sign-in periods. */
   private var authGeneration = 0L
@@ -483,6 +517,184 @@ class GroupSessionsViewModel(
    */
   fun refreshLocation() {
     viewModelScope.launch { locationRefreshTrigger.update { it + 1 } }
+  }
+
+  /**
+   * Reconciles the persisted [PreciseLocationState] with the live OS [hasFineLocation] status
+   * without launching prompts or refreshing location.
+   */
+  fun syncPreciseLocationPermission(hasFineLocation: Boolean) {
+    syncPermissionState(hasFineLocation)
+  }
+
+  /**
+   * Handles passive entry into the map view, refreshing location if precise permission is already
+   * granted or advancing [PreciseLocationStateMachine] otherwise.
+   */
+  fun onMapEntered(hasFineLocation: Boolean) {
+    val synced = syncPermissionState(hasFineLocation)
+    if (synced == PreciseLocationState.GRANTED) {
+      refreshLocation()
+    } else {
+      applyPermissionTransition(PreciseLocationStateMachine.onMapEntered(synced))
+    }
+  }
+
+  /**
+   * Handles an explicit user request for a precise-location feature (recenter or distance filter).
+   *
+   * When [pendingRadius] is provided, it is applied automatically if the resulting permission flow
+   * grants precise location, and cleared if the flow reaches [PreciseLocationState.DENIED_TWICE].
+   */
+  fun onLocationFeatureRequested(hasFineLocation: Boolean, pendingRadius: Int? = null) {
+    val synced = syncPermissionState(hasFineLocation)
+    if (synced == PreciseLocationState.GRANTED) {
+      refreshLocation()
+      if (pendingRadius != null) {
+        onRadiusFilterSelected(pendingRadius)
+      }
+      return
+    }
+    if (pendingRadius != null) {
+      pendingLocationRadius = pendingRadius
+    }
+    val transition = PreciseLocationStateMachine.onLocationFeatureRequested(synced)
+    applyPermissionTransition(transition)
+    if (transition.state == PreciseLocationState.DENIED_TWICE) {
+      pendingLocationRadius = null
+    }
+  }
+
+  /** Clears the one-shot [GroupSessionsUiState.pendingPermissionPrompt] flag once launched. */
+  fun onPermissionPromptLaunched() {
+    _uiState.update { it.copy(pendingPermissionPrompt = false) }
+  }
+
+  /**
+   * Advances the permission flow after the OS permission dialog returns [isFineGranted].
+   *
+   * Refreshes location and applies any pending distance filter on grant; clears a pending distance
+   * filter if the flow reaches [PreciseLocationState.DENIED_TWICE].
+   */
+  fun onSystemPermissionResult(isFineGranted: Boolean) {
+    val suppressSettingsDialog = isSettingsReturnProbe
+    isSettingsReturnProbe = false
+    val transition =
+        PreciseLocationStateMachine.onSystemPermissionResult(
+            _uiState.value.preciseLocationState,
+            isFineGranted,
+            suppressSettingsDialog = suppressSettingsDialog,
+        )
+    applyPermissionTransition(transition)
+    val pendingRadius = pendingLocationRadius
+    if (transition.state == PreciseLocationState.GRANTED) {
+      refreshLocation()
+      if (pendingRadius != null) {
+        pendingLocationRadius = null
+        onRadiusFilterSelected(pendingRadius)
+      }
+    } else if (transition.state == PreciseLocationState.DENIED_TWICE && pendingRadius != null) {
+      pendingLocationRadius = null
+    }
+  }
+
+  /** Advances the permission flow when the user confirms or dismisses the explanation dialog. */
+  fun onExplanationDismissed() {
+    val transition =
+        PreciseLocationStateMachine.onExplanationDismissed(_uiState.value.preciseLocationState)
+    applyPermissionTransition(transition)
+  }
+
+  /** Records that the user navigated to system App Info Settings and dismisses the dialog. */
+  fun onSettingsOpened() {
+    pendingSettingsReturn = true
+    _uiState.update { it.copy(permissionDialog = ActivePermissionDialog.NONE) }
+  }
+
+  /** Dismisses the Settings fallback dialog without opening Settings. */
+  fun onSettingsDialogDismissed() {
+    _uiState.update { it.copy(permissionDialog = ActivePermissionDialog.NONE) }
+  }
+
+  /**
+   * Reconciles permission state when the screen resumes (`ON_RESUME`).
+   *
+   * If returning from Settings, runs [PreciseLocationStateMachine.onReturnedFromSettings] and marks
+   * any resulting OS prompt as a one-shot probe so declining "Ask every time" stays silent.
+   */
+  fun onResumed(hasFineLocation: Boolean) {
+    if (pendingSettingsReturn) {
+      pendingSettingsReturn = false
+      val transition =
+          PreciseLocationStateMachine.onReturnedFromSettings(
+              preciseLocationStateStore.getState(),
+              hasFineLocation,
+          )
+      if (transition.action == PreciseLocationAction.REQUEST_PERMISSION) {
+        isSettingsReturnProbe = true
+      }
+      applyPermissionTransition(transition)
+      if (transition.state == PreciseLocationState.GRANTED) {
+        refreshLocation()
+      }
+    } else {
+      val synced = syncPermissionState(hasFineLocation)
+      if (synced == PreciseLocationState.GRANTED) {
+        refreshLocation()
+      }
+    }
+  }
+
+  /** Syncs persisted permission state with [hasFineLocation] and updates [uiState]. */
+  private fun syncPermissionState(hasFineLocation: Boolean): PreciseLocationState {
+    val synced =
+        PreciseLocationStateMachine.syncWithSystemPermission(
+            preciseLocationStateStore.getState(),
+            hasFineLocation,
+        )
+    preciseLocationStateStore.setState(synced)
+    _uiState.update { current ->
+      current.copy(
+          preciseLocationState = synced,
+          permissionDialog =
+              if (synced == PreciseLocationState.GRANTED) {
+                ActivePermissionDialog.NONE
+              } else {
+                current.permissionDialog
+              },
+      )
+    }
+    return synced
+  }
+
+  /** Persists [transition.state] and maps [transition.action] onto [uiState]. */
+  private fun applyPermissionTransition(transition: PreciseLocationTransition) {
+    preciseLocationStateStore.setState(transition.state)
+    _uiState.update { current ->
+      when (transition.action) {
+        PreciseLocationAction.NONE ->
+            current.copy(
+                preciseLocationState = transition.state,
+                permissionDialog = ActivePermissionDialog.NONE,
+            )
+        PreciseLocationAction.REQUEST_PERMISSION ->
+            current.copy(
+                preciseLocationState = transition.state,
+                permissionDialog = ActivePermissionDialog.NONE,
+                pendingPermissionPrompt = true,
+            )
+        PreciseLocationAction.EXPLAIN_RATIONALE ->
+            current.copy(
+                preciseLocationState = transition.state,
+                permissionDialog = ActivePermissionDialog.EXPLANATION,
+            )
+        PreciseLocationAction.SEND_TO_SETTINGS ->
+            current.copy(
+                preciseLocationState = transition.state,
+                permissionDialog = ActivePermissionDialog.SETTINGS,
+            )
+      }
+    }
   }
 
   /** Opens the roster for a session in the latest repository snapshot. */
@@ -803,6 +1015,8 @@ class GroupSessionsViewModelFactory(
     private val locationProvider: LocationProvider,
     private val campusLocationRepository: CampusLocationRepository? = null,
     private val connectivityObserver: ConnectivityObserver? = null,
+    private val preciseLocationStateStore: PreciseLocationStateStore =
+        InMemoryPreciseLocationStateStore(),
 ) : ViewModelProvider.Factory {
   /**
    * Creates the requested ViewModel and rejects unsupported classes with their class name.
@@ -821,6 +1035,7 @@ class GroupSessionsViewModelFactory(
         locationProvider = locationProvider,
         campusLocationRepository = campusLocationRepository,
         connectivityObserver = connectivityObserver,
+        preciseLocationStateStore = preciseLocationStateStore,
     )
         as T
   }
@@ -836,6 +1051,8 @@ fun groupSessionsViewModel(): GroupSessionsViewModel {
   val context = LocalContext.current
   val locationProvider = remember(context) { AndroidLocationProvider.create(context) }
   val connectivityObserver = remember(context) { AndroidConnectivityObserver.create(context) }
+  val preciseLocationStateStore =
+      remember(context) { SharedPreferencesPreciseLocationStateStore(context.applicationContext) }
   return viewModel(
       factory =
           GroupSessionsViewModelFactory(
@@ -845,6 +1062,7 @@ fun groupSessionsViewModel(): GroupSessionsViewModel {
               profileRepository = ProfileRepositoryProvider.getRepository(),
               locationProvider = locationProvider,
               connectivityObserver = connectivityObserver,
+              preciseLocationStateStore = preciseLocationStateStore,
           )
   )
 }

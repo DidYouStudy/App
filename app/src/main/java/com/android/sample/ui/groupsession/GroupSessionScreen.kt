@@ -109,11 +109,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
-import com.android.sample.model.location.PreciseLocationAction
-import com.android.sample.model.location.PreciseLocationState
-import com.android.sample.model.location.PreciseLocationStateMachine
-import com.android.sample.model.location.PreciseLocationTransition
-import com.android.sample.model.location.SharedPreferencesPreciseLocationStateStore
 import com.android.sample.ui.eventplanning.EventKind
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
@@ -187,24 +182,34 @@ fun GroupSessionScreen(
       navigationActions?.navigateTo(Screen.EditEvent(sessionId, EventKind.GROUP_SESSION))
     },
 ) {
+  val context = LocalContext.current
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   var viewMode by rememberSaveable { mutableStateOf(initialViewMode) }
   var selectedRoom by rememberSaveable { mutableStateOf<String?>(null) }
-  var pendingLocationRadius by rememberSaveable { mutableStateOf<Int?>(null) }
   var showFilterSheet by rememberSaveable { mutableStateOf(false) }
   val filterSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   val coroutineScope = rememberCoroutineScope()
-  val locationController =
-      rememberPreciseLocationController(
-          viewMode = viewMode,
-          getPendingLocationRadius = { pendingLocationRadius },
-          onRefreshLocation = viewModel::refreshLocation,
-          onPendingRadiusResolved = { radius ->
-            viewModel.onRadiusFilterSelected(radius)
-            pendingLocationRadius = null
-          },
-      )
-  val hasLocationPermission = locationController.hasLocationPermission
+  val hasLocationPermission = uiState.hasPreciseLocationPermission
+  val locationPermissionLauncher =
+      rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+          results ->
+        val fineGranted = isLocationPermissionGranted(results) || hasFineLocationPermission(context)
+        viewModel.onSystemPermissionResult(fineGranted)
+      }
+  val dispatchPendingPrompt = {
+    if (viewModel.uiState.value.pendingPermissionPrompt) {
+      viewModel.onPermissionPromptLaunched()
+      launchLocationPermissionRequest(context, locationPermissionLauncher)
+    }
+  }
+
+  PreciseLocationPermissionEffects(
+      viewMode = viewMode,
+      permissionDialog = uiState.permissionDialog,
+      pendingPermissionPrompt = uiState.pendingPermissionPrompt,
+      viewModel = viewModel,
+      onDispatchPendingPrompt = dispatchPendingPrompt,
+  )
 
   val campusCenter = defaultCampusCenter()
   var cameraDestination by remember { mutableStateOf<CameraDestination?>(null) }
@@ -218,7 +223,8 @@ fun GroupSessionScreen(
           userLoc
         } else {
           if (!hasLocationPermission) {
-            locationController.requestForFeature()
+            viewModel.onLocationFeatureRequested(hasFineLocationPermission(context))
+            dispatchPendingPrompt()
           }
           campusCenter
         }
@@ -326,198 +332,99 @@ fun GroupSessionScreen(
         hasLocationPermission = hasLocationPermission,
         viewModel = viewModel,
         onLocationPermissionNeeded = { radius ->
-          pendingLocationRadius = radius
-          if (locationController.requestForFeature() == PreciseLocationState.DENIED_TWICE) {
-            pendingLocationRadius = null
-          }
+          viewModel.onLocationFeatureRequested(
+              hasFineLocationPermission(context),
+              pendingRadius = radius,
+          )
+          dispatchPendingPrompt()
         },
         onDismiss = ::closeFilterSheet,
     )
   }
 }
 
-/**
- * Snapshot of the precise-location permission state exposed to [GroupSessionScreen].
- *
- * @property hasLocationPermission Whether `ACCESS_FINE_LOCATION` is currently granted.
- * @property requestForFeature Advances [PreciseLocationStateMachine] when the user explicitly taps
- *   a precise-location feature (recenter or distance filter) and returns the resulting state.
- */
-private class PreciseLocationController(
-    val hasLocationPermission: Boolean,
-    val requestForFeature: () -> PreciseLocationState,
-)
-
-/**
- * Manages the persisted [PreciseLocationStateMachine] lifecycle, OS permission prompts, Settings
- * probe on `ON_RESUME`, and rationale/Settings dialogs for [GroupSessionScreen].
- *
- * @param getPendingLocationRadius Lambda rather than a plain `Int?` value so synchronous permission
- *   dispatchers (e.g. in unit tests) observe the radius written right before launching the prompt.
- */
-@Composable
-private fun rememberPreciseLocationController(
-    viewMode: GroupSessionViewMode,
-    getPendingLocationRadius: () -> Int?,
-    onRefreshLocation: () -> Unit,
-    onPendingRadiusResolved: (Int?) -> Unit,
-): PreciseLocationController {
-  val context = LocalContext.current
-  val checkPermission: () -> Boolean = {
+/** Checks whether `ACCESS_FINE_LOCATION` is currently granted in the OS. */
+private fun hasFineLocationPermission(context: Context): Boolean =
     ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
         PackageManager.PERMISSION_GRANTED
-  }
-  val locationStateStore =
-      remember(context) { SharedPreferencesPreciseLocationStateStore(context.applicationContext) }
-  var permissionState by remember {
-    mutableStateOf(
-        PreciseLocationStateMachine.syncWithSystemPermission(
-                locationStateStore.getState(),
-                checkPermission(),
-            )
-            .also(locationStateStore::setState)
-    )
-  }
-  var activePermissionDialog by rememberSaveable { mutableStateOf(ActivePermissionDialog.NONE) }
-  var pendingSettingsReturn by rememberSaveable { mutableStateOf(false) }
-  var isSettingsReturnProbe by rememberSaveable { mutableStateOf(false) }
 
-  lateinit var requestLocationPermissions: () -> Unit
-  fun applyTransition(transition: PreciseLocationTransition) {
-    locationStateStore.setState(transition.state)
-    permissionState = transition.state
-    when (transition.action) {
-      PreciseLocationAction.NONE -> activePermissionDialog = ActivePermissionDialog.NONE
-      PreciseLocationAction.REQUEST_PERMISSION -> {
-        activePermissionDialog = ActivePermissionDialog.NONE
-        requestLocationPermissions()
+/**
+ * Launches the OS location permission prompt, requesting only `ACCESS_FINE_LOCATION` when coarse
+ * location is already granted so Android 12+ shows the precise-location upgrade prompt.
+ */
+private fun launchLocationPermissionRequest(
+    context: Context,
+    launcher: androidx.activity.result.ActivityResultLauncher<Array<String>>,
+) {
+  val coarseAlreadyGranted =
+      ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+          PackageManager.PERMISSION_GRANTED
+  val permissions =
+      if (coarseAlreadyGranted) {
+        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
+      } else {
+        arrayOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+        )
       }
-      PreciseLocationAction.EXPLAIN_RATIONALE ->
-          activePermissionDialog = ActivePermissionDialog.EXPLANATION
-      PreciseLocationAction.SEND_TO_SETTINGS ->
-          activePermissionDialog = ActivePermissionDialog.SETTINGS
+  launcher.launch(permissions)
+}
+
+/**
+ * Bridges Android permission prompts, `ON_RESUME` lifecycle events, and permission dialogs to
+ * [GroupSessionsViewModel] without owning any permission policy state.
+ */
+@Composable
+private fun PreciseLocationPermissionEffects(
+    viewMode: GroupSessionViewMode,
+    permissionDialog: ActivePermissionDialog,
+    pendingPermissionPrompt: Boolean,
+    viewModel: GroupSessionsViewModel,
+    onDispatchPendingPrompt: () -> Unit,
+) {
+  val context = LocalContext.current
+  val lifecycleOwner = LocalLifecycleOwner.current
+
+  LaunchedEffect(Unit) {
+    viewModel.syncPreciseLocationPermission(hasFineLocationPermission(context))
+  }
+
+  LaunchedEffect(viewMode) {
+    if (viewMode == GroupSessionViewMode.MAP) {
+      viewModel.onMapEntered(hasFineLocationPermission(context))
+      onDispatchPendingPrompt()
     }
   }
 
-  val lifecycleOwner = LocalLifecycleOwner.current
+  LaunchedEffect(pendingPermissionPrompt) {
+    if (pendingPermissionPrompt) {
+      onDispatchPendingPrompt()
+    }
+  }
+
   DisposableEffect(lifecycleOwner) {
     val observer = LifecycleEventObserver { _, event ->
       if (event == Lifecycle.Event.ON_RESUME) {
-        val isFineGranted = checkPermission()
-        if (pendingSettingsReturn) {
-          pendingSettingsReturn = false
-          val transition =
-              PreciseLocationStateMachine.onReturnedFromSettings(
-                  locationStateStore.getState(),
-                  isFineGranted,
-              )
-          // Mark as a one-shot probe so declining "Ask every time" doesn't re-open Settings.
-          if (transition.action == PreciseLocationAction.REQUEST_PERMISSION) {
-            isSettingsReturnProbe = true
-          }
-          applyTransition(transition)
-          if (transition.state == PreciseLocationState.GRANTED) {
-            onRefreshLocation()
-          }
-        } else {
-          val synced =
-              PreciseLocationStateMachine.syncWithSystemPermission(
-                  locationStateStore.getState(),
-                  isFineGranted,
-              )
-          locationStateStore.setState(synced)
-          permissionState = synced
-          if (synced == PreciseLocationState.GRANTED) {
-            activePermissionDialog = ActivePermissionDialog.NONE
-            onRefreshLocation()
-          }
-        }
+        viewModel.onResumed(hasFineLocationPermission(context))
+        onDispatchPendingPrompt()
       }
     }
     lifecycleOwner.lifecycle.addObserver(observer)
     onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
   }
 
-  val locationPermissionLauncher =
-      rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-          results ->
-        val suppressSettingsDialog = isSettingsReturnProbe
-        isSettingsReturnProbe = false
-        val fineGranted = isLocationPermissionGranted(results) || checkPermission()
-        val transition =
-            PreciseLocationStateMachine.onSystemPermissionResult(
-                permissionState,
-                fineGranted,
-                suppressSettingsDialog = suppressSettingsDialog,
-            )
-        applyTransition(transition)
-        val pendingRadius = getPendingLocationRadius()
-        if (transition.state == PreciseLocationState.GRANTED) {
-          onRefreshLocation()
-          if (pendingRadius != null) {
-            onPendingRadiusResolved(pendingRadius)
-          }
-        } else if (transition.state == PreciseLocationState.DENIED_TWICE && pendingRadius != null) {
-          onPendingRadiusResolved(null)
-        }
-      }
-
-  requestLocationPermissions = {
-    // Request only ACCESS_FINE_LOCATION when coarse is already granted so Android 12+ shows the
-    // upgrade prompt instead of silently dropping a blocked fine permission from a dual request.
-    val coarseAlreadyGranted =
-        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
-            PackageManager.PERMISSION_GRANTED
-    val permissions =
-        if (coarseAlreadyGranted) {
-          arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
-        } else {
-          arrayOf(
-              Manifest.permission.ACCESS_FINE_LOCATION,
-              Manifest.permission.ACCESS_COARSE_LOCATION,
-          )
-        }
-    locationPermissionLauncher.launch(permissions)
-  }
-
-  LaunchedEffect(viewMode) {
-    if (viewMode == GroupSessionViewMode.MAP) {
-      val synced =
-          PreciseLocationStateMachine.syncWithSystemPermission(
-              locationStateStore.getState(),
-              checkPermission(),
-          )
-      locationStateStore.setState(synced)
-      permissionState = synced
-      if (synced == PreciseLocationState.GRANTED) {
-        activePermissionDialog = ActivePermissionDialog.NONE
-        onRefreshLocation()
-      } else {
-        applyTransition(PreciseLocationStateMachine.onMapEntered(synced))
-      }
-    }
-  }
-
   PreciseLocationDialogs(
-      activeDialog = activePermissionDialog,
+      activeDialog = permissionDialog,
       onExplanationDismissed = {
-        applyTransition(PreciseLocationStateMachine.onExplanationDismissed(permissionState))
+        viewModel.onExplanationDismissed()
+        onDispatchPendingPrompt()
       },
       onSettingsOpened = {
-        activePermissionDialog = ActivePermissionDialog.NONE
-        pendingSettingsReturn = true
+        viewModel.onSettingsOpened()
         openAppSettings(context)
       },
-      onSettingsDismissed = { activePermissionDialog = ActivePermissionDialog.NONE },
-  )
-
-  return PreciseLocationController(
-      hasLocationPermission = permissionState == PreciseLocationState.GRANTED,
-      requestForFeature = {
-        val transition = PreciseLocationStateMachine.onLocationFeatureRequested(permissionState)
-        applyTransition(transition)
-        transition.state
-      },
+      onSettingsDismissed = viewModel::onSettingsDialogDismissed,
   )
 }
 
@@ -1525,11 +1432,4 @@ fun GroupSessionMapContentOfflinePreview() {
       state = state,
       viewMode = GroupSessionViewMode.MAP,
   )
-}
-
-/** Transient permission dialog currently displayed by [GroupSessionScreen]. */
-private enum class ActivePermissionDialog {
-  NONE,
-  EXPLANATION,
-  SETTINGS,
 }
