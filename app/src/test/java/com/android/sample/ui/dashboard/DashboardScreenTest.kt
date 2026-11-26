@@ -24,6 +24,9 @@ import com.android.sample.model.event.EventsRepositoryProvider
 import com.android.sample.model.event.InMemoryEventsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
 import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
+import com.android.sample.model.preferences.PreferencesRepository
+import com.android.sample.model.preferences.PreferencesRepositoryProvider
+import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.ui.auth.TestAuthRepository
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -47,6 +50,7 @@ class DashboardScreenTest {
     AuthRepositoryProvider.setRepository(TestAuthRepository())
     EventsRepositoryProvider.setRepository(InMemoryEventsRepository())
     GroupSessionsRepositoryProvider.setRepository(InMemoryGroupSessionsRepository())
+    PreferencesRepositoryProvider.setRepository(FakePreferencesRepository())
   }
 
   @After
@@ -54,6 +58,7 @@ class DashboardScreenTest {
     AuthRepositoryProvider.setRepository(null)
     EventsRepositoryProvider.setRepository(null)
     GroupSessionsRepositoryProvider.setRepository(null)
+    PreferencesRepositoryProvider.setRepository(null)
   }
 
   @Test
@@ -371,5 +376,11 @@ class DashboardScreenTest {
 
       composeTestRule.onNodeWithTag(OfflineBannerTestTags.OFFLINE_BANNER).assertDoesNotExist()
     }
+  private class FakePreferencesRepository : PreferencesRepository {
+    override suspend fun getPreferences(userId: String): Result<UserPreferences?> =
+        Result.success(null)
+
+    override suspend fun savePreferences(preferences: UserPreferences): Result<Unit> =
+        Result.success(Unit)
   }
 }
