@@ -49,6 +49,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.connectivity.ConnectionLostException
+import com.android.sample.model.connectivity.ConnectivityObserver
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
@@ -835,6 +837,63 @@ class GroupSessionScreenTest {
   }
 
   @Test
+  fun location_load_error_shows_snackbar_and_dismiss_clears_it() {
+    val viewModel =
+        createViewModel(
+            campusLocationRepository =
+                FakeCampusLocationRepository(Result.failure(RuntimeException("locations failed"))),
+        )
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+
+    assertErrorSnackbarShownAndDismissed(R.string.group_session_error_location_load)
+  }
+
+  @Test
+  fun offline_error_shows_snackbar_and_dismiss_clears_it() {
+    val viewModel = createViewModel(connectivityObserver = ConnectivityObserver { flowOf(false) })
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.runOnIdle { viewModel.join("s1") }
+
+    assertErrorSnackbarShownAndDismissed(R.string.group_session_error_offline)
+  }
+
+  @Test
+  fun connection_lost_error_shows_snackbar_and_dismiss_clears_it() {
+    val failingRepo =
+        object : GroupSessionsRepository by repo {
+          override suspend fun joinSession(userId: String, sessionId: String): Result<Unit> =
+              Result.failure(ConnectionLostException())
+        }
+    val viewModel = createViewModel(failingRepo)
+    composeTestRule.setContent { GroupSessionScreen(viewModel = viewModel) }
+    composeTestRule.waitUntil(timeoutMillis = 2_000) { viewModel.uiState.value.sessions.size == 4 }
+
+    val searchPlaceholder = context.getString(R.string.group_session_search_placeholder)
+    val joinText = context.getString(R.string.group_session_action_join)
+    composeTestRule.onNodeWithText(searchPlaceholder).performTextInput("capstone")
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.SESSION_LIST)
+        .performScrollToNode(hasText(joinText))
+    composeTestRule.onNodeWithText(joinText).performClick()
+
+    assertErrorSnackbarShownAndDismissed(R.string.group_session_error_connection_lost)
+  }
+
+  private fun assertErrorSnackbarShownAndDismissed(messageRes: Int) {
+    val errorText = context.getString(messageRes)
+    composeTestRule.waitUntil(timeoutMillis = 2_000) {
+      composeTestRule.onAllNodesWithText(errorText).fetchSemanticsNodes().isNotEmpty()
+    }
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.ERROR_SNACKBAR)
+        .assert(hasAnyDescendant(hasText(errorText)))
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.ERROR_DISMISS).performClick()
+    composeTestRule.onNodeWithText(errorText).assertDoesNotExist()
+  }
+
+  @Test
   fun session_status_label_formats_durations_correctly() {
     var startedLabel = ""
     var minLabel = ""
@@ -1258,6 +1317,7 @@ class GroupSessionScreenTest {
       repository: GroupSessionsRepository = repo,
       locationProvider: LocationProvider = LocationProvider { flowOf(null) },
       campusLocationRepository: CampusLocationRepository? = null,
+      connectivityObserver: ConnectivityObserver? = null,
   ): GroupSessionsViewModel =
       GroupSessionsViewModel(
           authRepository = authRepository,
@@ -1265,6 +1325,7 @@ class GroupSessionScreenTest {
           profileRepository = profileRepository,
           locationProvider = locationProvider,
           campusLocationRepository = campusLocationRepository,
+          connectivityObserver = connectivityObserver,
       )
 
   private class FakeCampusLocationRepository(
