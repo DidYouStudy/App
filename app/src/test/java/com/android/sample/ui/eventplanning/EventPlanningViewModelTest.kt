@@ -1463,6 +1463,48 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     verify(eventsRepository).saveEvent(any())
   }
 
+  /** Verifies connectivity observer updates isOffline in UI state. */
+  @Test
+  fun observeConnectivity_updatesIsOfflineState() = runTest {
+    val connectivity = FakeConnectivityObserver(initialOnline = true)
+    val viewModel = createViewModel(connectivityObserver = connectivity)
+
+    assertFalse(viewModel.uiState.value.isOffline)
+
+    connectivity.isOnline.value = false
+    advanceUntilIdle()
+    assertTrue(viewModel.uiState.value.isOffline)
+
+    connectivity.isOnline.value = true
+    advanceUntilIdle()
+    assertFalse(viewModel.uiState.value.isOffline)
+  }
+
+  /** Verifies canLeaveEdit and isBusy computed state properties. */
+  @Test
+  fun uiState_computedProperties_evaluateCorrectly() {
+    val defaultState = EventPlanningUiState()
+    assertTrue(defaultState.canLeaveEdit)
+    assertFalse(defaultState.isBusy)
+
+    val savingState = defaultState.copy(isSaving = true)
+    assertFalse(savingState.canLeaveEdit)
+    assertTrue(savingState.isBusy)
+
+    val deletingState = defaultState.copy(isDeleting = true)
+    assertFalse(deletingState.canLeaveEdit)
+    assertTrue(deletingState.isBusy)
+
+    val editedState = defaultState.copy(isEventEdited = true)
+    assertFalse(editedState.canLeaveEdit)
+
+    val deletedState = defaultState.copy(isEventDeleted = true)
+    assertFalse(deletedState.canLeaveEdit)
+
+    val loadingState = defaultState.copy(isLoading = true)
+    assertTrue(loadingState.isBusy)
+  }
+
   /**
    * Verifies that each [EventPlanningError] entry maps to its distinct, valid localized string
    * resource identifier.
