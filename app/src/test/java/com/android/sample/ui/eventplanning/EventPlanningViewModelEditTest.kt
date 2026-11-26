@@ -5,10 +5,13 @@
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.eventplanning
 
+import com.android.sample.model.connectivity.ConnectionLostException
+import com.android.sample.model.connectivity.FakeConnectivityObserver
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.PersonalEvent
 import java.time.Clock
 import java.time.Instant
@@ -305,6 +308,296 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
 
     assertEquals(EventPlanningError.NO_EVENT_TO_EDIT, viewModel.uiState.value.error)
     assertNothingSaved()
+  }
+
+  /** Editing an event whose original schedule produces invalid details reports INVALID_EVENT. */
+  @Test
+  fun editEvent_invalidDetails_reportsInvalidEventError() = runTest {
+    val invalidDetails: EventDetails = mock()
+    whenever(invalidDetails.type).thenReturn(EventType.STUDY_SESSION)
+    whenever(invalidDetails.subject).thenReturn("Algebra")
+    whenever(invalidDetails.startsAt).thenReturn(now.plusSeconds(3600))
+    whenever(invalidDetails.endsAt).thenReturn(now)
+    val invalidEvent = PersonalEvent("stored-1", "user123", invalidDetails, createdAt)
+
+    val viewModel = loadedViewModel(invalidEvent)
+    viewModel.editEvent()
+
+    assertEquals(EventPlanningError.INVALID_EVENT, viewModel.uiState.value.error)
+    assertNothingSaved()
+  }
+
+  /** Editing an event with a missing date reports REQUIRED_FIELDS_MISSING. */
+  @Test
+  fun editEvent_missingDate_reportsRequiredFieldsError() = runTest {
+    val viewModel = loadedViewModel()
+    viewModel.setDate(null)
+
+    viewModel.editEvent()
+
+    assertEquals(EventPlanningError.REQUIRED_FIELDS_MISSING, viewModel.uiState.value.error)
+    assertNothingSaved()
+  }
+
+  /** Editing an event with a missing start time reports REQUIRED_FIELDS_MISSING. */
+  @Test
+  fun editEvent_missingStartTime_reportsRequiredFieldsError() = runTest {
+    val viewModel = loadedViewModel()
+    viewModel.setStartTime(null)
+
+    viewModel.editEvent()
+
+    assertEquals(EventPlanningError.REQUIRED_FIELDS_MISSING, viewModel.uiState.value.error)
+    assertNothingSaved()
+  }
+
+  /** Editing an event with a missing end time reports REQUIRED_FIELDS_MISSING. */
+  @Test
+  fun editEvent_missingEndTime_reportsRequiredFieldsError() = runTest {
+    val viewModel = loadedViewModel()
+    viewModel.setEndTime(null)
+
+    viewModel.editEvent()
+
+    assertEquals(EventPlanningError.REQUIRED_FIELDS_MISSING, viewModel.uiState.value.error)
+    assertNothingSaved()
+  }
+
+  /** Editing an event after user signs out reports NO_SIGNED_IN_USER. */
+  @Test
+  fun editEvent_userSignsOutAfterLoading_reportsErrorAndDoesNotSave() = runTest {
+    val viewModel = loadedViewModel()
+    currentUserFlow.value = null
+
+    viewModel.editEvent()
+
+    assertEquals(EventPlanningError.NO_SIGNED_IN_USER, viewModel.uiState.value.error)
+    assertNothingSaved()
+  }
+
+  /** Repository exception during edit sets FAILED_TO_EDIT_EVENT. */
+  @Test
+  fun editEvent_repositoryThrows_setsFailedToEditEventError() = runTest {
+    whenever(eventsRepository.saveEvent(any())).thenThrow(IllegalStateException("boom"))
+    val viewModel = loadedViewModel()
+
+    viewModel.editEvent()
+
+    assertEquals(EventPlanningError.FAILED_TO_EDIT_EVENT, viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isSaving)
+  }
+
+  /** Cancellation during edit is ignored without setting error. */
+  @Test
+  fun editEvent_cancelled_isNotReportedAsErrorAndStopsSaving() = runTest {
+    whenever(eventsRepository.saveEvent(any())).thenThrow(CancellationException("cancelled"))
+    val viewModel = loadedViewModel()
+
+    viewModel.editEvent()
+
+    assertNull(viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isSaving)
+  }
+
+  /** Concurrent edit call while saving is ignored. */
+  @Test
+  fun editEvent_whileSaving_isIgnored() = runTest {
+    val gate = CompletableDeferred<Unit>()
+    whenever(eventsRepository.saveEvent(any())).doSuspendableAnswer {
+      gate.await()
+      Result.success(Unit)
+    }
+    val viewModel = loadedViewModel()
+
+    viewModel.editEvent()
+    assertTrue(viewModel.uiState.value.isSaving)
+
+    viewModel.editEvent()
+    verify(eventsRepository, times(1)).saveEvent(any())
+
+    gate.complete(Unit)
+    advanceUntilIdle()
+  }
+
+  /** Calling setEventKind while editing resets form and clears editing state. */
+  @Test
+  fun setEventKind_whileEditingSameKind_resetsFormAndClearsEditingState() = runTest {
+    val viewModel = loadedViewModel()
+    assertTrue(viewModel.uiState.value.isEditing)
+
+    viewModel.setEventKind(EventKind.PERSONAL)
+
+    assertFalse(viewModel.uiState.value.isEditing)
+    assertEquals("", viewModel.uiState.value.subject)
+  }
+
+  /** Loading an event with a blank ID is ignored. */
+  @Test
+  fun loadEvent_blankId_doesNothing() = runTest {
+    val viewModel = createViewModel()
+
+    viewModel.loadEvent("")
+
+    assertFalse(viewModel.uiState.value.isLoading)
+    verify(eventsRepository, never()).getEvent(any(), any())
+  }
+
+  /** Exception when loading a group session sets FAILED_TO_LOAD_EVENT. */
+  @Test
+  fun loadEvent_groupSession_throwsException_reportsError() = runTest {
+    whenever(groupSessionsRepository.getSession(any())).thenThrow(IllegalStateException("db error"))
+    val viewModel = createViewModel()
+
+    viewModel.loadEvent("session-1", EventKind.GROUP_SESSION)
+
+    assertEquals(EventPlanningError.FAILED_TO_LOAD_EVENT, viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  /** Cancellation when loading a group session stops loading without error. */
+  @Test
+  fun loadEvent_groupSession_cancelled_stopsLoadingWithoutError() = runTest {
+    whenever(groupSessionsRepository.getSession(any()))
+        .thenThrow(CancellationException("cancelled"))
+    val viewModel = createViewModel()
+
+    viewModel.loadEvent("session-1", EventKind.GROUP_SESSION)
+
+    assertNull(viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  /** Editing a group session while offline sets OFFLINE error. */
+  @Test
+  fun editEvent_groupSession_offline_reportsOfflineError() = runTest {
+    val initial =
+        GroupSession(
+            id = "session-1",
+            createdBy = "user123",
+            memberIds = listOf("user123"),
+            details = EventDetails(EventType.STUDY_SESSION, "Subject", startsAt, endsAt),
+            createdAt = createdAt,
+        )
+    whenever(groupSessionsRepository.getSession("session-1")).thenReturn(Result.success(initial))
+    val connectivity = FakeConnectivityObserver(initialOnline = false)
+    val viewModel = createViewModel(connectivityObserver = connectivity)
+    viewModel.loadEvent("session-1", EventKind.GROUP_SESSION)
+
+    viewModel.editEvent()
+
+    assertEquals(EventPlanningError.OFFLINE, viewModel.uiState.value.error)
+    verify(groupSessionsRepository, never()).saveSession(any(), any())
+  }
+
+  /** Group session edit failing with ConnectionLostException sets CONNECTION_LOST. */
+  @Test
+  fun editEvent_groupSession_connectionLost_reportsConnectionLostError() = runTest {
+    val initial =
+        GroupSession(
+            id = "session-1",
+            createdBy = "user123",
+            memberIds = listOf("user123"),
+            details = EventDetails(EventType.STUDY_SESSION, "Subject", startsAt, endsAt),
+            createdAt = createdAt,
+        )
+    whenever(groupSessionsRepository.getSession("session-1")).thenReturn(Result.success(initial))
+    whenever(groupSessionsRepository.saveSession(any(), any()))
+        .thenReturn(Result.failure(ConnectionLostException()))
+    val viewModel = createViewModel()
+    viewModel.loadEvent("session-1", EventKind.GROUP_SESSION)
+
+    viewModel.editEvent()
+
+    assertEquals(EventPlanningError.CONNECTION_LOST, viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isEventEdited)
+  }
+
+  /** Group session edit repository failure sets expected error. */
+  @Test
+  fun editEvent_groupSession_repositoryFailure_reportsError() = runTest {
+    val initial =
+        GroupSession(
+            id = "session-1",
+            createdBy = "user123",
+            memberIds = listOf("user123"),
+            details = EventDetails(EventType.STUDY_SESSION, "Subject", startsAt, endsAt),
+            createdAt = createdAt,
+        )
+    whenever(groupSessionsRepository.getSession("session-1")).thenReturn(Result.success(initial))
+    whenever(groupSessionsRepository.saveSession(any(), any()))
+        .thenReturn(Result.failure(EventsException(EventsError.PERMISSION_DENIED)))
+    val viewModel = createViewModel()
+    viewModel.loadEvent("session-1", EventKind.GROUP_SESSION)
+
+    viewModel.editEvent()
+
+    assertEquals(EventPlanningError.PERMISSION_DENIED, viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isEventEdited)
+  }
+
+  /** Group session edit repository exception sets FAILED_TO_EDIT_EVENT. */
+  @Test
+  fun editEvent_groupSession_repositoryThrows_reportsFailedToEditEvent() = runTest {
+    val initial =
+        GroupSession(
+            id = "session-1",
+            createdBy = "user123",
+            memberIds = listOf("user123"),
+            details = EventDetails(EventType.STUDY_SESSION, "Subject", startsAt, endsAt),
+            createdAt = createdAt,
+        )
+    whenever(groupSessionsRepository.getSession("session-1")).thenReturn(Result.success(initial))
+    whenever(groupSessionsRepository.saveSession(any(), any()))
+        .thenThrow(IllegalStateException("boom"))
+    val viewModel = createViewModel()
+    viewModel.loadEvent("session-1", EventKind.GROUP_SESSION)
+
+    viewModel.editEvent()
+
+    assertEquals(EventPlanningError.FAILED_TO_EDIT_EVENT, viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isSaving)
+  }
+
+  /** Deleting a group session with ConnectionLostException sets CONNECTION_LOST. */
+  @Test
+  fun deleteEvent_groupSession_connectionLost_reportsConnectionLostError() = runTest {
+    whenever(groupSessionsRepository.deleteSession(any(), any()))
+        .thenReturn(Result.failure(ConnectionLostException()))
+    val viewModel = createViewModel()
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+
+    viewModel.deleteEvent("session-1")
+
+    assertEquals(EventPlanningError.CONNECTION_LOST, viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isEventDeleted)
+  }
+
+  /** Deleting a group session when repository throws sets FAILED_TO_DELETE_EVENT. */
+  @Test
+  fun deleteEvent_groupSession_throwsException_setsFailedToDeleteError() = runTest {
+    whenever(groupSessionsRepository.deleteSession(any(), any()))
+        .thenThrow(IllegalStateException("boom"))
+    val viewModel = createViewModel()
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+
+    viewModel.deleteEvent("session-1")
+
+    assertEquals(EventPlanningError.FAILED_TO_DELETE_EVENT, viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isDeleting)
+  }
+
+  /** Cancellation when deleting a group session stops deleting without error. */
+  @Test
+  fun deleteEvent_groupSession_cancelled_stopsDeletingWithoutError() = runTest {
+    whenever(groupSessionsRepository.deleteSession(any(), any()))
+        .thenThrow(CancellationException("cancelled"))
+    val viewModel = createViewModel()
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+
+    viewModel.deleteEvent("session-1")
+
+    assertNull(viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isDeleting)
   }
 
   @Test
