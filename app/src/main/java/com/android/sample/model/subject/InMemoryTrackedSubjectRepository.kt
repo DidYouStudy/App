@@ -9,7 +9,11 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 
-/** [TrackedSubjectRepository] kept in memory for ViewModel tests. */
+/**
+ * [TrackedSubjectRepository] kept in memory for ViewModel tests.
+ *
+ * Decisions, including saved priorities, live only as long as the instance.
+ */
 class InMemoryTrackedSubjectRepository : TrackedSubjectRepository {
 
   private val data = MutableStateFlow<Map<String, SubjectDecisions>>(emptyMap())
@@ -50,11 +54,53 @@ class InMemoryTrackedSubjectRepository : TrackedSubjectRepository {
       val updatedMap = current.toMutableMap()
       for ((spelling, tracked) in decisions) {
         val key = SubjectCatalogFirestoreMapper.key(spelling)
-        updatedMap[key] = SubjectDecision(spelling = spelling.trim(), tracked = tracked)
+        // Keep any saved priority: changing the flag or spelling must not erase it.
+        updatedMap[key] =
+            SubjectDecision(
+                spelling = spelling.trim(),
+                tracked = tracked,
+                priority = current[key]?.priority,
+            )
       }
       byOwner + (ownerId to SubjectDecisions(updatedMap))
     }
 
     return Result.success(Unit)
+  }
+
+  override suspend fun savePriority(
+      ownerId: String,
+      subject: String,
+      priority: Int,
+  ): Result<Unit> {
+    if (
+        ownerId.isBlank() ||
+            '/' in ownerId ||
+            subject.isBlank() ||
+            priority !in SubjectPriority.RANGE
+    ) {
+      return Result.failure(TrackedSubjectException(TrackedSubjectError.INVALID_ARGUMENT))
+    }
+    val validPriority = SubjectPriority(priority)
+    val key = SubjectCatalogFirestoreMapper.key(subject)
+    var accepted = false
+    // The check and the write share one atomic update, so a concurrent untrack cannot slip between.
+    data.update { byOwner ->
+      val current = byOwner[ownerId]?.decisions.orEmpty()
+      val entry = current[key]
+      if (entry == null || !entry.tracked) {
+        accepted = false
+        byOwner
+      } else {
+        accepted = true
+        val updated = entry.copy(priority = validPriority)
+        byOwner + (ownerId to SubjectDecisions(current + (key to updated)))
+      }
+    }
+    return if (accepted) {
+      Result.success(Unit)
+    } else {
+      Result.failure(TrackedSubjectException(TrackedSubjectError.INVALID_ARGUMENT))
+    }
   }
 }

@@ -71,10 +71,14 @@ class AndroidLocationProvider(
       return@callbackFlow
     }
 
+    var liveUpdateReceived = false
     val callback =
         object : LocationCallback() {
           override fun onLocationResult(result: LocationResult) {
-            result.lastLocation?.toDomainLocation()?.let { trySend(it) }
+            result.lastLocation?.toDomainLocation()?.let {
+              liveUpdateReceived = true
+              trySend(it)
+            }
           }
 
           override fun onLocationAvailability(availability: LocationAvailability) {
@@ -83,10 +87,12 @@ class AndroidLocationProvider(
         }
 
     try {
-      // Immediately emit cached device coordinates only if recent enough, without waiting for the
-      // 10-second polling interval.
+      // Immediately emit cached device coordinates only if recent enough and no live update has
+      // already been delivered, without waiting for the 10-second polling interval.
       client.lastLocation.addOnSuccessListener { location ->
-        location?.takeIf(::isFreshLastLocation)?.toDomainLocation()?.let(::trySend)
+        if (!liveUpdateReceived) {
+          location?.takeIf(::isFreshLastLocation)?.toDomainLocation()?.let(::trySend)
+        }
       }
       client
           .requestLocationUpdates(LOCATION_REQUEST, callback, Looper.getMainLooper())
@@ -137,13 +143,10 @@ class AndroidLocationProvider(
   }
 }
 
-/**
- * Returns whether the app holds a location permission. Either the precise or the approximate one is
- * enough: Android lets the user grant only the approximate one.
- */
+/** Returns whether the app holds the precise location permission. */
 internal fun hasLocationPermission(context: Context): Boolean =
-    listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
-        .any { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }
+    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+        PackageManager.PERMISSION_GRANTED
 
 /**
  * Converts a platform location to the domain [Location], or `null` when its coordinates are not

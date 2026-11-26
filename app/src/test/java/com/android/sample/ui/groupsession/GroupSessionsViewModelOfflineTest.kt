@@ -61,7 +61,6 @@ class GroupSessionsViewModelOfflineTest {
   private lateinit var authRepository: TestAuthRepository
   private lateinit var connectivity: FakeConnectivityObserver
   private lateinit var cache: CachedSessionsRepository
-  private val testCampusCenter = Location(0.0, 0.0)
 
   @Before
   fun setUp() {
@@ -795,7 +794,6 @@ class GroupSessionsViewModelOfflineTest {
             profileRepository = FakeProfileRepository(),
             locationProvider = FakeLocationProvider(),
             connectivityObserver = connectivity,
-            campusCenter = testCampusCenter,
         )
 
     val viewModel = factory.create(GroupSessionsViewModel::class.java)
@@ -817,7 +815,6 @@ class GroupSessionsViewModelOfflineTest {
             repository = cache,
             profileRepository = FakeProfileRepository(),
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
 
     val viewModel = factory.create(GroupSessionsViewModel::class.java)
@@ -872,7 +869,6 @@ class GroupSessionsViewModelOfflineTest {
           locationProvider = locationProvider,
           campusLocationRepository = campusLocationRepository,
           connectivityObserver = connectivityObserver,
-          campusCenter = testCampusCenter,
       )
 
   private fun visibleIds(viewModel: GroupSessionsViewModel): List<String> =

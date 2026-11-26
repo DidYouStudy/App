@@ -51,7 +51,7 @@ class SettingsViewModelOfflineTest {
 
   @Test
   fun isOffline_isFalse_whenNoObserverIsProvided() = runTest {
-    val vm = SettingsViewModel(authRepository, repository)
+    val vm = SettingsViewModel(authRepository, repository, mock(), mock())
     val job = vm.observe(this)
 
     assertFalse(vm.uiState.value.isOffline)
@@ -61,7 +61,7 @@ class SettingsViewModelOfflineTest {
   @Test
   fun isOffline_followsConnectivity_whileObserved() = runTest {
     val connectivity = FakeConnectivityObserver(initialOnline = false)
-    val vm = SettingsViewModel(authRepository, repository, connectivity)
+    val vm = SettingsViewModel(authRepository, repository, mock(), mock(), connectivity)
     val job = vm.observe(this)
 
     assertTrue(vm.uiState.value.isOffline)
@@ -75,7 +75,7 @@ class SettingsViewModelOfflineTest {
   @Test
   fun isOffline_survivesSignOut() = runTest {
     val connectivity = FakeConnectivityObserver(initialOnline = false)
-    val vm = SettingsViewModel(authRepository, repository, connectivity)
+    val vm = SettingsViewModel(authRepository, repository, mock(), mock(), connectivity)
     val job = vm.observe(this)
 
     currentUser.value = null
@@ -87,7 +87,7 @@ class SettingsViewModelOfflineTest {
   @Test
   fun connectivity_isReleased_whenNobodyObservesTheState() = runTest {
     val connectivity = FakeConnectivityObserver()
-    val vm = SettingsViewModel(authRepository, repository, connectivity)
+    val vm = SettingsViewModel(authRepository, repository, mock(), mock(), connectivity)
     val job = vm.observe(this)
     assertEquals(1, connectivity.activeCollectors)
 

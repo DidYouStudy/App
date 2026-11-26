@@ -67,10 +67,7 @@ class GroupSessionMapViewTest {
   private fun showMap(
       destination: CameraDestination? = null,
       startAt: LatLng = FAR_AWAY,
-      focusOnMarkerClick: Boolean = false,
   ) {
-    var currentDestination by mutableStateOf(destination)
-    var trigger = 0
     val rooms = listOf(first, second)
     composeTestRule.setContent {
       camera = rememberCameraPositionState {
@@ -78,15 +75,8 @@ class GroupSessionMapViewTest {
       }
       GroupSessionMapView(
           rooms = rooms,
-          cameraDestination = currentDestination,
-          onMarkerClick = { roomName ->
-            tappedRoom = roomName
-            if (focusOnMarkerClick) {
-              rooms
-                  .firstOrNull { it.name == roomName }
-                  ?.let { room -> currentDestination = CameraDestination(room.location, ++trigger) }
-            }
-          },
+          cameraDestination = destination,
+          onMarkerClick = { roomName -> tappedRoom = roomName },
           onMapClick = { mapClicks++ },
           cameraPositionState = camera,
       )
@@ -130,6 +120,7 @@ class GroupSessionMapViewTest {
       )
     }
     map.waitForMap()
+    map.waitForCameraStill()
 
     destination = CameraDestination(userLocation, trigger = 1)
 
@@ -151,23 +142,20 @@ class GroupSessionMapViewTest {
       )
     }
     map.waitForMap()
+    map.waitForCameraStill()
 
     destination = CameraDestination(campusCenter, trigger = 1)
 
     waitForCameraAt(campusCenter, minZoom = focusZoom, maxZoom = 21f)
   }
 
-  /**
-   * Tapping a pin reports its room and moves the camera onto it, and the tap is not also reported
-   * as a click on the map.
-   */
+  /** Tapping a pin reports its room, and the tap is not also reported as a click on the map. */
   @Test
-  fun tappingAPin_reportsItsRoomAndFocusesItWithoutAMapClick() {
-    showMap(startAt = betweenThePins, focusOnMarkerClick = true)
+  fun tappingAPin_reportsItsRoomWithoutAMapClick() {
+    showMap(startAt = betweenThePins)
 
     map.tapPinUntil(first.location.toLatLng()) { tappedRoom != null }
     assertEquals(first.name, tappedRoom)
-    waitForCameraAt(first.location, minZoom = focusZoom, maxZoom = 21f)
     // Taps that missed the pin while it was being drawn report their map clicks late.
     Thread.sleep(MapTestDriver.TAP_SPACING_MS)
     val clicksBefore = mapClicks

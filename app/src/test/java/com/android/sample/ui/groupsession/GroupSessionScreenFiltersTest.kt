@@ -4,7 +4,6 @@ package com.android.sample.ui.groupsession
 
 import android.Manifest
 import android.app.Application
-import android.content.Context
 import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.result.ActivityResultRegistry
 import androidx.activity.result.ActivityResultRegistryOwner
@@ -479,7 +478,6 @@ class GroupSessionScreenFiltersTest {
                       campusLocation("AI 1", "AI"),
                   ),
               ),
-          campusCenter = defaultCampusCenter(ApplicationProvider.getApplicationContext<Context>()),
       )
 
   private fun campusLocation(name: String, zone: String) =
