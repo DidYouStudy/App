@@ -123,6 +123,27 @@ class NavigationActionsTest {
     assertEquals("edit_event/{eventId}?kind={kind}", Screen.EditEvent.ROUTE)
   }
 
+  /** [Screen.EventDetails] carries the kind in its route and defaults to personal. */
+  @Test
+  fun eventDetailsRouteCarriesKindAndDefaultsToPersonal() {
+    assertEquals(EventKind.PERSONAL, Screen.EventDetails("e1").kind)
+    assertEquals("event_details/e1?kind=PERSONAL", Screen.EventDetails("e1").route)
+    assertEquals(
+        "event_details/e%2F1?kind=GROUP_SESSION",
+        Screen.EventDetails("e/1", EventKind.GROUP_SESSION).route,
+    )
+    assertEquals("event_details/{eventId}?kind={kind}", Screen.EventDetails.ROUTE)
+  }
+
+  /** A missing or unknown kind argument falls back to personal. */
+  @Test
+  fun eventKindArgumentParsesKnownKindsAndFallsBackToPersonal() {
+    assertEquals(EventKind.GROUP_SESSION, eventKindArgument("GROUP_SESSION"))
+    assertEquals(EventKind.PERSONAL, eventKindArgument("PERSONAL"))
+    assertEquals(EventKind.PERSONAL, eventKindArgument(null))
+    assertEquals(EventKind.PERSONAL, eventKindArgument("NOT_A_KIND"))
+  }
+
   /** Verifies that [Screen.EditEvent] defaults to [EventKind.PERSONAL] when kind is omitted. */
   @Test
   fun editEventDefaultsToPersonalKind() {
