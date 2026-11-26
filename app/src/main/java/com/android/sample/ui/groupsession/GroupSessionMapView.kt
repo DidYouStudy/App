@@ -2,7 +2,6 @@
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
-import android.content.Context
 import android.content.res.Resources
 import androidx.annotation.DimenRes
 import androidx.compose.foundation.Canvas
@@ -83,7 +82,7 @@ fun GroupSessionMapView(
     cameraPositionState: CameraPositionState? = null,
     userLocation: Location? = null,
     hasLocationPermission: Boolean = false,
-    campusCenter: Location? = null,
+    campusCenter: Location = defaultCampusCenter(),
 ) {
   // The real map cannot load in the IDE preview, so it shows a stand-in.
   if (LocalInspectionMode.current) {
@@ -91,24 +90,27 @@ fun GroupSessionMapView(
     return
   }
 
-  val resolvedCampusCenter = (campusCenter ?: defaultCampusCenter()).toLatLng()
   val defaultZoom = floatResource(R.dimen.map_default_zoom)
   val focusZoom = floatResource(R.dimen.map_focus_zoom)
   val cameraAnimationMs = integerResource(R.integer.map_camera_animation_ms)
   val cameraPositionState =
       cameraPositionState
           ?: rememberCameraPositionState {
-            position = CameraPosition.fromLatLngZoom(resolvedCampusCenter, defaultZoom)
+            position = CameraPosition.fromLatLngZoom(campusCenter.toLatLng(), defaultZoom)
           }
 
-  // Moves the camera onto a place, zooming in if the map is further out than the focus zoom.
-  val focusOn: suspend (Location) -> Unit = { target ->
-    val zoom = maxOf(cameraPositionState.position.zoom, focusZoom)
+  // Moves the camera onto a destination: either resets to default zoom on unfocus, or zooms in on
+  // the target if the map is further out than focus zoom.
+  val focusOn: suspend (CameraDestination) -> Unit = { destination ->
+    val update =
+        if (destination.resetZoom) {
+          CameraUpdateFactory.zoomTo(defaultZoom)
+        } else {
+          val zoom = maxOf(cameraPositionState.position.zoom, focusZoom)
+          CameraUpdateFactory.newLatLngZoom(destination.location.toLatLng(), zoom)
+        }
     try {
-      cameraPositionState.animate(
-          CameraUpdateFactory.newLatLngZoom(target.toLatLng(), zoom),
-          cameraAnimationMs,
-      )
+      cameraPositionState.animate(update, cameraAnimationMs)
     } catch (_: Exception) {
       // In unit tests or environments without initialized Maps services, ignore camera animation
       // failure.
@@ -125,7 +127,7 @@ fun GroupSessionMapView(
           delay(projectionPollIntervalMs)
         }
       }
-      focusOn(destination.location)
+      focusOn(destination)
     }
   }
 
@@ -266,12 +268,6 @@ fun defaultCampusCenter(resources: Resources): Location =
         ResourcesCompat.getFloat(resources, R.dimen.map_campus_center_latitude).toDouble(),
         ResourcesCompat.getFloat(resources, R.dimen.map_campus_center_longitude).toDouble(),
     )
-
-/**
- * Reads the default campus centre geographic coordinates from [context], defined in
- * `res/values/map.xml`.
- */
-fun defaultCampusCenter(context: Context): Location = defaultCampusCenter(context.resources)
 
 /**
  * Reads the default campus centre geographic coordinates in Compose from `res/values/map.xml`,
