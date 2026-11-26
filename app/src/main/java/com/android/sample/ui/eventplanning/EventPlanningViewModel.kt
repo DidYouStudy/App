@@ -187,6 +187,12 @@ class EventPlanningViewModel(
               ownerId: String,
               decisions: Map<String, Boolean>,
           ): Result<Unit> = Result.success(Unit)
+
+          override suspend fun savePriority(
+              ownerId: String,
+              subject: String,
+              priority: Int,
+          ): Result<Unit> = Result.success(Unit)
         },
     private val connectivityObserver: ConnectivityObserver? = null,
 ) : ViewModel() {
