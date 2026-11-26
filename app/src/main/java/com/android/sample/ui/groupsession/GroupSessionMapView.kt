@@ -4,25 +4,33 @@ package com.android.sample.ui.groupsession
 
 import android.content.res.Resources
 import androidx.annotation.DimenRes
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
@@ -31,20 +39,27 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.content.res.ResourcesCompat
 import com.android.sample.R
 import com.android.sample.model.location.CampusLocation
+import com.android.sample.model.location.DistanceCalculator
 import com.android.sample.model.location.Location
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.gms.maps.model.Marker
 import com.google.maps.android.compose.CameraPositionState
+import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.GoogleMapComposable
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
 import kotlin.math.acos
+import kotlin.math.cos
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
@@ -69,8 +84,10 @@ import kotlinx.coroutines.withTimeoutOrNull
  * @param userLocation Current device location of the user, or null if not available or shared.
  * @param hasLocationPermission Whether location permission is granted, enabling the native Google
  *   Maps blue dot for user location.
- * @param campusCenter Default campus centre coordinates used to initialize the camera when
+ * @param campusCenter Default campus center coordinates used to initialize the camera when
  *   [cameraPositionState] is not supplied; defaults to [defaultCampusCenter] from `map.xml`.
+ * @param filterRadiusMeters Active distance filter radius in metres, or null when no distance
+ *   filter is applied.
  */
 @Composable
 fun GroupSessionMapView(
@@ -83,10 +100,25 @@ fun GroupSessionMapView(
     userLocation: Location? = null,
     hasLocationPermission: Boolean = false,
     campusCenter: Location = defaultCampusCenter(),
+    filterRadiusMeters: Int? = null,
 ) {
+  // Remember the last known location while permission is granted so transient null emissions
+  // keep the circle, visible pins, and camera-fit effect stable without flickering.
+  val lastKnownLocation = remember { arrayOfNulls<Location>(1) }
+  val stableUserLocation =
+      resolveStableLocation(lastKnownLocation[0], userLocation, hasLocationPermission)
+  lastKnownLocation[0] = stableUserLocation
+  val activeFilterArea = filterArea(stableUserLocation, filterRadiusMeters)
+
   // The real map cannot load in the IDE preview, so it shows a stand-in.
   if (LocalInspectionMode.current) {
-    MapPlaceholder(onMapClick, modifier, userLocation, hasLocationPermission)
+    MapPlaceholder(
+        onMapClick,
+        modifier,
+        stableUserLocation,
+        hasLocationPermission,
+        activeFilterArea,
+    )
     return
   }
 
@@ -122,13 +154,26 @@ fun GroupSessionMapView(
 
   LaunchedEffect(cameraDestination) {
     cameraDestination?.let { destination ->
-      withTimeoutOrNull(projectionTimeoutMs) {
-        while (cameraPositionState.projection == null) {
-          delay(projectionPollIntervalMs)
-        }
-      }
+      awaitMapProjection(cameraPositionState, projectionTimeoutMs, projectionPollIntervalMs)
       focusOn(destination)
     }
+  }
+
+  val visibleRooms =
+      remember(rooms, activeFilterArea) { roomsWithinFilterArea(rooms, activeFilterArea) }
+  val activeRadius = activeFilterArea?.radiusMeters
+  val cameraPaddingPx =
+      with(LocalDensity.current) { Dimens.mapFilterRadiusCameraPadding.roundToPx() }
+  val latestFilterArea by rememberUpdatedState(activeFilterArea)
+  val resources = LocalResources.current
+
+  LaunchedEffect(activeRadius) {
+    val area = latestFilterArea ?: return@LaunchedEffect
+    awaitMapProjection(cameraPositionState, projectionTimeoutMs, projectionPollIntervalMs)
+    cameraPositionState.animate(
+        CameraUpdateFactory.newLatLngBounds(circleBounds(area, resources), cameraPaddingPx),
+        cameraAnimationMs,
+    )
   }
 
   // Disable on-screen zoom and default my-location buttons so they do not overlap with floating UI.
@@ -137,6 +182,7 @@ fun GroupSessionMapView(
   }
   val mapProperties =
       remember(hasLocationPermission) { MapProperties(isMyLocationEnabled = hasLocationPermission) }
+  val currentOnMarkerClick by rememberUpdatedState(onMarkerClick)
 
   Box(modifier = modifier.fillMaxSize()) {
     GoogleMap(
@@ -146,18 +192,25 @@ fun GroupSessionMapView(
         uiSettings = uiSettings,
         onMapClick = { onMapClick() },
     ) {
-      rooms.forEach { room ->
-        MarkerComposable(
-            room.name,
-            state = rememberUpdatedMarkerState(position = room.location.toLatLng()),
-            onClick = {
-              onMarkerClick(room.name)
-              // Consumed: the caller moves the camera via cameraDestination instead of Maps'
-              // default snap.
-              true
-            },
-        ) {
-          MarkerPin()
+      activeFilterArea?.let { area -> FilterRadiusOverlay(area = area, onMapClick = onMapClick) }
+      visibleRooms.forEach { room ->
+        key(room.name) {
+          val onPinClick =
+              remember(room.name) {
+                { _: Marker ->
+                  currentOnMarkerClick(room.name)
+                  // Consumed: the caller moves the camera via cameraDestination instead of Maps'
+                  // default snap.
+                  true
+                }
+              }
+          MarkerComposable(
+              room.name,
+              state = rememberUpdatedMarkerState(position = room.location.toLatLng()),
+              onClick = onPinClick,
+          ) {
+            MarkerPin()
+          }
         }
       }
     }
@@ -216,6 +269,79 @@ internal fun dropletPath(size: Size, quarterTurn: Float, fullTurn: Float): Path 
   }
 }
 
+/** Waits up to [timeout] for the map's projection to become ready before animating the camera. */
+private suspend fun awaitMapProjection(
+    cameraPositionState: CameraPositionState,
+    timeout: Duration,
+    pollInterval: Duration,
+) {
+  withTimeoutOrNull(timeout) {
+    while (cameraPositionState.projection == null) {
+      delay(pollInterval)
+    }
+  }
+}
+
+/**
+ * Draws the translucent distance-filter circle and its southern-edge pill label on the map. Drawn
+ * before room pins so pins stay above it; tapping the label delegates to [onMapClick].
+ */
+@Composable
+@GoogleMapComposable
+private fun FilterRadiusOverlay(area: FilterArea, onMapClick: () -> Unit) {
+  val bounds = circleBounds(area, LocalResources.current)
+  val fillAlpha = floatResource(R.dimen.map_filter_radius_fill_alpha)
+  val centerAnchor = floatResource(R.dimen.map_center_anchor)
+  val strokeWidthPx = with(LocalDensity.current) { Dimens.mapFilterRadiusStrokeWidth.toPx() }
+  val primaryColor = MaterialTheme.colorScheme.primary
+  val fillColor = remember(primaryColor, fillAlpha) { primaryColor.copy(alpha = fillAlpha) }
+  val currentOnMapClick by rememberUpdatedState(onMapClick)
+  val onLabelClick = remember {
+    { _: Marker ->
+      currentOnMapClick()
+      true
+    }
+  }
+
+  Circle(
+      center = area.center.toLatLng(),
+      radius = area.radiusMeters.toDouble(),
+      fillColor = fillColor,
+      strokeColor = primaryColor,
+      strokeWidth = strokeWidthPx,
+      clickable = false,
+  )
+  MarkerComposable(
+      "filter_radius_label",
+      state =
+          rememberUpdatedMarkerState(
+              position = LatLng(bounds.southwest.latitude, area.center.longitude),
+          ),
+      anchor = Offset(centerAnchor, centerAnchor),
+      onClick = onLabelClick,
+  ) {
+    FilterRadiusLabel()
+  }
+}
+
+/** Pill label shown at the bottom edge of the active distance-filter circle. */
+@Composable
+private fun FilterRadiusLabel(modifier: Modifier = Modifier) {
+  Surface(
+      modifier = modifier,
+      shape = RoundedCornerShape(Dimens.cornerLarge),
+      color = MaterialTheme.colorScheme.surfaceContainerLowest,
+      border = BorderStroke(Dimens.borderThin, MaterialTheme.colorScheme.primary),
+  ) {
+    Text(
+        text = stringResource(R.string.group_session_filter_radius_label),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = Spacing.large, vertical = Spacing.small),
+    )
+  }
+}
+
 /**
  * Stand-in for the map where the real one cannot load, in the IDE preview and in unit tests.
  * Tapping it reports a map click, like the real map.
@@ -226,6 +352,7 @@ private fun MapPlaceholder(
     modifier: Modifier = Modifier,
     userLocation: Location? = null,
     hasLocationPermission: Boolean = false,
+    filterArea: FilterArea? = null,
 ) {
   Box(
       modifier =
@@ -235,7 +362,7 @@ private fun MapPlaceholder(
               .clickable { onMapClick() }
               .padding(Spacing.large)
   ) {
-    Column {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
       Text(
           text = stringResource(R.string.group_session_map_preview_placeholder),
           style = MaterialTheme.typography.titleMedium,
@@ -247,8 +374,73 @@ private fun MapPlaceholder(
             modifier = Modifier.testTag(GroupSessionMapTestTags.USER_LOCATION_MARKER),
         )
       }
+      if (filterArea != null) {
+        Text(
+            text =
+                stringResource(
+                    R.string.group_session_filter_radius_placeholder,
+                    filterArea.radiusMeters,
+                ),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.testTag(GroupSessionMapTestTags.FILTER_RADIUS_CIRCLE),
+        )
+        FilterRadiusLabel()
+      }
     }
   }
+}
+
+/** Area covered by the active distance filter around the user's position. */
+internal data class FilterArea(val center: Location, val radiusMeters: Int)
+
+/**
+ * Returns the last known [Location] while [hasLocationPermission] is granted so transient `null`
+ * emissions do not drop the user's position; returns [current] directly when permission is revoked.
+ */
+internal fun resolveStableLocation(
+    lastKnown: Location?,
+    current: Location?,
+    hasLocationPermission: Boolean,
+): Location? = if (hasLocationPermission) current ?: lastKnown else current
+
+/**
+ * Returns the [FilterArea] to draw on the map, or null when no distance filter is active (either
+ * [userLocation] or [radiusMeters] is missing, or [radiusMeters] is non-positive).
+ */
+internal fun filterArea(userLocation: Location?, radiusMeters: Int?): FilterArea? {
+  if (userLocation == null || radiusMeters == null || radiusMeters <= 0) return null
+  return FilterArea(center = userLocation, radiusMeters = radiusMeters)
+}
+
+/**
+ * Filters [rooms] to those inside or on the boundary of [area], or returns [rooms] unchanged when
+ * [area] is null. Keeps pins in sync with the drawn circle even across transient `null` locations
+ * or two-step state updates.
+ */
+internal fun roomsWithinFilterArea(
+    rooms: List<CampusLocation>,
+    area: FilterArea?,
+): List<CampusLocation> {
+  if (area == null) return rooms
+  return rooms.filter { room ->
+    DistanceCalculator.distanceMeters(area.center, room.location) <= area.radiusMeters
+  }
+}
+
+/**
+ * Returns the geographic [LatLngBounds] enclosing [area], with longitude deltas scaled by the
+ * cosine of the center latitude, using Earth radius and clamp constants from [resources].
+ */
+internal fun circleBounds(area: FilterArea, resources: Resources): LatLngBounds {
+  val earthRadiusMeters =
+      ResourcesCompat.getFloat(resources, R.dimen.map_earth_radius_meters).toDouble()
+  val minCosLatitude = ResourcesCompat.getFloat(resources, R.dimen.map_min_cos_latitude).toDouble()
+  val latDelta = Math.toDegrees(area.radiusMeters / earthRadiusMeters)
+  val cosLat = cos(Math.toRadians(area.center.latitude)).coerceAtLeast(minCosLatitude)
+  val lngDelta = Math.toDegrees(area.radiusMeters / (earthRadiusMeters * cosLat))
+  val southWest = LatLng(area.center.latitude - latDelta, area.center.longitude - lngDelta)
+  val northEast = LatLng(area.center.latitude + latDelta, area.center.longitude + lngDelta)
+  return LatLngBounds(southWest, northEast)
 }
 
 /**

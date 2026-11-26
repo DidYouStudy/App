@@ -541,6 +541,7 @@ internal fun GroupSessionContent(
             hasLocationPermission = hasLocationPermission,
             onParticipantsClick = onParticipantsClick,
             actionsEnabled = !state.isOffline,
+            filterRadiusMeters = state.selectedRadiusMeters,
         )
         Column(
             modifier =

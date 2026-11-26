@@ -3,6 +3,9 @@
 package com.android.sample.ui.groupsession
 
 import android.Manifest
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -88,7 +91,10 @@ class GroupSessionMapContentRealMapTest {
           isCreator = false,
       )
 
-  private fun showContent() {
+  private fun showContent(
+      userLocation: Location? = null,
+      filterRadiusMeters: Int? = null,
+  ) {
     composeTestRule.setContent {
       camera = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(LatLng(46.5191, 6.5668), START_ZOOM)
@@ -100,6 +106,8 @@ class GroupSessionMapContentRealMapTest {
           onLeave = {},
           onEdit = {},
           cameraPositionState = camera,
+          userLocation = userLocation,
+          filterRadiusMeters = filterRadiusMeters,
       )
     }
     map.waitForMap()
@@ -204,6 +212,86 @@ class GroupSessionMapContentRealMapTest {
           !camera.isMoving &&
           kotlin.math.abs(camera.position.zoom - defaultZoom) < 0.05f
     }
+  }
+
+  /** Waits until the camera stops moving with all four extremes of the filter circle visible. */
+  private fun waitForCircleInView(userLocation: Location, radiusMeters: Int) {
+    val expectedBounds =
+        circleBounds(FilterArea(userLocation, radiusMeters), targetContext.resources)
+    val north = LatLng(expectedBounds.northeast.latitude, userLocation.longitude)
+    val south = LatLng(expectedBounds.southwest.latitude, userLocation.longitude)
+    val east = LatLng(userLocation.latitude, expectedBounds.northeast.longitude)
+    val west = LatLng(userLocation.latitude, expectedBounds.southwest.longitude)
+
+    composeTestRule.waitUntil(MapTestDriver.TIMEOUT_MS) {
+      val visibleBounds = composeTestRule.runOnUiThread {
+        checkNotNull(camera.projection).visibleRegion.latLngBounds
+      }
+      !camera.isMoving &&
+          visibleBounds.contains(north) &&
+          visibleBounds.contains(south) &&
+          visibleBounds.contains(east) &&
+          visibleBounds.contains(west)
+    }
+  }
+
+  /**
+   * With a filter radius set, the camera fits all four extreme points of the circle and pins inside
+   * it remain tappable.
+   */
+  @Test
+  fun filterRadius_fitsCircleInCameraAndPinsInsideRemainTappable() {
+    val userLocation = Location(46.5191, 6.5668)
+    showContent(userLocation = userLocation, filterRadiusMeters = 500)
+    waitForCircleInView(userLocation, 500)
+
+    map.tapPinUntil(aab.location.toLatLng()) { listIsShown() }
+    composeTestRule.onNodeWithText("Maths").assertIsDisplayed()
+  }
+
+  /** Changing the filter radius re-fits the camera so the new circle remains visible. */
+  @Test
+  fun filterRadius_changingRadiusRefitsCameraToNewCircle() {
+    val userLocation = Location(46.5191, 6.5668)
+    var radiusMeters by mutableStateOf<Int?>(250)
+    composeTestRule.setContent {
+      camera = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(LatLng(46.5191, 6.5668), START_ZOOM)
+      }
+      GroupSessionMapContent(
+          rooms = rooms,
+          now = now,
+          onJoin = {},
+          onLeave = {},
+          onEdit = {},
+          cameraPositionState = camera,
+          userLocation = userLocation,
+          hasLocationPermission = true,
+          filterRadiusMeters = radiusMeters,
+      )
+    }
+    map.waitForMap()
+    waitForCircleInView(userLocation, 250)
+
+    radiusMeters = 1000
+    composeTestRule.waitForIdle()
+    waitForCircleInView(userLocation, 1000)
+  }
+
+  /** Tapping inside the filter circle away from pins behaves like a map tap and closes the list. */
+  @Test
+  fun filterRadius_tappingInsideCircleClosesOpenSessionList() {
+    val userLocation = Location(46.5191, 6.5668)
+    showContent(userLocation = userLocation, filterRadiusMeters = 500)
+    waitForCircleInView(userLocation, 500)
+
+    map.tapPinUntil(aab.location.toLatLng()) { listIsShown() }
+    map.waitForCameraStill()
+
+    // Tap inside the circle north of the pin, in the half of the screen the list does not cover.
+    map.tapAt(LatLng(46.5194, 6.5660))
+
+    composeTestRule.waitUntil(MapTestDriver.TIMEOUT_MS) { !listIsShown() }
   }
 
   /** The preview shows no cards at first, then the session cards of whichever room is tapped. */

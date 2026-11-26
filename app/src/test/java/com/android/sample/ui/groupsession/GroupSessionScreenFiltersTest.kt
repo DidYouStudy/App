@@ -9,6 +9,7 @@ import androidx.activity.result.ActivityResultRegistry
 import androidx.activity.result.ActivityResultRegistryOwner
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
@@ -417,6 +418,37 @@ class GroupSessionScreenFiltersTest {
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.LAB_SWITCH).assertIsOn()
   }
 
+  /** Selecting a radius in the map view shows the filter circle, and selecting "Any" hides it. */
+  @Test
+  fun mapView_selectingRadiusShowsFilterCircleAndAnyHidesIt() {
+    grantFineLocationPermission()
+    val viewModel =
+        newViewModel(locationProvider = LocationProvider { flowOf(Location(46.5191, 6.5668)) })
+    composeTestRule.setContent {
+      CompositionLocalProvider(LocalInspectionMode provides true) {
+        GroupSessionScreen(viewModel = viewModel, initialViewMode = GroupSessionViewMode.MAP)
+      }
+    }
+
+    openFilterSheet()
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(500)).performClick()
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.SHOW_SESSIONS).performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionMapTestTags.FILTER_RADIUS_CIRCLE, useUnmergedTree = true)
+        .assertExists()
+
+    openFilterSheet()
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(null)).performClick()
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.SHOW_SESSIONS).performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionMapTestTags.FILTER_RADIUS_CIRCLE, useUnmergedTree = true)
+        .assertDoesNotExist()
+  }
+
   /** Provides a GroupSessionScreen with an immediate fake activity-result registry. */
   private fun setScreenWithRegistry(registry: ActivityResultRegistry): GroupSessionsViewModel {
     val owner =
@@ -445,7 +477,7 @@ class GroupSessionScreenFiltersTest {
   }
 
   /** Creates a screen ViewModel backed only by local fakes. */
-  private fun newViewModel() =
+  private fun newViewModel(locationProvider: LocationProvider = LocationProvider { flowOf(null) }) =
       GroupSessionsViewModel(
           FakeAuthRepository(),
           EmptySessionsRepository(),
@@ -468,7 +500,7 @@ class GroupSessionScreenFiltersTest {
                 ): Result<Unit> =
                     Result.failure(UnsupportedOperationException("Not needed in this test"))
               },
-          locationProvider = LocationProvider { flowOf(null) },
+          locationProvider = locationProvider,
           campusLocationRepository =
               FakeCampusLocationRepository(
                   listOf(

@@ -27,4 +27,14 @@
     <!-- Angles, in degrees, used to draw the pin's outline. -->
     <integer name="map_quarter_turn_degrees">90</integer>
     <integer name="map_full_turn_degrees">360</integer>
+
+    <!-- Opacity of the fill inside the distance-filter radius circle. -->
+    <item name="map_filter_radius_fill_alpha" type="dimen" format="float">0.14</item>
+
+    <!-- Mean Earth radius in metres and minimum cosine of latitude for circle bounds. -->
+    <item name="map_earth_radius_meters" type="dimen" format="float">6371000.0</item>
+    <item name="map_min_cos_latitude" type="dimen" format="float">0.000001</item>
+
+    <!-- Center anchor fraction (0..1) for the filter-radius pill marker. -->
+    <item name="map_center_anchor" type="dimen" format="float">0.5</item>
 </resources>
