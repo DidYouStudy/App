@@ -2,7 +2,10 @@
 package com.android.sample.model.subject
 
 import com.android.sample.model.event.SubjectCatalogFirestoreMapper
+import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.DocumentReference
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
@@ -19,8 +22,9 @@ import kotlinx.coroutines.tasks.await
 /**
  * Firestore implementation of [TrackedSubjectRepository].
  *
- * Stores decisions under `users/{ownerId}/meta/trackedSubjects`. Local-first writes complete when
- * stored in the local cache, without waiting for server confirmation.
+ * Stores decisions, and the priority of each tracked subject, under
+ * `users/{ownerId}/meta/trackedSubjects`. Local-first writes complete when stored in the local
+ * cache, without waiting for server confirmation.
  */
 class TrackedSubjectRepositoryFirestore(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
@@ -57,8 +61,47 @@ class TrackedSubjectRepositoryFirestore(
 
     val encoded = TrackedSubjectFirestoreMapper.encode(decisions)
     val docRef = trackedSubjectsDoc(ownerId)
-    val acknowledgement = docRef.set(encoded, SetOptions.merge())
+    awaitLocalWrite(ownerId, docRef.set(encoded, SetOptions.merge()))
+  }
 
+  override suspend fun savePriority(
+      ownerId: String,
+      subject: String,
+      priority: Int,
+  ): Result<Unit> = execute {
+    validateOwner(ownerId)
+    requireArgument(subject.isNotBlank())
+    // Checked before any read or write, so an invalid level leaves storage untouched.
+    requireArgument(priority in SubjectPriority.RANGE)
+
+    val docRef = trackedSubjectsDoc(ownerId)
+    val decisions = TrackedSubjectFirestoreMapper.decode(readLocalFirst(docRef).data)
+    // Untracked and never-decided subjects have no priority; nothing is written for them.
+    requireArgument(decisions.isTracked(subject))
+
+    val encoded = TrackedSubjectFirestoreMapper.encodePriority(subject, SubjectPriority(priority))
+    awaitLocalWrite(ownerId, docRef.set(encoded, SetOptions.merge()))
+  }
+
+  /**
+   * Reads the tracked subjects document, preferring the local cache so the read also works offline.
+   *
+   * Falls back to the default source when the cache has no copy of the document yet.
+   */
+  private suspend fun readLocalFirst(docRef: DocumentReference): DocumentSnapshot =
+      try {
+        docRef.get(Source.CACHE).await()
+      } catch (e: FirebaseFirestoreException) {
+        docRef.get().await()
+      }
+
+  /**
+   * Waits until a merging write is stored in the local cache, without waiting for the server.
+   *
+   * @throws Exception the write's own failure if it was already rejected, or
+   *   [TrackedSubjectError.PERMISSION_DENIED] if the signed-in user changed meanwhile.
+   */
+  private suspend fun awaitLocalWrite(ownerId: String, acknowledgement: Task<Void>) {
     metaCollection(ownerId)
         .whereEqualTo(FieldPath.documentId(), "trackedSubjects")
         .get(Source.CACHE)
