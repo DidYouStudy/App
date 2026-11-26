@@ -5,9 +5,10 @@ import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Stores and observes feedback recorded for personal study sessions.
+ * Stores and observes feedback recorded for personal sessions.
  *
- * Only personal events are recorded for now. Part 2 adds the Firestore implementation with
+ * Feedback can be recorded for every event type. The caller (#77) and the user's preferences
+ * determine which event types can be timed. Part 2 adds the Firestore implementation with
  * local-first writes.
  */
 interface SessionFeedbackRepository {
@@ -21,6 +22,9 @@ interface SessionFeedbackRepository {
   /**
    * Starts a new interval, creating the feedback record if needed.
    *
+   * If the app is killed while an interval runs, nothing closes it. The caller (#77) is responsible
+   * for closing it on the next launch, for example at the planned end.
+   *
    * Returns [FeedbackError.INVALID_ARGUMENT] for a blank ID or an ID containing `/`, when the start
    * is before the previous end, or past [FeedbackLimits.MAX_INTERVALS]. Returns
    * [FeedbackError.ALREADY_STARTED] while an interval is running. A failed call changes nothing.
@@ -33,6 +37,10 @@ interface SessionFeedbackRepository {
 
   /**
    * Stops the currently running interval for an event.
+   *
+   * If the app was killed while the interval ran, the caller (#77) is responsible for closing it on
+   * the next launch. [stoppedAt] may be in the past in that case, as long as it is after the
+   * interval start.
    *
    * Returns [FeedbackError.INVALID_ARGUMENT] for a blank ID or an ID containing `/`, or when
    * [stoppedAt] is not after the interval start. Returns [FeedbackError.NOT_STARTED] when nothing
