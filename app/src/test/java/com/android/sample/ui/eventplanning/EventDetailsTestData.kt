@@ -37,6 +37,9 @@ internal fun sampleDisplay(
             EventTaskDisplay("Solve exercises 12, 13", false),
             EventTaskDisplay("Read chapter 3 of textbook", false),
         ),
+    isGroupSession: Boolean = false,
+    participants: List<EventMember> = emptyList(),
+    actions: EventDetailsActionSet = EventDetailsActionSet.EDIT_AND_DELETE,
 ) =
     EventDetailsDisplay(
         type = type,
@@ -47,6 +50,9 @@ internal fun sampleDisplay(
         location = location,
         description = description,
         tasks = tasks,
+        isGroupSession = isGroupSession,
+        participants = participants,
+        actions = actions,
     )
 
 /** Builds a [PersonalEvent] for tests; every test class goes through this single factory. */
