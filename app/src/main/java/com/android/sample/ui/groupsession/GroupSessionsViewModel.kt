@@ -46,7 +46,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -243,7 +245,7 @@ class GroupSessionsViewModel(
   private var campusLocationsByName: Map<String, CampusLocation> = emptyMap()
   /**
    * Profiles that have a username, kept until a refresh or a change of signed-in user. Opening a
-   * roster reads its members again.
+   * roster reads its members again, and returning to the screen reads the hosts again.
    */
   private val profilesByUserId = mutableMapOf<String, CachedProfile>()
   private val usernameLookupsInProgress = mutableSetOf<String>()
@@ -262,6 +264,7 @@ class GroupSessionsViewModel(
 
   init {
     refreshNowWhileObserved()
+    refreshHostsWhenObservedAgain()
     observeLocationWhileObserved()
     observeConnectivityWhileObserved()
     loadCampusLocations()
@@ -626,10 +629,30 @@ class GroupSessionsViewModel(
     }
   }
 
+  /**
+   * Reads the other hosts again each time the screen comes back, so their changed pictures and
+   * names show up. The first observation reads nothing: the session snapshots already load the
+   * hosts.
+   */
+  private fun refreshHostsWhenObservedAgain() {
+    viewModelScope.launch {
+      _uiState.subscriptionCount
+          .map { it > 0 }
+          .distinctUntilChanged()
+          .filter { it }
+          .drop(1)
+          .collect { otherHostIds(observedSessions).forEach(::fetchProfile) }
+    }
+  }
+
   /** Prefetches other hosts for the session cards without waiting for their profiles. */
   private fun lookupHostNames(sessions: List<GroupSession>) {
-    lookupUsernames(sessions.map { it.createdBy }.distinct().filter { it != currentUserId })
+    lookupUsernames(otherHostIds(sessions))
   }
+
+  /** The hosts of [sessions] whose profile the cards show: everyone but the signed-in user. */
+  private fun otherHostIds(sessions: List<GroupSession>): List<String> =
+      sessions.map { it.createdBy }.distinct().filter { it != currentUserId }
 
   /** Loads newly visible participants and reuses any usernames or requests shared with cards. */
   private fun loadParticipantNames() {

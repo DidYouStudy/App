@@ -1979,6 +1979,30 @@ class GroupSessionsViewModelTest {
     assertNull(viewModel.uiState.value.sessions.single().hostPictureUrl)
   }
 
+  /** Coming back to the screen reads other hosts again; the first observation adds no read. */
+  @Test
+  fun returningToTheScreenReadsOtherHostsAgain() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    profileRepository.enqueue(BOB, Result.success(UserProfile(BOB, "Bob", "old.jpg")))
+    profileRepository.enqueue(BOB, Result.success(UserProfile(BOB, "Bob", "new.jpg")))
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    emissions.emit(Result.success(listOf(session("hosted", BOB), session("own", ALICE))))
+    runCurrent()
+    val firstVisit = observe(viewModel)
+    runCurrent()
+    assertEquals(listOf(BOB), profileRepository.getProfileUserIds)
+
+    firstVisit.cancel()
+    runCurrent()
+    observe(viewModel)
+    runCurrent()
+
+    assertEquals(listOf(BOB, BOB), profileRepository.getProfileUserIds)
+    val hosted = viewModel.uiState.value.sessions.first { it.session.id == "hosted" }
+    assertEquals("new.jpg", hosted.hostPictureUrl)
+  }
+
   /** A session you created has no host picture URL, even once your own profile is cached. */
   @Test
   fun ownSessionCardHasNoHostPictureUrl() = runTest {
