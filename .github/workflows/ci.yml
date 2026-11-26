@@ -455,13 +455,15 @@ jobs:
             --connected-dir report/connected --run-url "$RUN_URL" --sha "$HEAD_SHA" > report.md
           cat report.md >> "$GITHUB_STEP_SUMMARY"
           pr="${{ github.event.pull_request.number }}"
-          existing=$(gh api "repos/$GITHUB_REPOSITORY/issues/$pr/comments?per_page=100" \
-            --jq '[.[] | select(.body | startswith("<!-- ci-report -->"))][0].id // empty')
-          if [ -n "$existing" ]; then
-            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$existing" -F body=@report.md
-          else
-            gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$pr/comments" -F body=@report.md
-          fi
+          # Editing a comment does not move it, so post a fresh one (always last in the
+          # discussion) and then delete the previous report(s). Posting first means a
+          # failed post never leaves the PR without a report.
+          old=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$pr/comments?per_page=100" \
+            --jq '.[] | select(.body | startswith("<!-- ci-report -->")) | .id')
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$pr/comments" -F body=@report.md
+          for id in $old; do
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/comments/$id"
+          done
 
   apk:
     name: Publish debug APK
