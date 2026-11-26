@@ -10,12 +10,7 @@ object TrackedSubjectRepositoryProvider {
   /** Returns the shared Firestore repository, creating it on first use. */
   @Synchronized
   fun getRepository(): TrackedSubjectRepository =
-      repository
-          ?: try {
-            TrackedSubjectRepositoryFirestore().also { repository = it }
-          } catch (e: Exception) {
-            InMemoryTrackedSubjectRepository().also { repository = it }
-          }
+      repository ?: TrackedSubjectRepositoryFirestore().also { repository = it }
 
   /** Replaces the shared repository; null makes the next call create a new default. */
   @VisibleForTesting

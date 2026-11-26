@@ -1209,6 +1209,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
             campusLocationRepository,
             groupSessionsRepository,
             preferencesRepository,
+            trackedSubjectRepository,
         )
 
     val viewModel = factory.create(EventPlanningViewModel::class.java)
@@ -1226,6 +1227,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
             campusLocationRepository,
             groupSessionsRepository,
             preferencesRepository,
+            trackedSubjectRepository,
         )
 
     val exception =
