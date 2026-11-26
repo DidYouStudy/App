@@ -16,6 +16,8 @@ import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.location.CampusLocationRepository
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.UserPreferences
+import com.android.sample.model.subject.SubjectDecisions
+import com.android.sample.model.subject.TrackedSubjectRepository
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -24,6 +26,7 @@ import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -64,6 +67,15 @@ abstract class EventPlanningViewModelTestBase {
     }
   }
 
+  /** Stubbed to return no decisions by default. */
+  protected val trackedSubjectRepository: TrackedSubjectRepository by lazy {
+    mock(TrackedSubjectRepository::class.java).also {
+      runBlocking {
+        `when`(it.observeDecisions(any())).thenReturn(flowOf(Result.success(SubjectDecisions())))
+      }
+    }
+  }
+
   protected val zone = ZoneId.of("Europe/Berlin")
   protected val now = Instant.parse("2026-10-27T06:00:00Z")
   protected val clock = Clock.fixed(now, zone)
@@ -98,6 +110,7 @@ abstract class EventPlanningViewModelTestBase {
       groupSessionsRepo: GroupSessionsRepository = groupSessionsRepository,
       clk: Clock = clock,
       prefsRepo: PreferencesRepository = preferencesRepository,
+      trackedSubjectRepo: TrackedSubjectRepository = trackedSubjectRepository,
       connectivityObserver: ConnectivityObserver? = null,
   ) =
       EventPlanningViewModel(
@@ -107,6 +120,7 @@ abstract class EventPlanningViewModelTestBase {
           groupSessionsRepo,
           clk,
           prefsRepo,
+          trackedSubjectRepo,
           connectivityObserver,
       )
 
