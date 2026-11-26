@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
 import android.Manifest
@@ -23,6 +24,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.core.app.ActivityOptionsCompat
 import androidx.test.core.app.ApplicationProvider
+import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
 import com.android.sample.model.event.EventType
@@ -348,10 +350,16 @@ class GroupSessionScreenFiltersTest {
     val viewModel = setScreenWithRegistry(registry)
 
     openFilterSheet()
+    val appContext = ApplicationProvider.getApplicationContext<Application>()
+    val rationaleHint =
+        appContext.getString(R.string.group_session_filter_location_permission_rationale)
+    val settingsHint = appContext.getString(R.string.group_session_filter_precise_denied_hint)
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(500)).performClick()
     composeTestRule
         .onNodeWithTag(GroupSessionFilterSheetTestTags.PERMISSION_RATIONALE)
         .assertIsDisplayed()
+    composeTestRule.onNodeWithText(rationaleHint).assertIsDisplayed()
+    composeTestRule.onNodeWithText(settingsHint).assertDoesNotExist()
 
     grantFineLocationPermission()
     registry.dispatchGrantedResult()
@@ -377,6 +385,15 @@ class GroupSessionScreenFiltersTest {
 
     openFilterSheet()
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(250)).performClick()
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.APPROXIMATE_LOCATION_CONFIRM)
+        .performClick()
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.PRECISE_SETTINGS_DISMISS)
+        .performClick()
+    composeTestRule.waitForIdle()
 
     assertEquals(
         listOf(
@@ -389,6 +406,136 @@ class GroupSessionScreenFiltersTest {
         .onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(null))
         .assertIsSelected()
     assertEquals(null, viewModel.uiState.value.selectedRadiusMeters)
+  }
+
+  /**
+   * Choosing approximate-only location shows an in-app explanation, and dismissing it launches the
+   * second permission request so upgrading to precise applies the pending radius.
+   */
+  @Test
+  fun approximateLocationShowsExplanationThenUpgradesToPreciseWhenConfirmed() {
+    val registry = DeferredPermissionResultRegistry()
+    val viewModel = setScreenWithRegistry(registry)
+
+    openFilterSheet()
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(500)).performClick()
+    assertEquals(1, registry.launchCount)
+
+    registry.dispatchResultMap(
+        mapOf(
+            Manifest.permission.ACCESS_FINE_LOCATION to false,
+            Manifest.permission.ACCESS_COARSE_LOCATION to true,
+        )
+    )
+    composeTestRule.waitForIdle()
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.APPROXIMATE_LOCATION_DIALOG)
+        .assertIsDisplayed()
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.APPROXIMATE_LOCATION_CONFIRM)
+        .performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.APPROXIMATE_LOCATION_DIALOG)
+        .assertDoesNotExist()
+    assertEquals(2, registry.launchCount)
+
+    grantFineLocationPermission()
+    registry.dispatchGrantedResult()
+    composeTestRule.waitForIdle()
+
+    assertEquals(500, viewModel.uiState.value.selectedRadiusMeters)
+  }
+
+  /**
+   * Declining the second precise-location prompt clears the pending radius and does not re-open the
+   * explanation dialog in a loop.
+   */
+  @Test
+  fun approximateLocationTwiceDoesNotLoopExplanationDialog() {
+    val registry = DeferredPermissionResultRegistry()
+    val viewModel = setScreenWithRegistry(registry)
+
+    openFilterSheet()
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(250)).performClick()
+    registry.dispatchResultMap(
+        mapOf(
+            Manifest.permission.ACCESS_FINE_LOCATION to false,
+            Manifest.permission.ACCESS_COARSE_LOCATION to true,
+        )
+    )
+    composeTestRule.waitForIdle()
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.APPROXIMATE_LOCATION_CONFIRM)
+        .performClick()
+    composeTestRule.waitForIdle()
+    assertEquals(2, registry.launchCount)
+
+    registry.dispatchResultMap(
+        mapOf(
+            Manifest.permission.ACCESS_FINE_LOCATION to false,
+            Manifest.permission.ACCESS_COARSE_LOCATION to true,
+        )
+    )
+    composeTestRule.waitForIdle()
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.APPROXIMATE_LOCATION_DIALOG)
+        .assertDoesNotExist()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.PRECISE_SETTINGS_DIALOG)
+        .assertIsDisplayed()
+    assertEquals(null, viewModel.uiState.value.selectedRadiusMeters)
+
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.PRECISE_SETTINGS_DISMISS)
+        .performClick()
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.PRECISE_SETTINGS_DIALOG)
+        .assertDoesNotExist()
+
+    // Tapping a distance chip again does not re-launch the system prompt and shows the Settings
+    // dialog + precise-location message.
+    val preciseHint =
+        ApplicationProvider.getApplicationContext<Application>()
+            .getString(R.string.group_session_filter_precise_denied_hint)
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(500)).performClick()
+    composeTestRule.waitForIdle()
+    assertEquals(2, registry.launchCount)
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.PRECISE_SETTINGS_DIALOG)
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.PRECISE_SETTINGS_DISMISS)
+        .performClick()
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.PERMISSION_RATIONALE)
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithText(preciseHint).assertIsDisplayed()
+
+    // Clicking Any hides the message, and retrying a distance filter shows the Settings dialog
+    // and precise-location message again.
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(null)).performClick()
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithTag(GroupSessionFilterSheetTestTags.PERMISSION_RATIONALE)
+        .assertDoesNotExist()
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(500)).performClick()
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.PRECISE_SETTINGS_DIALOG)
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.PRECISE_SETTINGS_DISMISS)
+        .performClick()
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithText(preciseHint).assertIsDisplayed()
   }
 
   /** Preserves distance, zone, and Lab selections through saved-state restoration. */
@@ -565,6 +712,8 @@ class GroupSessionScreenFiltersTest {
 
   private class DeferredPermissionResultRegistry : ActivityResultRegistry() {
     private var requestCode: Int? = null
+    var launchCount: Int = 0
+      private set
 
     override fun <I, O> onLaunch(
         requestCode: Int,
@@ -572,17 +721,21 @@ class GroupSessionScreenFiltersTest {
         input: I,
         options: ActivityOptionsCompat?,
     ) {
+      launchCount += 1
       this.requestCode = requestCode
     }
 
-    fun dispatchGrantedResult() {
+    fun dispatchResultMap(result: Map<String, Boolean>) {
       val permissionRequestCode = checkNotNull(requestCode)
-      dispatchResult(
-          permissionRequestCode,
+      dispatchResult(permissionRequestCode, result)
+    }
+
+    fun dispatchGrantedResult() {
+      dispatchResultMap(
           mapOf(
               Manifest.permission.ACCESS_FINE_LOCATION to true,
               Manifest.permission.ACCESS_COARSE_LOCATION to false,
-          ),
+          )
       )
     }
   }

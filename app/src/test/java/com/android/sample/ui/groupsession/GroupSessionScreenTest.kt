@@ -1219,6 +1219,229 @@ class GroupSessionScreenTest {
   }
 
   @Test
+  fun center_location_button_in_denied_twice_shows_settings_dialog() {
+    var launchCount = 0
+    val registry =
+        object : ActivityResultRegistry() {
+          override fun <I, O> onLaunch(
+              requestCode: Int,
+              contract: ActivityResultContract<I, O>,
+              input: I,
+              options: ActivityOptionsCompat?,
+          ) {
+            launchCount += 1
+            dispatchResult(
+                requestCode,
+                mapOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION to false,
+                    Manifest.permission.ACCESS_COARSE_LOCATION to false,
+                ),
+            )
+          }
+        }
+    val owner =
+        object : ActivityResultRegistryOwner {
+          override val activityResultRegistry = registry
+        }
+    val viewModel = createViewModel(locationProvider = LocationProvider { flowOf(null) })
+    composeTestRule.setContent {
+      CompositionLocalProvider(
+          LocalInspectionMode provides true,
+          LocalActivityResultRegistryOwner provides owner,
+      ) {
+        GroupSessionScreen(viewModel = viewModel, initialViewMode = GroupSessionViewMode.MAP)
+      }
+    }
+    composeTestRule.waitForIdle()
+
+    // Refuse twice so the state machine reaches DENIED_TWICE, then dismiss the Settings dialog.
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.APPROXIMATE_LOCATION_CONFIRM)
+        .performClick()
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.PRECISE_SETTINGS_DISMISS)
+        .performClick()
+    composeTestRule.waitForIdle()
+    assertEquals(2, launchCount)
+
+    // Clicking recenter in DENIED_TWICE shows the Settings dialog directly without re-prompting.
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.CENTER_LOCATION_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+    assertEquals(2, launchCount)
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.PRECISE_SETTINGS_DIALOG)
+        .assertIsDisplayed()
+  }
+
+  @Test
+  fun open_settings_from_second_refusal_probes_once_on_resume_and_requests_fine_only_when_coarse_granted() {
+    val application = ApplicationProvider.getApplicationContext<Application>()
+    shadowOf(application).grantPermissions(Manifest.permission.ACCESS_COARSE_LOCATION)
+    val launchedArrays = mutableListOf<List<String>>()
+    val registry =
+        object : ActivityResultRegistry() {
+          override fun <I, O> onLaunch(
+              requestCode: Int,
+              contract: ActivityResultContract<I, O>,
+              input: I,
+              options: ActivityOptionsCompat?,
+          ) {
+            launchedArrays.add((input as Array<*>).map { it as String })
+            dispatchResult(
+                requestCode,
+                mapOf(Manifest.permission.ACCESS_FINE_LOCATION to false),
+            )
+          }
+        }
+    val owner =
+        object : ActivityResultRegistryOwner {
+          override val activityResultRegistry = registry
+        }
+    val lifecycleOwner =
+        object : LifecycleOwner {
+          val lifecycleRegistry = LifecycleRegistry(this)
+          override val lifecycle: Lifecycle = lifecycleRegistry
+        }
+    lifecycleOwner.lifecycleRegistry.currentState = Lifecycle.State.RESUMED
+    val viewModel = createViewModel(locationProvider = LocationProvider { flowOf(null) })
+    composeTestRule.setContent {
+      CompositionLocalProvider(
+          LocalInspectionMode provides true,
+          LocalActivityResultRegistryOwner provides owner,
+          LocalLifecycleOwner provides lifecycleOwner,
+      ) {
+        GroupSessionScreen(viewModel = viewModel, initialViewMode = GroupSessionViewMode.MAP)
+      }
+    }
+    composeTestRule.waitForIdle()
+
+    // Coarse already granted -> upgrade prompt asks only for ACCESS_FINE_LOCATION.
+    assertEquals(listOf(listOf(Manifest.permission.ACCESS_FINE_LOCATION)), launchedArrays)
+
+    // Refuse twice -> Settings dialog appears -> tap "Open Settings".
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.APPROXIMATE_LOCATION_CONFIRM)
+        .performClick()
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.PRECISE_SETTINGS_OPEN).performClick()
+    composeTestRule.waitForIdle()
+    assertEquals(2, launchedArrays.size)
+
+    // Returning from Settings without fine granted launches one probe without re-opening dialog.
+    composeTestRule.runOnUiThread {
+      lifecycleOwner.lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+      lifecycleOwner.lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+    }
+    composeTestRule.waitForIdle()
+    assertEquals(3, launchedArrays.size)
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.PRECISE_SETTINGS_DIALOG)
+        .assertDoesNotExist()
+  }
+
+  @Test
+  fun map_entry_does_not_auto_prompt_after_second_refusal_and_resets_on_settings_grant() {
+    var launchCount = 0
+    val registry =
+        object : ActivityResultRegistry() {
+          override fun <I, O> onLaunch(
+              requestCode: Int,
+              contract: ActivityResultContract<I, O>,
+              input: I,
+              options: ActivityOptionsCompat?,
+          ) {
+            launchCount += 1
+            dispatchResult(
+                requestCode,
+                mapOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION to false,
+                    Manifest.permission.ACCESS_COARSE_LOCATION to false,
+                ),
+            )
+          }
+        }
+    val owner =
+        object : ActivityResultRegistryOwner {
+          override val activityResultRegistry = registry
+        }
+    val lifecycleOwner =
+        object : LifecycleOwner {
+          val lifecycleRegistry = LifecycleRegistry(this)
+          override val lifecycle: Lifecycle = lifecycleRegistry
+        }
+    lifecycleOwner.lifecycleRegistry.currentState = Lifecycle.State.RESUMED
+    var collectionCount = 0
+    val viewModel =
+        createViewModel(
+            locationProvider =
+                LocationProvider {
+                  collectionCount++
+                  flowOf(Location(46.52, 6.56))
+                }
+        )
+    composeTestRule.setContent {
+      CompositionLocalProvider(
+          LocalInspectionMode provides true,
+          LocalActivityResultRegistryOwner provides owner,
+          LocalLifecycleOwner provides lifecycleOwner,
+      ) {
+        GroupSessionScreen(viewModel = viewModel, initialViewMode = GroupSessionViewMode.MAP)
+      }
+    }
+    composeTestRule.waitForIdle()
+    assertEquals(1, launchCount)
+
+    // First refusal shows explanation; confirming triggers the second system prompt.
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.APPROXIMATE_LOCATION_CONFIRM)
+        .performClick()
+    composeTestRule.waitForIdle()
+    assertEquals(2, launchCount)
+
+    // Second refusal shows the Settings fallback dialog and persists DENIED_TWICE.
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.PRECISE_SETTINGS_DISMISS)
+        .performClick()
+    composeTestRule.waitForIdle()
+
+    // Switch back to LIST and return to MAP: should not auto-prompt again.
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.LIST_VIEW_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.MAP_VIEW_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+    assertEquals(2, launchCount)
+
+    // Switch to LIST, grant precise location in Settings, and resume: should refresh location
+    // and transition the persisted state to GRANTED.
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.LIST_VIEW_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+    val collectionsBeforeResume = collectionCount
+    val application = ApplicationProvider.getApplicationContext<Application>()
+    shadowOf(application).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+    composeTestRule.runOnUiThread {
+      lifecycleOwner.lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+      lifecycleOwner.lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+    }
+    composeTestRule.waitForIdle()
+    assertTrue(collectionCount > collectionsBeforeResume)
+
+    // Switching to MAP now shows the user location marker without any popups.
+    composeTestRule.onNodeWithTag(GroupSessionScreenTestTags.MAP_VIEW_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithTag(GroupSessionMapTestTags.USER_LOCATION_MARKER, useUnmergedTree = true)
+        .assertExists()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.APPROXIMATE_LOCATION_DIALOG)
+        .assertDoesNotExist()
+    composeTestRule
+        .onNodeWithTag(GroupSessionScreenTestTags.PRECISE_SETTINGS_DIALOG)
+        .assertDoesNotExist()
+    assertEquals(2, launchCount)
+  }
+
+  @Test
   fun onResume_refreshes_location_permission_when_revoked_and_granted() {
     val application = ApplicationProvider.getApplicationContext<Application>()
     shadowOf(application).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -1230,10 +1453,10 @@ class GroupSessionScreenTest {
     }
     val lifecycleOwner =
         object : LifecycleOwner {
-          val registry = LifecycleRegistry(this)
-          override val lifecycle: Lifecycle = registry
+          val lifecycleRegistry = LifecycleRegistry(this)
+          override val lifecycle: Lifecycle = lifecycleRegistry
         }
-    lifecycleOwner.registry.currentState = Lifecycle.State.RESUMED
+    lifecycleOwner.lifecycleRegistry.currentState = Lifecycle.State.RESUMED
     val viewModel = createViewModel(locationProvider = trackingProvider)
 
     composeTestRule.setContent {
@@ -1252,8 +1475,8 @@ class GroupSessionScreenTest {
     // Simulate revoking permission in system Settings and returning to the screen.
     shadowOf(application).denyPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
     composeTestRule.runOnUiThread {
-      lifecycleOwner.registry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-      lifecycleOwner.registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+      lifecycleOwner.lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+      lifecycleOwner.lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
     }
     composeTestRule.waitForIdle()
     composeTestRule
@@ -1264,8 +1487,8 @@ class GroupSessionScreenTest {
     val countBeforeGrant = collectionCount
     shadowOf(application).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
     composeTestRule.runOnUiThread {
-      lifecycleOwner.registry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-      lifecycleOwner.registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+      lifecycleOwner.lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+      lifecycleOwner.lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
     }
     composeTestRule.waitForIdle()
     composeTestRule
