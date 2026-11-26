@@ -1,6 +1,8 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.sample.model.studylog
 
+import com.android.sample.model.event.EventTask
+import com.android.sample.model.event.EventTextLimits
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 
@@ -73,14 +75,17 @@ interface StudyLogRepository {
   /**
    * Replaces the task snapshot for an event, including task text and completion times.
    *
+   * The caller (#77) takes the snapshot when the first interval starts, so the log always has the
+   * task list, and again at each stop, so completedAt times are up to date.
+   *
    * Returns [StudyLogError.INVALID_ARGUMENT] for invalid IDs, more than [StudyLogLimits.MAX_TASKS]
-   * tasks, or task text exceeding [com.android.sample.model.event.EventTextLimits.TASK]. An empty
-   * list on a missing log creates nothing. A failed call changes nothing.
+   * tasks, or task text exceeding [EventTextLimits.TASK]. An empty list on a missing log creates
+   * nothing. A failed call changes nothing.
    */
   suspend fun saveTasks(
       ownerId: String,
       target: StudyLogTarget,
-      tasks: List<com.android.sample.model.event.EventTask>,
+      tasks: List<EventTask>,
   ): Result<Unit>
 
   /**

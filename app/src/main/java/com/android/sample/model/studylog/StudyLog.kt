@@ -3,9 +3,10 @@ package com.android.sample.model.studylog
 
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
+import java.time.Duration
 import java.time.Instant
 
-/** study log recorded for one student's personal session. */
+/** Study log recorded for one student's personal session. */
 data class StudyLog(
     /** The event to which this study log belongs. */
     val eventId: String,
@@ -30,9 +31,8 @@ data class StudyLog(
   /** Returns the total number of whole seconds in closed intervals. */
   val studiedSeconds: Long
     get() = intervals.sumOf { interval ->
-      interval.endedAt?.let { endedAt ->
-        java.time.Duration.between(interval.startedAt, endedAt).seconds
-      } ?: 0L
+      interval.endedAt?.let { endedAt -> Duration.between(interval.startedAt, endedAt).seconds }
+          ?: 0L
     }
 
   /** Returns whether the last interval is still open. */

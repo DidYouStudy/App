@@ -13,7 +13,7 @@ enum class StudyLogError {
   PERMISSION_DENIED,
   /** Stored study log data is invalid. */
   INVALID_DATA,
-  /** study log storage failed. */
+  /** Study log storage failed. */
   STORAGE_FAILURE,
   /** An unexpected failure occurred. */
   UNKNOWN,

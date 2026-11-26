@@ -24,6 +24,7 @@ class InMemoryStudyLogRepository : StudyLogRepository {
               .map { records -> Result.success(records[StudyLogKey(ownerId, eventId)]) }
               .distinctUntilChanged()
 
+  /** Observes study logs planned in a period. */
   override fun observeLogs(
       ownerId: String,
       from: Instant,
@@ -127,6 +128,7 @@ class InMemoryStudyLogRepository : StudyLogRepository {
     }
   }
 
+  /** Saves the task snapshot for a personal event. */
   override suspend fun saveTasks(
       ownerId: String,
       target: StudyLogTarget,

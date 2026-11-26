@@ -2,6 +2,7 @@
 package com.android.sample.model.studylog
 
 import com.android.sample.model.event.EventType
+import java.time.Instant
 
 /** Event metadata required when creating study log for an event. */
 data class StudyLogTarget(
@@ -12,9 +13,9 @@ data class StudyLogTarget(
     /** The event subject, if any. */
     val subject: String?,
     /** The planned start time frozen into a newly created study log. */
-    val plannedStart: java.time.Instant,
+    val plannedStart: Instant,
     /** The planned end time frozen into a newly created study log. */
-    val plannedEnd: java.time.Instant,
+    val plannedEnd: Instant,
 ) {
   init {
     require(plannedEnd.isAfter(plannedStart)) { "Planned end must be after planned start" }
