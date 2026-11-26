@@ -33,6 +33,7 @@ import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
 import com.android.sample.model.preferences.OnboardingStore
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.UserPreferences
+import com.android.sample.model.profile.ProfilePictureRepository
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.UserProfile
 import com.android.sample.testing.RepositoryOverridesRule
@@ -777,6 +778,7 @@ private class NavigationTestEnvironment(uid: String) {
   val auth = FakeAuthRepository(user)
   val preferences = FakePreferencesRepository(UserPreferences(userId = user.uid))
   val profile = FakeProfileRepository()
+  val profilePicture = FakeProfilePictureRepository()
   val events = InMemoryEventsRepository()
   val groupSessions = InMemoryGroupSessionsRepository()
   val onboarding = FakeOnboardingStore(mapOf(uid to true))
@@ -785,6 +787,7 @@ private class NavigationTestEnvironment(uid: String) {
           auth = auth,
           preferences = preferences,
           profile = profile,
+          profilePicture = profilePicture,
           events = events,
           groupSessions = groupSessions,
           onboardingStore = onboarding,
@@ -804,6 +807,7 @@ private fun signedInRepositories(
       auth = FakeAuthRepository(user),
       preferences = FakePreferencesRepository(UserPreferences(userId = user.uid)),
       profile = FakeProfileRepository(),
+      profilePicture = FakeProfilePictureRepository(),
       events = events,
       groupSessions = InMemoryGroupSessionsRepository(),
       onboardingStore = FakeOnboardingStore(mapOf(uid to true)),
@@ -820,6 +824,7 @@ private fun signedInWithoutPreferencesRepositories(uid: String): RepositoryOverr
       auth = FakeAuthRepository(user),
       preferences = FakePreferencesRepository(null),
       profile = FakeProfileRepository(),
+      profilePicture = FakeProfilePictureRepository(),
       events = InMemoryEventsRepository(),
       groupSessions = InMemoryGroupSessionsRepository(),
       onboardingStore = FakeOnboardingStore(mapOf(uid to false)),
@@ -836,6 +841,7 @@ private fun signedInWithoutOnboardingFlagRepositories(uid: String): RepositoryOv
       auth = FakeAuthRepository(user),
       preferences = FakePreferencesRepository(UserPreferences(userId = user.uid)),
       profile = FakeProfileRepository(),
+      profilePicture = FakeProfilePictureRepository(),
       events = InMemoryEventsRepository(),
       groupSessions = InMemoryGroupSessionsRepository(),
       onboardingStore = FakeOnboardingStore(),
@@ -848,6 +854,7 @@ private fun signedOutRepositories(): RepositoryOverridesRule {
       auth = FakeAuthRepository(null),
       preferences = FakePreferencesRepository(null),
       profile = FakeProfileRepository(),
+      profilePicture = FakeProfilePictureRepository(),
       events = InMemoryEventsRepository(),
       groupSessions = InMemoryGroupSessionsRepository(),
       onboardingStore = FakeOnboardingStore(),
@@ -891,6 +898,15 @@ private class FakePreferencesRepository(
 
   override suspend fun savePreferences(preferences: UserPreferences): Result<Unit> =
       Result.success(Unit)
+}
+
+/** Picture repository for tests that never change the profile picture. */
+private class FakeProfilePictureRepository : ProfilePictureRepository {
+  override suspend fun uploadProfilePicture(
+      userId: String,
+      jpegBytes: ByteArray,
+      currentUrl: String?,
+  ): Result<String> = Result.failure(UnsupportedOperationException("Not needed in this test"))
 }
 
 private class FakeProfileRepository : ProfileRepository {
