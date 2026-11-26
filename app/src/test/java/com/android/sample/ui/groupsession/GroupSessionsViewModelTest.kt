@@ -2003,6 +2003,36 @@ class GroupSessionsViewModelTest {
     assertEquals("new.jpg", hosted.hostPictureUrl)
   }
 
+  /** If the screen is reopened while a host's profile is still loading, it is not read twice. */
+  @Test
+  fun reopeningTheScreenDoesNotReadALoadingHostTwice() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val pending = CompletableDeferred<Result<UserProfile?>>()
+    profileRepository.hold(BOB, pending)
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    emissions.emit(Result.success(listOf(session("hosted", BOB))))
+    runCurrent()
+    val firstVisit = observe(viewModel)
+    runCurrent()
+    firstVisit.cancel()
+    runCurrent()
+
+    val secondVisit = observe(viewModel)
+    runCurrent()
+    assertEquals(listOf(BOB), profileRepository.getProfileUserIds)
+
+    // The running read still applies, and once it has finished, reopening reads the host again.
+    pending.complete(Result.success(UserProfile(BOB, "Bob", "bob.jpg")))
+    runCurrent()
+    assertEquals("bob.jpg", viewModel.uiState.value.sessions.single().hostPictureUrl)
+    secondVisit.cancel()
+    runCurrent()
+    observe(viewModel)
+    runCurrent()
+    assertEquals(listOf(BOB, BOB), profileRepository.getProfileUserIds)
+  }
+
   /** A session you created has no host picture URL, even once your own profile is cached. */
   @Test
   fun ownSessionCardHasNoHostPictureUrl() = runTest {
