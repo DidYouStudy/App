@@ -666,12 +666,15 @@ class GroupSessionsViewModel(
 
   /** Schedules one profile read per uncached user with no lookup already in progress. */
   private fun lookupUsernames(userIds: List<String>) {
-    if (currentUserId == null) return
     userIds.filterNot { it in profilesByUserId }.forEach(::fetchProfile)
   }
 
-  /** Reads one profile, cached or not, unless a read for that user is already running. */
+  /**
+   * Reads one profile, cached or not, unless nobody is signed in or a read for that user is already
+   * running.
+   */
   private fun fetchProfile(userId: String) {
+    if (currentUserId == null) return
     if (!usernameLookupsInProgress.add(userId)) return
     val requestGeneration = authGeneration
     viewModelScope.launch { resolveUsername(userId, requestGeneration) }
