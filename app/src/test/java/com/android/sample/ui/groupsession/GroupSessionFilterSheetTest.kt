@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
 import android.Manifest
@@ -51,6 +52,7 @@ class GroupSessionFilterSheetTest {
       matchingSessionCount: Int = 4,
       zones: List<String> = availableZones,
       hasLocationPermission: Boolean = true,
+      preciseLocationDeniedInSettings: Boolean = false,
       onRadiusSelected: (Int?) -> Unit = {},
       onZonesSelected: (Set<String>) -> Unit = {},
       onShowLabsChanged: (Boolean) -> Unit = {},
@@ -67,6 +69,7 @@ class GroupSessionFilterSheetTest {
           availableZones = zones,
           matchingSessionCount = matchingSessionCount,
           hasLocationPermission = hasLocationPermission,
+          preciseLocationDeniedInSettings = preciseLocationDeniedInSettings,
           onRadiusSelected = onRadiusSelected,
           onZonesSelected = onZonesSelected,
           onShowLabsChanged = onShowLabsChanged,
@@ -428,10 +431,13 @@ class GroupSessionFilterSheetTest {
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(250)).performClick()
 
     composeTestRule
+        .onNodeWithText("Precise location is needed to filter by distance.")
+        .assertIsDisplayed()
+    composeTestRule
         .onNodeWithText(
             "Precise location is disabled. Enable it in Settings to filter by distance."
         )
-        .assertIsDisplayed()
+        .assertDoesNotExist()
     composeTestRule.runOnIdle {
       assertEquals(listOf(250), permissionNeeded)
       assertEquals(emptyList<Int?>(), selected)
@@ -452,10 +458,13 @@ class GroupSessionFilterSheetTest {
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(500)).performClick()
 
     composeTestRule
+        .onNodeWithText("Precise location is needed to filter by distance.")
+        .assertIsDisplayed()
+    composeTestRule
         .onNodeWithText(
             "Precise location is disabled. Enable it in Settings to filter by distance."
         )
-        .assertIsDisplayed()
+        .assertDoesNotExist()
     composeTestRule.runOnIdle {
       assertEquals(listOf(500), permissionNeeded)
       assertEquals(emptyList<Int?>(), selected)
@@ -476,14 +485,37 @@ class GroupSessionFilterSheetTest {
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(1000)).performClick()
 
     composeTestRule
+        .onNodeWithText("Precise location is needed to filter by distance.")
+        .assertIsDisplayed()
+    composeTestRule
         .onNodeWithText(
             "Precise location is disabled. Enable it in Settings to filter by distance."
         )
-        .assertIsDisplayed()
+        .assertDoesNotExist()
     composeTestRule.runOnIdle {
       assertEquals(listOf(1000), permissionNeeded)
       assertEquals(emptyList<Int?>(), selected)
     }
+  }
+
+  /** Shows the Settings-specific hint only once precise location is denied in Settings. */
+  @Test
+  fun distanceWithoutPermissionWhenDeniedInSettingsShowsSettingsHint() {
+    setSheet(
+        hasLocationPermission = false,
+        preciseLocationDeniedInSettings = true,
+    )
+
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(500)).performClick()
+
+    composeTestRule
+        .onNodeWithText(
+            "Precise location is disabled. Enable it in Settings to filter by distance."
+        )
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText("Precise location is needed to filter by distance.")
+        .assertDoesNotExist()
   }
 
   /** Selecting Any clears the radius even when location access is unavailable. */

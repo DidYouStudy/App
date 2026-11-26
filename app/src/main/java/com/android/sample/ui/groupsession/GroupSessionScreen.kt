@@ -554,6 +554,7 @@ private fun GroupSessionFilterModal(
         availableZones = uiState.availableZones,
         matchingSessionCount = uiState.sessions.size,
         hasLocationPermission = hasLocationPermission,
+        preciseLocationDeniedInSettings = uiState.isPreciseLocationDeniedInSettings,
         onRadiusSelected = viewModel::onRadiusFilterSelected,
         onZonesSelected = viewModel::onZonesFilterSelected,
         onShowLabsChanged = viewModel::onShowLabRoomTypeChange,

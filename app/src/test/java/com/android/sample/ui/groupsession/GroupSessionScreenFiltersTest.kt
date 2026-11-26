@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
 import android.Manifest
@@ -349,10 +350,16 @@ class GroupSessionScreenFiltersTest {
     val viewModel = setScreenWithRegistry(registry)
 
     openFilterSheet()
+    val appContext = ApplicationProvider.getApplicationContext<Application>()
+    val rationaleHint =
+        appContext.getString(R.string.group_session_filter_location_permission_rationale)
+    val settingsHint = appContext.getString(R.string.group_session_filter_precise_denied_hint)
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(500)).performClick()
     composeTestRule
         .onNodeWithTag(GroupSessionFilterSheetTestTags.PERMISSION_RATIONALE)
         .assertIsDisplayed()
+    composeTestRule.onNodeWithText(rationaleHint).assertIsDisplayed()
+    composeTestRule.onNodeWithText(settingsHint).assertDoesNotExist()
 
     grantFineLocationPermission()
     registry.dispatchGrantedResult()

@@ -208,6 +208,10 @@ data class GroupSessionsUiState(
   /** Whether precise location (`ACCESS_FINE_LOCATION`) is currently granted. */
   val hasPreciseLocationPermission: Boolean
     get() = preciseLocationState == PreciseLocationState.GRANTED
+
+  /** Whether precise location has been refused twice and must be enabled in system Settings. */
+  val isPreciseLocationDeniedInSettings: Boolean
+    get() = preciseLocationState == PreciseLocationState.DENIED_TWICE
 }
 
 /**
