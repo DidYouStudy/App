@@ -92,6 +92,14 @@ class SubjectDecisionsTest {
     assertNull(d.priorityOf("Chemistry"))
   }
 
+  /** A null subject has no priority, even when other subjects have one. */
+  @Test
+  fun priorityOf_returnsNullForNullSubject() {
+    val d = SubjectDecisions(mapOf(withPriority("Analysis I", true, SubjectPriority(4))))
+
+    assertNull(d.priorityOf(null))
+  }
+
   /** An untracked subject keeps its saved priority, so tracking it again restores the rating. */
   @Test
   fun priorityOf_isKeptForUntrackedSubject() {

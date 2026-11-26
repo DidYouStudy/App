@@ -50,14 +50,16 @@ data class SubjectDecisions(
   }
 
   /**
-   * Returns the saved priority of [subject], or null if none was saved or no decision exists.
+   * Returns the saved priority of [subject], or null if [subject] is null, none was saved, or no
+   * decision exists.
    *
    * Subject comparison ignores case and surrounding whitespace. The priority is returned even for
    * an untracked subject; callers that only show priorities for tracked subjects should combine it
    * with [isTracked].
    */
-  fun priorityOf(subject: String): SubjectPriority? =
-      decisions[SubjectCatalogFirestoreMapper.key(subject)]?.priority
+  fun priorityOf(subject: String?): SubjectPriority? = subject?.let {
+    decisions[SubjectCatalogFirestoreMapper.key(it)]?.priority
+  }
 
   /** Number of subjects the student marked as tracked. */
   val trackedCount: Int
