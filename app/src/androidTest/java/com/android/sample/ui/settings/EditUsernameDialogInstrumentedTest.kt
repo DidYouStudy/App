@@ -68,7 +68,14 @@ class EditUsernameDialogInstrumentedTest {
   @Before
   fun setUp() {
     // Created once: building it inside setContent would make a new ViewModel on each recomposition.
-    val viewModel = SettingsViewModel(SignedInAuthRepository(), profileRepository)
+    // The picture dependencies are never called here: these tests only edit the username.
+    val viewModel =
+        SettingsViewModel(
+            SignedInAuthRepository(),
+            profileRepository,
+            { _, _, _ -> Result.failure(UnsupportedOperationException()) },
+            { Result.failure(UnsupportedOperationException()) },
+        )
     composeTestRule.setContent { SettingsScreen(viewModel = viewModel) }
   }
 
