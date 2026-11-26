@@ -8,7 +8,6 @@ package com.android.sample.ui.groupsession
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.content.res.Configuration
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -104,9 +103,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
-import com.android.sample.model.event.EventDetails
-import com.android.sample.model.event.EventType
-import com.android.sample.model.event.GroupSession
 import com.android.sample.ui.eventplanning.EventKind
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
@@ -116,7 +112,6 @@ import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.sharedComponents.AddButton
 import com.android.sample.ui.sharedComponents.EventTypeBadge
 import com.android.sample.ui.sharedComponents.MainTopAppBar
-import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.color
@@ -1234,36 +1229,6 @@ private fun sessionTimeLabel(instant: Instant): String =
 @Composable
 fun GroupSessionScreenPreview() {
   GroupSessionScreen()
-}
-
-/** Previews another student's session card, with the host avatar, in light and dark mode. */
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun GroupSessionCardHostPreview() {
-  val now = Instant.now()
-  val item =
-      GroupSessionItem(
-          session =
-              GroupSession(
-                  id = "preview",
-                  createdBy = "host",
-                  memberIds = listOf("host"),
-                  details =
-                      EventDetails(
-                          type = EventType.STUDY_SESSION,
-                          subject = "Software Architecture",
-                          startsAt = now.plusSeconds(3600),
-                          endsAt = now.plusSeconds(7200),
-                      ),
-                  createdAt = now,
-              ),
-          isMember = false,
-          isCreator = false,
-          hostName = "Alice",
-      )
-  DidYouStudyTheme(dynamicColor = false) {
-    GroupSessionCard(item = item, now = now, onJoin = {}, onLeave = {}, onEdit = {})
-  }
 }
 
 @Preview(showBackground = true)

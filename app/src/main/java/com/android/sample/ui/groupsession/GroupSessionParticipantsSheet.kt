@@ -2,7 +2,6 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.groupsession
 
-import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,11 +45,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import com.android.sample.R
 import com.android.sample.ui.sharedComponents.UserAvatar
-import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 
@@ -271,20 +268,6 @@ internal fun ParticipantAvatar(
         )
       } else {
         Text(text = initial, color = foreground, style = initialStyle)
-      }
-    }
-  }
-}
-
-/** Previews a host row and an unknown member's row in light and dark mode. */
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun ParticipantRowPreview() {
-  DidYouStudyTheme(dynamicColor = false) {
-    Surface {
-      Column(modifier = Modifier.padding(horizontal = Spacing.large)) {
-        ParticipantRow(GroupSessionParticipant("1", "Alice", isHost = true, isCurrentUser = false))
-        ParticipantRow(GroupSessionParticipant("2", null, isHost = false, isCurrentUser = false))
       }
     }
   }
