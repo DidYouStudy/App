@@ -11,6 +11,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.android.sample.ui.eventplanning.EventKind
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.Screen
 import kotlinx.coroutines.delay
@@ -30,7 +31,7 @@ fun CalendarRoute(
     viewModel: CalendarViewModel = calendarViewModel(),
     onAddEventClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
     onAddGroupSessionClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddGroupSession) },
-    onEventClick: (String) -> Unit = {},
+    onEventClick: (String, EventKind) -> Unit = { _, _ -> },
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val lifecycleOwner = LocalLifecycleOwner.current
