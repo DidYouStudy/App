@@ -535,6 +535,7 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     assertFalse(viewModel.uiState.value.isEventEdited)
   }
 
+  /** Group session edit repository exception sets FAILED_TO_EDIT_EVENT. */
   @Test
   fun editEvent_groupSession_repositoryThrows_reportsFailedToEditEvent() = runTest {
     val initial =
@@ -557,6 +558,7 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     assertFalse(viewModel.uiState.value.isSaving)
   }
 
+  /** Deleting a group session with ConnectionLostException sets CONNECTION_LOST. */
   @Test
   fun deleteEvent_groupSession_connectionLost_reportsConnectionLostError() = runTest {
     whenever(groupSessionsRepository.deleteSession(any(), any()))
@@ -570,6 +572,7 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     assertFalse(viewModel.uiState.value.isEventDeleted)
   }
 
+  /** Deleting a group session when repository throws sets FAILED_TO_DELETE_EVENT. */
   @Test
   fun deleteEvent_groupSession_throwsException_setsFailedToDeleteError() = runTest {
     whenever(groupSessionsRepository.deleteSession(any(), any()))
@@ -583,6 +586,7 @@ class EventPlanningViewModelEditTest : EventPlanningViewModelTestBase() {
     assertFalse(viewModel.uiState.value.isDeleting)
   }
 
+  /** Cancellation when deleting a group session stops deleting without error. */
   @Test
   fun deleteEvent_groupSession_cancelled_stopsDeletingWithoutError() = runTest {
     whenever(groupSessionsRepository.deleteSession(any(), any()))

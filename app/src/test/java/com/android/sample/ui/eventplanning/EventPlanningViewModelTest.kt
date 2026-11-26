@@ -1390,6 +1390,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     verify(eventsRepository).saveEvent(any())
   }
 
+  /** Verifies connectivity observer updates isOffline in UI state. */
   @Test
   fun observeConnectivity_updatesIsOfflineState() = runTest {
     val connectivity = FakeConnectivityObserver(initialOnline = true)
@@ -1406,6 +1407,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertFalse(viewModel.uiState.value.isOffline)
   }
 
+  /** Verifies canLeaveEdit and isBusy computed state properties. */
   @Test
   fun uiState_computedProperties_evaluateCorrectly() {
     val defaultState = EventPlanningUiState()
