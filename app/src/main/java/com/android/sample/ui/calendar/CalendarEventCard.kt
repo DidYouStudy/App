@@ -1,4 +1,5 @@
 // Co-authored-by: Codex AI Agent
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.ui.calendar
 
 import androidx.compose.foundation.background
@@ -60,7 +61,7 @@ object CalendarEventCardTestTags {
   const val SUBJECT = "calendar_eventCard_subject"
 }
 
-/** Displays an event's type, subject and start time, with [onClick] for personal events. */
+/** Displays an event's type, subject and start time, with [onClick] for either event kind. */
 @Composable
 fun CalendarEventCard(
     event: Event,
@@ -135,17 +136,13 @@ fun CalendarEventCard(
       }
     }
   }
-  if (isGroupSession) {
-    Surface(modifier = modifier, shape = cardShape, color = color, content = content)
-  } else {
-    Surface(
-        onClick = onClick,
-        modifier = modifier,
-        shape = cardShape,
-        color = color,
-        content = content,
-    )
-  }
+  Surface(
+      onClick = onClick,
+      modifier = modifier,
+      shape = cardShape,
+      color = color,
+      content = content,
+  )
 }
 
 /**

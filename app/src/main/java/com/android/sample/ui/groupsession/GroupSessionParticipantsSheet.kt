@@ -1,5 +1,6 @@
 // Co-authored-by: OpenAI Codex
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.ui.groupsession
 
 import androidx.compose.foundation.layout.Arrangement
@@ -23,7 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -40,7 +40,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import com.android.sample.R
-import com.android.sample.ui.sharedComponents.UserAvatar
+import com.android.sample.ui.sharedComponents.ParticipantRow
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 
@@ -132,7 +132,15 @@ internal fun GroupSessionParticipantsSheet(
       LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
         items(matchingParticipants, key = { it.userId }) { participant ->
           HorizontalDivider()
-          ParticipantRow(participant)
+          ParticipantRow(
+              userId = participant.userId,
+              username = participant.username,
+              isHost = participant.isHost,
+              isCurrentUser = participant.isCurrentUser,
+              isUnavailable = participant.isUnavailable,
+              avatarTestTag = GroupSessionParticipantsTestTags.AVATAR,
+              pictureUrl = participant.profilePictureUrl,
+          )
         }
       }
     }
@@ -162,48 +170,4 @@ private fun ParticipantSearchField(query: String, onQueryChange: (String) -> Uni
               focusedBorderColor = Color.Transparent,
           ),
   )
-}
-
-/** Renders a username or its fallback beside an avatar, with a badge for the host. */
-@Composable
-private fun ParticipantRow(participant: GroupSessionParticipant) {
-  val username =
-      participant.username
-          ?: stringResource(
-              if (participant.isUnavailable) R.string.group_session_participants_unavailable
-              else R.string.group_session_participants_unknown
-          )
-  Row(
-      modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.medium),
-      horizontalArrangement = Arrangement.spacedBy(Spacing.small),
-      verticalAlignment = Alignment.CenterVertically,
-  ) {
-    UserAvatar(
-        userId = participant.userId,
-        username = participant.username,
-        pictureUrl = participant.profilePictureUrl,
-        modifier = Modifier.testTag(GroupSessionParticipantsTestTags.AVATAR),
-        isHost = participant.isHost,
-    )
-    Text(
-        text =
-            if (participant.isCurrentUser) stringResource(R.string.group_session_participants_you)
-            else username,
-        style = MaterialTheme.typography.bodyLarge,
-        modifier = Modifier.weight(1f),
-    )
-    if (participant.isHost) {
-      Surface(
-          shape = RoundedCornerShape(Dimens.cornerSmall),
-          color = MaterialTheme.colorScheme.secondaryContainer,
-          contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-      ) {
-        Text(
-            text = stringResource(R.string.group_session_participants_host),
-            style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(horizontal = Spacing.small, vertical = Spacing.extraSmall),
-        )
-      }
-    }
-  }
 }

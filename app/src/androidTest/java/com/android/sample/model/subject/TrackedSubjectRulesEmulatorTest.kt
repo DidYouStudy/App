@@ -8,6 +8,7 @@ import com.google.firebase.FirebaseOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.Source
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
@@ -96,6 +97,44 @@ class TrackedSubjectRulesEmulatorTest {
     auth.signInAnonymously().await()
     denied { doc().get(Source.SERVER).await() }
     denied { doc().set(validPayload()).await() }
+  }
+
+  private fun priorityPayload(level: Int) =
+      TrackedSubjectFirestoreMapper.encodePriority("Analysis I", SubjectPriority(level))
+
+  /** The owner can merge priorities from the lowest to the highest level into an entry. */
+  @Test
+  fun ownerCanWritePriorityLevels() = runBlocking {
+    doc().set(validPayload()).await()
+
+    for (level in SubjectPriority.RANGE) {
+      doc().set(priorityPayload(level), SetOptions.merge()).await()
+      val stored = TrackedSubjectFirestoreMapper.decode(doc().get(Source.SERVER).await().data)
+      assertEquals(SubjectPriority(level), stored.priorityOf("Analysis I"))
+      assertTrue(stored.isTracked("Analysis I"))
+    }
+  }
+
+  /** Signed-out clients and other users cannot write or change a priority. */
+  @Test
+  fun deniesPriorityWritesForSignedOutAndOtherUsers() = runBlocking {
+    doc().set(validPayload()).await()
+    doc().set(priorityPayload(3), SetOptions.merge()).await()
+
+    auth.signOut()
+    denied { doc().set(priorityPayload(5), SetOptions.merge()).await() }
+
+    auth.signInAnonymously().await()
+    denied { doc().set(priorityPayload(5), SetOptions.merge()).await() }
+    denied { doc().get(Source.SERVER).await() }
+  }
+
+  /** A document that carries a priority still has to follow the top-level schema. */
+  @Test
+  fun rejectsPriorityPayloadWithExtraTopLevelKey() = runBlocking {
+    doc().set(validPayload()).await()
+
+    denied { doc().set(priorityPayload(3) + ("extraKey" to true), SetOptions.merge()).await() }
   }
 
   private suspend fun denied(action: suspend () -> Any?) {
