@@ -27,6 +27,7 @@ import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.EventsRepositoryProvider
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.PersonalEvent
+import com.android.sample.model.event.SubjectCatalogFirestoreMapper
 import com.android.sample.model.event.applyTextLimit
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
@@ -38,6 +39,9 @@ import com.android.sample.model.preferences.PreferenceDefaults
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.PreferencesRepositoryProvider
 import com.android.sample.model.preferences.UserPreferences
+import com.android.sample.model.subject.SubjectDecisions
+import com.android.sample.model.subject.TrackedSubjectRepository
+import com.android.sample.model.subject.TrackedSubjectRepositoryProvider
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -46,9 +50,11 @@ import java.time.LocalTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -172,6 +178,22 @@ class EventPlanningViewModel(
           override suspend fun savePreferences(preferences: UserPreferences): Result<Unit> =
               Result.success(Unit)
         },
+    private val trackedSubjectRepository: TrackedSubjectRepository =
+        object : TrackedSubjectRepository {
+          override fun observeDecisions(ownerId: String): Flow<Result<SubjectDecisions>> =
+              flowOf(Result.success(SubjectDecisions()))
+
+          override suspend fun saveDecisions(
+              ownerId: String,
+              decisions: Map<String, Boolean>,
+          ): Result<Unit> = Result.success(Unit)
+
+          override suspend fun savePriority(
+              ownerId: String,
+              subject: String,
+              priority: Int,
+          ): Result<Unit> = Result.success(Unit)
+        },
     private val connectivityObserver: ConnectivityObserver? = null,
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(EventPlanningUiState())
@@ -214,7 +236,21 @@ class EventPlanningViewModel(
             }
             .flatMapLatest { user ->
               if (user == null) flowOf(Result.success(emptyList()))
-              else eventsRepository.observeSubjects(user.uid)
+              else {
+                combine(
+                    eventsRepository.observeSubjects(user.uid),
+                    trackedSubjectRepository.observeDecisions(user.uid),
+                ) { subjectsResult, decisionsResult ->
+                  val catalogSubjects = subjectsResult.getOrDefault(emptyList())
+                  val trackedSubjects =
+                      decisionsResult.getOrDefault(SubjectDecisions()).trackedSubjects
+                  val combined =
+                      (catalogSubjects + trackedSubjects).distinctBy {
+                        SubjectCatalogFirestoreMapper.key(it)
+                      }
+                  Result.success(combined)
+                }
+              }
             }
             // Suggestions are optional: if they cannot be read the list is simply empty and the
             // user can still type a subject.
@@ -226,7 +262,8 @@ class EventPlanningViewModel(
       } catch (exception: Exception) {
         currentUserId = null
         _uiState.update {
-          it.withoutResults().copy(error = EventPlanningError.FAILED_TO_OBSERVE_USER)
+          it.withoutResults()
+              .copy(error = exception.toUserError(EventPlanningError.FAILED_TO_OBSERVE_USER))
         }
       }
     }
@@ -762,6 +799,8 @@ class EventPlanningViewModelFactory(
     private val groupSessionsRepository: GroupSessionsRepository,
     private val preferencesRepository: PreferencesRepository =
         PreferencesRepositoryProvider.getRepository(),
+    private val trackedSubjectRepository: TrackedSubjectRepository =
+        TrackedSubjectRepositoryProvider.getRepository(),
     private val connectivityObserver: ConnectivityObserver? = null,
 ) : ViewModelProvider.Factory {
   /**
@@ -780,6 +819,7 @@ class EventPlanningViewModelFactory(
         groupSessionsRepository,
         Clock.systemDefaultZone(),
         preferencesRepository,
+        trackedSubjectRepository,
         connectivityObserver,
     )
         as T
