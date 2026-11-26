@@ -45,6 +45,7 @@ import com.android.sample.R
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.PersonalEvent
+import com.android.sample.ui.eventplanning.EventKind
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
@@ -80,7 +81,7 @@ fun CalendarScreen(
     navigationActions: NavigationActions? = null,
     onAddEventClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddEvent) },
     onAddGroupSessionClick: () -> Unit = { navigationActions?.navigateTo(Screen.AddGroupSession) },
-    onEventClick: (String) -> Unit = {},
+    onEventClick: (String, EventKind) -> Unit = { _, _ -> },
 ) {
   // The menu leaves composition while hidden, so it returns in its collapsed state.
   var isAddMenuVisible by remember { mutableStateOf(true) }

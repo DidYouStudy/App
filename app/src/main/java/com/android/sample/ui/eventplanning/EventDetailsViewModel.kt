@@ -32,7 +32,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -106,16 +105,14 @@ class EventDetailsViewModel(
   /** Current state of the event details UI. */
   val uiState: StateFlow<EventDetailsUiState> = _uiState.asStateFlow()
 
-  private var currentUserId: String? = null
-
+  // Watches sign-in only to report a broken auth stream; each load reads the current user itself.
   init {
     viewModelScope.launch {
       try {
-        authRepository.currentUser.onEach { user -> currentUserId = user?.uid }.collect {}
+        authRepository.currentUser.collect {}
       } catch (exception: CancellationException) {
         throw exception
       } catch (exception: Exception) {
-        currentUserId = null
         _uiState.update { it.copy(error = EventPlanningError.FAILED_TO_OBSERVE_USER) }
       }
     }
@@ -214,13 +211,6 @@ class EventDetailsViewModel(
       )
     }
   }
-
-  /** The [EventKind] this event is loaded as. */
-  private fun Event.kind(): EventKind =
-      when (this) {
-        is PersonalEvent -> EventKind.PERSONAL
-        is GroupSession -> EventKind.GROUP_SESSION
-      }
 
   /**
    * Deletes the currently loaded event for the signed-in user. On success, sets

@@ -1,10 +1,13 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.ui.navigation
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.assertHasNoClickAction
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
@@ -19,6 +22,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.DidYouStudyApp
 import com.android.sample.model.auth.AuthRepositoryProvider
@@ -39,6 +43,8 @@ import com.android.sample.model.preferences.PreferencesRepositoryProvider
 import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.ProfileRepositoryProvider
+import com.android.sample.model.subject.InMemoryTrackedSubjectRepository
+import com.android.sample.model.subject.TrackedSubjectRepositoryProvider
 import com.android.sample.ui.auth.TestAuthRepository
 import com.android.sample.ui.calendar.CalendarTestTags
 import com.android.sample.ui.eventplanning.EventDetailsScreenTestTags as DetailsTags
@@ -58,7 +64,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowNetworkCapabilities
 
 /** Exercises Calendar, Details, and Edit through the production navigation graph. */
 @RunWith(AndroidJUnit4::class)
@@ -93,6 +101,8 @@ class CalendarEventNavigationTest {
     ProfileRepositoryProvider.setRepository(mock<ProfileRepository>())
     EventsRepositoryProvider.setRepository(events)
     GroupSessionsRepositoryProvider.setRepository(groupSessions)
+    TrackedSubjectRepositoryProvider.setRepository(InMemoryTrackedSubjectRepository())
+    reportValidatedInternet()
 
     composeRule.setContent { DidYouStudyApp() }
     composeRule.onNodeWithTag(NavigationTestTags.CALENDAR_TAB).performClick()
@@ -109,6 +119,7 @@ class CalendarEventNavigationTest {
     ProfileRepositoryProvider.setRepository(null)
     EventsRepositoryProvider.setRepository(null)
     GroupSessionsRepositoryProvider.setRepository(null)
+    TrackedSubjectRepositoryProvider.setRepository(null)
   }
 
   /** Hosted and joined cards appear in the open week; leaving removes only the joined card. */
@@ -136,8 +147,8 @@ class CalendarEventNavigationTest {
 
     val hostedCard = composeRule.onNodeWithTag(CalendarTestTags.eventCard(hosted.id, 0))
     val joinedCard = composeRule.onNodeWithTag(CalendarTestTags.eventCard(joined.id, 1))
-    hostedCard.assertIsDisplayed().assertHasNoClickAction()
-    joinedCard.assertIsDisplayed().assertHasNoClickAction()
+    hostedCard.assertIsDisplayed().assertHasClickAction()
+    joinedCard.assertIsDisplayed().assertHasClickAction()
     composeRule.onNodeWithTag(selectedCardTag).assertIsDisplayed()
 
     runBlocking { groupSessions.leaveSession(userId, joined.id).getOrThrow() }
@@ -145,6 +156,107 @@ class CalendarEventNavigationTest {
     joinedCard.assertDoesNotExist()
     hostedCard.assertIsDisplayed()
     openDetails()
+  }
+
+  /** A joined group session card opens its Details as a group session; Back keeps the week. */
+  @Test
+  fun groupSessionCardOpensDetailsAndBackReturnsToTheSameWeek() {
+    val joined =
+        GroupSession(
+            id = "joined-session",
+            createdBy = "another-student",
+            memberIds = listOf("another-student", userId),
+            details = event("unused", previousMonday.plusDays(2), "Group revision").details,
+            createdAt = selectedEvent.createdAt,
+        )
+    runBlocking { groupSessions.saveSession(joined.createdBy, joined).getOrThrow() }
+    val joinedCard = CalendarTestTags.eventCard(joined.id, dayIndex = 2)
+
+    composeRule.onNodeWithTag(joinedCard).performTouchInput { click(center) }
+
+    composeRule.onNodeWithTag(DetailsTags.SUBJECT).assertTextContains("Group revision")
+    composeRule.onNodeWithTag(DetailsTags.NOT_FOUND).assertDoesNotExist()
+    composeRule.onNodeWithTag(DetailsTags.BACK_BUTTON).performClick()
+    assertCalendarWeekIsDisplayed()
+    composeRule.onNodeWithTag(joinedCard).assertIsDisplayed()
+  }
+
+  /** The host opens the group session editor from Details, and Details shows the saved change. */
+  @Test
+  fun hostEditsGroupSessionFromDetailsAndDetailsRefreshes() {
+    val hosted =
+        GroupSession(
+            id = "hosted-session",
+            createdBy = userId,
+            memberIds = listOf(userId),
+            details = event("unused", previousMonday.plusDays(2), "Hosted revision").details,
+            createdAt = selectedEvent.createdAt,
+        )
+    runBlocking { groupSessions.saveSession(userId, hosted).getOrThrow() }
+    composeRule
+        .onNodeWithTag(CalendarTestTags.eventCard(hosted.id, dayIndex = 2))
+        .performTouchInput { click(center) }
+    composeRule.onNodeWithTag(DetailsTags.SUBJECT).assertTextContains("Hosted revision")
+    composeRule.onNodeWithTag(DetailsTags.DELETE_BUTTON).assertDoesNotExist()
+
+    composeRule.onNodeWithTag(DetailsTags.EDIT_BUTTON).performClick()
+    composeRule.onNodeWithTag(EditTags.SUBJECT_SELECTOR).assertTextContains("Hosted revision")
+    replaceDescription("Bring past exams")
+    composeRule.onNodeWithTag(EditTags.SAVE_BUTTON).performClick()
+
+    composeRule.onNodeWithTag(DetailsTags.DESCRIPTION).assertTextContains("Bring past exams")
+    val stored = runBlocking { groupSessions.getSession(hosted.id).getOrThrow() }
+    assertEquals("Bring past exams", stored.details.description)
+    composeRule.onNodeWithTag(DetailsTags.BACK_BUTTON).performClick()
+    assertCalendarWeekIsDisplayed()
+  }
+
+  /** The host deletes a group session from its editor and lands back on the same Calendar week. */
+  @Test
+  fun hostDeletesGroupSessionInEditReturnsDirectlyToCalendar() {
+    val hosted =
+        GroupSession(
+            id = "hosted?kind=PERSONAL&x=1",
+            createdBy = userId,
+            memberIds = listOf(userId),
+            details = event("unused", previousMonday.plusDays(2), "Hosted revision").details,
+            createdAt = selectedEvent.createdAt,
+        )
+    runBlocking { groupSessions.saveSession(userId, hosted).getOrThrow() }
+    val card = CalendarTestTags.eventCard(hosted.id, dayIndex = 2)
+    composeRule.onNodeWithTag(card).performTouchInput { click(center) }
+    composeRule.onNodeWithTag(DetailsTags.EDIT_BUTTON).performClick()
+    composeRule.onNodeWithTag(EditTags.SUBJECT_SELECTOR).assertTextContains("Hosted revision")
+
+    composeRule.onNodeWithTag(EditTags.DELETE_BUTTON).performClick()
+
+    assertCalendarWeekIsDisplayed()
+    composeRule.onNodeWithTag(card).assertDoesNotExist()
+    // A further Back must not land on a stale Details entry for the deleted session.
+    pressSystemBack()
+    composeRule.onNodeWithTag(DetailsTags.SUBJECT).assertDoesNotExist()
+  }
+
+  /** A member who does not host the session gets no Edit or Delete in Details. */
+  @Test
+  fun memberSeesNoActionsOnGroupSessionDetails() {
+    val joined =
+        GroupSession(
+            id = "joined-session",
+            createdBy = "another-student",
+            memberIds = listOf("another-student", userId),
+            details = event("unused", previousMonday.plusDays(2), "Group revision").details,
+            createdAt = selectedEvent.createdAt,
+        )
+    runBlocking { groupSessions.saveSession(joined.createdBy, joined).getOrThrow() }
+
+    composeRule
+        .onNodeWithTag(CalendarTestTags.eventCard(joined.id, dayIndex = 2))
+        .performTouchInput { click(center) }
+
+    composeRule.onNodeWithTag(DetailsTags.SUBJECT).assertTextContains("Group revision")
+    composeRule.onNodeWithTag(DetailsTags.EDIT_BUTTON).assertDoesNotExist()
+    composeRule.onNodeWithTag(DetailsTags.DELETE_BUTTON).assertDoesNotExist()
   }
 
   /** Renders both halves of a joined session that crosses the selected week's boundary. */
@@ -366,6 +478,22 @@ class CalendarEventNavigationTest {
         .onNodeWithTag(EditTags.DESCRIPTION_INPUT)
         .performScrollTo()
         .performTextReplacement(value)
+  }
+
+  /**
+   * Robolectric's default network has no validated internet, so the app would treat the device as
+   * offline and block group session writes. Reports a validated connection instead.
+   */
+  private fun reportValidatedInternet() {
+    val connectivity =
+        ApplicationProvider.getApplicationContext<Context>()
+            .getSystemService(ConnectivityManager::class.java)
+    val capabilities =
+        ShadowNetworkCapabilities.newInstance().also {
+          shadowOf(it).addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+          shadowOf(it).addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        }
+    shadowOf(connectivity).setNetworkCapabilities(connectivity.activeNetwork, capabilities)
   }
 
   /** Confirms Calendar kept its week and its unrelated event. */
