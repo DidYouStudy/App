@@ -9,6 +9,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.profile.ImageCompressor
+import com.android.sample.model.profile.ProfilePictureRepository
+import com.android.sample.model.profile.ProfilePictureRepositoryProvider
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.ProfileRepositoryProvider
 import com.android.sample.model.profile.UserProfile
@@ -35,12 +38,21 @@ class SettingsViewModelFactoryTest {
 
   private val authRepository = FakeAuthRepository()
   private val profileRepository = FakeProfileRepository()
-  private val factory = SettingsViewModelFactory(authRepository, profileRepository)
+  private val pictureRepository = FakeProfilePictureRepository()
+  private val imageCompressor = FakeImageCompressor()
+  private val factory =
+      SettingsViewModelFactory(
+          authRepository,
+          profileRepository,
+          pictureRepository,
+          imageCompressor,
+      )
 
   @After
   fun clearProviders() {
     setAuthProviderRepository(null)
     setProfileProviderRepository(null)
+    ProfilePictureRepositoryProvider.setRepository(null)
   }
 
   // ---------------------------------------------------------------------------
@@ -96,6 +108,8 @@ class SettingsViewModelFactoryTest {
     setProfileProviderRepository(
         FakeProfileRepository(UserProfile(uid = "test-user", username = "Alice"))
     )
+    // Without this, creating the ViewModel would build a real Cloud Storage client.
+    ProfilePictureRepositoryProvider.setRepository(pictureRepository)
     val trigger = mutableStateOf(0)
     val received = mutableListOf<SettingsViewModel>()
     composeTestRule.setContent {
@@ -147,6 +161,21 @@ class SettingsViewModelFactoryTest {
   }
 
   private class OtherViewModel : ViewModel()
+
+  /** Picture repository that is never used by these tests. */
+  private class FakeProfilePictureRepository : ProfilePictureRepository {
+    override suspend fun uploadProfilePicture(
+        userId: String,
+        jpegBytes: ByteArray,
+        currentUrl: String?,
+    ): Result<String> = Result.failure(UnsupportedOperationException("Not needed in this test"))
+  }
+
+  /** Compressor that is never used by these tests. */
+  private class FakeImageCompressor : ImageCompressor {
+    override suspend fun compress(uri: String): Result<ByteArray> =
+        Result.failure(UnsupportedOperationException("Not needed in this test"))
+  }
 
   /** Minimal in-memory repository: nobody is signed in and sign-outs are counted. */
   private class FakeAuthRepository : AuthRepository {
