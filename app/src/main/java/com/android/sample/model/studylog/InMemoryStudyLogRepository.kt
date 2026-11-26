@@ -2,6 +2,7 @@
 package com.android.sample.model.studylog
 
 import com.android.sample.model.event.EventTask
+import com.android.sample.model.event.EventTextLimits
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,7 +29,24 @@ class InMemoryStudyLogRepository : StudyLogRepository {
       from: Instant,
       to: Instant,
   ): Flow<Result<List<StudyLog>>> {
-    throw NotImplementedError("Period observation is implemented in part 2")
+    val invalidRange = invalidId(ownerId) || !from.isBefore(to)
+    if (invalidRange) {
+      return flowOf(Result.failure(StudyLogException(StudyLogError.INVALID_ARGUMENT)))
+    }
+    return data
+        .map { records ->
+          Result.success(
+              records
+                  .filter { (key, log) ->
+                    key.ownerId == ownerId &&
+                        !log.plannedStart.isBefore(from) &&
+                        log.plannedStart.isBefore(to)
+                  }
+                  .values
+                  .sortedWith(compareBy<StudyLog> { it.plannedStart }.thenBy { it.eventId })
+          )
+        }
+        .distinctUntilChanged()
   }
 
   /** Starts an interval for a personal event. */
@@ -114,7 +132,21 @@ class InMemoryStudyLogRepository : StudyLogRepository {
       target: StudyLogTarget,
       tasks: List<EventTask>,
   ): Result<Unit> {
-    throw NotImplementedError("Task snapshots are implemented in part 2")
+    invalidIds(ownerId, target.eventId)?.let {
+      return Result.failure(it)
+    }
+    if (
+        tasks.size > StudyLogLimits.MAX_TASKS || tasks.any { it.text.length > EventTextLimits.TASK }
+    ) {
+      return Result.failure(StudyLogException(StudyLogError.INVALID_ARGUMENT))
+    }
+    return updateRecord(ownerId, target.eventId) { current ->
+      if (current == null && tasks.isEmpty()) {
+        Result.success(null)
+      } else {
+        Result.success((current ?: newStudyLog(target)).copy(tasks = tasks))
+      }
+    }
   }
 
   /** Deletes study log for a personal event. */
@@ -124,11 +156,13 @@ class InMemoryStudyLogRepository : StudyLogRepository {
 
   // Validates document path components before any state access or mutation.
   private fun invalidIds(ownerId: String, eventId: String): StudyLogException? =
-      if (ownerId.isBlank() || eventId.isBlank() || '/' in ownerId || '/' in eventId) {
+      if (invalidId(ownerId) || invalidId(eventId)) {
         StudyLogException(StudyLogError.INVALID_ARGUMENT)
       } else {
         null
       }
+
+  private fun invalidId(id: String): Boolean = id.isBlank() || '/' in id
 
   // Applies one checked mutation atomically, retaining the current record on failure.
   private fun updateRecord(

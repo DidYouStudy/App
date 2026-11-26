@@ -7,9 +7,8 @@ import kotlinx.coroutines.flow.Flow
 /**
  * Stores and observes study log recorded for personal sessions.
  *
- * study log can be recorded for every event type. The caller (#77) and the user's preferences
- * determine which event types can be timed. Part 2 adds the Firestore implementation with
- * local-first writes.
+ * A study log can be recorded for every event type. The caller (#77) and the user's preferences
+ * determine which event types can be timed.
  */
 interface StudyLogRepository {
   /**
@@ -21,6 +20,8 @@ interface StudyLogRepository {
 
   /**
    * Observes logs planned in the half-open interval [[from], [to]) for one owner.
+   *
+   * Intended for statistics over a day or a week.
    *
    * Returns [StudyLogError.INVALID_ARGUMENT] for an invalid owner ID or when [from] is not before
    * [to].
@@ -69,7 +70,13 @@ interface StudyLogRepository {
       comment: String?,
   ): Result<Unit>
 
-  /** Replaces the task snapshot for an event. */
+  /**
+   * Replaces the task snapshot for an event, including task text and completion times.
+   *
+   * Returns [StudyLogError.INVALID_ARGUMENT] for invalid IDs, more than [StudyLogLimits.MAX_TASKS]
+   * tasks, or task text exceeding [com.android.sample.model.event.EventTextLimits.TASK]. An empty
+   * list on a missing log creates nothing. A failed call changes nothing.
+   */
   suspend fun saveTasks(
       ownerId: String,
       target: StudyLogTarget,
