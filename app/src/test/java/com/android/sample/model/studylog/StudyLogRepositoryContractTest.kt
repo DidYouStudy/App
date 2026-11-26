@@ -313,6 +313,26 @@ abstract class StudyLogRepositoryContractTest {
     assertEquals(listOf(StudyInterval(start, end), StudyInterval(end)), current()?.intervals)
   }
 
+  /** Starting before the planned time is allowed and keeps the frozen plan unchanged. */
+  @Test
+  fun startInterval_acceptsStartBeforePlannedStart() = runTest {
+    val startedBeforePlan =
+        Instant.parse("2026-11-02T12:50:00Z") // 13:50 Zurich local time, ten minutes early
+    repository.startInterval(owner, target, startedBeforePlan).getOrThrow()
+
+    assertEquals(
+        StudyLog(
+            event,
+            EventType.STUDY_SESSION,
+            "Analysis I",
+            Instant.parse("2026-11-02T13:00:00Z"),
+            Instant.parse("2026-11-02T14:00:00Z"),
+            listOf(StudyInterval(startedBeforePlan)),
+        ),
+        current(),
+    )
+  }
+
   /** A target rejects a planned end that is not after its planned start. */
   @Test
   fun studyLogTarget_rejectsNonIncreasingPlannedTimes() {
