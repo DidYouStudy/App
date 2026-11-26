@@ -5,15 +5,17 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -34,7 +36,6 @@ import coil3.request.ErrorResult
 import coil3.request.ImageRequest
 import coil3.request.Options
 import coil3.request.SuccessResult
-import com.android.sample.ui.theme.Dimens
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.After
@@ -114,25 +115,25 @@ class UserAvatarTest {
     SingletonImageLoader.reset()
   }
 
-  /** Renders a medium avatar whose fallback is a recognisable text. */
+  /** Renders the avatar of a user whose initial is [INITIAL]. */
   private fun showAvatar(pictureUrl: String?) {
     composeTestRule.setContent { TestAvatar(pictureUrl) }
   }
 
   /** The avatar under test. */
   @Composable
-  private fun TestAvatar(pictureUrl: String?) {
+  private fun TestAvatar(pictureUrl: String?, username: String? = USERNAME) {
     UserAvatar(
+        userId = "user",
+        username = username,
         pictureUrl = pictureUrl,
-        modifier = Modifier.size(Dimens.avatarSizeMedium).testTag(AVATAR),
-    ) {
-      Text(PROFILE_PICTURE_FALLBACK)
-    }
+        modifier = Modifier.testTag(AVATAR),
+    )
   }
 
-  /** A null or blank URL shows the fallback and never starts an image request. */
+  /** A null or blank URL shows the initial and never starts an image request. */
   @Test
-  fun missingUrl_showsTheFallbackWithoutRequest() {
+  fun missingUrl_showsTheInitialWithoutRequest() {
     composeTestRule.setContent {
       Column {
         TestAvatar(null)
@@ -141,45 +142,57 @@ class UserAvatarTest {
     }
     composeTestRule.waitForIdle()
 
-    composeTestRule.onAllNodesWithText(PROFILE_PICTURE_FALLBACK).assertCountEquals(2)
+    composeTestRule.onAllNodesWithText(INITIAL).assertCountEquals(2)
     assertEquals(0, started.get())
   }
 
-  /** The fallback stands in while the picture is still loading. */
+  /** Without a username there is no initial, only the person icon. */
   @Test
-  fun pendingPicture_showsTheFallback() {
+  fun missingUsername_showsNoInitial() {
+    composeTestRule.setContent { TestAvatar(pictureUrl = null, username = null) }
+
+    composeTestRule.onNodeWithTag(AVATAR).assertIsDisplayed()
+    composeTestRule
+        .onAllNodes(
+            hasAnyAncestor(hasTestTag(AVATAR)) and
+                SemanticsMatcher.keyIsDefined(SemanticsProperties.Text),
+            useUnmergedTree = true,
+        )
+        .assertCountEquals(0)
+  }
+
+  /** The initial stands in while the picture is still loading. */
+  @Test
+  fun pendingPicture_showsTheInitial() {
     gate = CompletableDeferred()
     showAvatar(PICTURE_URL)
 
     composeTestRule.waitUntil { started.get() > 0 }
-    composeTestRule.onNodeWithText(PROFILE_PICTURE_FALLBACK).assertIsDisplayed()
+    composeTestRule.onNodeWithText(INITIAL).assertIsDisplayed()
     assertEquals(0, succeeded.get() + failed.get())
   }
 
-  /** A picture that cannot be loaded leaves the fallback in place. */
+  /** A picture that cannot be loaded leaves the initial in place. */
   @Test
-  fun failedPicture_showsTheFallback() {
+  fun failedPicture_showsTheInitial() {
     loadFails = true
     showAvatar(PICTURE_URL)
 
     composeTestRule.waitUntil { failed.get() > 0 }
     composeTestRule.waitForIdle()
-    composeTestRule.onNodeWithText(PROFILE_PICTURE_FALLBACK).assertIsDisplayed()
+    composeTestRule.onNodeWithText(INITIAL).assertIsDisplayed()
   }
 
-  /** A loaded picture replaces the fallback, fills the avatar and is cropped to a circle. */
+  /** A loaded picture replaces the initial, fills the avatar and is cropped to a circle. */
   @Test
   @GraphicsMode(GraphicsMode.Mode.NATIVE)
-  fun loadedPicture_replacesTheFallbackAndFillsACircle() {
+  fun loadedPicture_replacesTheInitialAndFillsACircle() {
     showAvatar(PICTURE_URL)
 
-    // Coil can report success just before the screen updates, so also wait for the fallback to go.
+    // Coil can report success just before the screen updates, so also wait for the initial to go.
     composeTestRule.waitUntil {
       succeeded.get() > 0 &&
-          composeTestRule
-              .onAllNodesWithText(PROFILE_PICTURE_FALLBACK)
-              .fetchSemanticsNodes()
-              .isEmpty()
+          composeTestRule.onAllNodesWithText(INITIAL).fetchSemanticsNodes().isEmpty()
     }
     composeTestRule.waitForIdle()
 
@@ -192,7 +205,8 @@ class UserAvatarTest {
 
   private companion object {
     const val AVATAR = "userAvatarUnderTest"
-    const val PROFILE_PICTURE_FALLBACK = "fallback"
+    const val USERNAME = "zoe"
+    const val INITIAL = "Z"
     const val PICTURE_URL = "https://example.com/picture.jpg"
   }
 }

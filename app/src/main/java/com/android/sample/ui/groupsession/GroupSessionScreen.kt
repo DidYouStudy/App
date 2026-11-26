@@ -112,6 +112,7 @@ import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.sharedComponents.AddButton
 import com.android.sample.ui.sharedComponents.EventTypeBadge
 import com.android.sample.ui.sharedComponents.MainTopAppBar
+import com.android.sample.ui.sharedComponents.UserAvatar
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.color
@@ -856,12 +857,12 @@ internal fun GroupSessionCard(
           ) {
             // Your own session has no host avatar.
             if (!shouldShowHost) {
-              ParticipantAvatar(
+              UserAvatar(
                   userId = session.createdBy,
                   username = item.hostName,
-                  isHost = true,
-                  avatarTestTag = GroupSessionScreenTestTags.HOST_AVATAR,
                   pictureUrl = item.hostPictureUrl,
+                  modifier = Modifier.testTag(GroupSessionScreenTestTags.HOST_AVATAR),
+                  isHost = true,
                   size = Dimens.avatarSizeSmall,
               )
             }

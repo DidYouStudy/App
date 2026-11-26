@@ -2,23 +2,18 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.groupsession
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -42,10 +37,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import com.android.sample.R
 import com.android.sample.ui.sharedComponents.UserAvatar
 import com.android.sample.ui.theme.Dimens
@@ -185,12 +178,12 @@ private fun ParticipantRow(participant: GroupSessionParticipant) {
       horizontalArrangement = Arrangement.spacedBy(Spacing.small),
       verticalAlignment = Alignment.CenterVertically,
   ) {
-    ParticipantAvatar(
+    UserAvatar(
         userId = participant.userId,
         username = participant.username,
-        isHost = participant.isHost,
-        avatarTestTag = GroupSessionParticipantsTestTags.AVATAR,
         pictureUrl = participant.profilePictureUrl,
+        modifier = Modifier.testTag(GroupSessionParticipantsTestTags.AVATAR),
+        isHost = participant.isHost,
     )
     Text(
         text =
@@ -210,64 +203,6 @@ private fun ParticipantRow(participant: GroupSessionParticipant) {
             style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.padding(horizontal = Spacing.small, vertical = Spacing.extraSmall),
         )
-      }
-    }
-  }
-}
-
-/**
- * Shows a user's profile picture. Without one, while it loads and if it cannot be loaded, shows the
- * initial of [username] with a color that stays stable across updates, or a person icon without a
- * username. Hidden from screen readers, because callers write the name next to it.
- *
- * @param isHost gives the initial the host's color.
- * @param pictureUrl URL of the profile picture, if the user has one.
- * @param size diameter of the avatar; below the default, the initial uses a smaller text style.
- */
-@Composable
-internal fun ParticipantAvatar(
-    userId: String,
-    username: String?,
-    isHost: Boolean,
-    avatarTestTag: String,
-    pictureUrl: String? = null,
-    size: Dp = Dimens.avatarSizeMedium,
-) {
-  val initial =
-      username
-          ?.trimStart()
-          ?.takeIf { it.isNotEmpty() }
-          ?.let { name ->
-            String(Character.toChars(Character.toUpperCase(Character.codePointAt(name, 0))))
-          }
-  val colors = MaterialTheme.colorScheme
-  val (background, foreground) =
-      when {
-        initial == null -> colors.surfaceVariant to colors.onSurfaceVariant
-        isHost -> colors.primaryContainer to colors.onPrimaryContainer
-        userId.hashCode() % 2 == 0 -> colors.secondaryContainer to colors.onSecondaryContainer
-        else -> colors.tertiaryContainer to colors.onTertiaryContainer
-      }
-  val initialStyle =
-      if (size < Dimens.avatarSizeMedium) MaterialTheme.typography.labelSmall
-      else MaterialTheme.typography.titleMedium
-
-  UserAvatar(
-      pictureUrl = pictureUrl,
-      modifier = Modifier.size(size).testTag(avatarTestTag).semantics { hideFromAccessibility() },
-  ) {
-    Box(
-        modifier = Modifier.fillMaxSize().background(background),
-        contentAlignment = Alignment.Center,
-    ) {
-      if (initial == null) {
-        Icon(
-            imageVector = Icons.Outlined.Person,
-            contentDescription = null,
-            tint = foreground,
-        )
-      } else {
-        Text(text = initial, color = foreground, style = initialStyle)
       }
     }
   }
