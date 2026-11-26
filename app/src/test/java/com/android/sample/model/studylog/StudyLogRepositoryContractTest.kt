@@ -2,6 +2,7 @@
 package com.android.sample.model.studylog
 
 import com.android.sample.model.event.EventTask
+import com.android.sample.model.event.EventTextLimits
 import com.android.sample.model.event.EventType
 import java.time.Instant
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -106,9 +107,27 @@ abstract class StudyLogRepositoryContractTest {
             Instant.parse("2026-11-30T08:00:00Z"),
             Instant.parse("2026-11-30T09:00:00Z"),
         )
-    repository.startInterval(owner, firstTarget, start).getOrThrow()
+    val bTarget =
+        StudyLogTarget(
+            "b",
+            EventType.STUDY_SESSION,
+            "B",
+            Instant.parse("2026-11-24T13:00:00Z"),
+            Instant.parse("2026-11-24T14:00:00Z"),
+        )
+    val aTarget =
+        StudyLogTarget(
+            "a",
+            EventType.STUDY_SESSION,
+            "A",
+            Instant.parse("2026-11-24T13:00:00Z"),
+            Instant.parse("2026-11-24T14:00:00Z"),
+        )
     repository.startInterval(owner, secondTarget, start).getOrThrow()
     repository.startInterval(owner, thirdTarget, start).getOrThrow()
+    repository.startInterval(owner, firstTarget, start).getOrThrow()
+    repository.startInterval(owner, bTarget, start).getOrThrow()
+    repository.startInterval(owner, aTarget, start).getOrThrow()
     repository.startInterval(otherOwner, firstTarget, start).getOrThrow()
 
     val values = mutableListOf<List<StudyLog>>()
@@ -133,6 +152,22 @@ abstract class StudyLogRepositoryContractTest {
                 listOf(StudyInterval(start)),
             ),
             StudyLog(
+                "a",
+                EventType.STUDY_SESSION,
+                "A",
+                Instant.parse("2026-11-24T13:00:00Z"),
+                Instant.parse("2026-11-24T14:00:00Z"),
+                listOf(StudyInterval(start)),
+            ),
+            StudyLog(
+                "b",
+                EventType.STUDY_SESSION,
+                "B",
+                Instant.parse("2026-11-24T13:00:00Z"),
+                Instant.parse("2026-11-24T14:00:00Z"),
+                listOf(StudyInterval(start)),
+            ),
+            StudyLog(
                 "second",
                 EventType.COURSE,
                 "Second",
@@ -151,6 +186,22 @@ abstract class StudyLogRepositoryContractTest {
                 "First",
                 Instant.parse("2026-11-23T09:00:00Z"),
                 Instant.parse("2026-11-23T10:00:00Z"),
+                listOf(StudyInterval(start)),
+            ),
+            StudyLog(
+                "a",
+                EventType.STUDY_SESSION,
+                "A",
+                Instant.parse("2026-11-24T13:00:00Z"),
+                Instant.parse("2026-11-24T14:00:00Z"),
+                listOf(StudyInterval(start)),
+            ),
+            StudyLog(
+                "b",
+                EventType.STUDY_SESSION,
+                "B",
+                Instant.parse("2026-11-24T13:00:00Z"),
+                Instant.parse("2026-11-24T14:00:00Z"),
                 listOf(StudyInterval(start)),
             ),
             StudyLog(
@@ -191,6 +242,8 @@ abstract class StudyLogRepositoryContractTest {
             .first()
             .getOrThrow(),
     )
+    repository.saveComment(otherOwner, firstTarget, "other owner")
+    assertEquals(1, values.size)
     repository.saveComment(owner, firstTarget, "changed").getOrThrow()
     assertEquals(2, values.size)
     assertEquals("changed", values.last().first().comment)
@@ -435,6 +488,22 @@ abstract class StudyLogRepositoryContractTest {
     assertEquals(listOf(StudyInterval(start)), current()?.intervals)
   }
 
+  /** Exactly the maximum number of tasks is accepted and stored. */
+  @Test
+  fun saveTasks_acceptsMaximumTaskCount() = runTest {
+    val tasks = List(StudyLogLimits.MAX_TASKS) { EventTask("Task $it") }
+    repository.saveTasks(owner, target, tasks).getOrThrow()
+    assertEquals(tasks, current()?.tasks)
+  }
+
+  /** Exactly the task text length limit is accepted and stored. */
+  @Test
+  fun saveTasks_acceptsMaximumTaskTextLength() = runTest {
+    val task = EventTask("a".repeat(EventTextLimits.TASK))
+    repository.saveTasks(owner, target, listOf(task)).getOrThrow()
+    assertEquals(listOf(task), current()?.tasks)
+  }
+
   /** An empty task save on a missing event does not create a study log. */
   @Test
   fun saveTasks_emptyOnMissingRecordCreatesNothing() = runTest {
@@ -454,6 +523,26 @@ abstract class StudyLogRepositoryContractTest {
     val tooLong = listOf(EventTask("a".repeat(201)))
     assertError(repository.saveTasks(owner, target, tooLong), StudyLogError.INVALID_ARGUMENT)
     assertEquals(before, current())
+  }
+
+  /** Comment and task writes retain the planned times frozen in an existing log. */
+  @Test
+  fun writes_keepExistingPlannedTimes() = runTest {
+    repository.saveComment(owner, target, "initial").getOrThrow()
+    val changedTarget =
+        StudyLogTarget(
+            event,
+            EventType.COURSE,
+            "Edited",
+            Instant.parse("2026-12-01T13:00:00Z"),
+            Instant.parse("2026-12-01T14:00:00Z"),
+        )
+    repository.saveComment(owner, changedTarget, "updated").getOrThrow()
+    assertEquals(plannedStart, current()?.plannedStart)
+    assertEquals(plannedEnd, current()?.plannedEnd)
+    repository.saveTasks(owner, changedTarget, listOf(EventTask("Task"))).getOrThrow()
+    assertEquals(plannedStart, current()?.plannedStart)
+    assertEquals(plannedEnd, current()?.plannedEnd)
   }
 
   /** Deleting an existing or missing record succeeds, and an existing observer sees null. */
