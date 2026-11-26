@@ -1,4 +1,5 @@
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.sample.ui.dashboard
 
 import androidx.compose.runtime.Composable
@@ -12,15 +13,24 @@ import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.event.Event
 import com.android.sample.model.event.GetUserScheduleUseCase
 import com.android.sample.model.event.GroupSession
+import com.android.sample.model.preferences.PreferenceDefaults
+import com.android.sample.model.preferences.PreferencesRepository
+import com.android.sample.model.preferences.PreferencesRepositoryProvider
+import com.android.sample.model.session.RingState
+import com.android.sample.model.session.StudyRingCalculator
+import com.android.sample.model.session.minuteTicks
 import java.time.Clock
+import java.time.Duration as JavaDuration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 import kotlin.time.toKotlinDuration
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,13 +45,26 @@ enum class DashboardViewModelError {
   LOAD_SESSIONS_FAILED,
 }
 
-/** State holding today's study sessions, loading indicator, and any load error. */
+/**
+ * State holding today's study sessions, loading indicator, and any load error.
+ *
+ * @property currentSessions sessions covering the current minute with their ring states.
+ */
 data class DashboardUiState(
     val sessions: List<DashboardSession> = emptyList(),
+    val currentSessions: List<CurrentSession> = emptyList(),
     val isLoading: Boolean = true,
     val error: DashboardViewModelError? = null,
     val midnightDelay: Duration = 0.toDuration(DurationUnit.SECONDS),
 )
+
+/**
+ * A dashboard session currently covering the injected clock time and its ring state.
+ *
+ * @property session dashboard display data for the current session.
+ * @property ring computed study or break ring state.
+ */
+data class CurrentSession(val session: DashboardSession, val ring: RingState)
 
 /**
  * Owns dashboard data loading and observes the signed-in user's study sessions for today.
@@ -51,15 +74,24 @@ data class DashboardUiState(
  *
  * @property authRepository source for the current authenticated user.
  * @property getUserSchedule use case combining personal events and joined group sessions.
+ * @property preferencesRepository source for break settings, read in parallel with the schedule;
+ *   documented defaults are used until preferences arrive.
  * @property clock provider for current time and time zone calculations.
+ * @property minuteTicks emits at each minute boundary; injected for tests.
  */
 class DashboardViewModel(
     private val authRepository: AuthRepository,
     private val getUserSchedule: GetUserScheduleUseCase,
+    private val preferencesRepository: PreferencesRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
+    private val minuteTicks: kotlinx.coroutines.flow.Flow<Unit> = minuteTicks(clock),
 ) : ViewModel() {
   private val currentDate = MutableStateFlow(LocalDate.now(clock))
   private val retryRequest = MutableStateFlow(0L)
+  private var latestEvents: List<Event> = emptyList()
+  private var breakFrequency = defaultBreakSettings().first
+  private var breakLength = defaultBreakSettings().second
+  private var observedStudentId: String? = null
 
   private val _uiState =
       MutableStateFlow(
@@ -112,6 +144,7 @@ class DashboardViewModel(
         showLoadError()
       }
     }
+    viewModelScope.launch { minuteTicks.collect { updateCurrentSessions() } }
   }
 
   /** Resets state or preserves error state during retry, then observes today's sessions. */
@@ -121,9 +154,12 @@ class DashboardViewModel(
       isRetry: Boolean,
   ) {
     if (studentId.isNullOrBlank()) {
+      clearEvents()
+      observedStudentId = null
       _uiState.value =
           DashboardUiState(
               sessions = emptyList(),
+              currentSessions = emptyList(),
               isLoading = false,
               error = null,
               midnightDelay = calculateMidnightDelay(),
@@ -131,12 +167,18 @@ class DashboardViewModel(
       return
     }
 
+    if (studentId != observedStudentId) {
+      clearEvents()
+      observedStudentId = studentId
+      resetBreakSettings()
+    }
     if (isRetry) {
       _uiState.update { it.copy(isLoading = true) }
     } else {
       _uiState.value =
           DashboardUiState(
               sessions = emptyList(),
+              currentSessions = emptyList(),
               isLoading = true,
               error = null,
               midnightDelay = calculateMidnightDelay(),
@@ -144,7 +186,13 @@ class DashboardViewModel(
     }
 
     try {
-      getUserSchedule(studentId, date).collect(::updateSessions)
+      coroutineScope {
+        launch {
+          loadPreferences(studentId)
+          updateCurrentSessions()
+        }
+        getUserSchedule(studentId, date).collect(::updateSessions)
+      }
     } catch (exception: CancellationException) {
       throw exception
     } catch (_: Exception) {
@@ -152,26 +200,49 @@ class DashboardViewModel(
     }
   }
 
+  /** Returns the default break settings used before preferences are available. */
+  private fun defaultBreakSettings(): Pair<JavaDuration, JavaDuration> =
+      JavaDuration.ofMinutes(PreferenceDefaults.DEFAULT_FREQUENCY_MINUTES.toLong()) to
+          JavaDuration.ofMinutes(PreferenceDefaults.DEFAULT_BREAK_MINUTES.toLong())
+
+  /** Resets break settings when observing a different user. */
+  private fun resetBreakSettings() {
+    val (frequency, length) = defaultBreakSettings()
+    breakFrequency = frequency
+    breakLength = length
+  }
+
+  /** Loads break settings, falling back silently to the documented defaults. */
+  private suspend fun loadPreferences(studentId: String) {
+    val preferences =
+        try {
+          preferencesRepository.getPreferences(studentId).getOrNull()
+        } catch (exception: CancellationException) {
+          throw exception
+        } catch (_: Exception) {
+          null
+        }
+    breakFrequency =
+        JavaDuration.ofMinutes(
+            (preferences?.breakFrequencyMinutes ?: PreferenceDefaults.DEFAULT_FREQUENCY_MINUTES)
+                .toLong()
+        )
+    breakLength =
+        JavaDuration.ofMinutes(
+            (preferences?.breakLengthMinutes ?: PreferenceDefaults.DEFAULT_BREAK_MINUTES).toLong()
+        )
+  }
+
   /** Converts incoming domain [Event] items to display-ready [DashboardSession] models. */
   private fun updateSessions(result: Result<List<Event>>) {
     result.fold(
         onSuccess = { events ->
-          val timeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(clock.zone)
-          val sessions = events.map { event ->
-            DashboardSession(
-                id = event.id,
-                startTime = timeFormatter.format(event.details.startsAt),
-                endTime = timeFormatter.format(event.details.endsAt),
-                subject = event.details.subject,
-                eventType = event.details.type,
-                location = event.details.location,
-                // Group sessions stay non-clickable until Event Details supports them (#325/#326).
-                isClickable = event !is GroupSession,
-            )
-          }
+          latestEvents = events
+          val sessions = events.map(::toDashboardSession)
           _uiState.update {
             it.copy(
                 sessions = sessions,
+                currentSessions = currentSessions(events),
                 isLoading = false,
                 error = null,
                 midnightDelay = calculateMidnightDelay(),
@@ -182,11 +253,60 @@ class DashboardViewModel(
     )
   }
 
+  /** Converts one domain event to the dashboard display model. */
+  private fun toDashboardSession(event: Event): DashboardSession {
+    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(clock.zone)
+    return DashboardSession(
+        id = event.id,
+        startTime = timeFormatter.format(event.details.startsAt),
+        endTime = timeFormatter.format(event.details.endsAt),
+        subject = event.details.subject,
+        eventType = event.details.type,
+        location = event.details.location,
+        // Group sessions stay non-clickable until Event Details supports them (#325/#326).
+        isClickable = event !is GroupSession,
+    )
+  }
+
+  /** Recomputes the current-session projection from the retained event list. */
+  private fun updateCurrentSessions() {
+    _uiState.update { it.copy(currentSessions = currentSessions(latestEvents)) }
+  }
+
+  /** Maps events covering the current minute to sessions with their ring state. */
+  private fun currentSessions(events: List<Event>): List<CurrentSession> {
+    val now = clock.instant().truncatedTo(ChronoUnit.MINUTES)
+    return events
+        .filter { event ->
+          !now.isBefore(event.details.startsAt) && now.isBefore(event.details.endsAt)
+        }
+        .map { event ->
+          CurrentSession(
+              session = toDashboardSession(event),
+              ring =
+                  StudyRingCalculator.compute(
+                      event.details.startsAt,
+                      event.details.endsAt,
+                      now,
+                      breakFrequency,
+                      breakLength,
+                  ),
+          )
+        }
+  }
+
+  /** Drops retained events so ticks cannot resurrect data from an old user or failed load. */
+  private fun clearEvents() {
+    latestEvents = emptyList()
+  }
+
   /** Clears stale sessions and sets the error state. */
   private fun showLoadError() {
+    clearEvents()
     _uiState.update {
       it.copy(
           sessions = emptyList(),
+          currentSessions = emptyList(),
           isLoading = false,
           error = DashboardViewModelError.LOAD_SESSIONS_FAILED,
       )
@@ -194,11 +314,22 @@ class DashboardViewModel(
   }
 }
 
-/** Factory creating [DashboardViewModel] with injected dependencies. */
+/**
+ * Factory creating [DashboardViewModel] with injected dependencies.
+ *
+ * @property authRepository source for the current authenticated user.
+ * @property getUserSchedule use case combining personal events and joined group sessions.
+ * @property preferencesRepository source for break settings, read in parallel with the schedule;
+ *   documented defaults are used until preferences arrive.
+ * @property clock provider for current time and time zone calculations.
+ * @property minuteTicks emits at each minute boundary; injected for tests.
+ */
 class DashboardViewModelFactory(
     private val authRepository: AuthRepository,
     private val getUserSchedule: GetUserScheduleUseCase,
+    private val preferencesRepository: PreferencesRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
+    private val minuteTicks: kotlinx.coroutines.flow.Flow<Unit> = minuteTicks(clock),
 ) : ViewModelProvider.Factory {
   override fun <T : ViewModel> create(modelClass: Class<T>): T {
     require(modelClass == DashboardViewModel::class.java) {
@@ -208,7 +339,9 @@ class DashboardViewModelFactory(
     return DashboardViewModel(
         authRepository = authRepository,
         getUserSchedule = getUserSchedule,
+        preferencesRepository = preferencesRepository,
         clock = clock,
+        minuteTicks = minuteTicks,
     )
         as T
   }
@@ -222,5 +355,6 @@ fun dashboardViewModel(): DashboardViewModel =
             DashboardViewModelFactory(
                 authRepository = AuthRepositoryProvider.getRepository(LocalContext.current),
                 getUserSchedule = GetUserScheduleUseCase(),
+                preferencesRepository = PreferencesRepositoryProvider.getRepository(),
             )
     )
