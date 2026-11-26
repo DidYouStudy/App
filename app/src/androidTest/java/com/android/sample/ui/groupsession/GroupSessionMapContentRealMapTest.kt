@@ -198,10 +198,12 @@ class GroupSessionMapContentRealMapTest {
     // North of the pin, in the half of the screen the list does not cover.
     map.tapAt(LatLng(46.5194, 6.5660))
 
-    composeTestRule.waitUntil(MapTestDriver.TIMEOUT_MS) { !listIsShown() }
-    map.waitForCameraStill()
     val defaultZoom = ResourcesCompat.getFloat(targetContext.resources, R.dimen.map_default_zoom)
-    assert(kotlin.math.abs(camera.position.zoom - defaultZoom) < 0.05f)
+    composeTestRule.waitUntil(MapTestDriver.TIMEOUT_MS) {
+      !listIsShown() &&
+          !camera.isMoving &&
+          kotlin.math.abs(camera.position.zoom - defaultZoom) < 0.05f
+    }
   }
 
   /** The preview shows no cards at first, then the session cards of whichever room is tapped. */
