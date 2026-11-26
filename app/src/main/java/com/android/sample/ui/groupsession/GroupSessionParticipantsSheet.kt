@@ -1,4 +1,5 @@
 // Co-authored-by: OpenAI Codex
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample.ui.groupsession
 
@@ -138,6 +139,7 @@ internal fun GroupSessionParticipantsSheet(
               isCurrentUser = participant.isCurrentUser,
               isUnavailable = participant.isUnavailable,
               avatarTestTag = GroupSessionParticipantsTestTags.AVATAR,
+              pictureUrl = participant.profilePictureUrl,
           )
         }
       }

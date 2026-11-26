@@ -112,6 +112,7 @@ import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.sharedComponents.AddButton
 import com.android.sample.ui.sharedComponents.EventTypeBadge
 import com.android.sample.ui.sharedComponents.MainTopAppBar
+import com.android.sample.ui.sharedComponents.UserAvatar
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.color
@@ -150,6 +151,7 @@ object GroupSessionScreenTestTags {
   const val PARTICIPANTS_PILL = "groupSessionParticipantsPill"
   const val CENTER_LOCATION_BUTTON = "groupSessionCenterLocationButton"
   const val OFFLINE_INDICATOR = "groupSessionOfflineIndicator"
+  const val HOST_AVATAR = "groupSessionHostAvatar"
 
   fun sessionItem(index: Int) = "$SESSION_ITEM_PREFIX$index"
 
@@ -840,7 +842,6 @@ internal fun GroupSessionCard(
   val startLabel = sessionTimeLabel(session.details.startsAt)
   val endLabel = sessionTimeLabel(session.details.endsAt)
   val dateLabel = sessionDateLabel(session.details.startsAt, now)
-  val shouldShowHost = item.isCreator
 
   val subjectFallback = stringResource(R.string.group_session_subject_fallback)
 
@@ -883,18 +884,37 @@ internal fun GroupSessionCard(
               style = MaterialTheme.typography.titleMedium,
           )
           Spacer(Modifier.height(Spacing.extraExtraSmall))
-          Text(
-              text =
-                  if (shouldShowHost) stringResource(R.string.group_session_host_self)
-                  else
-                      item.hostName?.let { stringResource(R.string.group_session_hosted_by, it) }
-                          ?: stringResource(R.string.group_session_host_unknown),
-              style = MaterialTheme.typography.bodyMedium,
-              color =
-                  if (shouldShowHost) MaterialTheme.colorScheme.primary
-                  else MaterialTheme.colorScheme.onSurfaceVariant,
-              fontWeight = if (shouldShowHost) FontWeight.Bold else FontWeight.Normal,
-          )
+          Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(Spacing.extraSmall),
+          ) {
+            // Your own session has no host avatar.
+            if (!item.isCreator) {
+              UserAvatar(
+                  userId = session.createdBy,
+                  username = item.hostName,
+                  pictureUrl = item.hostPictureUrl,
+                  modifier = Modifier.testTag(GroupSessionScreenTestTags.HOST_AVATAR),
+                  isHost = true,
+                  size = Dimens.avatarSizeSmall,
+              )
+            }
+            Text(
+                text =
+                    if (item.isCreator) stringResource(R.string.group_session_host_self)
+                    else
+                        item.hostName?.let { stringResource(R.string.group_session_hosted_by, it) }
+                            ?: stringResource(R.string.group_session_host_unknown),
+                style = MaterialTheme.typography.bodyMedium,
+                color =
+                    if (item.isCreator) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = if (item.isCreator) FontWeight.Bold else FontWeight.Normal,
+                // A long name is cut off; the participants sheet shows it in full.
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+          }
         }
 
         Spacer(Modifier.width(Spacing.small))
