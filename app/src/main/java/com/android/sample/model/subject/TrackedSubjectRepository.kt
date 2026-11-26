@@ -39,4 +39,22 @@ interface TrackedSubjectRepository {
    *   subject spelling is blank, or two subjects share the same key.
    */
   suspend fun saveDecisions(ownerId: String, decisions: Map<String, Boolean>): Result<Unit>
+
+  /**
+   * Saves how important [subject] is to the owner, replacing any earlier priority for it.
+   *
+   * Only the priority changes: the tracked flag, the stored spelling and every other subject are
+   * left as they are. The subject must already be tracked (see [saveDecisions]); custom subjects
+   * that were never confirmed as tracked have no priority. Subject comparison ignores case and
+   * surrounding whitespace.
+   *
+   * @param ownerId user ID, must not be blank or contain a slash ('/').
+   * @param subject spelling of the tracked subject to rate.
+   * @param priority the new priority level, must be within [SubjectPriority.RANGE].
+   * @return [Result.success] on success, or [Result.failure] with
+   *   [TrackedSubjectError.INVALID_ARGUMENT] if [ownerId] is blank or contains a slash ('/'),
+   *   [subject] is blank, [priority] is outside [SubjectPriority.RANGE], or [subject] is not
+   *   tracked; nothing is written in that case.
+   */
+  suspend fun savePriority(ownerId: String, subject: String, priority: Int): Result<Unit>
 }
