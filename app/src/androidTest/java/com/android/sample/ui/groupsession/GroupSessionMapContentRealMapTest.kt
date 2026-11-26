@@ -166,8 +166,27 @@ class GroupSessionMapContentRealMapTest {
     composeTestRule.onNodeWithText("Maths").assertIsDisplayed()
     assert(!isShown("Chemistry"))
 
+    // Tapping the first pin zoomed in, pushing the second pin off-screen; frame both again.
+    map.waitForCameraStill()
+    map.moveCameraTo(LatLng(46.5191, 6.5668), START_ZOOM)
     map.tapPinUntil(cm.location.toLatLng()) { isShown("Chemistry") }
     assert(!isShown("Maths"))
+  }
+
+  /** Tapping a pin in [GroupSessionMapContent] focuses the camera on its room at focus zoom. */
+  @Test
+  fun tappingAPin_focusesCameraOnItsRoomAtLeastToFocusZoom() {
+    showContent()
+    val focusZoom = ResourcesCompat.getFloat(targetContext.resources, R.dimen.map_focus_zoom)
+
+    map.tapPinUntil(aab.location.toLatLng()) { listIsShown() }
+    composeTestRule.waitUntil(MapTestDriver.TIMEOUT_MS) {
+      val position = camera.position
+      !camera.isMoving &&
+          kotlin.math.abs(position.target.latitude - aab.location.latitude) < 0.0002 &&
+          kotlin.math.abs(position.target.longitude - aab.location.longitude) < 0.0002 &&
+          position.zoom >= focusZoom - 0.05f
+    }
   }
 
   @Test
@@ -177,9 +196,12 @@ class GroupSessionMapContentRealMapTest {
     map.waitForCameraStill()
 
     // North of the pin, in the half of the screen the list does not cover.
-    map.tapAt(LatLng(46.5200, 6.5660))
+    map.tapAt(LatLng(46.5194, 6.5660))
 
     composeTestRule.waitUntil(MapTestDriver.TIMEOUT_MS) { !listIsShown() }
+    map.waitForCameraStill()
+    val defaultZoom = ResourcesCompat.getFloat(targetContext.resources, R.dimen.map_default_zoom)
+    assert(kotlin.math.abs(camera.position.zoom - defaultZoom) < 0.05f)
   }
 
   /** The preview shows no cards at first, then the session cards of whichever room is tapped. */
@@ -201,6 +223,33 @@ class GroupSessionMapContentRealMapTest {
     map.tapPinUntil(previewRoom(PREVIEW_SECOND_ROOM)) { isShown("Thermodynamics") }
     assert(!isShown("Linear Algebra"))
     assert(!isShown("Software Architecture"))
+  }
+
+  /** With no room selected, the content leaves the camera where it started instead of moving it. */
+  @Test
+  fun noSelectedRoom_preservesInitialCameraPositionAndZoom() {
+    val startTarget = LatLng(46.5175, 6.5610)
+    val startZoom = 15f
+    composeTestRule.setContent {
+      camera = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(startTarget, startZoom)
+      }
+      GroupSessionMapContent(
+          rooms = rooms,
+          now = now,
+          onJoin = {},
+          onLeave = {},
+          onEdit = {},
+          cameraPositionState = camera,
+      )
+    }
+    map.waitForMap()
+    map.waitForCameraStill()
+
+    val position = camera.position
+    assert(kotlin.math.abs(position.target.latitude - startTarget.latitude) < 0.0002)
+    assert(kotlin.math.abs(position.target.longitude - startTarget.longitude) < 0.0002)
+    assert(kotlin.math.abs(position.zoom - startZoom) < 0.05f)
   }
 
   private companion object {
