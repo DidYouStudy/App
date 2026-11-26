@@ -328,7 +328,10 @@ class EventDetailsScreenTest {
 
   @Test
   fun groupSessionHidesTheTasksSection() {
-    setStatelessContent(display = groupDisplay())
+    // A task in the display proves the group-session branch hides it, not an empty list.
+    setStatelessContent(
+        display = groupDisplay().copy(tasks = listOf(EventTaskDisplay("Ignored task", false)))
+    )
 
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.TASKS_LABEL).assertDoesNotExist()
   }

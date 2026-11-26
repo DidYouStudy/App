@@ -7,6 +7,7 @@ import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -239,9 +240,11 @@ private fun EventDetailsBody(
       verticalArrangement = Arrangement.spacedBy(Dimens.sectionSpacing),
   ) {
     Column(verticalArrangement = Arrangement.spacedBy(Dimens.metaRowSpacing)) {
-      Row(
+      // FlowRow so the chip wraps under the badge on narrow screens or large font scales.
+      FlowRow(
           horizontalArrangement = Arrangement.spacedBy(Spacing.small),
-          verticalAlignment = Alignment.CenterVertically,
+          verticalArrangement = Arrangement.spacedBy(Spacing.extraSmall),
+          itemVerticalAlignment = Alignment.CenterVertically,
       ) {
         EventTypeBadge(
             type = display.type,
