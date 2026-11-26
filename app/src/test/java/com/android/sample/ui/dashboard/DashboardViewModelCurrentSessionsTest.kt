@@ -189,6 +189,14 @@ class DashboardViewModelCurrentSessionsTest {
         java.time.Duration.ofMinutes(15),
         viewModel.uiState.value.currentSessions.single().ring.segmentRemaining,
     )
+    assertEquals(
+        Instant.parse("2026-10-28T13:45:00Z"), // 14:45 in Zurich.
+        viewModel.uiState.value.currentSessions.single().ring.segmentEndsAt,
+    )
+    assertEquals(
+        Instant.parse("2026-10-28T14:00:00Z"), // 15:00 in Zurich.
+        viewModel.uiState.value.currentSessions.single().ring.sessionEndsAt,
+    )
   }
 
   /** Missing preferences use the documented defaults. */

@@ -116,6 +116,101 @@ class StudyRingCalculatorTest {
     assertEquals(false, half.isOvertime)
   }
 
+  /** Segment and session end instants remain exact across study and break periods. */
+  @Test
+  fun endInstantsAreExact() {
+    val atStart = StudyRingCalculator.compute(start, end, instant("14:00"), frequency, length)
+    assertEquals(
+        Instant.parse("2026-10-28T13:45:00Z"), // 14:45 in Zurich.
+        atStart.segmentEndsAt,
+    )
+    assertEquals(
+        Instant.parse("2026-10-28T14:00:00Z"), // 15:00 in Zurich.
+        atStart.sessionEndsAt,
+    )
+
+    val inBreak = StudyRingCalculator.compute(start, end, instant("14:47"), frequency, length)
+    assertEquals(
+        Instant.parse("2026-10-28T13:55:00Z"), // 14:55 in Zurich.
+        inBreak.segmentEndsAt,
+    )
+    assertEquals(
+        Instant.parse("2026-10-28T14:00:00Z"), // 15:00 in Zurich.
+        inBreak.sessionEndsAt,
+    )
+
+    val beforeEnd = StudyRingCalculator.compute(start, end, instant("14:59"), frequency, length)
+    assertEquals(
+        Instant.parse("2026-10-28T14:00:00Z"), // 15:00 in Zurich.
+        beforeEnd.segmentEndsAt,
+    )
+    assertEquals(
+        Instant.parse("2026-10-28T14:00:00Z"), // 15:00 in Zurich.
+        beforeEnd.sessionEndsAt,
+    )
+
+    val overtime = StudyRingCalculator.compute(start, end, instant("15:30"), frequency, length)
+    assertEquals(
+        Instant.parse("2026-10-28T14:00:00Z"), // 15:00 in Zurich.
+        overtime.segmentEndsAt,
+    )
+    assertEquals(
+        Instant.parse("2026-10-28T14:00:00Z"), // 15:00 in Zurich.
+        overtime.sessionEndsAt,
+    )
+
+    val cutBreak =
+        StudyRingCalculator.compute(
+            start,
+            instant("14:50"),
+            instant("14:47:30"),
+            frequency,
+            length,
+        )
+    assertEquals(
+        Instant.parse("2026-10-28T13:50:00Z"), // 14:50 in Zurich.
+        cutBreak.segmentEndsAt,
+    )
+    assertEquals(
+        Instant.parse("2026-10-28T13:50:00Z"), // 14:50 in Zurich.
+        cutBreak.sessionEndsAt,
+    )
+
+    val lateBreak =
+        StudyRingCalculator.compute(
+            start,
+            instant("16:00"),
+            instant("15:45"),
+            frequency,
+            length,
+        )
+    assertEquals(
+        Instant.parse("2026-10-28T14:50:00Z"), // 15:50 in Zurich.
+        lateBreak.segmentEndsAt,
+    )
+    assertEquals(
+        Instant.parse("2026-10-28T15:00:00Z"), // 16:00 in Zurich.
+        lateBreak.sessionEndsAt,
+    )
+
+    val afterLateBreak =
+        StudyRingCalculator.compute(
+            start,
+            instant("16:00"),
+            instant("15:50"),
+            frequency,
+            length,
+        )
+    assertEquals(
+        Instant.parse("2026-10-28T15:00:00Z"), // 16:00 in Zurich.
+        afterLateBreak.segmentEndsAt,
+    )
+    assertEquals(
+        Instant.parse("2026-10-28T15:00:00Z"), // 16:00 in Zurich.
+        afterLateBreak.sessionEndsAt,
+    )
+  }
+
   /** A second cycle schedules another break and then study time. */
   @Test
   fun secondCycleIsComputed() {

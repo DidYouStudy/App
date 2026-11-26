@@ -24,6 +24,10 @@ data class RingState(
     val sessionRemaining: Duration,
     /** Whether the session has passed its end. */
     val isOvertime: Boolean,
+    /** Exact end of the current study or break period. */
+    val segmentEndsAt: Instant,
+    /** Exact end of the session. */
+    val sessionEndsAt: Instant,
 )
 
 /** Computes the ring state for a timed study session. */
@@ -42,7 +46,15 @@ object StudyRingCalculator {
     require(!now.isBefore(start))
 
     if (!now.isBefore(end)) {
-      return RingState(RingMode.STUDYING, 1f, Duration.ZERO, Duration.ZERO, isOvertime = true)
+      return RingState(
+          RingMode.STUDYING,
+          1f,
+          Duration.ZERO,
+          Duration.ZERO,
+          isOvertime = true,
+          segmentEndsAt = Instant.EPOCH,
+          sessionEndsAt = Instant.EPOCH,
+      )
     }
 
     var segmentStart = start
@@ -59,6 +71,8 @@ object StudyRingCalculator {
             segmentRemaining = Duration.between(now, segmentEnd),
             sessionRemaining = Duration.between(now, end),
             isOvertime = false,
+            segmentEndsAt = Instant.EPOCH,
+            sessionEndsAt = Instant.EPOCH,
         )
       }
       segmentStart = segmentEnd
