@@ -1195,6 +1195,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     trackedField.isAccessible = true
     val trackedRepo = trackedField.get(vm) as TrackedSubjectRepository
     assertTrue(trackedRepo.saveDecisions("u1", mapOf("A" to true)).isSuccess)
+    assertTrue(trackedRepo.savePriority("u1", "A", 1).isSuccess)
   }
 
   // factory tests
