@@ -9,7 +9,7 @@
 
     <!-- Zoom levels: close enough to see the campus buildings, and close enough to a room when
          the camera moves to it. -->
-    <item name="map_default_zoom" type="dimen" format="float">18.5</item>
+    <item name="map_default_zoom" type="dimen" format="float">18.0</item>
     <item name="map_focus_zoom" type="dimen" format="float">19.5</item>
 
     <!-- Duration of the camera animation to a new target, in milliseconds. -->
