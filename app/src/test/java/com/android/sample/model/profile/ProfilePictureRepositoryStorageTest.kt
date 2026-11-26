@@ -12,6 +12,8 @@ import com.google.firebase.storage.StorageMetadata
 import com.google.firebase.storage.StorageReference
 import com.google.firebase.storage.UploadTask
 import java.util.concurrent.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -148,6 +150,23 @@ class ProfilePictureRepositoryStorageTest {
     assertThrows(CancellationException::class.java) {
       runBlocking { repository.uploadProfilePicture("user123", bytes, null) }
     }
+  }
+
+  // Cancelling the caller also cancels the running upload, which await() alone would not do.
+  @OptIn(ExperimentalCoroutinesApi::class)
+  @Test
+  fun uploadProfilePicture_cancelledWhileUploading_cancelsTheUploadTask() = runTest {
+    // Never completes, so the repository stays suspended on it.
+    val pendingUpload = mock(UploadTask::class.java)
+    stubUpload(pendingUpload)
+    val job = launch { repository.uploadProfilePicture("user123", bytes, null) }
+    testScheduler.runCurrent()
+    verify(pendingUpload, never()).cancel()
+
+    job.cancel()
+    testScheduler.runCurrent()
+
+    verify(pendingUpload).cancel()
   }
 
   // Without a current picture, the first slot is used.
