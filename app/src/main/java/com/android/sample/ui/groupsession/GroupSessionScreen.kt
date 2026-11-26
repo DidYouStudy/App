@@ -808,7 +808,6 @@ internal fun GroupSessionCard(
   val startLabel = sessionTimeLabel(session.details.startsAt)
   val endLabel = sessionTimeLabel(session.details.endsAt)
   val dateLabel = sessionDateLabel(session.details.startsAt, now)
-  val shouldShowHost = item.isCreator
 
   val subjectFallback = stringResource(R.string.group_session_subject_fallback)
 
@@ -856,7 +855,7 @@ internal fun GroupSessionCard(
               horizontalArrangement = Arrangement.spacedBy(Spacing.extraSmall),
           ) {
             // Your own session has no host avatar.
-            if (!shouldShowHost) {
+            if (!item.isCreator) {
               UserAvatar(
                   userId = session.createdBy,
                   username = item.hostName,
@@ -868,15 +867,15 @@ internal fun GroupSessionCard(
             }
             Text(
                 text =
-                    if (shouldShowHost) stringResource(R.string.group_session_host_self)
+                    if (item.isCreator) stringResource(R.string.group_session_host_self)
                     else
                         item.hostName?.let { stringResource(R.string.group_session_hosted_by, it) }
                             ?: stringResource(R.string.group_session_host_unknown),
                 style = MaterialTheme.typography.bodyMedium,
                 color =
-                    if (shouldShowHost) MaterialTheme.colorScheme.primary
+                    if (item.isCreator) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = if (shouldShowHost) FontWeight.Bold else FontWeight.Normal,
+                fontWeight = if (item.isCreator) FontWeight.Bold else FontWeight.Normal,
             )
           }
         }
