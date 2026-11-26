@@ -8,6 +8,7 @@ package com.android.sample.ui.groupsession
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -103,6 +104,9 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
+import com.android.sample.model.event.EventDetails
+import com.android.sample.model.event.EventType
+import com.android.sample.model.event.GroupSession
 import com.android.sample.ui.eventplanning.EventKind
 import com.android.sample.ui.navigation.BottomNavigationMenu
 import com.android.sample.ui.navigation.NavigationActions
@@ -112,6 +116,7 @@ import com.android.sample.ui.navigation.Tab
 import com.android.sample.ui.sharedComponents.AddButton
 import com.android.sample.ui.sharedComponents.EventTypeBadge
 import com.android.sample.ui.sharedComponents.MainTopAppBar
+import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.color
@@ -150,6 +155,7 @@ object GroupSessionScreenTestTags {
   const val PARTICIPANTS_PILL = "groupSessionParticipantsPill"
   const val CENTER_LOCATION_BUTTON = "groupSessionCenterLocationButton"
   const val OFFLINE_INDICATOR = "groupSessionOfflineIndicator"
+  const val HOST_AVATAR = "groupSessionHostAvatar"
 
   fun sessionItem(index: Int) = "$SESSION_ITEM_PREFIX$index"
 
@@ -849,18 +855,34 @@ internal fun GroupSessionCard(
               style = MaterialTheme.typography.titleMedium,
           )
           Spacer(Modifier.height(Spacing.extraExtraSmall))
-          Text(
-              text =
-                  if (shouldShowHost) stringResource(R.string.group_session_host_self)
-                  else
-                      item.hostName?.let { stringResource(R.string.group_session_hosted_by, it) }
-                          ?: stringResource(R.string.group_session_host_unknown),
-              style = MaterialTheme.typography.bodyMedium,
-              color =
-                  if (shouldShowHost) MaterialTheme.colorScheme.primary
-                  else MaterialTheme.colorScheme.onSurfaceVariant,
-              fontWeight = if (shouldShowHost) FontWeight.Bold else FontWeight.Normal,
-          )
+          Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(Spacing.extraSmall),
+          ) {
+            // Your own session has no host avatar.
+            if (!shouldShowHost) {
+              ParticipantAvatar(
+                  userId = session.createdBy,
+                  username = item.hostName,
+                  isHost = true,
+                  avatarTestTag = GroupSessionScreenTestTags.HOST_AVATAR,
+                  pictureUrl = item.hostPictureUrl,
+                  size = Dimens.avatarSizeSmall,
+              )
+            }
+            Text(
+                text =
+                    if (shouldShowHost) stringResource(R.string.group_session_host_self)
+                    else
+                        item.hostName?.let { stringResource(R.string.group_session_hosted_by, it) }
+                            ?: stringResource(R.string.group_session_host_unknown),
+                style = MaterialTheme.typography.bodyMedium,
+                color =
+                    if (shouldShowHost) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = if (shouldShowHost) FontWeight.Bold else FontWeight.Normal,
+            )
+          }
         }
 
         Spacer(Modifier.width(Spacing.small))
@@ -1212,6 +1234,36 @@ private fun sessionTimeLabel(instant: Instant): String =
 @Composable
 fun GroupSessionScreenPreview() {
   GroupSessionScreen()
+}
+
+/** Previews another student's session card, with the host avatar, in light and dark mode. */
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun GroupSessionCardHostPreview() {
+  val now = Instant.now()
+  val item =
+      GroupSessionItem(
+          session =
+              GroupSession(
+                  id = "preview",
+                  createdBy = "host",
+                  memberIds = listOf("host"),
+                  details =
+                      EventDetails(
+                          type = EventType.STUDY_SESSION,
+                          subject = "Software Architecture",
+                          startsAt = now.plusSeconds(3600),
+                          endsAt = now.plusSeconds(7200),
+                      ),
+                  createdAt = now,
+              ),
+          isMember = false,
+          isCreator = false,
+          hostName = "Alice",
+      )
+  DidYouStudyTheme(dynamicColor = false) {
+    GroupSessionCard(item = item, now = now, onJoin = {}, onLeave = {}, onEdit = {})
+  }
 }
 
 @Preview(showBackground = true)
