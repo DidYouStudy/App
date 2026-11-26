@@ -86,6 +86,26 @@ class RenderTest(unittest.TestCase):
         self.assertIn("`abcdef1`", text)
         self.assertIn("https://example/run/1", text)
 
+    def test_empty_results_say_no_results_instead_of_zero_failed(self):
+        empty = {"tests": 0, "failures": 0, "skipped": 0, "failed": []}
+        text = ci_report.render_tests("Emulator tests", empty)
+        self.assertIn("**Emulator tests:** no results", text)
+        self.assertNotIn("0 failed", text)
+
+    def test_cancelled_run_gets_a_banner(self):
+        empty = {"tests": 0, "failures": 0, "skipped": 0, "failed": []}
+        payload = {"jobs": [{"name": "Build", "conclusion": "cancelled"}]}
+        text = ci_report.render(payload, empty, empty, "https://example/run/1", "abcdef123456")
+        self.assertIn(ci_report.CANCELLED_BANNER, text)
+        # The banner sits right under the title, before the job table.
+        self.assertLess(text.index(ci_report.CANCELLED_BANNER), text.index("| Job |"))
+
+    def test_finished_run_has_no_cancelled_banner(self):
+        empty = {"tests": 0, "failures": 0, "skipped": 0, "failed": []}
+        payload = {"jobs": [{"name": "Build", "conclusion": "success"}]}
+        text = ci_report.render(payload, empty, empty, "https://example/run/1", "abcdef123456")
+        self.assertNotIn(ci_report.CANCELLED_BANNER, text)
+
 
 if __name__ == "__main__":
     unittest.main()

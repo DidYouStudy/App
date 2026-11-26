@@ -18,6 +18,11 @@ MARKER = "<!-- ci-report -->"
 MAX_FAILURES = 10
 # Jobs that are not worth a row (the report itself and the publish step).
 IGNORED_JOBS = {"CI report"}
+# Shown when the run was cancelled, so partial results are not mistaken for a final verdict.
+CANCELLED_BANNER = (
+    "> [!WARNING]\n"
+    "> This run was cancelled (probably replaced by a newer push), so the results below are partial."
+)
 
 
 def parse_junit_dir(directory):
@@ -81,6 +86,9 @@ def render_jobs(jobs_json):
 
 def render_tests(title, totals):
     """Render one test section: counts plus the failed tests, capped at MAX_FAILURES."""
+    if totals["tests"] == 0:
+        # "0 failed" would read like a pass, so say plainly that nothing ran.
+        return f"**{title}:** no results (the job may have stopped or been cancelled before running tests)"
     passed = totals["tests"] - totals["failures"] - totals["skipped"]
     lines = [
         f"**{title}:** {passed} passed, {totals['failures']} failed, {totals['skipped']} skipped"
@@ -94,18 +102,23 @@ def render_tests(title, totals):
     return "\n".join(lines)
 
 
+def is_cancelled(jobs_json):
+    """True when any job of the run ended as cancelled (for example a newer push replaced it)."""
+    return any(job.get("conclusion") == "cancelled" for job in jobs_json.get("jobs", []))
+
+
 def render(jobs_json, unit, connected, run_url, sha):
-    """Assemble the whole Markdown comment."""
-    return "\n\n".join(
-        [
-            MARKER,
-            f"## CI report for `{sha[:7]}`",
-            render_jobs(jobs_json),
-            render_tests("Unit tests", unit),
-            render_tests("Emulator tests", connected),
-            f"[Full run]({run_url})",
-        ]
-    )
+    """Assemble the whole Markdown comment, with a banner when the run was cancelled."""
+    parts = [MARKER, f"## CI report for `{sha[:7]}`"]
+    if is_cancelled(jobs_json):
+        parts.append(CANCELLED_BANNER)
+    parts += [
+        render_jobs(jobs_json),
+        render_tests("Unit tests", unit),
+        render_tests("Emulator tests", connected),
+        f"[Full run]({run_url})",
+    ]
+    return "\n\n".join(parts)
 
 
 def main(argv=None):
