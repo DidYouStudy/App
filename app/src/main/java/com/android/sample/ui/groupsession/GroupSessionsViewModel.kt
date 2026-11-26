@@ -178,7 +178,6 @@ data class GroupSessionsUiState(
     val showLabRoomType: Boolean = false,
     val hideFullSessions: Boolean = false,
     val userLocation: Location? = null,
-    val campusCenter: Location? = null,
     val error: GroupSessionsError? = null,
     val isOffline: Boolean = false,
     val participantsSheet: GroupSessionParticipantsSheet? = null,
@@ -216,13 +215,11 @@ class GroupSessionsViewModel(
     private val locationProvider: LocationProvider,
     private val campusLocationRepository: CampusLocationRepository? = null,
     private val connectivityObserver: ConnectivityObserver? = null,
-    private val campusCenter: Location,
 ) : ViewModel() {
   private val _uiState =
       MutableStateFlow(
           GroupSessionsUiState(
               now = clock.instant(),
-              campusCenter = campusCenter,
           )
       )
   /** The current loading, list, search, filter, and categorized-error state. */
@@ -275,7 +272,6 @@ class GroupSessionsViewModel(
                       // Preserve user location if authRepository emits null after a location
                       // already emitted.
                       userLocation = _uiState.value.userLocation,
-                      campusCenter = campusCenter,
                       // Connectivity belongs to the device, not to the signed-in user.
                       isOffline = _uiState.value.isOffline,
                   )
@@ -804,7 +800,6 @@ class GroupSessionsViewModelFactory(
     private val locationProvider: LocationProvider,
     private val campusLocationRepository: CampusLocationRepository? = null,
     private val connectivityObserver: ConnectivityObserver? = null,
-    private val campusCenter: Location,
 ) : ViewModelProvider.Factory {
   /**
    * Creates the requested ViewModel and rejects unsupported classes with their class name.
@@ -823,7 +818,6 @@ class GroupSessionsViewModelFactory(
         locationProvider = locationProvider,
         campusLocationRepository = campusLocationRepository,
         connectivityObserver = connectivityObserver,
-        campusCenter = campusCenter,
     )
         as T
   }
@@ -849,7 +843,6 @@ fun groupSessionsViewModel(): GroupSessionsViewModel {
               profileRepository = ProfileRepositoryProvider.getRepository(),
               locationProvider = locationProvider,
               connectivityObserver = connectivityObserver,
-              campusCenter = campusCenter,
           )
   )
 }
