@@ -1790,7 +1790,8 @@ class GroupSessionsViewModelTest {
     assertFalse(sheet.isLoading)
     assertFalse(sheet.hasError)
     assertEquals(listOf("Bob", "Joining"), sheet.rows.map { it.username })
-    assertEquals(1, profileRepository.getProfileUserIds.count { it == BOB })
+    // Once for the card and once on opening the roster; membership changes add no read.
+    assertEquals(2, profileRepository.getProfileUserIds.count { it == BOB })
 
     emissions.emit(Result.success(emptyList()))
     runCurrent()
@@ -1856,11 +1857,11 @@ class GroupSessionsViewModelTest {
   }
 
   /**
-   * Participant rows and the host line get the URL from the profile already read for the username.
-   * There is no URL when it is missing or blank, or when the member has no username.
+   * Participant rows and the host line get the URL from the profile read for the username. There is
+   * no URL when it is missing or blank, or when the member has no username.
    */
   @Test
-  fun pictureUrlsReachParticipantRowsAndHostLineWithoutExtraReads() = runTest {
+  fun pictureUrlsReachParticipantRowsAndHostLine() = runTest {
     authRepository.currentUser.value = account(ALICE)
     listOf(
             UserProfile(uid = BOB, username = "Bob", profilePictureUrl = "bob.jpg"),
@@ -1891,7 +1892,91 @@ class GroupSessionsViewModelTest {
         rows.associate { it.userId to it.profilePictureUrl },
     )
     assertEquals("bob.jpg", viewModel.uiState.value.sessions.single().hostPictureUrl)
-    assertEquals(members.sorted(), profileRepository.getProfileUserIds.sorted())
+    // The host, already read for the card, is read once more on opening the roster.
+    assertEquals((members + BOB).sorted(), profileRepository.getProfileUserIds.sorted())
+  }
+
+  /** Opening a roster reads every member again, so changed pictures show on rows and card. */
+  @Test
+  fun openingTheRosterReadsEveryMemberAgain() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    listOf(BOB to "bob", ALICE to "alice").forEach { (uid, name) ->
+      listOf("old", "new").forEach { version ->
+        profileRepository.enqueue(
+            uid,
+            Result.success(UserProfile(uid, name, "$name-$version.jpg")),
+        )
+      }
+    }
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val session = session("roster", BOB, listOf(BOB, ALICE))
+    emissions.emit(Result.success(listOf(session)))
+    runCurrent()
+    // The host was read for the card. This first opening reads Bob again and Alice once.
+    viewModel.openParticipants(session.id)
+    runCurrent()
+    viewModel.dismissParticipants()
+    runCurrent()
+
+    viewModel.openParticipants(session.id)
+    runCurrent()
+
+    val rows = requireNotNull(viewModel.uiState.value.participantsSheet).rows
+    assertEquals(listOf("bob-new.jpg", "alice-new.jpg"), rows.map { it.profilePictureUrl })
+    assertEquals("bob-new.jpg", viewModel.uiState.value.sessions.single().hostPictureUrl)
+    assertEquals(3, profileRepository.getProfileUserIds.count { it == BOB })
+    assertEquals(2, profileRepository.getProfileUserIds.count { it == ALICE })
+  }
+
+  /** The earlier profile stays on screen while it is read again, and if that read fails. */
+  @Test
+  fun rosterKeepsTheEarlierProfileWhileReadingAgainAndWhenThatFails() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    profileRepository.enqueue(BOB, Result.success(UserProfile(BOB, "Bob", "bob.jpg")))
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val session = session("roster", BOB)
+    emissions.emit(Result.success(listOf(session)))
+    runCurrent()
+    val secondRead = CompletableDeferred<Result<UserProfile?>>()
+    profileRepository.hold(BOB, secondRead)
+
+    viewModel.openParticipants(session.id)
+    runCurrent()
+    val whileReading = requireNotNull(viewModel.uiState.value.participantsSheet)
+    assertFalse(whileReading.isLoading)
+    assertEquals("bob.jpg", whileReading.rows.single().profilePictureUrl)
+
+    secondRead.complete(Result.failure(IllegalStateException("Unavailable")))
+    runCurrent()
+    val afterFailure = requireNotNull(viewModel.uiState.value.participantsSheet)
+    assertFalse(afterFailure.hasError)
+    assertEquals("Bob", afterFailure.rows.single().username)
+    assertEquals("bob.jpg", afterFailure.rows.single().profilePictureUrl)
+    assertEquals("bob.jpg", viewModel.uiState.value.sessions.single().hostPictureUrl)
+  }
+
+  /** A profile that no longer has a username replaces the earlier one. */
+  @Test
+  fun rosterDropsTheEarlierProfileWhenThereIsNoUsernameAnyMore() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    profileRepository.enqueue(BOB, Result.success(UserProfile(BOB, "Bob", "bob.jpg")))
+    profileRepository.enqueue(BOB, Result.success(null))
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val session = session("roster", BOB)
+    emissions.emit(Result.success(listOf(session)))
+    runCurrent()
+
+    viewModel.openParticipants(session.id)
+    runCurrent()
+
+    val row = requireNotNull(viewModel.uiState.value.participantsSheet).rows.single()
+    assertNull(row.username)
+    assertNull(row.profilePictureUrl)
+    assertNull(viewModel.uiState.value.sessions.single().hostName)
+    assertNull(viewModel.uiState.value.sessions.single().hostPictureUrl)
   }
 
   /** A session you created has no host picture URL, even once your own profile is cached. */
@@ -2193,7 +2278,12 @@ class GroupSessionsViewModelTest {
         return withContext(NonCancellable) { pending.await() }
       }
       val configured = outcomes[userId]
-      return if (configured.isNullOrEmpty()) Result.success(null) else configured.removeAt(0)
+      // The last answer repeats, as a stored profile does when it is read again.
+      return when {
+        configured.isNullOrEmpty() -> Result.success(null)
+        configured.size > 1 -> configured.removeAt(0)
+        else -> configured.single()
+      }
     }
 
     override suspend fun updateUsername(userId: String, username: String): Result<UserProfile> =

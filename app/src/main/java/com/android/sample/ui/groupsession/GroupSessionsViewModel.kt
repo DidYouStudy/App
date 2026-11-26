@@ -241,7 +241,10 @@ class GroupSessionsViewModel(
   private var authGeneration = 0L
   private var observedSessions: List<GroupSession> = emptyList()
   private var campusLocationsByName: Map<String, CampusLocation> = emptyMap()
-  /** Profiles that have a username, kept until a refresh or a change of signed-in user. */
+  /**
+   * Profiles that have a username, kept until a refresh or a change of signed-in user. Opening a
+   * roster reads its members again.
+   */
   private val profilesByUserId = mutableMapOf<String, CachedProfile>()
   private val usernameLookupsInProgress = mutableSetOf<String>()
   /** Session IDs whose join or leave request is currently running. */
@@ -500,12 +503,19 @@ class GroupSessionsViewModel(
     viewModelScope.launch { locationRefreshTrigger.update { it + 1 } }
   }
 
-  /** Opens the roster for a session in the latest repository snapshot. */
+  /**
+   * Opens the roster for a session in the latest repository snapshot.
+   *
+   * Members already read are read again, so a changed picture or username shows up. What was read
+   * before stays on screen meanwhile.
+   */
   fun openParticipants(sessionId: String) {
     viewModelScope.launch {
-      if (observedSessions.none { it.id == sessionId }) return@launch
+      val session = observedSessions.firstOrNull { it.id == sessionId } ?: return@launch
       participantsSessionId = sessionId
       participantNamesWithoutUsername.clear()
+      // Cached or not. Loading then publishes the rows without starting a second read.
+      session.memberIds.forEach(::fetchProfile)
       loadParticipantNames()
     }
   }
@@ -638,11 +648,14 @@ class GroupSessionsViewModel(
   /** Schedules one profile read per uncached user with no lookup already in progress. */
   private fun lookupUsernames(userIds: List<String>) {
     if (currentUserId == null) return
+    userIds.filterNot { it in profilesByUserId }.forEach(::fetchProfile)
+  }
+
+  /** Reads one profile, cached or not, unless a read for that user is already running. */
+  private fun fetchProfile(userId: String) {
+    if (!usernameLookupsInProgress.add(userId)) return
     val requestGeneration = authGeneration
-    for (userId in userIds) {
-      if (userId in profilesByUserId || !usernameLookupsInProgress.add(userId)) continue
-      viewModelScope.launch { resolveUsername(userId, requestGeneration) }
-    }
+    viewModelScope.launch { resolveUsername(userId, requestGeneration) }
   }
 
   /** Applies one profile result and releases its lookup slot for the same sign-in period. */
@@ -659,6 +672,11 @@ class GroupSessionsViewModel(
         updateVisibleSessions()
         return
       }
+
+      // A failed read says nothing new, so an earlier result stays. A successful one without a
+      // username replaces it.
+      if (result.isFailure && userId in profilesByUserId) return
+      if (profilesByUserId.remove(userId) != null) updateVisibleSessions()
 
       if (selectedParticipantsSession()?.memberIds?.contains(userId) != true) return
       participantNamesWithoutUsername[userId] =
