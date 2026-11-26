@@ -16,10 +16,12 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.connectivity.withSharedConnectivity
 import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.ui.auth.TestAuthRepository
 import com.android.sample.ui.navigation.NavigationTestTags
+import com.android.sample.ui.sharedComponents.OfflineBannerTestTags
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -281,6 +283,32 @@ class PreferencesScreenEditModeTest {
           onSaved = onSaved,
           onBack = {},
       )
+    }
+  }
+
+  /**
+   * The preferences screen shows the offline banner while offline, and hides it once the connection
+   * returns.
+   */
+  @Test
+  fun preferencesShowsOfflineBannerOnlyWhileOffline() {
+    withSharedConnectivity(initialOnline = false) { connectivity ->
+      composeTestRule.setContent {
+        PreferencesScreen(
+            viewModel = viewModel,
+            onImportClick = {},
+            onAddLocationClick = {},
+            onSaved = {},
+            onBack = {},
+        )
+      }
+
+      composeTestRule.onNodeWithTag(OfflineBannerTestTags.OFFLINE_BANNER).assertIsDisplayed()
+
+      connectivity.isOnline.value = true
+      composeTestRule.waitForIdle()
+
+      composeTestRule.onNodeWithTag(OfflineBannerTestTags.OFFLINE_BANNER).assertDoesNotExist()
     }
   }
 }

@@ -1,6 +1,7 @@
 // Co-authored-by: GitHub Copilot
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.dashboard
 
 import android.content.Context
@@ -17,6 +18,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
 import com.android.sample.model.auth.AuthRepositoryProvider
+import com.android.sample.model.connectivity.withSharedConnectivity
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsRepositoryProvider
 import com.android.sample.model.event.InMemoryEventsRepository
@@ -29,6 +31,7 @@ import com.android.sample.ui.auth.TestAuthRepository
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
+import com.android.sample.ui.sharedComponents.OfflineBannerTestTags
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -358,6 +361,21 @@ class DashboardScreenTest {
         .assertTextEquals(context.getString(R.string.dashboard_title))
   }
 
+  /**
+   * The dashboard shows the offline banner while offline, and hides it once the connection returns.
+   */
+  @Test
+  fun dashboardShowsOfflineBannerOnlyWhileOffline() {
+    withSharedConnectivity(initialOnline = false) { connectivity ->
+      composeTestRule.setContent { DashboardScreen(navigationActions = null, onEventClick = {}) }
+
+      composeTestRule.onNodeWithTag(OfflineBannerTestTags.OFFLINE_BANNER).assertIsDisplayed()
+
+      connectivity.isOnline.value = true
+      composeTestRule.waitForIdle()
+
+      composeTestRule.onNodeWithTag(OfflineBannerTestTags.OFFLINE_BANNER).assertDoesNotExist()
+    }
   private class FakePreferencesRepository : PreferencesRepository {
     override suspend fun getPreferences(userId: String): Result<UserPreferences?> =
         Result.success(null)

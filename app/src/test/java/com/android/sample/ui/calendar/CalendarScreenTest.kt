@@ -1,5 +1,6 @@
 // Co-authored-by: OpenAI Codex <noreply@openai.com>
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.calendar
 
@@ -26,11 +27,13 @@ import androidx.compose.ui.test.swipeUp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
+import com.android.sample.model.connectivity.withSharedConnectivity
 import com.android.sample.ui.dashboard.DashboardContentTestTags
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
 import com.android.sample.ui.navigation.Tab
+import com.android.sample.ui.sharedComponents.OfflineBannerTestTags
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -718,5 +721,31 @@ class CalendarScreenTest {
         isLoading = isLoading,
         error = error,
     )
+  }
+
+  /**
+   * The calendar shows the offline banner while offline, and hides it once the connection returns.
+   */
+  @Test
+  fun calendarShowsOfflineBannerOnlyWhileOffline() {
+    withSharedConnectivity(initialOnline = false) { connectivity ->
+      composeTestRule.setContent {
+        CalendarScreen(
+            uiState = calendarUiState(LocalDate.of(2026, 10, 28)),
+            onToday = {},
+            onPreviousWeek = {},
+            onNextWeek = {},
+            onRetry = {},
+            navigationActions = null,
+        )
+      }
+
+      composeTestRule.onNodeWithTag(OfflineBannerTestTags.OFFLINE_BANNER).assertIsDisplayed()
+
+      connectivity.isOnline.value = true
+      composeTestRule.waitForIdle()
+
+      composeTestRule.onNodeWithTag(OfflineBannerTestTags.OFFLINE_BANNER).assertDoesNotExist()
+    }
   }
 }

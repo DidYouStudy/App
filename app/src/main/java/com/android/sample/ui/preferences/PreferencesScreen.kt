@@ -34,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.sample.R
 import com.android.sample.ui.preferences.PreferencesScreenTestTags as Tags
 import com.android.sample.ui.sharedComponents.SecondaryMediumTopAppBar
+import com.android.sample.ui.sharedComponents.rememberIsOffline
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 
@@ -66,7 +67,9 @@ fun PreferencesScreen(
 ) {
   Scaffold(
       topBar = {
+        val isOffline = rememberIsOffline()
         SecondaryMediumTopAppBar(
+            isOffline = isOffline,
             title =
                 stringResource(
                     id =

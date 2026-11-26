@@ -32,3 +32,23 @@ class FakeConnectivityObserver(initialOnline: Boolean = true) : ConnectivityObse
   /** Returns [isOnline] as a read-only flow, so the code under test cannot change it. */
   override fun observeIsOnline(): Flow<Boolean> = isOnline.asStateFlow()
 }
+
+/**
+ * Runs [block] with a [FakeConnectivityObserver] installed as the app-wide shared observer, and
+ * always removes it afterwards so one test cannot leak connectivity into the next.
+ *
+ * @param initialOnline what the fake reports until [block] changes
+ *   [FakeConnectivityObserver.isOnline].
+ */
+fun withSharedConnectivity(
+    initialOnline: Boolean,
+    block: (FakeConnectivityObserver) -> Unit,
+) {
+  val fake = FakeConnectivityObserver(initialOnline)
+  ConnectivityObserverProvider.setObserver(fake)
+  try {
+    block(fake)
+  } finally {
+    ConnectivityObserverProvider.setObserver(null)
+  }
+}

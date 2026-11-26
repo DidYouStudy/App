@@ -293,6 +293,7 @@ fun EventPlanningScreenStateless(
   Scaffold(
       topBar = {
         SecondaryMediumTopAppBar(
+            isOffline = uiState.isOffline,
             title = stringResource(resolvedTitleRes),
             onBackClick = onBackClick,
             backButtonEnabled = !isEditing || uiState.canLeaveEdit,

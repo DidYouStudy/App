@@ -15,8 +15,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
-import com.android.sample.model.connectivity.AndroidConnectivityObserver
 import com.android.sample.model.connectivity.ConnectivityObserver
+import com.android.sample.model.connectivity.ConnectivityObserverProvider
 import com.android.sample.model.connectivity.runOnlineWrite
 import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventDetails
@@ -834,7 +834,7 @@ class EventPlanningViewModelFactory(
 @Composable
 fun eventsPlanningViewModel(): EventPlanningViewModel {
   val context = LocalContext.current
-  val connectivityObserver = remember(context) { AndroidConnectivityObserver.create(context) }
+  val connectivityObserver = remember(context) { ConnectivityObserverProvider.getObserver(context) }
   return viewModel(
       factory =
           EventPlanningViewModelFactory(

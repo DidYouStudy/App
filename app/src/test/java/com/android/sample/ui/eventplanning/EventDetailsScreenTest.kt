@@ -27,10 +27,12 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.connectivity.withSharedConnectivity
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.PersonalEvent
 import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
 import com.android.sample.model.profile.FakeProfileRepository
+import com.android.sample.ui.sharedComponents.OfflineBannerTestTags
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -733,5 +735,22 @@ class EventDetailsScreenTest {
         .assertIsDisplayed()
     assertFalse(events.contains("back"))
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SUBJECT).assertIsDisplayed()
+  }
+
+  /**
+   * Event details shows the offline banner while offline, and hides it once the connection returns.
+   */
+  @Test
+  fun eventDetailsShowsOfflineBannerOnlyWhileOffline() {
+    withSharedConnectivity(initialOnline = false) { connectivity ->
+      setStatelessContent()
+
+      composeTestRule.onNodeWithTag(OfflineBannerTestTags.OFFLINE_BANNER).assertIsDisplayed()
+
+      connectivity.isOnline.value = true
+      composeTestRule.waitForIdle()
+
+      composeTestRule.onNodeWithTag(OfflineBannerTestTags.OFFLINE_BANNER).assertDoesNotExist()
+    }
   }
 }
