@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude AI Agent
 package com.android.sample.ui.groupsession
 
 import android.Manifest
@@ -121,39 +122,25 @@ class GroupSessionFilterSheetTest {
       composeTestRule.onNodeWithText(it).assertIsDisplayed()
     }
     listOf(
-            GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.STUDY_SESSION) to "Study",
-            GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.COURSE) to "Course",
-            GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.EXERCISE_SESSION) to
-                "Exercise",
-            GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.LAB) to "Lab",
-            GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.PROJECT) to "Project",
-            GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.EXAM) to "Exam",
-            GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.OTHER) to "Other",
+            EventType.STUDY_SESSION to "Study",
+            EventType.COURSE to "Course",
+            EventType.EXERCISE_SESSION to "Exercise",
+            EventType.LAB to "Lab",
+            EventType.PROJECT to "Project",
+            EventType.EXAM to "Exam",
+            EventType.OTHER to "Other",
         )
-        .forEach { (tag, label) ->
-          composeTestRule
-              .onNodeWithTag(tag)
-              .performScrollTo()
-              .assertIsDisplayed()
-              .assertTextEquals(label)
+        .forEach { (type, label) ->
+          typeChip(type).performScrollTo().assertIsDisplayed().assertTextEquals(label)
         }
     listOf(
-            GroupSessionFilterSheetTestTags.startingTimeChip(GroupSessionTimeFilter.ANYTIME) to
-                "Anytime",
-            GroupSessionFilterSheetTestTags.startingTimeChip(
-                GroupSessionTimeFilter.WITHIN_ONE_HOUR
-            ) to "In under 1h",
-            GroupSessionFilterSheetTestTags.startingTimeChip(GroupSessionTimeFilter.TODAY) to
-                "Today",
-            GroupSessionFilterSheetTestTags.startingTimeChip(GroupSessionTimeFilter.THIS_WEEK) to
-                "This week",
+            GroupSessionTimeFilter.ANYTIME to "Anytime",
+            GroupSessionTimeFilter.WITHIN_ONE_HOUR to "In under 1h",
+            GroupSessionTimeFilter.TODAY to "Today",
+            GroupSessionTimeFilter.THIS_WEEK to "This week",
         )
-        .forEach { (tag, label) ->
-          composeTestRule
-              .onNodeWithTag(tag)
-              .performScrollTo()
-              .assertIsDisplayed()
-              .assertTextEquals(label)
+        .forEach { (filter, label) ->
+          startingTimeChip(filter).performScrollTo().assertIsDisplayed().assertTextEquals(label)
         }
     composeTestRule.onNodeWithText("Only show sessions with open spots").assertIsDisplayed()
 
@@ -189,10 +176,7 @@ class GroupSessionFilterSheetTest {
     typeChip(EventType.STUDY_SESSION)
         .performScrollTo()
         .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox))
-    composeTestRule
-        .onNodeWithTag(
-            GroupSessionFilterSheetTestTags.startingTimeChip(GroupSessionTimeFilter.ANYTIME)
-        )
+    startingTimeChip(GroupSessionTimeFilter.ANYTIME)
         .performScrollTo()
         .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton))
   }

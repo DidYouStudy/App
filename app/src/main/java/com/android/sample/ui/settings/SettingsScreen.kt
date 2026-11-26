@@ -4,6 +4,9 @@
 // Co-authored-by: Gemini AI Agent
 package com.android.sample.ui.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -36,12 +39,13 @@ import com.android.sample.ui.theme.Spacing
 /**
  * Collects the settings UI state and connects screen actions to the [SettingsViewModel].
  *
- * Displays errors from the ViewModel in a snackbar and clears them after they are shown.
+ * Displays errors from the ViewModel in a snackbar and clears them after they are shown. Changing
+ * the profile picture opens the system photo picker, restricted to images, and hands the chosen
+ * image to the ViewModel.
  *
- * @param viewModel ViewModel supplying settings state and the sign-out action.
+ * @param viewModel ViewModel supplying settings state and the sign-out and picture actions.
  * @param modifier Modifier applied to the settings screen.
  * @param onBackClick Called when the user taps the back button.
- * @param onChangeProfilePictureClick Called when the user requests to change their profile picture.
  * @param onModifyPreferencesClick Called when the user opens preference settings.
  * @param onManageFriendsClick Called when the user opens friend management.
  */
@@ -50,12 +54,17 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = settingsViewModel(),
     onBackClick: () -> Unit = {},
-    onChangeProfilePictureClick: () -> Unit = {},
     onModifyPreferencesClick: () -> Unit = {},
     onManageFriendsClick: () -> Unit = {},
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val snackbarHostState = remember { SnackbarHostState() }
+
+  // The photo picker needs no storage permission; it returns null when the user closes it.
+  val pickPicture =
+      rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        viewModel.onPictureSelected(uri?.toString())
+      }
 
   // Resolve the error text here rather than in the ViewModel, so it follows the device language.
   val errorMessage = uiState.error?.let { stringResource(it.toMessageRes()) }
@@ -74,13 +83,19 @@ fun SettingsScreen(
       username = uiState.username ?: stringResource(R.string.default_username),
       profilePictureUrl = uiState.profilePictureUrl,
       isLoading = uiState.isLoading,
+      isUploadingPicture = uiState.isUploadingPicture,
       snackbarHostState = snackbarHostState,
       onBackClick = onBackClick,
       onEditUsernameClick = viewModel::openUsernameEditor,
-      onChangeProfilePictureClick = onChangeProfilePictureClick,
+      onChangeProfilePictureClick = {
+        pickPicture.launch(
+            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+        )
+      },
       onModifyPreferencesClick = onModifyPreferencesClick,
       onManageFriendsClick = onManageFriendsClick,
       onLogoutClick = { viewModel.signOut() },
+      isOffline = uiState.isOffline,
   )
 
   // The dialog is driven by the ViewModel, so its content survives recomposition and rotation.
@@ -103,6 +118,8 @@ fun SettingsScreen(
  * @param username Name displayed in the profile card.
  * @param profilePictureUrl URL of the user's profile picture, if available.
  * @param isLoading Whether profile information is still loading.
+ * @param isUploadingPicture Whether a new profile picture is being uploaded; the avatar then shows
+ *   a progress indicator and the change button is disabled.
  * @param snackbarHostState State used to display screen snackbars.
  * @param onBackClick Called when the user taps the back button.
  * @param onEditUsernameClick Called when the user requests to edit their username.
@@ -110,6 +127,7 @@ fun SettingsScreen(
  * @param onModifyPreferencesClick Called when the user opens preference settings.
  * @param onManageFriendsClick Called when the user opens friend management.
  * @param onLogoutClick Called when the user taps the logout button.
+ * @param isOffline Whether to show the "You're offline" banner under the header.
  */
 @Composable
 fun SettingsScreenStateless(
@@ -117,6 +135,7 @@ fun SettingsScreenStateless(
     username: String = stringResource(R.string.default_username),
     profilePictureUrl: String? = null,
     isLoading: Boolean = true,
+    isUploadingPicture: Boolean = false,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     onBackClick: () -> Unit = {},
     onEditUsernameClick: () -> Unit = {},
@@ -124,13 +143,14 @@ fun SettingsScreenStateless(
     onModifyPreferencesClick: () -> Unit = {},
     onManageFriendsClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {},
+    isOffline: Boolean = false,
 ) {
   Scaffold(
       modifier = modifier.fillMaxSize().testTag(SettingsScreenTestTags.SCREEN),
       containerColor = MaterialTheme.colorScheme.background,
       // The header and the footer handle the system insets themselves.
       contentWindowInsets = WindowInsets(0, 0, 0, 0),
-      topBar = { SettingsHeader(onBackClick = onBackClick) },
+      topBar = { SettingsHeader(onBackClick = onBackClick, isOffline = isOffline) },
       snackbarHost = {
         SnackbarHost(snackbarHostState, modifier = Modifier.navigationBarsPadding())
       },
@@ -149,6 +169,7 @@ fun SettingsScreenStateless(
           username = username,
           profilePictureUrl = profilePictureUrl,
           isLoading = isLoading,
+          isUploadingPicture = isUploadingPicture,
           onEditUsernameClick = onEditUsernameClick,
           onChangeProfilePictureClick = onChangeProfilePictureClick,
       )

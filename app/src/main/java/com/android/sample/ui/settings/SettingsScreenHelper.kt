@@ -33,13 +33,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import coil3.compose.SubcomposeAsyncImage
 import com.android.sample.R
 import com.android.sample.ui.sharedComponents.SecondaryMediumTopAppBar
 import com.android.sample.ui.theme.Dimens
@@ -57,8 +64,10 @@ object SettingsScreenTestTags {
   // Profile card
   const val PROFILE_CARD = "settings_profile_card"
   const val AVATAR = "settings_avatar"
+  const val DEFAULT_AVATAR_ICON = "settings_default_avatar_icon"
   const val GREETING = "settings_greeting"
   const val LOADING_INDICATOR = "settings_loading_indicator"
+  const val PICTURE_UPLOADING_INDICATOR = "settings_picture_uploading_indicator"
   const val EDIT_USERNAME_BUTTON = "settings_edit_username_button"
   const val CHANGE_PROFILE_PICTURE_BUTTON = "settings_change_profile_picture_button"
 
@@ -81,13 +90,15 @@ object SettingsScreenTestTags {
  * Displays the Settings app bar and invokes the supplied back action.
  *
  * @param onBackClick Called when the navigation button is tapped.
+ * @param isOffline Whether to show the "You're offline" banner under the bar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun SettingsHeader(onBackClick: () -> Unit) {
+internal fun SettingsHeader(onBackClick: () -> Unit, isOffline: Boolean = false) {
   SecondaryMediumTopAppBar(
       title = stringResource(id = R.string.settings_header),
       onBackClick = onBackClick,
+      isOffline = isOffline,
   )
 }
 
@@ -95,8 +106,12 @@ internal fun SettingsHeader(onBackClick: () -> Unit) {
  * Displays the user's profile summary and profile-related actions.
  *
  * @param username Name shown in the greeting.
- * @param profilePictureUrl URL of the user's profile picture, if available; currently not rendered.
+ * @param profilePictureUrl URL of the user's profile picture, if available; the avatar shows the
+ *   default icon when it is blank, while the picture loads, and if it cannot be loaded. A progress
+ *   indicator surrounds the avatar while the picture loads.
  * @param isLoading Whether the profile information is loading.
+ * @param isUploadingPicture Whether a new picture is being uploaded: the avatar then shows a
+ *   progress indicator and the profile-picture action is disabled.
  * @param onEditUsernameClick Called when the username edit action is tapped.
  * @param onChangeProfilePictureClick Called when the profile-picture action is tapped.
  */
@@ -105,6 +120,7 @@ internal fun ProfileCard(
     username: String,
     profilePictureUrl: String?,
     isLoading: Boolean,
+    isUploadingPicture: Boolean,
     onEditUsernameClick: () -> Unit,
     onChangeProfilePictureClick: () -> Unit,
 ) {
@@ -158,16 +174,12 @@ internal fun ProfileCard(
             text = stringResource(R.string.settings_change_profile_picture),
             onClick = onChangeProfilePictureClick,
             testTag = SettingsScreenTestTags.CHANGE_PROFILE_PICTURE_BUTTON,
-        )
-        Text(
-            text = stringResource(R.string.not_implemented),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            enabled = !isUploadingPicture,
         )
       }
     }
 
-    // Displays the generic avatar placeholder. The profile picture URL is not rendered yet.
+    // Displays the user's profile picture, or the generic avatar icon when there is none.
     Box(
         modifier =
             Modifier.size(avatarSize)
@@ -176,26 +188,35 @@ internal fun ProfileCard(
                 .testTag(SettingsScreenTestTags.AVATAR),
         contentAlignment = Alignment.Center,
     ) {
-      DefaultAvatarIcon()
+      // Reset for each new URL, so the ring is already there when the upload indicator turns off.
+      var isImageLoading by
+          remember(profilePictureUrl) { mutableStateOf(!profilePictureUrl.isNullOrBlank()) }
+      if (profilePictureUrl.isNullOrBlank()) {
+        DefaultAvatarIcon()
+      } else {
+        SubcomposeAsyncImage(
+            model = profilePictureUrl,
+            contentDescription = stringResource(R.string.settings_profile_picture),
+            modifier = Modifier.fillMaxSize().clip(CircleShape),
+            contentScale = ContentScale.Crop,
+            onLoading = { isImageLoading = true },
+            onSuccess = { isImageLoading = false },
+            onError = { isImageLoading = false },
+            // The default icon stands in while the picture loads and if it cannot be loaded.
+            loading = { DefaultAvatarIcon() },
+            error = { DefaultAvatarIcon() },
+        )
+      }
 
-      // currently, the actual profile picture of the user is not displayed
-      // the following code should take care of that but it is dependent on the coil library
-      // which is not yet imported into the build gradle file: the artifact has not yet
-      // been verified
-      //            if (profilePictureUrl.isNullOrBlank()) {
-      //                DefaultAvatarIcon()
-      //            } else {
-      //                SubcomposeAsyncImage(
-      //                    model = profilePictureUrl,
-      //                    contentDescription = stringResource(R.string.settings_profile_picture),
-      //                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-      //                    contentScale = ContentScale.Crop,
-      //                    // Fall back to the default icon while loading and if the image fails to
-      // load
-      //                    loading = { DefaultAvatarIcon() },
-      //                    error = { DefaultAvatarIcon() },
-      //                )
-      //            }
+      // A ring around the avatar while a new picture is prepared, uploaded and saved, and while
+      // any picture is downloaded.
+      if (isUploadingPicture || isImageLoading) {
+        CircularProgressIndicator(
+            modifier =
+                Modifier.fillMaxSize().testTag(SettingsScreenTestTags.PICTURE_UPLOADING_INDICATOR),
+            strokeWidth = Dimens.progressIndicatorStrokeWidth,
+        )
+      }
     }
   }
 }
@@ -203,7 +224,11 @@ internal fun ProfileCard(
 /** Displays the generic person icon used as the avatar placeholder. */
 @Composable
 internal fun DefaultAvatarIcon() {
-  Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+  // The tag tells the placeholder apart from a loaded picture, which has the same description.
+  Box(
+      modifier = Modifier.fillMaxSize().testTag(SettingsScreenTestTags.DEFAULT_AVATAR_ICON),
+      contentAlignment = Alignment.Center,
+  ) {
     Icon(
         imageVector = Icons.Outlined.Person,
         contentDescription = stringResource(R.string.settings_profile_picture),
@@ -219,14 +244,21 @@ internal fun DefaultAvatarIcon() {
  * @param text Text describing the action.
  * @param onClick Action invoked when tapped.
  * @param testTag Test tag applied for UI tests.
+ * @param enabled Whether the action can be tapped; when false it is greyed out.
  */
 @Composable
-internal fun SmallEditButton(text: String, onClick: () -> Unit, testTag: String) {
-  val color = MaterialTheme.colorScheme.primary
+internal fun SmallEditButton(
+    text: String,
+    onClick: () -> Unit,
+    testTag: String,
+    enabled: Boolean = true,
+) {
+  val color =
+      if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
   Row(
       modifier =
           Modifier.testTag(testTag)
-              .clickable(role = Role.Button, onClick = onClick)
+              .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
               .padding(
                   horizontal = Spacing.medium,
                   vertical = Dimens.settingsEditButtonVerticalPadding,

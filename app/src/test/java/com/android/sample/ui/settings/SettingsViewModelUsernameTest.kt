@@ -74,7 +74,8 @@ class SettingsViewModelUsernameTest {
     Dispatchers.resetMain()
   }
 
-  private fun viewModel() = SettingsViewModel(authRepository, repository)
+  /** Builds a ViewModel; the picture dependencies are unused mocks in these username tests. */
+  private fun viewModel() = SettingsViewModel(authRepository, repository, mock(), mock())
 
   /** Opens the dialog and types [input]. */
   private fun SettingsViewModel.type(input: String) {
@@ -272,6 +273,26 @@ class SettingsViewModelUsernameTest {
   }
 
   @Test
+  fun save_offline_showsOfflineError_keepsDialogOpen_andAllowsRetryOfSameName() = runTest {
+    repository.onUpdate = { Result.failure(ProfileException(ProfileError.OFFLINE)) }
+    val vm = viewModel()
+    vm.type("bob")
+    vm.saveUsername()
+
+    assertEquals(UsernameError.OFFLINE, vm.edit().error)
+    assertFalse(vm.edit().isSaving)
+    assertEquals("bob", vm.edit().input)
+    assertEquals("alice", vm.uiState.value.username)
+    // The same name can be retried once the connection is back, and then succeeds.
+    assertTrue(vm.edit().canSave)
+    repository.onUpdate = { Result.success(UserProfile(uid = "u1", username = it)) }
+    vm.saveUsername()
+    assertEquals(listOf("bob", "bob"), repository.requestedUsernames)
+    assertNull(vm.uiState.value.usernameEdit)
+    assertEquals("bob", vm.uiState.value.username)
+  }
+
+  @Test
   fun save_missingProfile_showsProfileUnavailable_withoutRetry() = runTest {
     repository.onUpdate = { Result.failure(ProfileException(ProfileError.INVALID_PROFILE_DATA)) }
     val vm = viewModel()
@@ -371,7 +392,7 @@ class SettingsViewModelUsernameTest {
 
   @Test
   fun open_whileProfileIsLoading_doesNothing() = runTest {
-    val vm = SettingsViewModel(authRepository, repository)
+    val vm = viewModel()
     currentUser.value = null
     // A signed-out ViewModel finishes loading but has no user to edit.
     vm.openUsernameEditor()
@@ -407,6 +428,7 @@ class SettingsViewModelUsernameTest {
         UsernameError.PROFILE_UNAVAILABLE,
         ProfileError.INVALID_PROFILE_DATA.toUsernameError(),
     )
+    assertEquals(UsernameError.OFFLINE, ProfileError.OFFLINE.toUsernameError())
     assertEquals(UsernameError.FAILURE, ProfileError.FIRESTORE_FAILURE.toUsernameError())
     assertEquals(UsernameError.FAILURE, ProfileError.UNKNOWN.toUsernameError())
   }

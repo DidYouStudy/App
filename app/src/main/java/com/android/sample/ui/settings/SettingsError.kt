@@ -16,6 +16,9 @@ enum class SettingsError {
 
   /** Signing the user out failed. */
   SIGN_OUT_FAILED,
+
+  /** Preparing, uploading or saving the new profile picture failed. */
+  UPLOAD_PICTURE_FAILED,
 }
 
 /** Returns the string resource shown to the user for this error. */
@@ -24,4 +27,5 @@ fun SettingsError.toMessageRes(): Int =
     when (this) {
       SettingsError.LOAD_PROFILE_FAILED -> R.string.settings_error_failed_to_load_profile
       SettingsError.SIGN_OUT_FAILED -> R.string.settings_error_failed_to_sign_out
+      SettingsError.UPLOAD_PICTURE_FAILED -> R.string.settings_error_failed_to_upload_picture
     }

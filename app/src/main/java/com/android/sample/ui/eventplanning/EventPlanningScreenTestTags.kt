@@ -1,5 +1,5 @@
 // Co-authored-by: Gemini AI Agent
-// Co-authored-by: Claude AI Agent
+// Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.eventplanning
 
 import com.android.sample.ui.sharedComponents.FormContentTestTags
@@ -34,4 +34,9 @@ object EventPlanningScreenTestTags {
   const val DELETE_BUTTON = "event_planning_delete_button"
   const val DELETE_BUTTON_PROGRESS = "event_planning_delete_button_progress"
   const val ERROR_TEXT = "event_planning_error_text"
+
+  /**
+   * Message shown while a group session cannot be saved or deleted because the device is offline.
+   */
+  const val OFFLINE_MESSAGE = "event_planning_offline_message"
 }

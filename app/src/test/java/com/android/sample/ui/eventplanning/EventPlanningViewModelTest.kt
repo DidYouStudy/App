@@ -7,6 +7,8 @@ package com.android.sample.ui.eventplanning
 import androidx.lifecycle.ViewModel
 import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
+import com.android.sample.model.connectivity.ConnectionLostException
+import com.android.sample.model.connectivity.FakeConnectivityObserver
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
@@ -1333,6 +1335,103 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertEquals(EventPlanningError.STORAGE_FAILURE, state.error)
   }
 
+  @Test
+  fun addEvent_groupSessionOffline_doesNotCallRepository() = runTest {
+    val connectivity = FakeConnectivityObserver(initialOnline = false)
+    val viewModel = createViewModel(connectivityObserver = connectivity)
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+    viewModel.fillValidForm()
+
+    viewModel.addEvent()
+
+    assertEquals(EventPlanningError.OFFLINE, viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isEventAdded)
+    verify(groupSessionsRepository, never()).saveSession(any(), any())
+  }
+
+  @Test
+  fun deleteEvent_groupSessionOffline_doesNotCallRepository() = runTest {
+    val connectivity = FakeConnectivityObserver(initialOnline = false)
+    val viewModel = createViewModel(connectivityObserver = connectivity)
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+
+    viewModel.deleteEvent("session-1")
+
+    assertEquals(EventPlanningError.OFFLINE, viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isEventDeleted)
+    verify(groupSessionsRepository, never()).deleteSession(any(), any())
+  }
+
+  @Test
+  fun addEvent_groupSessionConnectionLost_exposesConnectionLostError() = runTest {
+    `when`(groupSessionsRepository.saveSession(any(), any()))
+        .thenReturn(Result.failure(ConnectionLostException()))
+    val viewModel = createViewModel()
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+    viewModel.fillValidForm()
+
+    viewModel.addEvent()
+
+    assertEquals(EventPlanningError.CONNECTION_LOST, viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isEventAdded)
+  }
+
+  @Test
+  fun personalEventRemainsWritableWhileOffline() = runTest {
+    val connectivity = FakeConnectivityObserver(initialOnline = false)
+    val viewModel = createViewModel(connectivityObserver = connectivity)
+    viewModel.setEventKind(EventKind.PERSONAL)
+    viewModel.fillValidForm()
+
+    viewModel.addEvent()
+
+    assertTrue(viewModel.uiState.value.isEventAdded)
+    assertNull(viewModel.uiState.value.error)
+    verify(eventsRepository).saveEvent(any())
+  }
+
+  /** Verifies connectivity observer updates isOffline in UI state. */
+  @Test
+  fun observeConnectivity_updatesIsOfflineState() = runTest {
+    val connectivity = FakeConnectivityObserver(initialOnline = true)
+    val viewModel = createViewModel(connectivityObserver = connectivity)
+
+    assertFalse(viewModel.uiState.value.isOffline)
+
+    connectivity.isOnline.value = false
+    advanceUntilIdle()
+    assertTrue(viewModel.uiState.value.isOffline)
+
+    connectivity.isOnline.value = true
+    advanceUntilIdle()
+    assertFalse(viewModel.uiState.value.isOffline)
+  }
+
+  /** Verifies canLeaveEdit and isBusy computed state properties. */
+  @Test
+  fun uiState_computedProperties_evaluateCorrectly() {
+    val defaultState = EventPlanningUiState()
+    assertTrue(defaultState.canLeaveEdit)
+    assertFalse(defaultState.isBusy)
+
+    val savingState = defaultState.copy(isSaving = true)
+    assertFalse(savingState.canLeaveEdit)
+    assertTrue(savingState.isBusy)
+
+    val deletingState = defaultState.copy(isDeleting = true)
+    assertFalse(deletingState.canLeaveEdit)
+    assertTrue(deletingState.isBusy)
+
+    val editedState = defaultState.copy(isEventEdited = true)
+    assertFalse(editedState.canLeaveEdit)
+
+    val deletedState = defaultState.copy(isEventDeleted = true)
+    assertFalse(deletedState.canLeaveEdit)
+
+    val loadingState = defaultState.copy(isLoading = true)
+    assertTrue(loadingState.isBusy)
+  }
+
   /**
    * Verifies that each [EventPlanningError] entry maps to its distinct, valid localized string
    * resource identifier.
@@ -1365,6 +1464,8 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
             EventPlanningError.INVALID_EVENT_DATA to
                 R.string.event_planning_error_invalid_event_data,
             EventPlanningError.STORAGE_FAILURE to R.string.event_planning_error_storage_failure,
+            EventPlanningError.OFFLINE to R.string.event_planning_error_offline,
+            EventPlanningError.CONNECTION_LOST to R.string.event_planning_error_connection_lost,
         )
 
     assertEquals(EventPlanningError.entries.toSet(), expectedMappings.keys)

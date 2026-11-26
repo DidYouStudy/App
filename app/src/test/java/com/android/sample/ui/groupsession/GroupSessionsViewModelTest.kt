@@ -6,6 +6,9 @@ package com.android.sample.ui.groupsession
 
 import androidx.lifecycle.viewModelScope
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.connectivity.ConnectionLostException
+import com.android.sample.model.connectivity.ConnectivityObserver
+import com.android.sample.model.connectivity.FakeConnectivityObserver
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
@@ -63,7 +66,6 @@ class GroupSessionsViewModelTest {
   private lateinit var authRepository: TestAuthRepository
   private lateinit var repository: InMemoryGroupSessionsRepository
   private lateinit var profileRepository: FakeProfileRepository
-  private val testCampusCenter = Location(0.0, 0.0)
 
   @Before
   fun setUp() {
@@ -633,6 +635,71 @@ class GroupSessionsViewModelTest {
     assertFalse(viewModel.uiState.value.sessions.single().isMember)
   }
 
+  @Test
+  fun joinOffline_doesNotCallRepository() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val connectivity = FakeConnectivityObserver(initialOnline = false)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(listOf(session("target", BOB, listOf(BOB))))
+    val viewModel =
+        createViewModel(
+            sessionsRepository = sessionsRepository,
+            connectivityObserver = connectivity,
+        )
+    observe(viewModel)
+    runCurrent()
+
+    viewModel.join("target")
+
+    assertEquals(GroupSessionsError.OFFLINE, viewModel.uiState.value.error)
+    assertEquals(0, sessionsRepository.joinCalls)
+  }
+
+  @Test
+  fun leaveOffline_doesNotCallRepository() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val connectivity = FakeConnectivityObserver(initialOnline = false)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(
+            listOf(session("target", BOB, listOf(BOB, ALICE))),
+        )
+    val viewModel =
+        createViewModel(
+            sessionsRepository = sessionsRepository,
+            connectivityObserver = connectivity,
+        )
+    observe(viewModel)
+    runCurrent()
+
+    viewModel.leave("target")
+
+    assertEquals(GroupSessionsError.OFFLINE, viewModel.uiState.value.error)
+    assertEquals(0, sessionsRepository.leaveCalls)
+  }
+
+  @Test
+  fun joinConnectionLostReportsConnectionLostAndClearsProgress() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(listOf(session("a", BOB, listOf(BOB))))
+    val connectivity = FakeConnectivityObserver(initialOnline = true)
+    val viewModel =
+        createViewModel(
+            sessionsRepository = sessionsRepository,
+            connectivityObserver = connectivity,
+        )
+    observe(viewModel)
+    runCurrent()
+
+    viewModel.join("a")
+    runCurrent()
+    sessionsRepository.joinResult.complete(Result.failure(ConnectionLostException()))
+    runCurrent()
+
+    assertFalse(viewModel.uiState.value.sessions.single().isActionInProgress)
+    assertEquals(GroupSessionsError.CONNECTION_LOST, viewModel.uiState.value.error)
+  }
+
   /** Marks only the requested session while joining and clears progress after success. */
   @Test
   fun join_marksOnlyTargetInProgressUntilSuccess() = runTest {
@@ -1153,7 +1220,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             mutableClock,
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
 
     assertEquals(listOf("expiring"), visibleIds(viewModel))
@@ -1177,7 +1243,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
     clock.currentInstant = Instant.parse("2025-03-01T12:00:25Z")
 
@@ -1198,7 +1263,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
     clock.currentInstant = Instant.parse("2025-03-01T12:00:25Z")
 
@@ -1221,7 +1285,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             AdvancingTestClock(now),
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
 
     viewModel.refresh()
@@ -1242,7 +1305,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             MutableTestClock(now),
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
 
     assertEquals(now, viewModel.uiState.value.now)
@@ -1260,7 +1322,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
     observe(viewModel)
     val later = now.plusSeconds(30)
@@ -1289,7 +1350,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
     viewModel.join("missing")
     assertEquals(GroupSessionsError.JOIN_FAILED, viewModel.uiState.value.error)
@@ -1316,7 +1376,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
     observe(viewModel)
     clock.currentInstant = Instant.parse("2025-03-01T12:00:30Z")
@@ -1339,7 +1398,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
     val hiddenAt = now.plusSeconds(600)
     observe(viewModel).cancel()
@@ -1371,7 +1429,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
     val signedOutAt = now.plusSeconds(600)
     clock.currentInstant = signedOutAt
@@ -1394,7 +1451,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
     viewModel.onQueryChange("bio")
     viewModel.onFilterChange(GroupSessionFilter.JOINED)
@@ -1604,8 +1660,7 @@ class GroupSessionsViewModelTest {
     val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
     val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
     val hosted = session("hosted", BOB)
-    val signedOutState =
-        GroupSessionsUiState(now = now, isLoading = false, campusCenter = testCampusCenter)
+    val signedOutState = GroupSessionsUiState(now = now, isLoading = false)
     emissions.emit(Result.success(listOf(hosted)))
     runCurrent()
     assertEquals(listOf(BOB), profileRepository.getProfileUserIds)
@@ -1796,7 +1851,7 @@ class GroupSessionsViewModelTest {
       campusLocationRepository: CampusLocationRepository? = null,
       profiles: FakeProfileRepository = profileRepository,
       clock: Clock = MutableTestClock(now),
-      campusCenter: Location = testCampusCenter,
+      connectivityObserver: ConnectivityObserver? = null,
   ): GroupSessionsViewModel =
       GroupSessionsViewModel(
           authRepository = authRepository,
@@ -1805,7 +1860,7 @@ class GroupSessionsViewModelTest {
           locationProvider = locationProvider,
           campusLocationRepository = campusLocationRepository,
           profileRepository = profiles,
-          campusCenter = campusCenter,
+          connectivityObserver = connectivityObserver,
       )
 
   private fun visibleIds(viewModel: GroupSessionsViewModel): List<String> =

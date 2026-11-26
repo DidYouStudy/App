@@ -16,7 +16,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.connectivity.AndroidConnectivityObserver
+import com.android.sample.model.connectivity.ConnectionLostException
 import com.android.sample.model.connectivity.ConnectivityObserver
+import com.android.sample.model.connectivity.runOnlineWrite
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
@@ -88,6 +90,12 @@ enum class GroupSessionsError {
 
   /** The current user could not leave the selected session. */
   LEAVE_FAILED,
+
+  /** An action that needs the server was attempted while the device is offline. */
+  OFFLINE,
+
+  /** The connection dropped, or the server did not answer, in the middle of a join or leave. */
+  CONNECTION_LOST,
 }
 
 /**
@@ -169,7 +177,6 @@ data class GroupSessionsUiState(
     val showLabRoomType: Boolean = false,
     val hideFullSessions: Boolean = false,
     val userLocation: Location? = null,
-    val campusCenter: Location? = null,
     val error: GroupSessionsError? = null,
     val isOffline: Boolean = false,
     val participantsSheet: GroupSessionParticipantsSheet? = null,
@@ -192,8 +199,12 @@ data class GroupSessionsUiState(
  * Offline, the repository keeps serving the sessions it already loaded from its local cache, so the
  * list, search, and filters keep working without a connection. [connectivityObserver] drives
  * [GroupSessionsUiState.isOffline] while [uiState] has a collector, which is what the screen shows
- * and what group session actions can check. It is null when connectivity is not tracked, in which
- * case the state never reports offline.
+ * and what group session actions check. Joining and leaving are online-only: while offline they
+ * send nothing and report [GroupSessionsError.OFFLINE], and if the connection drops (or the server
+ * does not answer in time) while one is running it is cancelled, its progress indicator is cleared
+ * and [GroupSessionsError.CONNECTION_LOST] is reported. Both work again as soon as the connection
+ * returns. [connectivityObserver] is null when connectivity is not tracked, in which case the state
+ * never reports offline.
  */
 class GroupSessionsViewModel(
     private val authRepository: AuthRepository,
@@ -203,13 +214,11 @@ class GroupSessionsViewModel(
     private val locationProvider: LocationProvider,
     private val campusLocationRepository: CampusLocationRepository? = null,
     private val connectivityObserver: ConnectivityObserver? = null,
-    private val campusCenter: Location,
 ) : ViewModel() {
   private val _uiState =
       MutableStateFlow(
           GroupSessionsUiState(
               now = clock.instant(),
-              campusCenter = campusCenter,
           )
       )
   /** The current loading, list, search, filter, and categorized-error state. */
@@ -262,7 +271,6 @@ class GroupSessionsViewModel(
                       // Preserve user location if authRepository emits null after a location
                       // already emitted.
                       userLocation = _uiState.value.userLocation,
-                      campusCenter = campusCenter,
                       // Connectivity belongs to the device, not to the signed-in user.
                       isOffline = _uiState.value.isOffline,
                   )
@@ -400,12 +408,12 @@ class GroupSessionsViewModel(
     }
   }
 
-  /** Starts a join request for [sessionId]. */
+  /** Starts a join request for [sessionId]; online-only, see [runSessionAction]. */
   fun join(sessionId: String) {
     runSessionAction(sessionId, isJoin = true)
   }
 
-  /** Starts a leave request for [sessionId]. */
+  /** Starts a leave request for [sessionId]; online-only, see [runSessionAction]. */
   fun leave(sessionId: String) {
     runSessionAction(sessionId, isJoin = false)
   }
@@ -413,26 +421,42 @@ class GroupSessionsViewModel(
   /**
    * Runs one join or leave request, publishing its progress and ignoring duplicate taps for the
    * same session until the repository result arrives.
+   *
+   * Writes are online-only: while [GroupSessionsUiState.isOffline] nothing is sent and
+   * [GroupSessionsError.OFFLINE] is reported. The request runs through [runOnlineWrite], so it
+   * cannot hang: a connection loss or timeout ends it with [GroupSessionsError.CONNECTION_LOST],
+   * any other failure with [GroupSessionsError.JOIN_FAILED] or [GroupSessionsError.LEAVE_FAILED],
+   * and in every case the session's progress indicator is cleared and the list is refreshed.
    */
   private fun runSessionAction(sessionId: String, isJoin: Boolean) {
     viewModelScope.launch {
       val userId = currentUserId ?: return@launch
+      if (_uiState.value.isOffline) {
+        _uiState.update { it.copy(error = GroupSessionsError.OFFLINE) }
+        return@launch
+      }
       if (!actionRequestsInProgress.add(sessionId)) return@launch
       updateVisibleSessions()
 
       val requestGeneration = authGeneration
       val result =
-          if (isJoin) repository.joinSession(userId, sessionId)
-          else repository.leaveSession(userId, sessionId)
+          runOnlineWrite(connectivityObserver) {
+            if (isJoin) repository.joinSession(userId, sessionId)
+            else repository.leaveSession(userId, sessionId)
+          }
       if (requestGeneration != authGeneration) return@launch
 
       actionRequestsInProgress.remove(sessionId)
       updateVisibleSessions()
-      if (result.isFailure) {
+      result.exceptionOrNull()?.let { failure ->
         _uiState.update {
           it.copy(
               error =
-                  if (isJoin) GroupSessionsError.JOIN_FAILED else GroupSessionsError.LEAVE_FAILED,
+                  when {
+                    failure is ConnectionLostException -> GroupSessionsError.CONNECTION_LOST
+                    isJoin -> GroupSessionsError.JOIN_FAILED
+                    else -> GroupSessionsError.LEAVE_FAILED
+                  },
           )
         }
         refresh()
@@ -779,7 +803,6 @@ class GroupSessionsViewModelFactory(
     private val locationProvider: LocationProvider,
     private val campusLocationRepository: CampusLocationRepository? = null,
     private val connectivityObserver: ConnectivityObserver? = null,
-    private val campusCenter: Location,
 ) : ViewModelProvider.Factory {
   /**
    * Creates the requested ViewModel and rejects unsupported classes with their class name.
@@ -798,7 +821,6 @@ class GroupSessionsViewModelFactory(
         locationProvider = locationProvider,
         campusLocationRepository = campusLocationRepository,
         connectivityObserver = connectivityObserver,
-        campusCenter = campusCenter,
     )
         as T
   }
@@ -814,7 +836,6 @@ fun groupSessionsViewModel(): GroupSessionsViewModel {
   val context = LocalContext.current
   val locationProvider = remember(context) { AndroidLocationProvider.create(context) }
   val connectivityObserver = remember(context) { AndroidConnectivityObserver.create(context) }
-  val campusCenter = defaultCampusCenter()
   return viewModel(
       factory =
           GroupSessionsViewModelFactory(
@@ -824,7 +845,6 @@ fun groupSessionsViewModel(): GroupSessionsViewModel {
               profileRepository = ProfileRepositoryProvider.getRepository(),
               locationProvider = locationProvider,
               connectivityObserver = connectivityObserver,
-              campusCenter = campusCenter,
           )
   )
 }
