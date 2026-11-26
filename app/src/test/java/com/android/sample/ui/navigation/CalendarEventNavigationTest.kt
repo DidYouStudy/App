@@ -469,6 +469,13 @@ class CalendarEventNavigationTest {
   }
 
   /** Edits a field whose value is also visible on Details. */
+  private fun replaceDescription(value: String) {
+    composeRule
+        .onNodeWithTag(EditTags.DESCRIPTION_INPUT)
+        .performScrollTo()
+        .performTextReplacement(value)
+  }
+
   /**
    * Robolectric's default network has no validated internet, so the app would treat the device as
    * offline and block group session writes. Reports a validated connection instead.
@@ -483,13 +490,6 @@ class CalendarEventNavigationTest {
           shadowOf(it).addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
         }
     shadowOf(connectivity).setNetworkCapabilities(connectivity.activeNetwork, capabilities)
-  }
-
-  private fun replaceDescription(value: String) {
-    composeRule
-        .onNodeWithTag(EditTags.DESCRIPTION_INPUT)
-        .performScrollTo()
-        .performTextReplacement(value)
   }
 
   /** Confirms Calendar kept its week and its unrelated event. */
