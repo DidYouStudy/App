@@ -1,18 +1,20 @@
 // Co-authored-by: OpenAI Codex
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.groupsession
 
+import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -44,7 +46,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import com.android.sample.R
+import com.android.sample.ui.sharedComponents.UserAvatar
+import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 
@@ -182,7 +188,13 @@ private fun ParticipantRow(participant: GroupSessionParticipant) {
       horizontalArrangement = Arrangement.spacedBy(Spacing.small),
       verticalAlignment = Alignment.CenterVertically,
   ) {
-    ParticipantAvatar(participant)
+    ParticipantAvatar(
+        userId = participant.userId,
+        username = participant.username,
+        isHost = participant.isHost,
+        avatarTestTag = GroupSessionParticipantsTestTags.AVATAR,
+        pictureUrl = participant.profilePictureUrl,
+    )
     Text(
         text =
             if (participant.isCurrentUser) stringResource(R.string.group_session_participants_you)
@@ -206,11 +218,26 @@ private fun ParticipantRow(participant: GroupSessionParticipant) {
   }
 }
 
-/** Shows an initial from the stored username, with a stable color across roster updates. */
+/**
+ * Shows a user's profile picture. Without one, while it loads and if it cannot be loaded, shows the
+ * initial of [username] with a color that stays stable across updates, or a person icon without a
+ * username. Hidden from screen readers, because callers write the name next to it.
+ *
+ * @param isHost gives the initial the host's color.
+ * @param pictureUrl URL of the profile picture, if the user has one.
+ * @param size diameter of the avatar; below the default, the initial uses a smaller text style.
+ */
 @Composable
-private fun ParticipantAvatar(participant: GroupSessionParticipant) {
+internal fun ParticipantAvatar(
+    userId: String,
+    username: String?,
+    isHost: Boolean,
+    avatarTestTag: String,
+    pictureUrl: String? = null,
+    size: Dp = Dimens.avatarSizeMedium,
+) {
   val initial =
-      participant.username
+      username
           ?.trimStart()
           ?.takeIf { it.isNotEmpty() }
           ?.let { name ->
@@ -220,28 +247,45 @@ private fun ParticipantAvatar(participant: GroupSessionParticipant) {
   val (background, foreground) =
       when {
         initial == null -> colors.surfaceVariant to colors.onSurfaceVariant
-        participant.isHost -> colors.primaryContainer to colors.onPrimaryContainer
-        participant.userId.hashCode() % 2 == 0 ->
-            colors.secondaryContainer to colors.onSecondaryContainer
+        isHost -> colors.primaryContainer to colors.onPrimaryContainer
+        userId.hashCode() % 2 == 0 -> colors.secondaryContainer to colors.onSecondaryContainer
         else -> colors.tertiaryContainer to colors.onTertiaryContainer
       }
+  val initialStyle =
+      if (size < Dimens.avatarSizeMedium) MaterialTheme.typography.labelSmall
+      else MaterialTheme.typography.titleMedium
 
-  Box(
-      modifier =
-          Modifier.size(Dimens.avatarSizeMedium)
-              .background(background, CircleShape)
-              .testTag(GroupSessionParticipantsTestTags.AVATAR)
-              .semantics { hideFromAccessibility() },
-      contentAlignment = Alignment.Center,
+  UserAvatar(
+      pictureUrl = pictureUrl,
+      modifier = Modifier.size(size).testTag(avatarTestTag).semantics { hideFromAccessibility() },
   ) {
-    if (initial == null) {
-      Icon(
-          imageVector = Icons.Outlined.Person,
-          contentDescription = null,
-          tint = foreground,
-      )
-    } else {
-      Text(text = initial, color = foreground, style = MaterialTheme.typography.titleMedium)
+    Box(
+        modifier = Modifier.fillMaxSize().background(background),
+        contentAlignment = Alignment.Center,
+    ) {
+      if (initial == null) {
+        Icon(
+            imageVector = Icons.Outlined.Person,
+            contentDescription = null,
+            tint = foreground,
+        )
+      } else {
+        Text(text = initial, color = foreground, style = initialStyle)
+      }
+    }
+  }
+}
+
+/** Previews a host row and an unknown member's row in light and dark mode. */
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun ParticipantRowPreview() {
+  DidYouStudyTheme(dynamicColor = false) {
+    Surface {
+      Column(modifier = Modifier.padding(horizontal = Spacing.large)) {
+        ParticipantRow(GroupSessionParticipant("1", "Alice", isHost = true, isCurrentUser = false))
+        ParticipantRow(GroupSessionParticipant("2", null, isHost = false, isCurrentUser = false))
+      }
     }
   }
 }
