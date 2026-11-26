@@ -145,7 +145,6 @@ class GroupSessionMapContentTest {
         )
 
     assertEquals(expected, defaultCampusCenter(context.resources))
-    assertEquals(expected, defaultCampusCenter(context))
 
     var composableCenter: Location? = null
     composeTestRule.setContent { composableCenter = defaultCampusCenter() }

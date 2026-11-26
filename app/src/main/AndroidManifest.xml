@@ -6,8 +6,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Device position for AndroidLocationProvider. Approximate is enough to work; precise gives
-         better distances when the user grants it. -->
+    <!-- Device position for AndroidLocationProvider. Precise location (ACCESS_FINE_LOCATION) is
+         required; approximate (coarse-only) location does not allow the user to properly use the
+         map. ACCESS_COARSE_LOCATION remains declared as required by Android 12+ alongside fine. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 

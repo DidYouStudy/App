@@ -16,6 +16,7 @@ import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -137,5 +138,152 @@ class TrackedSubjectRepositoryFirestoreEmulatorTest {
     val serverDecisions = TrackedSubjectFirestoreMapper.decode(serverSnapshot.data)
     assertTrue(serverDecisions.isTracked("Analysis I"))
     assertTrue(serverDecisions.isTracked("Physics"))
+  }
+
+  private suspend fun observed() =
+      withTimeout(15000) { repository.observeDecisions(uid).first().getOrThrow() }
+
+  private suspend fun serverDecisions() =
+      TrackedSubjectFirestoreMapper.decode(doc().get(Source.SERVER).await().data)
+
+  private fun Result<*>.error() = (exceptionOrNull() as TrackedSubjectException).error
+
+  /** The priority is null until saved; afterwards it is observed and stored on the server. */
+  @Test
+  fun priorityIsNullUntilSavedThenRoundTrips() = runBlocking {
+    repository.saveDecisions(uid, mapOf("Analysis I" to true)).getOrThrow()
+    assertNull(observed().priorityOf("Analysis I"))
+
+    repository.savePriority(uid, "Analysis I", 4).getOrThrow()
+    sync()
+
+    assertEquals(SubjectPriority(4), observed().priorityOf("Analysis I"))
+    assertEquals(SubjectPriority(4), serverDecisions().priorityOf("Analysis I"))
+  }
+
+  /** The lowest and the highest levels are accepted and stored. */
+  @Test
+  fun boundaryLevelsAreAccepted() = runBlocking {
+    repository.saveDecisions(uid, mapOf("Analysis I" to true)).getOrThrow()
+
+    repository.savePriority(uid, "Analysis I", SubjectPriority.MIN).getOrThrow()
+    sync()
+    assertEquals(SubjectPriority(SubjectPriority.MIN), serverDecisions().priorityOf("Analysis I"))
+
+    repository.savePriority(uid, "Analysis I", SubjectPriority.MAX).getOrThrow()
+    sync()
+    assertEquals(SubjectPriority(SubjectPriority.MAX), serverDecisions().priorityOf("Analysis I"))
+  }
+
+  /** Out-of-range levels fail with INVALID_ARGUMENT and the stored priority stays as it was. */
+  @Test
+  fun outOfRangeLevelsAreRejectedWithoutWriting() = runBlocking {
+    repository.saveDecisions(uid, mapOf("Analysis I" to true)).getOrThrow()
+    repository.savePriority(uid, "Analysis I", 3).getOrThrow()
+    sync()
+
+    for (level in listOf(0, -1, SubjectPriority.MAX + 1)) {
+      assertEquals(
+          TrackedSubjectError.INVALID_ARGUMENT,
+          repository.savePriority(uid, "Analysis I", level).error(),
+      )
+    }
+    sync()
+
+    assertEquals(SubjectPriority(3), serverDecisions().priorityOf("Analysis I"))
+  }
+
+  /** Saving a priority keeps the tracked flag, and saving again replaces the earlier priority. */
+  @Test
+  fun savingReplacesPriorityAndKeepsTrackedFlag() = runBlocking {
+    repository.saveDecisions(uid, mapOf("Analysis I" to true, "Physics" to true)).getOrThrow()
+
+    repository.savePriority(uid, "Analysis I", 2).getOrThrow()
+    repository.savePriority(uid, "Analysis I", 5).getOrThrow()
+    sync()
+
+    val server = serverDecisions()
+    assertEquals(SubjectPriority(5), server.priorityOf("Analysis I"))
+    assertTrue(server.isTracked("Analysis I"))
+    assertTrue(server.isTracked("Physics"))
+    assertNull(server.priorityOf("Physics"))
+    assertEquals(listOf("Analysis I", "Physics"), server.trackedSubjects)
+  }
+
+  /** Untracking and tracking again through saveDecisions keeps the stored priority. */
+  @Test
+  fun saveDecisionsKeepsStoredPriority() = runBlocking {
+    repository.saveDecisions(uid, mapOf("Analysis I" to true)).getOrThrow()
+    repository.savePriority(uid, "Analysis I", 4).getOrThrow()
+
+    repository.saveDecisions(uid, mapOf("Analysis I" to false)).getOrThrow()
+    sync()
+    val untracked = serverDecisions()
+    assertFalse(untracked.isTracked("Analysis I"))
+    assertEquals(SubjectPriority(4), untracked.priorityOf("Analysis I"))
+
+    repository.saveDecisions(uid, mapOf("Analysis I" to true)).getOrThrow()
+    sync()
+    assertEquals(SubjectPriority(4), serverDecisions().priorityOf("Analysis I"))
+  }
+
+  /** A subject marked as not tracked fails with INVALID_ARGUMENT and nothing is written. */
+  @Test
+  fun untrackedSubjectFailsWithoutWriting() = runBlocking {
+    repository.saveDecisions(uid, mapOf("Physics" to false)).getOrThrow()
+    sync()
+
+    val result = repository.savePriority(uid, "Physics", 3)
+    sync()
+
+    assertEquals(TrackedSubjectError.INVALID_ARGUMENT, result.error())
+    assertNull(serverDecisions().priorityOf("Physics"))
+  }
+
+  /** A subject without any decision, such as a custom subject, fails and writes nothing. */
+  @Test
+  fun subjectWithoutDecisionFailsWithoutWriting() = runBlocking {
+    repository.saveDecisions(uid, mapOf("Analysis I" to true)).getOrThrow()
+    sync()
+
+    val result = repository.savePriority(uid, "Custom subject", 3)
+    sync()
+
+    assertEquals(TrackedSubjectError.INVALID_ARGUMENT, result.error())
+    assertEquals(
+        setOf("Analysis I"),
+        serverDecisions().decisions.values.map { it.spelling }.toSet(),
+    )
+  }
+
+  /** Saving a priority for an owner other than the signed-in user is denied. */
+  @Test
+  fun otherOwnerIsDenied() = runBlocking {
+    repository.saveDecisions(uid, mapOf("Analysis I" to true)).getOrThrow()
+
+    val result = repository.savePriority("someone-else", "Analysis I", 3)
+
+    assertEquals(TrackedSubjectError.PERMISSION_DENIED, result.error())
+  }
+
+  /** A priority saved offline is observed locally at once and synced when the network returns. */
+  @Test
+  fun offlineSavePriorityAndReconnectSync() = runBlocking {
+    repository.saveDecisions(uid, mapOf("Analysis I" to true)).getOrThrow()
+    sync()
+
+    db.disableNetwork().await()
+    withTimeout(5000) {
+      repository.savePriority(uid, "Analysis I", 2).getOrThrow()
+      repository.savePriority(uid, "Analysis I", 5).getOrThrow()
+      val local = repository.observeDecisions(uid).first().getOrThrow()
+      assertEquals(SubjectPriority(5), local.priorityOf("Analysis I"))
+      assertTrue(local.isTracked("Analysis I"))
+    }
+
+    db.enableNetwork().await()
+    sync()
+
+    assertEquals(SubjectPriority(5), serverDecisions().priorityOf("Analysis I"))
   }
 }

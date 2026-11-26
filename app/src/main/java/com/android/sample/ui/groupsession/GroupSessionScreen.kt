@@ -233,7 +233,7 @@ fun GroupSessionScreen(
     }
   }
 
-  val fallbackCampusCenter = defaultCampusCenter()
+  val campusCenter = defaultCampusCenter()
   var cameraDestination by remember { mutableStateOf<CameraDestination?>(null) }
   var cameraDestinationTrigger by remember { mutableIntStateOf(0) }
 
@@ -243,7 +243,7 @@ fun GroupSessionScreen(
         if (hasLocationPermission && userLoc != null) {
           userLoc
         } else {
-          uiState.campusCenter ?: fallbackCampusCenter
+          campusCenter
         }
     selectedRoom = null
     cameraDestination = CameraDestination(target, ++cameraDestinationTrigger)
@@ -255,27 +255,11 @@ fun GroupSessionScreen(
     }
   }
   val snackbarHostState = remember { SnackbarHostState() }
-  val loadErrorMessage = stringResource(R.string.group_session_error_load)
-  val locationLoadErrorMessage = stringResource(R.string.group_session_error_location_load)
-  val joinErrorMessage = stringResource(R.string.group_session_error_join)
-  val leaveErrorMessage = stringResource(R.string.group_session_error_leave)
-  val offlineErrorMessage = stringResource(R.string.group_session_error_offline)
-  val connectionLostErrorMessage = stringResource(R.string.group_session_error_connection_lost)
-  LaunchedEffect(uiState.error) {
-    uiState.error?.let { error ->
-      val msg =
-          when (error) {
-            GroupSessionsError.LOAD_FAILED -> loadErrorMessage
-            GroupSessionsError.LOCATION_LOAD_FAILED -> locationLoadErrorMessage
-            GroupSessionsError.JOIN_FAILED -> joinErrorMessage
-            GroupSessionsError.LEAVE_FAILED -> leaveErrorMessage
-            GroupSessionsError.OFFLINE -> offlineErrorMessage
-            GroupSessionsError.CONNECTION_LOST -> connectionLostErrorMessage
-          }
-      snackbarHostState.showSnackbar(msg)
-      viewModel.clearError()
-    }
-  }
+  GroupSessionErrorEffect(
+      error = uiState.error,
+      snackbarHostState = snackbarHostState,
+      onClearError = viewModel::clearError,
+  )
   // Join/leave progress is stored per session in GroupSessionsViewModel.
   Scaffold(
       modifier = Modifier.testTag(GroupSessionScreenTestTags.SCREEN),
@@ -360,42 +344,93 @@ fun GroupSessionScreen(
     GroupSessionParticipantsSheet(state = sheet, onDismiss = viewModel::dismissParticipants)
   }
   if (showFilterSheet) {
-    ModalBottomSheet(
-        sheetState = filterSheetState,
-        onDismissRequest = ::closeFilterSheet,
-    ) {
-      GroupSessionFilterSheetContent(
-          filters =
-              GroupSessionFilters(
-                  sessionTypes = uiState.selectedSessionTypes,
-                  startingTime = uiState.startingTimeFilter,
-                  hideFullSessions = uiState.hideFullSessions,
-                  radiusMeters = uiState.selectedRadiusMeters,
-                  zones = uiState.selectedZones,
-                  showLabs = uiState.showLabRoomType,
-              ),
-          availableZones = uiState.availableZones,
-          matchingSessionCount = uiState.sessions.size,
-          hasLocationPermission = hasLocationPermission,
-          onRadiusSelected = viewModel::onRadiusFilterSelected,
-          onZonesSelected = viewModel::onZonesFilterSelected,
-          onShowLabsChanged = viewModel::onShowLabRoomTypeChange,
-          onSessionTypesSelected = viewModel::onSessionTypesSelected,
-          onStartingTimeSelected = viewModel::onStartingTimeFilterSelected,
-          onHideFullSessionsChange = viewModel::onHideFullSessionsChange,
-          onLocationPermissionNeeded = { radius ->
-            pendingLocationRadius = radius
-            locationPermissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                )
-            )
-          },
-          onResetAll = viewModel::resetAdvancedFilters,
-          onShowSessions = ::closeFilterSheet,
-      )
+    GroupSessionFilterModal(
+        filterSheetState = filterSheetState,
+        uiState = uiState,
+        hasLocationPermission = hasLocationPermission,
+        viewModel = viewModel,
+        onLocationPermissionNeeded = { radius ->
+          pendingLocationRadius = radius
+          locationPermissionLauncher.launch(
+              arrayOf(
+                  Manifest.permission.ACCESS_FINE_LOCATION,
+                  Manifest.permission.ACCESS_COARSE_LOCATION,
+              )
+          )
+        },
+        onDismiss = ::closeFilterSheet,
+    )
+  }
+}
+
+/** Shows a snackbar when [error] is non-null and clears it once dismissed. */
+@Composable
+private fun GroupSessionErrorEffect(
+    error: GroupSessionsError?,
+    snackbarHostState: SnackbarHostState,
+    onClearError: () -> Unit,
+) {
+  val loadErrorMessage = stringResource(R.string.group_session_error_load)
+  val locationLoadErrorMessage = stringResource(R.string.group_session_error_location_load)
+  val joinErrorMessage = stringResource(R.string.group_session_error_join)
+  val leaveErrorMessage = stringResource(R.string.group_session_error_leave)
+  val offlineErrorMessage = stringResource(R.string.group_session_error_offline)
+  val connectionLostErrorMessage = stringResource(R.string.group_session_error_connection_lost)
+  LaunchedEffect(error) {
+    error?.let { activeError ->
+      val msg =
+          when (activeError) {
+            GroupSessionsError.LOAD_FAILED -> loadErrorMessage
+            GroupSessionsError.LOCATION_LOAD_FAILED -> locationLoadErrorMessage
+            GroupSessionsError.JOIN_FAILED -> joinErrorMessage
+            GroupSessionsError.LEAVE_FAILED -> leaveErrorMessage
+            GroupSessionsError.OFFLINE -> offlineErrorMessage
+            GroupSessionsError.CONNECTION_LOST -> connectionLostErrorMessage
+          }
+      snackbarHostState.showSnackbar(msg)
+      onClearError()
     }
+  }
+}
+
+/** Modal bottom sheet hosting the advanced group-session filter controls. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GroupSessionFilterModal(
+    filterSheetState: androidx.compose.material3.SheetState,
+    uiState: GroupSessionsUiState,
+    hasLocationPermission: Boolean,
+    viewModel: GroupSessionsViewModel,
+    onLocationPermissionNeeded: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+  ModalBottomSheet(
+      sheetState = filterSheetState,
+      onDismissRequest = onDismiss,
+  ) {
+    GroupSessionFilterSheetContent(
+        filters =
+            GroupSessionFilters(
+                sessionTypes = uiState.selectedSessionTypes,
+                startingTime = uiState.startingTimeFilter,
+                hideFullSessions = uiState.hideFullSessions,
+                radiusMeters = uiState.selectedRadiusMeters,
+                zones = uiState.selectedZones,
+                showLabs = uiState.showLabRoomType,
+            ),
+        availableZones = uiState.availableZones,
+        matchingSessionCount = uiState.sessions.size,
+        hasLocationPermission = hasLocationPermission,
+        onRadiusSelected = viewModel::onRadiusFilterSelected,
+        onZonesSelected = viewModel::onZonesFilterSelected,
+        onShowLabsChanged = viewModel::onShowLabRoomTypeChange,
+        onSessionTypesSelected = viewModel::onSessionTypesSelected,
+        onStartingTimeSelected = viewModel::onStartingTimeFilterSelected,
+        onHideFullSessionsChange = viewModel::onHideFullSessionsChange,
+        onLocationPermissionNeeded = onLocationPermissionNeeded,
+        onResetAll = viewModel::resetAdvancedFilters,
+        onShowSessions = onDismiss,
+    )
   }
 }
 
@@ -504,7 +539,6 @@ internal fun GroupSessionContent(
             userLocation = state.userLocation,
             cameraDestination = cameraDestination,
             hasLocationPermission = hasLocationPermission,
-            campusCenter = state.campusCenter,
             onParticipantsClick = onParticipantsClick,
             actionsEnabled = !state.isOffline,
             filterRadiusMeters = state.selectedRadiusMeters,
