@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude AI Agent
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
 import android.content.res.Configuration
@@ -108,6 +109,7 @@ fun GroupSessionFilterSheetContent(
     onResetAll: () -> Unit,
     onShowSessions: () -> Unit,
     modifier: Modifier = Modifier,
+    preciseLocationDeniedInSettings: Boolean = false,
 ) {
   var showMoreZones by remember { mutableStateOf(false) }
   var showPermissionRationale by remember { mutableStateOf(false) }
@@ -216,8 +218,14 @@ fun GroupSessionFilterSheetContent(
         },
     )
     if (showPermissionRationale && !hasLocationPermission) {
+      val hintRes =
+          if (preciseLocationDeniedInSettings) {
+            R.string.group_session_filter_precise_denied_hint
+          } else {
+            R.string.group_session_filter_location_permission_rationale
+          }
       Text(
-          text = stringResource(R.string.group_session_filter_permission_rationale),
+          text = stringResource(hintRes),
           modifier = Modifier.testTag(GroupSessionFilterSheetTestTags.PERMISSION_RATIONALE),
           color = MaterialTheme.colorScheme.error,
           style = MaterialTheme.typography.bodyMedium,
@@ -478,7 +486,6 @@ internal fun GroupSessionFilterSheetDarkPreview() {
   }
 }
 
-/** Returns whether either requested location permission was granted. */
+/** Returns whether precise location permission was granted. */
 fun isLocationPermissionGranted(results: Map<String, Boolean>): Boolean =
-    results[android.Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-        results[android.Manifest.permission.ACCESS_COARSE_LOCATION] == true
+    results[android.Manifest.permission.ACCESS_FINE_LOCATION] == true
