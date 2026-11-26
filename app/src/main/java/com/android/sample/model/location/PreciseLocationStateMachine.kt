@@ -28,15 +28,15 @@ enum class PreciseLocationState {
   GRANTED,
 }
 
-/** UI side effect produced by [PreciseLocationStateMachine] transitions. */
+/** Side effect produced by [PreciseLocationStateMachine] transitions. */
 enum class PreciseLocationAction {
   NONE,
-  LAUNCH_SYSTEM_PROMPT,
-  SHOW_EXPLANATION_DIALOG,
-  SHOW_SETTINGS_DIALOG,
+  REQUEST_PERMISSION,
+  EXPLAIN_RATIONALE,
+  SEND_TO_SETTINGS,
 }
 
-/** Result of a state-machine transition: the next persisted [state] and the UI [action] to run. */
+/** Result of a state-machine transition: the next persisted [state] and the [action] to run. */
 data class PreciseLocationTransition(
     val state: PreciseLocationState,
     val action: PreciseLocationAction,
@@ -77,11 +77,11 @@ object PreciseLocationStateMachine {
   fun onMapEntered(current: PreciseLocationState): PreciseLocationTransition =
       when (current) {
         PreciseLocationState.INIT ->
-            PreciseLocationTransition(current, PreciseLocationAction.LAUNCH_SYSTEM_PROMPT)
+            PreciseLocationTransition(current, PreciseLocationAction.REQUEST_PERMISSION)
         PreciseLocationState.RATIONALE_PENDING ->
-            PreciseLocationTransition(current, PreciseLocationAction.SHOW_EXPLANATION_DIALOG)
+            PreciseLocationTransition(current, PreciseLocationAction.EXPLAIN_RATIONALE)
         PreciseLocationState.SECOND_PROMPT_PENDING ->
-            PreciseLocationTransition(current, PreciseLocationAction.LAUNCH_SYSTEM_PROMPT)
+            PreciseLocationTransition(current, PreciseLocationAction.REQUEST_PERMISSION)
         PreciseLocationState.DENIED_TWICE,
         PreciseLocationState.GRANTED ->
             PreciseLocationTransition(current, PreciseLocationAction.NONE)
@@ -94,13 +94,13 @@ object PreciseLocationStateMachine {
   fun onLocationFeatureRequested(current: PreciseLocationState): PreciseLocationTransition =
       when (current) {
         PreciseLocationState.INIT ->
-            PreciseLocationTransition(current, PreciseLocationAction.LAUNCH_SYSTEM_PROMPT)
+            PreciseLocationTransition(current, PreciseLocationAction.REQUEST_PERMISSION)
         PreciseLocationState.RATIONALE_PENDING ->
-            PreciseLocationTransition(current, PreciseLocationAction.SHOW_EXPLANATION_DIALOG)
+            PreciseLocationTransition(current, PreciseLocationAction.EXPLAIN_RATIONALE)
         PreciseLocationState.SECOND_PROMPT_PENDING ->
-            PreciseLocationTransition(current, PreciseLocationAction.LAUNCH_SYSTEM_PROMPT)
+            PreciseLocationTransition(current, PreciseLocationAction.REQUEST_PERMISSION)
         PreciseLocationState.DENIED_TWICE ->
-            PreciseLocationTransition(current, PreciseLocationAction.SHOW_SETTINGS_DIALOG)
+            PreciseLocationTransition(current, PreciseLocationAction.SEND_TO_SETTINGS)
         PreciseLocationState.GRANTED ->
             PreciseLocationTransition(current, PreciseLocationAction.NONE)
       }
@@ -127,7 +127,7 @@ object PreciseLocationStateMachine {
       PreciseLocationState.RATIONALE_PENDING ->
           PreciseLocationTransition(
               PreciseLocationState.RATIONALE_PENDING,
-              PreciseLocationAction.SHOW_EXPLANATION_DIALOG,
+              PreciseLocationAction.EXPLAIN_RATIONALE,
           )
       PreciseLocationState.SECOND_PROMPT_PENDING,
       PreciseLocationState.DENIED_TWICE ->
@@ -136,7 +136,7 @@ object PreciseLocationStateMachine {
               if (suppressSettingsDialog) {
                 PreciseLocationAction.NONE
               } else {
-                PreciseLocationAction.SHOW_SETTINGS_DIALOG
+                PreciseLocationAction.SEND_TO_SETTINGS
               },
           )
     }
@@ -159,7 +159,7 @@ object PreciseLocationStateMachine {
     return if (current == PreciseLocationState.DENIED_TWICE) {
       PreciseLocationTransition(
           PreciseLocationState.DENIED_TWICE,
-          PreciseLocationAction.LAUNCH_SYSTEM_PROMPT,
+          PreciseLocationAction.REQUEST_PERMISSION,
       )
     } else {
       PreciseLocationTransition(current, PreciseLocationAction.NONE)
@@ -176,12 +176,12 @@ object PreciseLocationStateMachine {
         PreciseLocationState.SECOND_PROMPT_PENDING ->
             PreciseLocationTransition(
                 PreciseLocationState.SECOND_PROMPT_PENDING,
-                PreciseLocationAction.LAUNCH_SYSTEM_PROMPT,
+                PreciseLocationAction.REQUEST_PERMISSION,
             )
         PreciseLocationState.DENIED_TWICE ->
             PreciseLocationTransition(
                 PreciseLocationState.DENIED_TWICE,
-                PreciseLocationAction.SHOW_SETTINGS_DIALOG,
+                PreciseLocationAction.SEND_TO_SETTINGS,
             )
         PreciseLocationState.GRANTED ->
             PreciseLocationTransition(PreciseLocationState.GRANTED, PreciseLocationAction.NONE)

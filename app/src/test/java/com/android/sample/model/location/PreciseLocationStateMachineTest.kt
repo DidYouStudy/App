@@ -51,7 +51,7 @@ class PreciseLocationStateMachineTest {
   fun fullTwoRefusalProgression_isStrictlyMonotonic() {
     val onFirstMapEnter = PreciseLocationStateMachine.onMapEntered(PreciseLocationState.INIT)
     assertEquals(PreciseLocationState.INIT, onFirstMapEnter.state)
-    assertEquals(PreciseLocationAction.LAUNCH_SYSTEM_PROMPT, onFirstMapEnter.action)
+    assertEquals(PreciseLocationAction.REQUEST_PERMISSION, onFirstMapEnter.action)
 
     val firstRefusal =
         PreciseLocationStateMachine.onSystemPermissionResult(
@@ -59,11 +59,11 @@ class PreciseLocationStateMachineTest {
             isFineGranted = false,
         )
     assertEquals(PreciseLocationState.RATIONALE_PENDING, firstRefusal.state)
-    assertEquals(PreciseLocationAction.SHOW_EXPLANATION_DIALOG, firstRefusal.action)
+    assertEquals(PreciseLocationAction.EXPLAIN_RATIONALE, firstRefusal.action)
 
     val afterExplanation = PreciseLocationStateMachine.onExplanationDismissed(firstRefusal.state)
     assertEquals(PreciseLocationState.SECOND_PROMPT_PENDING, afterExplanation.state)
-    assertEquals(PreciseLocationAction.LAUNCH_SYSTEM_PROMPT, afterExplanation.action)
+    assertEquals(PreciseLocationAction.REQUEST_PERMISSION, afterExplanation.action)
 
     val secondRefusal =
         PreciseLocationStateMachine.onSystemPermissionResult(
@@ -71,7 +71,7 @@ class PreciseLocationStateMachineTest {
             isFineGranted = false,
         )
     assertEquals(PreciseLocationState.DENIED_TWICE, secondRefusal.state)
-    assertEquals(PreciseLocationAction.SHOW_SETTINGS_DIALOG, secondRefusal.action)
+    assertEquals(PreciseLocationAction.SEND_TO_SETTINGS, secondRefusal.action)
   }
 
   @Test
@@ -100,17 +100,17 @@ class PreciseLocationStateMachineTest {
         PreciseLocationStateMachine.onMapEntered(PreciseLocationState.DENIED_TWICE).action,
     )
     assertEquals(
-        PreciseLocationAction.SHOW_SETTINGS_DIALOG,
+        PreciseLocationAction.SEND_TO_SETTINGS,
         PreciseLocationStateMachine.onLocationFeatureRequested(PreciseLocationState.DENIED_TWICE)
             .action,
     )
 
     assertEquals(
-        PreciseLocationAction.SHOW_EXPLANATION_DIALOG,
+        PreciseLocationAction.EXPLAIN_RATIONALE,
         PreciseLocationStateMachine.onMapEntered(PreciseLocationState.RATIONALE_PENDING).action,
     )
     assertEquals(
-        PreciseLocationAction.LAUNCH_SYSTEM_PROMPT,
+        PreciseLocationAction.REQUEST_PERMISSION,
         PreciseLocationStateMachine.onMapEntered(PreciseLocationState.SECOND_PROMPT_PENDING).action,
     )
     assertEquals(
@@ -118,14 +118,14 @@ class PreciseLocationStateMachineTest {
         PreciseLocationStateMachine.onMapEntered(PreciseLocationState.GRANTED).action,
     )
     assertEquals(
-        PreciseLocationAction.SHOW_EXPLANATION_DIALOG,
+        PreciseLocationAction.EXPLAIN_RATIONALE,
         PreciseLocationStateMachine.onLocationFeatureRequested(
                 PreciseLocationState.RATIONALE_PENDING
             )
             .action,
     )
     assertEquals(
-        PreciseLocationAction.LAUNCH_SYSTEM_PROMPT,
+        PreciseLocationAction.REQUEST_PERMISSION,
         PreciseLocationStateMachine.onLocationFeatureRequested(
                 PreciseLocationState.SECOND_PROMPT_PENDING
             )
@@ -142,7 +142,7 @@ class PreciseLocationStateMachineTest {
     val fromDeniedTwice =
         PreciseLocationStateMachine.onExplanationDismissed(PreciseLocationState.DENIED_TWICE)
     assertEquals(PreciseLocationState.DENIED_TWICE, fromDeniedTwice.state)
-    assertEquals(PreciseLocationAction.SHOW_SETTINGS_DIALOG, fromDeniedTwice.action)
+    assertEquals(PreciseLocationAction.SEND_TO_SETTINGS, fromDeniedTwice.action)
 
     val fromGranted =
         PreciseLocationStateMachine.onExplanationDismissed(PreciseLocationState.GRANTED)
@@ -158,7 +158,7 @@ class PreciseLocationStateMachineTest {
             isFineGranted = false,
         )
     assertEquals(PreciseLocationState.DENIED_TWICE, stillDenied.state)
-    assertEquals(PreciseLocationAction.LAUNCH_SYSTEM_PROMPT, stillDenied.action)
+    assertEquals(PreciseLocationAction.REQUEST_PERMISSION, stillDenied.action)
 
     val probeDenied =
         PreciseLocationStateMachine.onSystemPermissionResult(
