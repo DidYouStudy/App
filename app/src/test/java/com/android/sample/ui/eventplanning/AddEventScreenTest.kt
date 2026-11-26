@@ -35,6 +35,8 @@ import com.android.sample.model.location.CampusLocationFilter
 import com.android.sample.model.location.CampusLocationRepository
 import com.android.sample.model.location.CampusLocationType
 import com.android.sample.model.location.Location
+import com.android.sample.model.subject.InMemoryTrackedSubjectRepository
+import com.android.sample.model.subject.TrackedSubjectRepositoryProvider
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
 import java.time.Clock
 import java.time.Instant
@@ -81,6 +83,7 @@ class AddEventScreenTest {
   @Before
   fun setUp() {
     Dispatchers.setMain(testDispatcher)
+    TrackedSubjectRepositoryProvider.setRepository(InMemoryTrackedSubjectRepository())
     authRepository = mock(AuthRepository::class.java)
     eventsRepository = mock(EventsRepository::class.java)
     campusLocationRepository = mock(CampusLocationRepository::class.java)
@@ -98,6 +101,7 @@ class AddEventScreenTest {
 
   @After
   fun tearDown() {
+    TrackedSubjectRepositoryProvider.setRepository(null)
     Dispatchers.resetMain()
   }
 

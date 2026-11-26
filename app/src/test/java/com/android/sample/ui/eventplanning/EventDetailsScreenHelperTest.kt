@@ -142,4 +142,81 @@ class EventDetailsScreenHelperTest {
     assertEquals("12:00", display.endTimeLabel)
     assertTrue(display.tasks.isEmpty())
   }
+
+  /** Each event type maps to the kind used for navigation and loading. */
+  @Test
+  fun kind_mapsEachEventType() {
+    assertEquals(EventKind.PERSONAL, samplePersonalEvent().kind())
+    assertEquals(EventKind.GROUP_SESSION, sampleGroupSession().kind())
+  }
+
+  /** A group session is flagged, lists its members in the given order, and has no tasks. */
+  @Test
+  fun toDisplay_groupSession_hasParticipantsAndNoTasks() {
+    val members =
+        listOf(
+            EventMember("host", "Hosty", isHost = true, isCurrentUser = true),
+            EventMember("bob", null, isHost = false, isUnavailable = true),
+        )
+
+    val display = sampleGroupSession().toDisplay(members = members)
+
+    assertTrue(display.isGroupSession)
+    assertEquals(members, display.participants)
+    assertTrue(display.tasks.isEmpty())
+  }
+
+  /** A personal event is not a group session and has no participants. */
+  @Test
+  fun toDisplay_personalEvent_hasNoParticipants() {
+    val display = samplePersonalEvent().toDisplay()
+
+    assertEquals(false, display.isGroupSession)
+    assertTrue(display.participants.isEmpty())
+  }
+
+  /** A personal event offers Edit and Delete. */
+  @Test
+  fun toDisplay_personalEvent_offersEditAndDelete() {
+    assertEquals(EventDetailsActionSet.EDIT_AND_DELETE, samplePersonalEvent().toDisplay().actions)
+  }
+
+  /** The signed-in host of a group session may only edit it from Details. */
+  @Test
+  fun toDisplay_groupSessionHostedByCurrentUser_offersEditOnly() {
+    val members =
+        listOf(
+            EventMember("me", "Me", isHost = true, isCurrentUser = true),
+            EventMember("bob", "Bob", isHost = false),
+        )
+
+    val display = sampleGroupSession().toDisplay(members = members)
+
+    assertEquals(EventDetailsActionSet.EDIT_ONLY, display.actions)
+  }
+
+  /** A member who is not the host gets no actions. */
+  @Test
+  fun toDisplay_groupSessionJoinedByCurrentUser_offersNoActions() {
+    val members =
+        listOf(
+            EventMember("host", "Hosty", isHost = true),
+            EventMember("me", "Me", isHost = false, isCurrentUser = true),
+        )
+
+    val display = sampleGroupSession().toDisplay(members = members)
+
+    assertEquals(EventDetailsActionSet.NONE, display.actions)
+  }
+
+  /** A personal event ignores any members passed in, so it never lists participants. */
+  @Test
+  fun toDisplay_personalEventWithMembers_stillHasNoParticipants() {
+    val members = listOf(EventMember("me", "Me", isHost = true, isCurrentUser = true))
+
+    val display = samplePersonalEvent().toDisplay(members = members)
+
+    assertTrue(display.participants.isEmpty())
+    assertEquals(EventDetailsActionSet.EDIT_AND_DELETE, display.actions)
+  }
 }

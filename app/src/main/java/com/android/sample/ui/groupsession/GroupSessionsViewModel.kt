@@ -53,7 +53,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -121,6 +123,7 @@ private fun GroupSessionsError?.withoutLoadFailure() = takeUnless {
  * One row of the list, including membership, creator relationship, and the known host username.
  *
  * [hostName] is null until a nonblank username has been loaded for another user's profile.
+ * [hostPictureUrl] comes from the same profile; it is also null when that host has no picture.
  */
 data class GroupSessionItem(
     val session: GroupSession,
@@ -129,6 +132,7 @@ data class GroupSessionItem(
     val hostName: String? = null,
     val proximity: SessionWithProximity = SessionWithProximity(session, null, null, null),
     val isActionInProgress: Boolean = false,
+    val hostPictureUrl: String? = null,
 )
 
 /** A session enriched with its resolved room and optional distance from the user. */
@@ -139,13 +143,18 @@ data class SessionWithProximity(
     val formattedDistance: String?,
 )
 
-/** A visible roster row and the outcome of looking up its profile username. */
+/**
+ * A visible roster row and the outcome of looking up its profile username.
+ *
+ * [profilePictureUrl] is null without a loaded username, or when the member has no picture.
+ */
 data class GroupSessionParticipant(
     val userId: String,
     val username: String?,
     val isHost: Boolean,
     val isCurrentUser: Boolean,
     val isUnavailable: Boolean = false,
+    val profilePictureUrl: String? = null,
 )
 
 /** The open roster, including the full count while individual profiles are loading. */
@@ -269,12 +278,19 @@ class GroupSessionsViewModel(
   private var authGeneration = 0L
   private var observedSessions: List<GroupSession> = emptyList()
   private var campusLocationsByName: Map<String, CampusLocation> = emptyMap()
-  private val usernamesByUserId = mutableMapOf<String, String>()
+  /**
+   * Profiles that have a username, kept until a refresh or a change of signed-in user. Opening a
+   * roster reads its members again, and returning to the screen reads the hosts again.
+   */
+  private val profilesByUserId = mutableMapOf<String, CachedProfile>()
   private val usernameLookupsInProgress = mutableSetOf<String>()
   /** Session IDs whose join or leave request is currently running. */
   private val actionRequestsInProgress = mutableSetOf<String>()
   private var participantsSessionId: String? = null
   private val participantNamesWithoutUsername = mutableMapOf<String, ParticipantNameStatus>()
+
+  /** What the screen shows of a member; [profilePictureUrl] is null rather than blank. */
+  private data class CachedProfile(val username: String, val profilePictureUrl: String?)
 
   private enum class ParticipantNameStatus {
     UNKNOWN,
@@ -283,6 +299,7 @@ class GroupSessionsViewModel(
 
   init {
     refreshNowWhileObserved()
+    refreshHostsWhenObservedAgain()
     observeLocationWhileObserved()
     observeConnectivityWhileObserved()
     loadCampusLocations()
@@ -294,7 +311,7 @@ class GroupSessionsViewModel(
             if (userChanged) {
               currentUserId = userId
               authGeneration += 1
-              usernamesByUserId.clear()
+              profilesByUserId.clear()
               usernameLookupsInProgress.clear()
               actionRequestsInProgress.clear()
               clearParticipants()
@@ -510,7 +527,7 @@ class GroupSessionsViewModel(
    */
   fun refresh() {
     viewModelScope.launch {
-      usernamesByUserId.clear()
+      profilesByUserId.clear()
       refreshVersion.update { it + 1 }
     }
   }
@@ -701,12 +718,19 @@ class GroupSessionsViewModel(
     }
   }
 
-  /** Opens the roster for a session in the latest repository snapshot. */
+  /**
+   * Opens the roster for a session in the latest repository snapshot.
+   *
+   * Members already read are read again, so a changed picture or username shows up. What was read
+   * before stays on screen meanwhile.
+   */
   fun openParticipants(sessionId: String) {
     viewModelScope.launch {
-      if (observedSessions.none { it.id == sessionId }) return@launch
+      val session = observedSessions.firstOrNull { it.id == sessionId } ?: return@launch
       participantsSessionId = sessionId
       participantNamesWithoutUsername.clear()
+      // Cached or not. Loading then publishes the rows without starting a second read.
+      session.memberIds.forEach(::fetchProfile)
       loadParticipantNames()
     }
   }
@@ -817,10 +841,30 @@ class GroupSessionsViewModel(
     }
   }
 
+  /**
+   * Reads the other hosts again each time the screen comes back, so their changed pictures and
+   * names show up. The first observation reads nothing: the session snapshots already load the
+   * hosts.
+   */
+  private fun refreshHostsWhenObservedAgain() {
+    viewModelScope.launch {
+      _uiState.subscriptionCount
+          .map { it > 0 }
+          .distinctUntilChanged()
+          .filter { it }
+          .drop(1)
+          .collect { otherHostIds(observedSessions).forEach(::fetchProfile) }
+    }
+  }
+
   /** Prefetches other hosts for the session cards without waiting for their profiles. */
   private fun lookupHostNames(sessions: List<GroupSession>) {
-    lookupUsernames(sessions.map { it.createdBy }.distinct().filter { it != currentUserId })
+    lookupUsernames(otherHostIds(sessions))
   }
+
+  /** The hosts of [sessions] whose profile the cards show: everyone but the signed-in user. */
+  private fun otherHostIds(sessions: List<GroupSession>): List<String> =
+      sessions.map { it.createdBy }.distinct().filter { it != currentUserId }
 
   /** Loads newly visible participants and reuses any usernames or requests shared with cards. */
   private fun loadParticipantNames() {
@@ -838,12 +882,18 @@ class GroupSessionsViewModel(
 
   /** Schedules one profile read per uncached user with no lookup already in progress. */
   private fun lookupUsernames(userIds: List<String>) {
+    userIds.filterNot { it in profilesByUserId }.forEach(::fetchProfile)
+  }
+
+  /**
+   * Reads one profile, cached or not, unless nobody is signed in or a read for that user is already
+   * running.
+   */
+  private fun fetchProfile(userId: String) {
     if (currentUserId == null) return
+    if (!usernameLookupsInProgress.add(userId)) return
     val requestGeneration = authGeneration
-    for (userId in userIds) {
-      if (userId in usernamesByUserId || !usernameLookupsInProgress.add(userId)) continue
-      viewModelScope.launch { resolveUsername(userId, requestGeneration) }
-    }
+    viewModelScope.launch { resolveUsername(userId, requestGeneration) }
   }
 
   /** Applies one profile result and releases its lookup slot for the same sign-in period. */
@@ -852,12 +902,19 @@ class GroupSessionsViewModel(
       val result = profileRepository.getProfile(userId)
       if (requestGeneration != authGeneration) return
 
-      val username = result.getOrNull()?.username?.takeIf { it.isNotBlank() }
+      val profile = result.getOrNull()
+      val username = profile?.username?.takeIf { it.isNotBlank() }
       if (username != null) {
-        usernamesByUserId[userId] = username
+        val pictureUrl = profile.profilePictureUrl?.takeIf { it.isNotBlank() }
+        profilesByUserId[userId] = CachedProfile(username, pictureUrl)
         updateVisibleSessions()
         return
       }
+
+      // A failed read says nothing new, so an earlier result stays. A successful one without a
+      // username replaces it.
+      if (result.isFailure && userId in profilesByUserId) return
+      if (profilesByUserId.remove(userId) != null) updateVisibleSessions()
 
       if (selectedParticipantsSession()?.memberIds?.contains(userId) != true) return
       participantNamesWithoutUsername[userId] =
@@ -882,7 +939,8 @@ class GroupSessionsViewModel(
     val session = selectedParticipantsSession() ?: return
     val orderedIds = session.orderedMemberIds()
     val rows = orderedIds.mapNotNull { userId ->
-      val username = usernamesByUserId[userId]
+      val profile = profilesByUserId[userId]
+      val username = profile?.username
       val status = participantNamesWithoutUsername[userId]
       if (username == null && status == null) return@mapNotNull null
       GroupSessionParticipant(
@@ -891,6 +949,7 @@ class GroupSessionsViewModel(
           isHost = userId == session.createdBy,
           isCurrentUser = userId == currentUserId,
           isUnavailable = username == null && status == ParticipantNameStatus.UNAVAILABLE,
+          profilePictureUrl = profile?.profilePictureUrl,
       )
     }
     _uiState.update {
@@ -920,15 +979,16 @@ class GroupSessionsViewModel(
       val matchingSessions =
           observedSessions
               .map { session ->
+                // The user's own card names no host, so it carries no host picture either.
+                val host =
+                    profilesByUserId[session.createdBy].takeUnless { session.createdBy == userId }
                 GroupSessionItem(
                     session = session,
                     isMember = userId in session.memberIds,
                     isCreator = userId == session.createdBy,
                     proximity = session.proximity(state.userLocation),
-                    hostName =
-                        usernamesByUserId[session.createdBy].takeUnless {
-                          session.createdBy == userId
-                        },
+                    hostName = host?.username,
+                    hostPictureUrl = host?.profilePictureUrl,
                     isActionInProgress = session.id in actionRequestsInProgress,
                 )
               }

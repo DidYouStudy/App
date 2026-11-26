@@ -11,6 +11,7 @@ import com.android.sample.model.event.InMemoryEventsRepository
 import com.android.sample.model.event.PersonalEvent
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.InMemoryGroupSessionsRepository
+import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.ui.auth.TestAuthRepository
 import java.time.Clock
 import java.time.Duration
@@ -19,6 +20,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -47,6 +49,7 @@ class DashboardViewModelTest {
   private lateinit var eventsRepository: EventsRepository
   private lateinit var groupSessionsRepository: GroupSessionsRepository
   private lateinit var getUserScheduleUseCase: GetUserScheduleUseCase
+  private lateinit var preferencesRepository: PreferencesRepository
 
   @Before
   fun setUp() {
@@ -60,6 +63,7 @@ class DashboardViewModelTest {
             groupSessionsRepository = groupSessionsRepository,
             clock = clock,
         )
+    preferencesRepository = FakePreferencesRepository()
   }
 
   @After
@@ -70,11 +74,14 @@ class DashboardViewModelTest {
   private fun createViewModel(
       scheduleUseCase: GetUserScheduleUseCase = getUserScheduleUseCase,
       clockToUse: Clock = clock,
+      ticks: kotlinx.coroutines.flow.Flow<Unit> = MutableSharedFlow(),
   ): DashboardViewModel =
       DashboardViewModel(
           authRepository = authRepository,
           getUserSchedule = scheduleUseCase,
+          preferencesRepository = preferencesRepository,
           clock = clockToUse,
+          minuteTicks = ticks,
       )
 
   @Test
@@ -346,12 +353,29 @@ class DashboardViewModelTest {
 
   @Test
   fun factoryCreatesDashboardViewModel() {
-    val factory = DashboardViewModelFactory(authRepository, getUserScheduleUseCase, clock)
+    val factory =
+        DashboardViewModelFactory(
+            authRepository,
+            getUserScheduleUseCase,
+            preferencesRepository,
+            clock,
+            MutableSharedFlow(),
+        )
     val vm = factory.create(DashboardViewModel::class.java)
     assertTrue(vm is DashboardViewModel)
 
     assertThrows(IllegalArgumentException::class.java) {
       factory.create(String::class.java as Any as Class<DashboardViewModel>)
     }
+  }
+
+  private class FakePreferencesRepository : PreferencesRepository {
+    override suspend fun getPreferences(
+        userId: String
+    ): Result<com.android.sample.model.preferences.UserPreferences?> = Result.success(null)
+
+    override suspend fun savePreferences(
+        preferences: com.android.sample.model.preferences.UserPreferences
+    ): Result<Unit> = Result.success(Unit)
   }
 }
