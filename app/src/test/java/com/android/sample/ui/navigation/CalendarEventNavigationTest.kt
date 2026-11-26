@@ -43,6 +43,8 @@ import com.android.sample.model.preferences.PreferencesRepositoryProvider
 import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.ProfileRepositoryProvider
+import com.android.sample.model.subject.InMemoryTrackedSubjectRepository
+import com.android.sample.model.subject.TrackedSubjectRepositoryProvider
 import com.android.sample.ui.auth.TestAuthRepository
 import com.android.sample.ui.calendar.CalendarTestTags
 import com.android.sample.ui.eventplanning.EventDetailsScreenTestTags as DetailsTags
@@ -99,6 +101,7 @@ class CalendarEventNavigationTest {
     ProfileRepositoryProvider.setRepository(mock<ProfileRepository>())
     EventsRepositoryProvider.setRepository(events)
     GroupSessionsRepositoryProvider.setRepository(groupSessions)
+    TrackedSubjectRepositoryProvider.setRepository(InMemoryTrackedSubjectRepository())
     reportValidatedInternet()
 
     composeRule.setContent { DidYouStudyApp() }
@@ -116,6 +119,7 @@ class CalendarEventNavigationTest {
     ProfileRepositoryProvider.setRepository(null)
     EventsRepositoryProvider.setRepository(null)
     GroupSessionsRepositoryProvider.setRepository(null)
+    TrackedSubjectRepositoryProvider.setRepository(null)
   }
 
   /** Hosted and joined cards appear in the open week; leaving removes only the joined card. */
