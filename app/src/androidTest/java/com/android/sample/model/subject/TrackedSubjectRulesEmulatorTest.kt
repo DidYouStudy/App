@@ -1,4 +1,5 @@
 // Co-authored-by: Gemini 3.6 Flash
+// Co-authored-by: OpenAI Codex
 package com.android.sample.model.subject
 
 import androidx.test.core.app.ApplicationProvider
@@ -25,16 +26,28 @@ import org.junit.runner.RunWith
 /** Emulator tests for Firestore security rules under `users/{userId}/meta/trackedSubjects`. */
 @RunWith(AndroidJUnit4::class)
 class TrackedSubjectRulesEmulatorTest {
+  /** Keeps each Firestore connection tied to its own Auth instance. */
+  private data class Client(val app: FirebaseApp, val auth: FirebaseAuth, val db: FirebaseFirestore)
 
-  private lateinit var app: FirebaseApp
-  private lateinit var auth: FirebaseAuth
-  private lateinit var db: FirebaseFirestore
-  private lateinit var uid: String
+  private val clients = mutableListOf<Client>()
+  private lateinit var owner: Client
+  private lateinit var ownerUid: String
 
   @Before
   fun setup() = runBlocking {
+    owner = newClient()
+    ownerUid =
+        owner.auth
+            .createUserWithEmailAndPassword("${owner.app.name}@example.test", "EmulatorOnly123!")
+            .await()
+            .user!!
+            .uid
+  }
+
+  /** Creates a fresh emulator client that starts signed out. */
+  private fun newClient(): Client {
     val name = "tracked-rules-${UUID.randomUUID()}"
-    app =
+    val app =
         FirebaseApp.initializeApp(
             ApplicationProvider.getApplicationContext(),
             FirebaseOptions.Builder()
@@ -44,30 +57,29 @@ class TrackedSubjectRulesEmulatorTest {
                 .build(),
             name,
         )
-    auth = FirebaseAuth.getInstance(app)
+    val auth = FirebaseAuth.getInstance(app)
     auth.useEmulator("10.0.2.2", 9099)
-    db = FirebaseFirestore.getInstance(app)
+    val db = FirebaseFirestore.getInstance(app)
     db.useEmulator("10.0.2.2", 8080)
-    uid =
-        auth
-            .createUserWithEmailAndPassword("$name@example.test", "EmulatorOnly123!")
-            .await()
-            .user!!
-            .uid
+    return Client(app, auth, db).also(clients::add)
   }
 
   @After
   fun cleanup() = runBlocking {
-    if (::db.isInitialized) {
-      db.terminate().await()
-      db.clearPersistence().await()
+    clients.forEach { client ->
+      client.db.terminate().await()
+      client.db.clearPersistence().await()
+      client.auth.signOut()
+      client.app.delete()
     }
-    if (::auth.isInitialized) auth.signOut()
-    if (::app.isInitialized) app.delete()
   }
 
-  private fun doc() =
-      db.collection("users").document(uid).collection("meta").document("trackedSubjects")
+  private fun doc(client: Client = owner) =
+      client.db
+          .collection("users")
+          .document(ownerUid)
+          .collection("meta")
+          .document("trackedSubjects")
 
   private fun validPayload() = TrackedSubjectFirestoreMapper.encode(mapOf("Analysis I" to true))
 
@@ -90,13 +102,14 @@ class TrackedSubjectRulesEmulatorTest {
   fun deniesSignedOutAndOtherUsers() = runBlocking {
     doc().set(validPayload()).await()
 
-    auth.signOut()
-    denied { doc().get(Source.SERVER).await() }
-    denied { doc().set(validPayload()).await() }
+    val signedOut = newClient()
+    denied { doc(signedOut).get(Source.SERVER).await() }
+    denied { doc(signedOut).set(validPayload()).await() }
 
-    auth.signInAnonymously().await()
-    denied { doc().get(Source.SERVER).await() }
-    denied { doc().set(validPayload()).await() }
+    val otherUser = newClient()
+    otherUser.auth.signInAnonymously().await()
+    denied { doc(otherUser).get(Source.SERVER).await() }
+    denied { doc(otherUser).set(validPayload()).await() }
   }
 
   private fun priorityPayload(level: Int) =
@@ -121,12 +134,13 @@ class TrackedSubjectRulesEmulatorTest {
     doc().set(validPayload()).await()
     doc().set(priorityPayload(3), SetOptions.merge()).await()
 
-    auth.signOut()
-    denied { doc().set(priorityPayload(5), SetOptions.merge()).await() }
+    val signedOut = newClient()
+    denied { doc(signedOut).set(priorityPayload(5), SetOptions.merge()).await() }
 
-    auth.signInAnonymously().await()
-    denied { doc().set(priorityPayload(5), SetOptions.merge()).await() }
-    denied { doc().get(Source.SERVER).await() }
+    val otherUser = newClient()
+    otherUser.auth.signInAnonymously().await()
+    denied { doc(otherUser).set(priorityPayload(5), SetOptions.merge()).await() }
+    denied { doc(otherUser).get(Source.SERVER).await() }
   }
 
   /** A document that carries a priority still has to follow the top-level schema. */
