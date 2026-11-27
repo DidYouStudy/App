@@ -113,7 +113,10 @@ Source: team meeting of 27 November; Daniel on this PR.
 
 ### Notifications
 
-- Before an event starts, when a suggested break ends, and when an event ends.
+- 5 minutes before the start of an event;
+- Whenever a suggested break starts;
+- Whenever a suggested break time ends and the study time begins again;
+- At the end of the event.
 - Suggested breaks are sent as a notification to take a break; they are never mandatory.
 
 Source: team meeting of 27 November. Task #392 covers part of it and needs an update.
