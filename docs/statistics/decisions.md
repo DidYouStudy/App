@@ -73,7 +73,9 @@ A **priority** set by the student, on the Preferences screen (design on Figma). 
 
 The **recorded focus time**: the sum of the tracked intervals. This is the "Average daily study time" of the Figma stats card. A session that was never tracked counts as 0.
 
-Source: team discussion on 27 November.
+It is affected by Start now and End event (they move the event and stop tracking, see D2) and by the Start / Pause tracking time buttons, which alone start and stop the recording.
+
+Source: team discussion on 27 November; wiki plan.
 
 ### D8. Focus score
 
@@ -83,7 +85,7 @@ Example: 60 minutes planned with one 10-minute suggested break gives 50 minutes 
 
 "Average focus duration" must be added to the current dashboard mockups on Figma.
 
-Source: Daniel on this PR; team discussion on 27 November.
+Source: Daniel on this PR; team discussion on 27 November; wiki plan. The wiki says "against the total planned studying time": whether that already excludes the suggested breaks is open point 3.
 
 ### D9. Subjects that do not come from an import
 
@@ -127,10 +129,10 @@ Source: Yuhan on this PR; team discussion on 27 November.
 
 1. **Overlapping time in the statistics.** When two tracked sessions overlap, is their focus time counted once or twice? Suggestion: once, so one hour of study never counts as two.
 2. **Start now and the frozen plan.** Start now moves the event's start time. If the study log is created after that (at the first Start tracking time), its frozen `plannedStart` is the new time and the original plan is lost, which changes the focus score (D8). Should the log keep the original planned times?
-3. **Focus score edge cases.** A session shorter than one focus period, and a session never tracked: 0 % or left out of the average?
+3. **Focus score details.** The denominator: the planned duration minus the suggested breaks (Daniel), or the whole planned duration (wiki)? And the edge cases: a session shorter than one focus period, and a session never tracked: 0 % or left out of the average?
 4. **Perceived difficulty** (D12 course details): where does it come from, since no difficulty score is collected (D6)?
 5. **AI feedback.** Which model; where the call runs (key in the app, Firebase AI Logic or Cloud Functions, see Steven's comparison on this PR); how long results are kept; whether the student can give feedback by microphone.
-6. **Proposed sessions.** Where they are shown, where they are stored, how they are accepted or dismissed, which period they cover.
+6. **Proposed sessions.** Where they are shown, how they are accepted or dismissed, which period they cover. (Decided in the wiki plan: they are stored in their own model and repository, not in `PersonalEvent`.)
 7. **Study log storage (part 2 of #381).** The Firestore path: `users/{uid}/feedback/{eventId}` as written in #381, or `users/{uid}/studyLogs/{eventId}` after the rename.
 8. **Task limit.** Events have no maximum number of tasks, while a study log keeps at most 50: add the same limit to the event form.
 
