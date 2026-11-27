@@ -2,203 +2,142 @@
 
 # Statistics flow: decisions
 
-This document collects what we agreed on for the statistics flow and the decisions still open.
-It builds on the wiki page [M3 Statistics flow plan](https://github.com/DidYouStudy/App/wiki/M3-Statistics-flow-plan), as last updated on Friday 20 November 2026, which we take as the agreed basis.
+This document records what the team decided for the statistics flow, and what is still open.
+It builds on the wiki page [M3 Statistics flow plan](https://github.com/DidYouStudy/App/wiki/M3-Statistics-flow-plan).
+The decisions come from the review threads of this PR (22 to 27 November 2026), the review of PR #407, and a team discussion on 27 November 2026.
 
-## How to review
+## How to use this document
 
-- Each open decision has its own short section below. Comment on its line: agree, disagree, or propose another option.
-- The PO settles each decision. Once settled, the decision's thread is resolved and the section says **Decided**.
-- Please answer by **Tuesday 24 November 2026**, so that the blocked Sprint 7 tasks can start.
-- Implementation details (colours, padding, names) stay with the developer of each task. Only choices that change what the app does or stores are listed here.
-- When the PR merges, the issues and the wiki plan are updated to match this document.
+- Each decision says what was decided and where.
+- The open points at the end still need the PO's answer. Please comment on their line.
+- Implementation details (colours, padding, names) stay with the developer of each task.
 
 ## The flow
 
 ```mermaid
 graph LR
-  A["Import the EPFL schedule"] --> B["Choose the subjects to track<br/>#378"]
-  B --> C["Rate priority and confidence<br/>#379, #380"]
-  C --> D["Study: current session card<br/>with Start/Stop, #382, #77"]
-  D --> E["Studied time saved<br/>#381"]
-  E --> F["Statistics on the dashboard<br/>#76, #75, #372"]
-  F -.-> G["Later: AI analysis"]
+  A["Import the EPFL schedule"] --> B["Choose the subjects to track"]
+  B --> C["Set a priority per subject<br/>and the tracked event types"]
+  C --> D["Current session card:<br/>Start / Pause tracking time"]
+  D --> E["Study log saved<br/>#381"]
+  E --> F["Statistics on the dashboard<br/>and per subject"]
+  F -.-> G["Ask for AI feedback"]
   G -.-> H["Later: proposed sessions"]
 ```
 
-Solid arrows are the Sprint 7 scope. Dotted arrows are later Sprints.
+Solid arrows are decided. Dotted arrows are later work.
 
-## Already agreed
+## Decided
 
-| Topic | Agreement | Tasks |
-|---|---|---|
-| Tracked subjects | At schedule import, the student ticks the subjects to track. Decisions live in their own document, `users/{uid}/meta/trackedSubjects`, separate from the subject catalog, keyed like the catalog. | #371, #378 |
-| Subject scores | Stored per tracked subject, next to its tracked flag. | #379, #380 |
-| Studied time | Stored in its own repository, `SessionFeedbackRepository`, at `users/{uid}/feedback/{eventId}`, never inside `PersonalEvent` (its KDoc says it describes planned time only). | #381 |
-| Task counts | Read from `PersonalEvent.tasks` when needed, not stored again. Group sessions have no tasks. | #381 |
-| Current session | A dashboard card for the session happening now, with a ring for study and break periods computed from the user's break preferences (`UserPreferences.breakFrequencyMinutes` and `breakLengthMinutes`). | #382, #77 |
-| Statistics storage | No new repository: statistics are computed from the events and the feedback records. | #76 |
-| AI calls | No API key in the APK, since it can be extracted. Calls go through a backend that holds the key. | later |
+### D1. Which event types count
 
-## Open decisions for Sprint 7
+- Only **personal events** count. Group sessions are not tracked for now (see D10).
+- For each tracked subject, the student chooses in **Preferences** which event types count. The default selection is `STUDY_SESSION`, `COURSE`, `EXERCISE_SESSION`, `LAB` and `PROJECT` (every type except `EXAM` and `OTHER`), and the student can change it later.
+- Study sessions and exercise sessions are not separated in the statistics. User story #5 will be updated.
+- Every event gets a current session card. **Start tracking time** and **Pause tracking time** only show for tracked types (hidden or greyed out otherwise). **Start now** and **End event** show for every type.
 
-The IDs D1 to D6 are the ones of the wiki page [Task graph: Sprint 7](https://github.com/DidYouStudy/App/wiki/Task-graph-Sprint-7). D7 to D11 are new.
-
-### D1. Which event types are concerned
-
-This is three separate questions, and the issues answer them differently today:
-
-| Question | Today in the issues |
-|---|---|
-| Which types get a current session card | Every type (#382, #77) |
-| Which types can be recorded with Start/Stop | `STUDY_SESSION` only (#77) |
-| Which types count in the statistics | `STUDY_SESSION` and `EXERCISE_SESSION` (#76) |
-
-As written, exercise sessions count in the statistics but can never be recorded, so their time could only come from the planned times.
-User story #5 asks for "hours studied on exercises and hours reviewed the theory for each subject", which needs exercise sessions to be counted separately.
-
-**Recommendation:** a card for every type; Start/Stop and statistics for `STUDY_SESSION` and `EXERCISE_SESSION`, shown separately in the statistics (study and exercises). Recording one more type costs one condition in #77.
-
-**Blocks:** #382, #77, #76.
+Source: Maria and Steven on this PR; wiki plan.
 
 ### D2. How studied time is entered
 
-Options: a Start/Stop toggle on the card, a +/- stepper, or a prompt at the end of the session.
+- **Start tracking time** and **Pause tracking time** buttons on the current session card record the focus time. A short cooldown on these buttons avoids inconsistent tracking when they are tapped very quickly.
+- **Start now** (on the "Your day" card) starts an event early. It moves the event's start time through the edit event functions, but it does **not** start tracking: the student still taps **Start tracking time**.
+- **End event** (on the current session card) asks for confirmation, then stops tracking and ends the event. It moves the event's end time through the edit event functions.
 
-**Recommendation:** a Start/Stop toggle, as every issue already assumes.
-
-**Blocks:** #381, #77.
+Source: Daniel and Maria on this PR; team discussion on 27 November.
 
 ### D3. Shape of a record
 
-Options: one start and one stop per session, or several start/stop intervals.
+Several focus intervals per session (each with a start and an end); the gaps are breaks. The record is the study log of PR #407 (see D11).
 
-**Recommendation:** one start and one stop per session, stored in whole seconds. The start time is stored when Start is tapped, so a running session survives the app being closed. Start is available only while the session is current; Stop is available at any time after Start, even after the official end.
+### D4. The ring
 
-**Blocks:** #381, #77.
+- One ring per current session card, coloured by event type.
+- Full colour shows the periods the student was tracking; a dashed interior shows the breaks.
+- Suggested breaks still alternate with study periods, from the student's preferences. The student is alerted when a suggested break starts but can keep studying. During a suggested break, the ring starts again from the top and the card shows the time left in the break.
+- Follow the current session card mockup on Figma.
 
-### D4. One ring or two
+Source: Yuhan and Maria on this PR.
 
-Options: one ring that switches between study and break, or one ring for the session and one for the break.
+### D5. Overlapping sessions on the dashboard
 
-**Recommendation:** one ring that switches mode, as drafted on Figma.
+One card per session, the one whose subject has the highest priority first; swipe to see the others. Show only the three top tasks, in a scrollable list.
 
-**Blocks:** #382, #77.
+Source: Yuhan on this PR. Counting overlapping time in the statistics is still open (see open point 1).
 
-### D5. Overlapping sessions
+### D6. Scores per subject
 
-Options: one card per overlapping session, or only the first one.
+A **priority** set by the student, on the Preferences screen (design on Figma). No confidence or difficulty score.
 
-**Recommendation:** one card per session, each with its own toggle and record. In the statistics, recorded time that overlaps is counted once (the union of the recorded intervals), so studying during two overlapping sessions does not double the time.
+### D7. What "study time" means
 
-**Blocks:** #382, #77, #76.
+The **recorded focus time**: the sum of the tracked intervals. This is the "Average daily study time" of the Figma stats card. A session that was never tracked counts as 0.
 
-### D6. Which scores per subject
+Source: team discussion on 27 November.
 
-Options: priority and confidence; or also difficulty. A weekly reminder to update them, or none.
+### D8. Focus score
 
-**Recommendation:** priority and confidence, each from 1 to 10, no difficulty (it says the same as confidence), and no weekly reminder for now.
+A **percentage**: the recorded focus time divided by the planned focus time, where the planned focus time is the planned duration minus the suggested breaks (from the student's preferences).
 
-**Blocks:** #379, #380.
+Example: 60 minutes planned with one 10-minute suggested break gives 50 minutes of planned focus; 40 minutes recorded gives **80 %**.
 
-### D7. What "study time" means in the statistics
+"Average focus duration" must be added to the current dashboard mockups on Figma.
 
-Options: the recorded time only; or the recorded time, with the planned time when a session was never started.
-
-Mixing the two hides whether the student really studied.
-
-**Recommendation:** show both, separately: "planned" from the events and "done" from the records. A session never started counts as planned, with 0 done. This gives the "planned vs done" view that epic #292 asks for.
-
-**Blocks:** #76, #75, #372.
-
-### D8. What "average focus duration" means
-
-#75 asks for it. #76 proposes that the student reports it; the wiki plan suggests the recorded time, which would be the same as the study time.
-
-**Recommendation:** the average recorded duration of the sessions that were started, over the week. Nothing more is asked from the student.
-
-**Blocks:** #76, #75.
+Source: Daniel on this PR; team discussion on 27 November.
 
 ### D9. Subjects that do not come from an import
 
-Already decided in #371 and #378: only subjects ticked at import are tracked; a subject typed by hand is never tracked.
+When an event uses a subject that was never decided, the app asks the student whether to track it. The subject picker of the event form also lists the tracked subjects, even when no event uses them yet.
 
-Consequence: a student who never imports the EPFL schedule never gets any statistics, and a group session counts only when its subject, typed by the host, matches a tracked subject exactly.
+Source: Yuhan on this PR; wiki plan.
 
-Options:
-- (a) keep it as decided;
-- (b) when an event is saved with a subject never decided, ask "Track this subject?" once;
-- (c) track every new subject by default, untracking from Preferences.
+### D10. Group sessions
 
-**Recommendation:** keep (a) for Sprint 7, so #371 and #378 do not change, and plan (b) as a small follow-up task. The PO should confirm that statistics without an import are not needed for the M3 demo.
+Not tracked for now, for simplicity: they have no tasks, and their value for one student is hard to judge without explicit feedback.
 
-**Blocks:** nothing in Sprint 7; decides a follow-up task.
+Source: Daniel, Maria and Yuhan on this PR.
 
-### D10. Recording group sessions
+### D11. What a study log stores
 
-#381 records group and individual sessions; #77 hides the toggle for group sessions.
+Decided in the review of PR #407 and implemented there: `StudyLog` (renamed from "session feedback", since "feedback" is kept for the AI) with the event ID, event type, subject, planned start and end (frozen at creation), the focus intervals, a snapshot of the event's tasks (name and completion time) and an optional comment. `observeLogs(ownerId, from, to)` reads the logs of a period for the statistics.
 
-**Recommendation:** the repository (#381) accepts both, since each record is per user; the card (#77) hides the toggle for group sessions in Sprint 7, and a later task enables it.
+### D12. Where the statistics are shown
 
-**Blocks:** #381, #77.
+- The **dashboard** shows the statistics of the ongoing event.
+- A **See more** link opens the list of the student's subjects. Choosing one opens a **screen for that subject or course**, with a button per week to filter.
+- Each course card can be opened for more details: rings per week, overall perceived difficulty, AI feedback.
 
-### D11. What a feedback record stores
+Source: team discussion on 27 November; Daniel on this PR.
 
-#381 stores `eventId`, `subject`, `startedAt` and `studiedSeconds`. Personal events and group sessions live in two collections, so the statistics need to know where to find the event of a record (its type and planned times).
+### Notifications
 
-**Recommendation:** also store the event kind (personal or group session). A record whose event was deleted is ignored by the statistics and kept in storage.
+- Before an event starts, when a suggested break ends, and when an event ends.
+- Suggested breaks are sent as a notification to take a break; they are never mandatory.
 
-**Blocks:** #381, #76.
+Source: team discussion on 27 November. Task #392 covers part of it and needs an update.
 
-### D12. Statistics window and placement
+### Text feedback and AI feedback
 
-Options for the window: the current week, month, or all time. Options for the placement: cards on the dashboard, a separate screen, or both.
+- The student can write a text comment on a past session, in a dialog from Event Details (#401). It is stored in the study log.
+- AI feedback is only generated on demand, with an **Ask for AI feedback** button, never automatically.
 
-**Recommendation:** the dashboard cards (#75) show the current week, Monday to Sunday in the device's time zone (clock and zone injected, so tests pass in any time zone). The statistics screen (#372) with week, month and all time comes after the cards.
+Source: Yuhan on this PR; team discussion on 27 November.
 
-**Blocks:** #76, #75, #372.
+## Still open
 
-## Contradictions to fix in the issues
+1. **Overlapping time in the statistics.** When two tracked sessions overlap, is their focus time counted once or twice? Suggestion: once, so one hour of study never counts as two.
+2. **Start now and the frozen plan.** Start now moves the event's start time. If the study log is created after that (at the first Start tracking time), its frozen `plannedStart` is the new time and the original plan is lost, which changes the focus score (D8). Should the log keep the original planned times?
+3. **Focus score edge cases.** A session shorter than one focus period, and a session never tracked: 0 % or left out of the average?
+4. **Perceived difficulty** (D12 course details): where does it come from, since no difficulty score is collected (D6)?
+5. **AI feedback.** Which model; where the call runs (key in the app, Firebase AI Logic or Cloud Functions, see Steven's comparison on this PR); how long results are kept; whether the student can give feedback by microphone.
+6. **Proposed sessions.** Where they are shown, where they are stored, how they are accepted or dismissed, which period they cover.
+7. **Study log storage (part 2 of #381).** The Firestore path: `users/{uid}/feedback/{eventId}` as written in #381, or `users/{uid}/studyLogs/{eventId}` after the rename.
+8. **Task limit.** Events have no maximum number of tasks, while a study log keeps at most 50: add the same limit to the event form.
 
-These are fixed in the issues after this PR merges, according to the decisions above.
+## Issues to update
 
-1. **#77** adds the studied time to `PersonalEvent.studyRecord` with `EventsRepository.startStudyRecord`, which contradicts the agreed `SessionFeedbackRepository` (#381). #77 must use #381's interface.
-2. **Group sessions:** #381 records them, #77 hides the toggle (D10).
-3. **Exercise sessions:** counted by #76 but not recordable in #77 (D1).
-4. **#381** still refers to the codes C1, C5, C6, C7 and R1 of an older version of the plan. Replace them with the IDs of this document.
-5. **#75 and #373** both describe the statistics cards on the dashboard, and #373 has no description. Keep one.
-6. **#77** says High (480) in its Size section but 120 on the board.
-
-## Later Sprints
-
-Not decided now. Listed so that nothing is lost.
-
-### AI analysis
-
-- Which model to use.
-- Where the call runs: a backend that holds the key, for example a Cloud Function. Check that our Firebase plan allows it.
-- Which data is sent (subjects, times, scores) and whether the student must agree first, since it leaves the app.
-- When the analysis runs (on demand, nightly, after a number of sessions) and how long its results are kept.
-
-### Proposed sessions
-
-- Where proposals are shown: on the calendar with a distinct style, or in a separate list.
-- Where they are stored: in their own model and repository, not in `PersonalEvent`, so they do not appear in the calendar and the statistics before being accepted.
-- How a proposal is accepted (turned into a `PersonalEvent`) or dismissed.
-- Which period proposals cover (for example the next week).
-- Whether group sessions can be proposed, or only individual sessions.
-
-## Decision and task map
-
-| Task | Waits for |
-|---|---|
-| #371 Tracked subjects repository | nothing (D9 confirms it unchanged) |
-| #378 Subject confirmation dialog | #371 |
-| #379 Scores per subject | #371, D6 |
-| #380 Rate tracked subjects | #378, #379, D6 |
-| #381 Session feedback repository | D2, D3, D10, D11 |
-| #382 Current sessions | D1, D4, D5 |
-| #77 Current session card | #381, #382, #371, D1 to D5, D10 |
-| #76 Statistics backend | #381, #378, D1, D5, D7, D8, D11, D12 |
-| #75 Statistics cards | #76, D7, D8, D12 |
-| #372 Statistics screen | #76, D12 |
+- **#77** (current session card): Start / Pause tracking time, Start now, End event with confirmation, the ring of D4, the cooldown, and the `StudyLogRepository` API of #407.
+- **#76** (statistics backend): D7 and D8, the tracked types per subject (D1), personal events only.
+- **#75** (dashboard cards) and **#372** (statistics screen): D8 percentage and D12 layout.
+- **#392** (notifications): the three notifications and the suggested breaks above.
+- **#381** part 2: the Firestore path (open point 7).
