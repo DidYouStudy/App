@@ -35,6 +35,8 @@ import com.android.sample.model.location.CampusLocationFilter
 import com.android.sample.model.location.CampusLocationRepository
 import com.android.sample.model.location.CampusLocationType
 import com.android.sample.model.location.Location
+import com.android.sample.model.subject.InMemoryTrackedSubjectRepository
+import com.android.sample.model.subject.TrackedSubjectRepositoryProvider
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
 import java.time.Clock
 import java.time.Instant
@@ -81,6 +83,7 @@ class AddEventScreenTest {
   @Before
   fun setUp() {
     Dispatchers.setMain(testDispatcher)
+    TrackedSubjectRepositoryProvider.setRepository(InMemoryTrackedSubjectRepository())
     authRepository = mock(AuthRepository::class.java)
     eventsRepository = mock(EventsRepository::class.java)
     campusLocationRepository = mock(CampusLocationRepository::class.java)
@@ -98,6 +101,7 @@ class AddEventScreenTest {
 
   @After
   fun tearDown() {
+    TrackedSubjectRepositoryProvider.setRepository(null)
     Dispatchers.resetMain()
   }
 
@@ -188,6 +192,43 @@ class AddEventScreenTest {
     composeTestRule
         .onNodeWithText(context.getString(R.string.event_planning_save_button))
         .assertDoesNotExist()
+  }
+
+  @Test
+  fun statelessGroupSessionOfflineDisablesSaveAndShowsOfflineMessage() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    var saveClicked = false
+    val uiState =
+        EventPlanningUiState(
+            eventKind = EventKind.GROUP_SESSION,
+            isOffline = true,
+        )
+
+    composeTestRule.setContent {
+      EventPlanningScreenStateless(
+          uiState = uiState,
+          onBackClick = {},
+          onTypeChange = {},
+          onTypeClick = {},
+          onDateClick = {},
+          onStartTimeClick = {},
+          onEndTimeClick = {},
+          onSubjectClick = {},
+          onLocationClick = {},
+          onDescriptionChange = {},
+          onAddTask = {},
+          onToggleTask = {},
+          onDeleteTask = {},
+          onSaveClick = { saveClicked = true },
+      )
+    }
+
+    composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).assertIsNotEnabled()
+    composeTestRule
+        .onNodeWithTag(Tags.OFFLINE_MESSAGE)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.event_planning_offline_message))
+    assertFalse(saveClicked)
   }
 
   @Test

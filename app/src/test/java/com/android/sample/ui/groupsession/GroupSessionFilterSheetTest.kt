@@ -1,4 +1,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude AI Agent
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.groupsession
 
 import android.Manifest
@@ -50,6 +52,7 @@ class GroupSessionFilterSheetTest {
       matchingSessionCount: Int = 4,
       zones: List<String> = availableZones,
       hasLocationPermission: Boolean = true,
+      preciseLocationDeniedInSettings: Boolean = false,
       onRadiusSelected: (Int?) -> Unit = {},
       onZonesSelected: (Set<String>) -> Unit = {},
       onShowLabsChanged: (Boolean) -> Unit = {},
@@ -66,6 +69,7 @@ class GroupSessionFilterSheetTest {
           availableZones = zones,
           matchingSessionCount = matchingSessionCount,
           hasLocationPermission = hasLocationPermission,
+          preciseLocationDeniedInSettings = preciseLocationDeniedInSettings,
           onRadiusSelected = onRadiusSelected,
           onZonesSelected = onZonesSelected,
           onShowLabsChanged = onShowLabsChanged,
@@ -121,39 +125,25 @@ class GroupSessionFilterSheetTest {
       composeTestRule.onNodeWithText(it).assertIsDisplayed()
     }
     listOf(
-            GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.STUDY_SESSION) to "Study",
-            GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.COURSE) to "Course",
-            GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.EXERCISE_SESSION) to
-                "Exercise",
-            GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.LAB) to "Lab",
-            GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.PROJECT) to "Project",
-            GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.EXAM) to "Exam",
-            GroupSessionFilterSheetTestTags.sessionTypeChip(EventType.OTHER) to "Other",
+            EventType.STUDY_SESSION to "Study",
+            EventType.COURSE to "Course",
+            EventType.EXERCISE_SESSION to "Exercise",
+            EventType.LAB to "Lab",
+            EventType.PROJECT to "Project",
+            EventType.EXAM to "Exam",
+            EventType.OTHER to "Other",
         )
-        .forEach { (tag, label) ->
-          composeTestRule
-              .onNodeWithTag(tag)
-              .performScrollTo()
-              .assertIsDisplayed()
-              .assertTextEquals(label)
+        .forEach { (type, label) ->
+          typeChip(type).performScrollTo().assertIsDisplayed().assertTextEquals(label)
         }
     listOf(
-            GroupSessionFilterSheetTestTags.startingTimeChip(GroupSessionTimeFilter.ANYTIME) to
-                "Anytime",
-            GroupSessionFilterSheetTestTags.startingTimeChip(
-                GroupSessionTimeFilter.WITHIN_ONE_HOUR
-            ) to "In under 1h",
-            GroupSessionFilterSheetTestTags.startingTimeChip(GroupSessionTimeFilter.TODAY) to
-                "Today",
-            GroupSessionFilterSheetTestTags.startingTimeChip(GroupSessionTimeFilter.THIS_WEEK) to
-                "This week",
+            GroupSessionTimeFilter.ANYTIME to "Anytime",
+            GroupSessionTimeFilter.WITHIN_ONE_HOUR to "In under 1h",
+            GroupSessionTimeFilter.TODAY to "Today",
+            GroupSessionTimeFilter.THIS_WEEK to "This week",
         )
-        .forEach { (tag, label) ->
-          composeTestRule
-              .onNodeWithTag(tag)
-              .performScrollTo()
-              .assertIsDisplayed()
-              .assertTextEquals(label)
+        .forEach { (filter, label) ->
+          startingTimeChip(filter).performScrollTo().assertIsDisplayed().assertTextEquals(label)
         }
     composeTestRule.onNodeWithText("Only show sessions with open spots").assertIsDisplayed()
 
@@ -189,10 +179,7 @@ class GroupSessionFilterSheetTest {
     typeChip(EventType.STUDY_SESSION)
         .performScrollTo()
         .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox))
-    composeTestRule
-        .onNodeWithTag(
-            GroupSessionFilterSheetTestTags.startingTimeChip(GroupSessionTimeFilter.ANYTIME)
-        )
+    startingTimeChip(GroupSessionTimeFilter.ANYTIME)
         .performScrollTo()
         .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton))
   }
@@ -444,8 +431,13 @@ class GroupSessionFilterSheetTest {
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(250)).performClick()
 
     composeTestRule
-        .onNodeWithText("Allow location access to filter by distance")
+        .onNodeWithText("Precise location is needed to filter by distance.")
         .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(
+            "Precise location is disabled. Enable it in Settings to filter by distance."
+        )
+        .assertDoesNotExist()
     composeTestRule.runOnIdle {
       assertEquals(listOf(250), permissionNeeded)
       assertEquals(emptyList<Int?>(), selected)
@@ -466,8 +458,13 @@ class GroupSessionFilterSheetTest {
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(500)).performClick()
 
     composeTestRule
-        .onNodeWithText("Allow location access to filter by distance")
+        .onNodeWithText("Precise location is needed to filter by distance.")
         .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(
+            "Precise location is disabled. Enable it in Settings to filter by distance."
+        )
+        .assertDoesNotExist()
     composeTestRule.runOnIdle {
       assertEquals(listOf(500), permissionNeeded)
       assertEquals(emptyList<Int?>(), selected)
@@ -488,12 +485,37 @@ class GroupSessionFilterSheetTest {
     composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(1000)).performClick()
 
     composeTestRule
-        .onNodeWithText("Allow location access to filter by distance")
+        .onNodeWithText("Precise location is needed to filter by distance.")
         .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(
+            "Precise location is disabled. Enable it in Settings to filter by distance."
+        )
+        .assertDoesNotExist()
     composeTestRule.runOnIdle {
       assertEquals(listOf(1000), permissionNeeded)
       assertEquals(emptyList<Int?>(), selected)
     }
+  }
+
+  /** Shows the Settings-specific hint only once precise location is denied in Settings. */
+  @Test
+  fun distanceWithoutPermissionWhenDeniedInSettingsShowsSettingsHint() {
+    setSheet(
+        hasLocationPermission = false,
+        preciseLocationDeniedInSettings = true,
+    )
+
+    composeTestRule.onNodeWithTag(GroupSessionFilterSheetTestTags.radiusChip(500)).performClick()
+
+    composeTestRule
+        .onNodeWithText(
+            "Precise location is disabled. Enable it in Settings to filter by distance."
+        )
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText("Precise location is needed to filter by distance.")
+        .assertDoesNotExist()
   }
 
   /** Selecting Any clears the radius even when location access is unavailable. */
@@ -744,12 +766,13 @@ class GroupSessionFilterSheetTest {
     composeTestRule.onNodeWithText("Show 1 session").assertIsDisplayed()
   }
 
-  /** Returns true when either supported location permission is granted. */
+  /** Returns true only when precise location permission is granted. */
   @Test
-  fun locationPermissionIsGrantedForFineOrCoarse() {
+  fun locationPermissionIsGrantedOnlyForFine() {
     assertTrue(isLocationPermissionGranted(mapOf(Manifest.permission.ACCESS_FINE_LOCATION to true)))
-    assertTrue(
-        isLocationPermissionGranted(mapOf(Manifest.permission.ACCESS_COARSE_LOCATION to true))
+    assertEquals(
+        false,
+        isLocationPermissionGranted(mapOf(Manifest.permission.ACCESS_COARSE_LOCATION to true)),
     )
     assertTrue(
         isLocationPermissionGranted(

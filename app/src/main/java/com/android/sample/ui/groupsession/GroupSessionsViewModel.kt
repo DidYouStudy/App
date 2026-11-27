@@ -16,7 +16,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
 import com.android.sample.model.connectivity.AndroidConnectivityObserver
+import com.android.sample.model.connectivity.ConnectionLostException
 import com.android.sample.model.connectivity.ConnectivityObserver
+import com.android.sample.model.connectivity.runOnlineWrite
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.GroupSession
 import com.android.sample.model.groupsession.GroupSessionsRepository
@@ -27,8 +29,15 @@ import com.android.sample.model.location.CampusLocationRepository
 import com.android.sample.model.location.CampusLocationRepositoryProvider
 import com.android.sample.model.location.CampusLocationType
 import com.android.sample.model.location.DistanceCalculator
+import com.android.sample.model.location.InMemoryPreciseLocationStateStore
 import com.android.sample.model.location.Location
 import com.android.sample.model.location.LocationProvider
+import com.android.sample.model.location.PreciseLocationAction
+import com.android.sample.model.location.PreciseLocationState
+import com.android.sample.model.location.PreciseLocationStateMachine
+import com.android.sample.model.location.PreciseLocationStateStore
+import com.android.sample.model.location.PreciseLocationTransition
+import com.android.sample.model.location.SharedPreferencesPreciseLocationStateStore
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.ProfileRepositoryProvider
 import java.time.Clock
@@ -44,7 +53,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -88,6 +99,12 @@ enum class GroupSessionsError {
 
   /** The current user could not leave the selected session. */
   LEAVE_FAILED,
+
+  /** An action that needs the server was attempted while the device is offline. */
+  OFFLINE,
+
+  /** The connection dropped, or the server did not answer, in the middle of a join or leave. */
+  CONNECTION_LOST,
 }
 
 /**
@@ -106,6 +123,7 @@ private fun GroupSessionsError?.withoutLoadFailure() = takeUnless {
  * One row of the list, including membership, creator relationship, and the known host username.
  *
  * [hostName] is null until a nonblank username has been loaded for another user's profile.
+ * [hostPictureUrl] comes from the same profile; it is also null when that host has no picture.
  */
 data class GroupSessionItem(
     val session: GroupSession,
@@ -114,6 +132,7 @@ data class GroupSessionItem(
     val hostName: String? = null,
     val proximity: SessionWithProximity = SessionWithProximity(session, null, null, null),
     val isActionInProgress: Boolean = false,
+    val hostPictureUrl: String? = null,
 )
 
 /** A session enriched with its resolved room and optional distance from the user. */
@@ -124,13 +143,18 @@ data class SessionWithProximity(
     val formattedDistance: String?,
 )
 
-/** A visible roster row and the outcome of looking up its profile username. */
+/**
+ * A visible roster row and the outcome of looking up its profile username.
+ *
+ * [profilePictureUrl] is null without a loaded username, or when the member has no picture.
+ */
 data class GroupSessionParticipant(
     val userId: String,
     val username: String?,
     val isHost: Boolean,
     val isCurrentUser: Boolean,
     val isUnavailable: Boolean = false,
+    val profilePictureUrl: String? = null,
 )
 
 /** The open roster, including the full count while individual profiles are loading. */
@@ -144,6 +168,18 @@ data class GroupSessionParticipantsSheet(
     get() = rows.any { it.isUnavailable }
 }
 
+/** Transient permission dialog currently requested by [GroupSessionsViewModel]. */
+enum class ActivePermissionDialog {
+  /** No permission dialog is displayed. */
+  NONE,
+
+  /** First-refusal rationale dialog explaining why precise location is required. */
+  EXPLANATION,
+
+  /** Second-refusal dialog directing the user to system App Info Settings. */
+  SETTINGS,
+}
+
 /**
  * State of the Group sessions screen; [sessions] is already searched and filtered.
  *
@@ -152,7 +188,9 @@ data class GroupSessionParticipantsSheet(
  * default value, so that every new state has to supply the current time. Laboratory rooms are
  * hidden by default and shown only when [showLabRoomType] is enabled. [isOffline] is true while the
  * device has no internet connection; [sessions] then holds the sessions already loaded and saved on
- * the device, and the screen shows an offline indication.
+ * the device, and the screen shows an offline indication. [preciseLocationState],
+ * [permissionDialog], and [pendingPermissionPrompt] capture the MVVM precise-location permission
+ * state so the screen only dispatches OS prompts and renders dialogs.
  */
 data class GroupSessionsUiState(
     val now: Instant,
@@ -169,11 +207,21 @@ data class GroupSessionsUiState(
     val showLabRoomType: Boolean = false,
     val hideFullSessions: Boolean = false,
     val userLocation: Location? = null,
-    val campusCenter: Location? = null,
     val error: GroupSessionsError? = null,
     val isOffline: Boolean = false,
     val participantsSheet: GroupSessionParticipantsSheet? = null,
-)
+    val preciseLocationState: PreciseLocationState = PreciseLocationState.INIT,
+    val permissionDialog: ActivePermissionDialog = ActivePermissionDialog.NONE,
+    val pendingPermissionPrompt: Boolean = false,
+) {
+  /** Whether precise location (`ACCESS_FINE_LOCATION`) is currently granted. */
+  val hasPreciseLocationPermission: Boolean
+    get() = preciseLocationState == PreciseLocationState.GRANTED
+
+  /** Whether precise location has been refused twice and must be enabled in system Settings. */
+  val isPreciseLocationDeniedInSettings: Boolean
+    get() = preciseLocationState == PreciseLocationState.DENIED_TWICE
+}
 
 /**
  * Observes public upcoming sessions for the signed-in user and exposes searched, filtered UI state.
@@ -192,8 +240,12 @@ data class GroupSessionsUiState(
  * Offline, the repository keeps serving the sessions it already loaded from its local cache, so the
  * list, search, and filters keep working without a connection. [connectivityObserver] drives
  * [GroupSessionsUiState.isOffline] while [uiState] has a collector, which is what the screen shows
- * and what group session actions can check. It is null when connectivity is not tracked, in which
- * case the state never reports offline.
+ * and what group session actions check. Joining and leaving are online-only: while offline they
+ * send nothing and report [GroupSessionsError.OFFLINE], and if the connection drops (or the server
+ * does not answer in time) while one is running it is cancelled, its progress indicator is cleared
+ * and [GroupSessionsError.CONNECTION_LOST] is reported. Both work again as soon as the connection
+ * returns. [connectivityObserver] is null when connectivity is not tracked, in which case the state
+ * never reports offline.
  */
 class GroupSessionsViewModel(
     private val authRepository: AuthRepository,
@@ -203,13 +255,14 @@ class GroupSessionsViewModel(
     private val locationProvider: LocationProvider,
     private val campusLocationRepository: CampusLocationRepository? = null,
     private val connectivityObserver: ConnectivityObserver? = null,
-    private val campusCenter: Location,
+    private val preciseLocationStateStore: PreciseLocationStateStore =
+        InMemoryPreciseLocationStateStore(),
 ) : ViewModel() {
   private val _uiState =
       MutableStateFlow(
           GroupSessionsUiState(
               now = clock.instant(),
-              campusCenter = campusCenter,
+              preciseLocationState = preciseLocationStateStore.getState(),
           )
       )
   /** The current loading, list, search, filter, and categorized-error state. */
@@ -217,17 +270,27 @@ class GroupSessionsViewModel(
 
   private val refreshVersion = MutableStateFlow(0)
   private val locationRefreshTrigger = MutableStateFlow(0)
+  private var pendingSettingsReturn = false
+  private var isSettingsReturnProbe = false
+  private var pendingLocationRadius: Int? = null
   private var currentUserId: String? = null
   /** Distinguishes action requests made during different observed sign-in periods. */
   private var authGeneration = 0L
   private var observedSessions: List<GroupSession> = emptyList()
   private var campusLocationsByName: Map<String, CampusLocation> = emptyMap()
-  private val usernamesByUserId = mutableMapOf<String, String>()
+  /**
+   * Profiles that have a username, kept until a refresh or a change of signed-in user. Opening a
+   * roster reads its members again, and returning to the screen reads the hosts again.
+   */
+  private val profilesByUserId = mutableMapOf<String, CachedProfile>()
   private val usernameLookupsInProgress = mutableSetOf<String>()
   /** Session IDs whose join or leave request is currently running. */
   private val actionRequestsInProgress = mutableSetOf<String>()
   private var participantsSessionId: String? = null
   private val participantNamesWithoutUsername = mutableMapOf<String, ParticipantNameStatus>()
+
+  /** What the screen shows of a member; [profilePictureUrl] is null rather than blank. */
+  private data class CachedProfile(val username: String, val profilePictureUrl: String?)
 
   private enum class ParticipantNameStatus {
     UNKNOWN,
@@ -236,6 +299,7 @@ class GroupSessionsViewModel(
 
   init {
     refreshNowWhileObserved()
+    refreshHostsWhenObservedAgain()
     observeLocationWhileObserved()
     observeConnectivityWhileObserved()
     loadCampusLocations()
@@ -247,7 +311,7 @@ class GroupSessionsViewModel(
             if (userChanged) {
               currentUserId = userId
               authGeneration += 1
-              usernamesByUserId.clear()
+              profilesByUserId.clear()
               usernameLookupsInProgress.clear()
               actionRequestsInProgress.clear()
               clearParticipants()
@@ -262,7 +326,6 @@ class GroupSessionsViewModel(
                       // Preserve user location if authRepository emits null after a location
                       // already emitted.
                       userLocation = _uiState.value.userLocation,
-                      campusCenter = campusCenter,
                       // Connectivity belongs to the device, not to the signed-in user.
                       isOffline = _uiState.value.isOffline,
                   )
@@ -400,12 +463,12 @@ class GroupSessionsViewModel(
     }
   }
 
-  /** Starts a join request for [sessionId]. */
+  /** Starts a join request for [sessionId]; online-only, see [runSessionAction]. */
   fun join(sessionId: String) {
     runSessionAction(sessionId, isJoin = true)
   }
 
-  /** Starts a leave request for [sessionId]. */
+  /** Starts a leave request for [sessionId]; online-only, see [runSessionAction]. */
   fun leave(sessionId: String) {
     runSessionAction(sessionId, isJoin = false)
   }
@@ -413,26 +476,42 @@ class GroupSessionsViewModel(
   /**
    * Runs one join or leave request, publishing its progress and ignoring duplicate taps for the
    * same session until the repository result arrives.
+   *
+   * Writes are online-only: while [GroupSessionsUiState.isOffline] nothing is sent and
+   * [GroupSessionsError.OFFLINE] is reported. The request runs through [runOnlineWrite], so it
+   * cannot hang: a connection loss or timeout ends it with [GroupSessionsError.CONNECTION_LOST],
+   * any other failure with [GroupSessionsError.JOIN_FAILED] or [GroupSessionsError.LEAVE_FAILED],
+   * and in every case the session's progress indicator is cleared and the list is refreshed.
    */
   private fun runSessionAction(sessionId: String, isJoin: Boolean) {
     viewModelScope.launch {
       val userId = currentUserId ?: return@launch
+      if (_uiState.value.isOffline) {
+        _uiState.update { it.copy(error = GroupSessionsError.OFFLINE) }
+        return@launch
+      }
       if (!actionRequestsInProgress.add(sessionId)) return@launch
       updateVisibleSessions()
 
       val requestGeneration = authGeneration
       val result =
-          if (isJoin) repository.joinSession(userId, sessionId)
-          else repository.leaveSession(userId, sessionId)
+          runOnlineWrite(connectivityObserver) {
+            if (isJoin) repository.joinSession(userId, sessionId)
+            else repository.leaveSession(userId, sessionId)
+          }
       if (requestGeneration != authGeneration) return@launch
 
       actionRequestsInProgress.remove(sessionId)
       updateVisibleSessions()
-      if (result.isFailure) {
+      result.exceptionOrNull()?.let { failure ->
         _uiState.update {
           it.copy(
               error =
-                  if (isJoin) GroupSessionsError.JOIN_FAILED else GroupSessionsError.LEAVE_FAILED,
+                  when {
+                    failure is ConnectionLostException -> GroupSessionsError.CONNECTION_LOST
+                    isJoin -> GroupSessionsError.JOIN_FAILED
+                    else -> GroupSessionsError.LEAVE_FAILED
+                  },
           )
         }
         refresh()
@@ -448,7 +527,7 @@ class GroupSessionsViewModel(
    */
   fun refresh() {
     viewModelScope.launch {
-      usernamesByUserId.clear()
+      profilesByUserId.clear()
       refreshVersion.update { it + 1 }
     }
   }
@@ -461,12 +540,197 @@ class GroupSessionsViewModel(
     viewModelScope.launch { locationRefreshTrigger.update { it + 1 } }
   }
 
-  /** Opens the roster for a session in the latest repository snapshot. */
+  /**
+   * Reconciles the persisted [PreciseLocationState] with the live OS [hasFineLocation] status
+   * without launching prompts or refreshing location.
+   */
+  fun syncPreciseLocationPermission(hasFineLocation: Boolean) {
+    syncPermissionState(hasFineLocation)
+  }
+
+  /**
+   * Handles passive entry into the map view, refreshing location if precise permission is already
+   * granted or advancing [PreciseLocationStateMachine] otherwise.
+   */
+  fun onMapEntered(hasFineLocation: Boolean) {
+    val synced = syncPermissionState(hasFineLocation)
+    if (synced == PreciseLocationState.GRANTED) {
+      refreshLocation()
+    } else {
+      applyPermissionTransition(PreciseLocationStateMachine.onMapEntered(synced))
+    }
+  }
+
+  /**
+   * Handles an explicit user request for a precise-location feature (recenter or distance filter).
+   *
+   * When [pendingRadius] is provided, it is applied automatically if the resulting permission flow
+   * grants precise location, and cleared if the flow reaches [PreciseLocationState.DENIED_TWICE].
+   */
+  fun onLocationFeatureRequested(hasFineLocation: Boolean, pendingRadius: Int? = null) {
+    val synced = syncPermissionState(hasFineLocation)
+    if (synced == PreciseLocationState.GRANTED) {
+      refreshLocation()
+      if (pendingRadius != null) {
+        onRadiusFilterSelected(pendingRadius)
+      }
+      return
+    }
+    if (pendingRadius != null) {
+      pendingLocationRadius = pendingRadius
+    }
+    val transition = PreciseLocationStateMachine.onLocationFeatureRequested(synced)
+    applyPermissionTransition(transition)
+    if (transition.state == PreciseLocationState.DENIED_TWICE) {
+      pendingLocationRadius = null
+    }
+  }
+
+  /** Clears the one-shot [GroupSessionsUiState.pendingPermissionPrompt] flag once launched. */
+  fun onPermissionPromptLaunched() {
+    _uiState.update { it.copy(pendingPermissionPrompt = false) }
+  }
+
+  /**
+   * Advances the permission flow after the OS permission dialog returns [isFineGranted].
+   *
+   * Refreshes location and applies any pending distance filter on grant; clears a pending distance
+   * filter if the flow reaches [PreciseLocationState.DENIED_TWICE].
+   */
+  fun onSystemPermissionResult(isFineGranted: Boolean) {
+    val suppressSettingsDialog = isSettingsReturnProbe
+    isSettingsReturnProbe = false
+    val transition =
+        PreciseLocationStateMachine.onSystemPermissionResult(
+            _uiState.value.preciseLocationState,
+            isFineGranted,
+            suppressSettingsDialog = suppressSettingsDialog,
+        )
+    applyPermissionTransition(transition)
+    val pendingRadius = pendingLocationRadius
+    if (transition.state == PreciseLocationState.GRANTED) {
+      refreshLocation()
+      if (pendingRadius != null) {
+        pendingLocationRadius = null
+        onRadiusFilterSelected(pendingRadius)
+      }
+    } else if (transition.state == PreciseLocationState.DENIED_TWICE && pendingRadius != null) {
+      pendingLocationRadius = null
+    }
+  }
+
+  /** Advances the permission flow when the user confirms or dismisses the explanation dialog. */
+  fun onExplanationDismissed() {
+    val transition =
+        PreciseLocationStateMachine.onExplanationDismissed(_uiState.value.preciseLocationState)
+    applyPermissionTransition(transition)
+  }
+
+  /** Records that the user navigated to system App Info Settings and dismisses the dialog. */
+  fun onSettingsOpened() {
+    pendingSettingsReturn = true
+    _uiState.update { it.copy(permissionDialog = ActivePermissionDialog.NONE) }
+  }
+
+  /** Dismisses the Settings fallback dialog without opening Settings. */
+  fun onSettingsDialogDismissed() {
+    _uiState.update { it.copy(permissionDialog = ActivePermissionDialog.NONE) }
+  }
+
+  /**
+   * Reconciles permission state when the screen resumes (`ON_RESUME`).
+   *
+   * If returning from Settings, runs [PreciseLocationStateMachine.onReturnedFromSettings] and marks
+   * any resulting OS prompt as a one-shot probe so declining "Ask every time" stays silent.
+   */
+  fun onResumed(hasFineLocation: Boolean) {
+    if (pendingSettingsReturn) {
+      pendingSettingsReturn = false
+      val transition =
+          PreciseLocationStateMachine.onReturnedFromSettings(
+              preciseLocationStateStore.getState(),
+              hasFineLocation,
+          )
+      if (transition.action == PreciseLocationAction.REQUEST_PERMISSION) {
+        isSettingsReturnProbe = true
+      }
+      applyPermissionTransition(transition)
+      if (transition.state == PreciseLocationState.GRANTED) {
+        refreshLocation()
+      }
+    } else {
+      val synced = syncPermissionState(hasFineLocation)
+      if (synced == PreciseLocationState.GRANTED) {
+        refreshLocation()
+      }
+    }
+  }
+
+  /** Syncs persisted permission state with [hasFineLocation] and updates [uiState]. */
+  private fun syncPermissionState(hasFineLocation: Boolean): PreciseLocationState {
+    val synced =
+        PreciseLocationStateMachine.syncWithSystemPermission(
+            preciseLocationStateStore.getState(),
+            hasFineLocation,
+        )
+    preciseLocationStateStore.setState(synced)
+    _uiState.update { current ->
+      current.copy(
+          preciseLocationState = synced,
+          permissionDialog =
+              if (synced == PreciseLocationState.GRANTED) {
+                ActivePermissionDialog.NONE
+              } else {
+                current.permissionDialog
+              },
+      )
+    }
+    return synced
+  }
+
+  /** Persists [transition.state] and maps [transition.action] onto [uiState]. */
+  private fun applyPermissionTransition(transition: PreciseLocationTransition) {
+    preciseLocationStateStore.setState(transition.state)
+    _uiState.update { current ->
+      when (transition.action) {
+        PreciseLocationAction.NONE ->
+            current.copy(
+                preciseLocationState = transition.state,
+                permissionDialog = ActivePermissionDialog.NONE,
+            )
+        PreciseLocationAction.REQUEST_PERMISSION ->
+            current.copy(
+                preciseLocationState = transition.state,
+                permissionDialog = ActivePermissionDialog.NONE,
+                pendingPermissionPrompt = true,
+            )
+        PreciseLocationAction.EXPLAIN_RATIONALE ->
+            current.copy(
+                preciseLocationState = transition.state,
+                permissionDialog = ActivePermissionDialog.EXPLANATION,
+            )
+        PreciseLocationAction.SEND_TO_SETTINGS ->
+            current.copy(
+                preciseLocationState = transition.state,
+                permissionDialog = ActivePermissionDialog.SETTINGS,
+            )
+      }
+    }
+  }
+
+  /**
+   * Opens the roster for a session in the latest repository snapshot.
+   *
+   * Members already read are read again, so a changed picture or username shows up. What was read
+   * before stays on screen meanwhile.
+   */
   fun openParticipants(sessionId: String) {
     viewModelScope.launch {
-      if (observedSessions.none { it.id == sessionId }) return@launch
+      val session = observedSessions.firstOrNull { it.id == sessionId } ?: return@launch
       participantsSessionId = sessionId
       participantNamesWithoutUsername.clear()
+      // Cached or not. Loading then publishes the rows without starting a second read.
+      session.memberIds.forEach(::fetchProfile)
       loadParticipantNames()
     }
   }
@@ -577,10 +841,30 @@ class GroupSessionsViewModel(
     }
   }
 
+  /**
+   * Reads the other hosts again each time the screen comes back, so their changed pictures and
+   * names show up. The first observation reads nothing: the session snapshots already load the
+   * hosts.
+   */
+  private fun refreshHostsWhenObservedAgain() {
+    viewModelScope.launch {
+      _uiState.subscriptionCount
+          .map { it > 0 }
+          .distinctUntilChanged()
+          .filter { it }
+          .drop(1)
+          .collect { otherHostIds(observedSessions).forEach(::fetchProfile) }
+    }
+  }
+
   /** Prefetches other hosts for the session cards without waiting for their profiles. */
   private fun lookupHostNames(sessions: List<GroupSession>) {
-    lookupUsernames(sessions.map { it.createdBy }.distinct().filter { it != currentUserId })
+    lookupUsernames(otherHostIds(sessions))
   }
+
+  /** The hosts of [sessions] whose profile the cards show: everyone but the signed-in user. */
+  private fun otherHostIds(sessions: List<GroupSession>): List<String> =
+      sessions.map { it.createdBy }.distinct().filter { it != currentUserId }
 
   /** Loads newly visible participants and reuses any usernames or requests shared with cards. */
   private fun loadParticipantNames() {
@@ -598,12 +882,18 @@ class GroupSessionsViewModel(
 
   /** Schedules one profile read per uncached user with no lookup already in progress. */
   private fun lookupUsernames(userIds: List<String>) {
+    userIds.filterNot { it in profilesByUserId }.forEach(::fetchProfile)
+  }
+
+  /**
+   * Reads one profile, cached or not, unless nobody is signed in or a read for that user is already
+   * running.
+   */
+  private fun fetchProfile(userId: String) {
     if (currentUserId == null) return
+    if (!usernameLookupsInProgress.add(userId)) return
     val requestGeneration = authGeneration
-    for (userId in userIds) {
-      if (userId in usernamesByUserId || !usernameLookupsInProgress.add(userId)) continue
-      viewModelScope.launch { resolveUsername(userId, requestGeneration) }
-    }
+    viewModelScope.launch { resolveUsername(userId, requestGeneration) }
   }
 
   /** Applies one profile result and releases its lookup slot for the same sign-in period. */
@@ -612,12 +902,19 @@ class GroupSessionsViewModel(
       val result = profileRepository.getProfile(userId)
       if (requestGeneration != authGeneration) return
 
-      val username = result.getOrNull()?.username?.takeIf { it.isNotBlank() }
+      val profile = result.getOrNull()
+      val username = profile?.username?.takeIf { it.isNotBlank() }
       if (username != null) {
-        usernamesByUserId[userId] = username
+        val pictureUrl = profile.profilePictureUrl?.takeIf { it.isNotBlank() }
+        profilesByUserId[userId] = CachedProfile(username, pictureUrl)
         updateVisibleSessions()
         return
       }
+
+      // A failed read says nothing new, so an earlier result stays. A successful one without a
+      // username replaces it.
+      if (result.isFailure && userId in profilesByUserId) return
+      if (profilesByUserId.remove(userId) != null) updateVisibleSessions()
 
       if (selectedParticipantsSession()?.memberIds?.contains(userId) != true) return
       participantNamesWithoutUsername[userId] =
@@ -642,7 +939,8 @@ class GroupSessionsViewModel(
     val session = selectedParticipantsSession() ?: return
     val orderedIds = session.orderedMemberIds()
     val rows = orderedIds.mapNotNull { userId ->
-      val username = usernamesByUserId[userId]
+      val profile = profilesByUserId[userId]
+      val username = profile?.username
       val status = participantNamesWithoutUsername[userId]
       if (username == null && status == null) return@mapNotNull null
       GroupSessionParticipant(
@@ -651,6 +949,7 @@ class GroupSessionsViewModel(
           isHost = userId == session.createdBy,
           isCurrentUser = userId == currentUserId,
           isUnavailable = username == null && status == ParticipantNameStatus.UNAVAILABLE,
+          profilePictureUrl = profile?.profilePictureUrl,
       )
     }
     _uiState.update {
@@ -680,15 +979,16 @@ class GroupSessionsViewModel(
       val matchingSessions =
           observedSessions
               .map { session ->
+                // The user's own card names no host, so it carries no host picture either.
+                val host =
+                    profilesByUserId[session.createdBy].takeUnless { session.createdBy == userId }
                 GroupSessionItem(
                     session = session,
                     isMember = userId in session.memberIds,
                     isCreator = userId == session.createdBy,
                     proximity = session.proximity(state.userLocation),
-                    hostName =
-                        usernamesByUserId[session.createdBy].takeUnless {
-                          session.createdBy == userId
-                        },
+                    hostName = host?.username,
+                    hostPictureUrl = host?.profilePictureUrl,
                     isActionInProgress = session.id in actionRequestsInProgress,
                 )
               }
@@ -779,7 +1079,8 @@ class GroupSessionsViewModelFactory(
     private val locationProvider: LocationProvider,
     private val campusLocationRepository: CampusLocationRepository? = null,
     private val connectivityObserver: ConnectivityObserver? = null,
-    private val campusCenter: Location,
+    private val preciseLocationStateStore: PreciseLocationStateStore =
+        InMemoryPreciseLocationStateStore(),
 ) : ViewModelProvider.Factory {
   /**
    * Creates the requested ViewModel and rejects unsupported classes with their class name.
@@ -798,7 +1099,7 @@ class GroupSessionsViewModelFactory(
         locationProvider = locationProvider,
         campusLocationRepository = campusLocationRepository,
         connectivityObserver = connectivityObserver,
-        campusCenter = campusCenter,
+        preciseLocationStateStore = preciseLocationStateStore,
     )
         as T
   }
@@ -814,7 +1115,8 @@ fun groupSessionsViewModel(): GroupSessionsViewModel {
   val context = LocalContext.current
   val locationProvider = remember(context) { AndroidLocationProvider.create(context) }
   val connectivityObserver = remember(context) { AndroidConnectivityObserver.create(context) }
-  val campusCenter = defaultCampusCenter()
+  val preciseLocationStateStore =
+      remember(context) { SharedPreferencesPreciseLocationStateStore(context.applicationContext) }
   return viewModel(
       factory =
           GroupSessionsViewModelFactory(
@@ -824,7 +1126,7 @@ fun groupSessionsViewModel(): GroupSessionsViewModel {
               profileRepository = ProfileRepositoryProvider.getRepository(),
               locationProvider = locationProvider,
               connectivityObserver = connectivityObserver,
-              campusCenter = campusCenter,
+              preciseLocationStateStore = preciseLocationStateStore,
           )
   )
 }

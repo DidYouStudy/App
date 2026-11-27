@@ -7,6 +7,8 @@ package com.android.sample.ui.eventplanning
 import androidx.lifecycle.ViewModel
 import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
+import com.android.sample.model.connectivity.ConnectionLostException
+import com.android.sample.model.connectivity.FakeConnectivityObserver
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventTask
 import com.android.sample.model.event.EventType
@@ -14,12 +16,17 @@ import com.android.sample.model.event.EventsError
 import com.android.sample.model.event.EventsException
 import com.android.sample.model.event.EventsRepository
 import com.android.sample.model.event.GroupSession
+import com.android.sample.model.event.SubjectCatalogFirestoreMapper
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.location.CampusLocation
 import com.android.sample.model.location.CampusLocationFilter
 import com.android.sample.model.location.CampusLocationType
 import com.android.sample.model.location.Location
+import com.android.sample.model.preferences.PreferencesRepository
 import com.android.sample.model.preferences.UserPreferences
+import com.android.sample.model.subject.SubjectDecision
+import com.android.sample.model.subject.SubjectDecisions
+import com.android.sample.model.subject.TrackedSubjectRepository
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -182,6 +189,48 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
 
     assertEquals(emptyList<String>(), viewModel.uiState.value.recommendedSubjects)
     assertNull(viewModel.uiState.value.error)
+  }
+
+  /**
+   * Subject suggestions combine catalog subjects and tracked subject decisions, deduplicating by
+   * key.
+   */
+  @Test
+  fun subjects_combineCatalogAndTrackedSubjectDecisions() = runTest {
+    val catalogFlow = flowOf(Result.success(listOf("Analysis I", "Physics")))
+    val trackedFlow =
+        flowOf(
+            Result.success(
+                SubjectDecisions(
+                    mapOf(
+                        SubjectCatalogFirestoreMapper.key("Linear Algebra") to
+                            SubjectDecision("Linear Algebra", true),
+                        SubjectCatalogFirestoreMapper.key("Physics") to
+                            SubjectDecision(" physics ", true),
+                    )
+                )
+            )
+        )
+    `when`(eventsRepository.observeSubjects("user123")).thenReturn(catalogFlow)
+    `when`(trackedSubjectRepository.observeDecisions("user123")).thenReturn(trackedFlow)
+
+    val viewModel = createViewModel()
+
+    assertEquals(
+        listOf("Analysis I", "Physics", "Linear Algebra"),
+        viewModel.uiState.value.recommendedSubjects,
+    )
+  }
+
+  /** An unhandled exception during subject observation sets the observation error. */
+  @Test
+  fun subjects_streamException_setsObservationError() = runTest {
+    `when`(eventsRepository.observeSubjects("user123"))
+        .thenReturn(flow { throw RuntimeException("Stream failed") })
+
+    val viewModel = createViewModel()
+
+    assertEquals(EventPlanningError.FAILED_TO_OBSERVE_USER, viewModel.uiState.value.error)
   }
 
   // ---------------------------------------------------------------- location search
@@ -1155,6 +1204,31 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertEquals(LocalTime.of(18, 0), viewModel.uiState.value.endTime)
   }
 
+  /** Default parameter repository instances support optional operations. */
+  @Test
+  fun defaultRepositories_exerciseOptionalMethods() = runTest {
+    val vm =
+        EventPlanningViewModel(
+            authRepository = authRepository,
+            eventsRepository = eventsRepository,
+            campusLocationRepository = campusLocationRepository,
+            groupSessionsRepository = groupSessionsRepository,
+            clock = clock,
+        )
+
+    val prefsField = EventPlanningViewModel::class.java.getDeclaredField("preferencesRepository")
+    prefsField.isAccessible = true
+    val prefsRepo = prefsField.get(vm) as PreferencesRepository
+    assertTrue(prefsRepo.savePreferences(UserPreferences(userId = "u1")).isSuccess)
+
+    val trackedField =
+        EventPlanningViewModel::class.java.getDeclaredField("trackedSubjectRepository")
+    trackedField.isAccessible = true
+    val trackedRepo = trackedField.get(vm) as TrackedSubjectRepository
+    assertTrue(trackedRepo.saveDecisions("u1", mapOf("A" to true)).isSuccess)
+    assertTrue(trackedRepo.savePriority("u1", "A", 1).isSuccess)
+  }
+
   // factory tests
 
   /** The factory creates an event-planning ViewModel for its supported type. */
@@ -1167,6 +1241,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
             campusLocationRepository,
             groupSessionsRepository,
             preferencesRepository,
+            trackedSubjectRepository,
         )
 
     val viewModel = factory.create(EventPlanningViewModel::class.java)
@@ -1184,6 +1259,7 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
             campusLocationRepository,
             groupSessionsRepository,
             preferencesRepository,
+            trackedSubjectRepository,
         )
 
     val exception =
@@ -1364,6 +1440,103 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
     assertEquals(EventPlanningError.STORAGE_FAILURE, state.error)
   }
 
+  @Test
+  fun addEvent_groupSessionOffline_doesNotCallRepository() = runTest {
+    val connectivity = FakeConnectivityObserver(initialOnline = false)
+    val viewModel = createViewModel(connectivityObserver = connectivity)
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+    viewModel.fillValidForm()
+
+    viewModel.addEvent()
+
+    assertEquals(EventPlanningError.OFFLINE, viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isEventAdded)
+    verify(groupSessionsRepository, never()).saveSession(any(), any())
+  }
+
+  @Test
+  fun deleteEvent_groupSessionOffline_doesNotCallRepository() = runTest {
+    val connectivity = FakeConnectivityObserver(initialOnline = false)
+    val viewModel = createViewModel(connectivityObserver = connectivity)
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+
+    viewModel.deleteEvent("session-1")
+
+    assertEquals(EventPlanningError.OFFLINE, viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isEventDeleted)
+    verify(groupSessionsRepository, never()).deleteSession(any(), any())
+  }
+
+  @Test
+  fun addEvent_groupSessionConnectionLost_exposesConnectionLostError() = runTest {
+    `when`(groupSessionsRepository.saveSession(any(), any()))
+        .thenReturn(Result.failure(ConnectionLostException()))
+    val viewModel = createViewModel()
+    viewModel.setEventKind(EventKind.GROUP_SESSION)
+    viewModel.fillValidForm()
+
+    viewModel.addEvent()
+
+    assertEquals(EventPlanningError.CONNECTION_LOST, viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isEventAdded)
+  }
+
+  @Test
+  fun personalEventRemainsWritableWhileOffline() = runTest {
+    val connectivity = FakeConnectivityObserver(initialOnline = false)
+    val viewModel = createViewModel(connectivityObserver = connectivity)
+    viewModel.setEventKind(EventKind.PERSONAL)
+    viewModel.fillValidForm()
+
+    viewModel.addEvent()
+
+    assertTrue(viewModel.uiState.value.isEventAdded)
+    assertNull(viewModel.uiState.value.error)
+    verify(eventsRepository).saveEvent(any())
+  }
+
+  /** Verifies connectivity observer updates isOffline in UI state. */
+  @Test
+  fun observeConnectivity_updatesIsOfflineState() = runTest {
+    val connectivity = FakeConnectivityObserver(initialOnline = true)
+    val viewModel = createViewModel(connectivityObserver = connectivity)
+
+    assertFalse(viewModel.uiState.value.isOffline)
+
+    connectivity.isOnline.value = false
+    advanceUntilIdle()
+    assertTrue(viewModel.uiState.value.isOffline)
+
+    connectivity.isOnline.value = true
+    advanceUntilIdle()
+    assertFalse(viewModel.uiState.value.isOffline)
+  }
+
+  /** Verifies canLeaveEdit and isBusy computed state properties. */
+  @Test
+  fun uiState_computedProperties_evaluateCorrectly() {
+    val defaultState = EventPlanningUiState()
+    assertTrue(defaultState.canLeaveEdit)
+    assertFalse(defaultState.isBusy)
+
+    val savingState = defaultState.copy(isSaving = true)
+    assertFalse(savingState.canLeaveEdit)
+    assertTrue(savingState.isBusy)
+
+    val deletingState = defaultState.copy(isDeleting = true)
+    assertFalse(deletingState.canLeaveEdit)
+    assertTrue(deletingState.isBusy)
+
+    val editedState = defaultState.copy(isEventEdited = true)
+    assertFalse(editedState.canLeaveEdit)
+
+    val deletedState = defaultState.copy(isEventDeleted = true)
+    assertFalse(deletedState.canLeaveEdit)
+
+    val loadingState = defaultState.copy(isLoading = true)
+    assertTrue(loadingState.isBusy)
+  }
+
   /**
    * Verifies that each [EventPlanningError] entry maps to its distinct, valid localized string
    * resource identifier.
@@ -1396,6 +1569,8 @@ class EventPlanningViewModelTest : EventPlanningViewModelTestBase() {
             EventPlanningError.INVALID_EVENT_DATA to
                 R.string.event_planning_error_invalid_event_data,
             EventPlanningError.STORAGE_FAILURE to R.string.event_planning_error_storage_failure,
+            EventPlanningError.OFFLINE to R.string.event_planning_error_offline,
+            EventPlanningError.CONNECTION_LOST to R.string.event_planning_error_connection_lost,
         )
 
     assertEquals(EventPlanningError.entries.toSet(), expectedMappings.keys)

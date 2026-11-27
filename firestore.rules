@@ -127,6 +127,10 @@ service cloud.firestore {
         && request.resource.data.subjects is map;
     }
 
+    // Each entry is {spelling, tracked, priority?}, where priority is an integer from 1 to 5 (keep
+    // in sync with SubjectPriority.kt). Rules cannot loop over map entries whose keys are dynamic, so
+    // the entry contents are not checked here: the priority range is enforced by SubjectPriority
+    // when the app writes, and the Android mapper rejects malformed entries when it reads.
     match /users/{userId}/meta/trackedSubjects {
       allow read: if isOwner(userId);
       allow create, update: if isOwner(userId)

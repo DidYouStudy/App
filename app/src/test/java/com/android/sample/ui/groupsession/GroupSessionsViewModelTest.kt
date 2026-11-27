@@ -2,10 +2,14 @@
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Gemini <noreply@google.com>
 // Co-authored-by: OpenAI Codex
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.sample.ui.groupsession
 
 import androidx.lifecycle.viewModelScope
 import com.android.sample.model.auth.UserAccount
+import com.android.sample.model.connectivity.ConnectionLostException
+import com.android.sample.model.connectivity.ConnectivityObserver
+import com.android.sample.model.connectivity.FakeConnectivityObserver
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
 import com.android.sample.model.event.EventsError
@@ -63,7 +67,6 @@ class GroupSessionsViewModelTest {
   private lateinit var authRepository: TestAuthRepository
   private lateinit var repository: InMemoryGroupSessionsRepository
   private lateinit var profileRepository: FakeProfileRepository
-  private val testCampusCenter = Location(0.0, 0.0)
 
   @Before
   fun setUp() {
@@ -633,6 +636,71 @@ class GroupSessionsViewModelTest {
     assertFalse(viewModel.uiState.value.sessions.single().isMember)
   }
 
+  @Test
+  fun joinOffline_doesNotCallRepository() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val connectivity = FakeConnectivityObserver(initialOnline = false)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(listOf(session("target", BOB, listOf(BOB))))
+    val viewModel =
+        createViewModel(
+            sessionsRepository = sessionsRepository,
+            connectivityObserver = connectivity,
+        )
+    observe(viewModel)
+    runCurrent()
+
+    viewModel.join("target")
+
+    assertEquals(GroupSessionsError.OFFLINE, viewModel.uiState.value.error)
+    assertEquals(0, sessionsRepository.joinCalls)
+  }
+
+  @Test
+  fun leaveOffline_doesNotCallRepository() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val connectivity = FakeConnectivityObserver(initialOnline = false)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(
+            listOf(session("target", BOB, listOf(BOB, ALICE))),
+        )
+    val viewModel =
+        createViewModel(
+            sessionsRepository = sessionsRepository,
+            connectivityObserver = connectivity,
+        )
+    observe(viewModel)
+    runCurrent()
+
+    viewModel.leave("target")
+
+    assertEquals(GroupSessionsError.OFFLINE, viewModel.uiState.value.error)
+    assertEquals(0, sessionsRepository.leaveCalls)
+  }
+
+  @Test
+  fun joinConnectionLostReportsConnectionLostAndClearsProgress() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val sessionsRepository =
+        PendingActionGroupSessionsRepository(listOf(session("a", BOB, listOf(BOB))))
+    val connectivity = FakeConnectivityObserver(initialOnline = true)
+    val viewModel =
+        createViewModel(
+            sessionsRepository = sessionsRepository,
+            connectivityObserver = connectivity,
+        )
+    observe(viewModel)
+    runCurrent()
+
+    viewModel.join("a")
+    runCurrent()
+    sessionsRepository.joinResult.complete(Result.failure(ConnectionLostException()))
+    runCurrent()
+
+    assertFalse(viewModel.uiState.value.sessions.single().isActionInProgress)
+    assertEquals(GroupSessionsError.CONNECTION_LOST, viewModel.uiState.value.error)
+  }
+
   /** Marks only the requested session while joining and clears progress after success. */
   @Test
   fun join_marksOnlyTargetInProgressUntilSuccess() = runTest {
@@ -1153,7 +1221,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             mutableClock,
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
 
     assertEquals(listOf("expiring"), visibleIds(viewModel))
@@ -1177,7 +1244,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
     clock.currentInstant = Instant.parse("2025-03-01T12:00:25Z")
 
@@ -1198,7 +1264,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
     clock.currentInstant = Instant.parse("2025-03-01T12:00:25Z")
 
@@ -1221,7 +1286,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             AdvancingTestClock(now),
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
 
     viewModel.refresh()
@@ -1242,7 +1306,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             MutableTestClock(now),
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
 
     assertEquals(now, viewModel.uiState.value.now)
@@ -1260,7 +1323,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
     observe(viewModel)
     val later = now.plusSeconds(30)
@@ -1289,7 +1351,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
     viewModel.join("missing")
     assertEquals(GroupSessionsError.JOIN_FAILED, viewModel.uiState.value.error)
@@ -1316,7 +1377,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
     observe(viewModel)
     clock.currentInstant = Instant.parse("2025-03-01T12:00:30Z")
@@ -1339,7 +1399,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
     val hiddenAt = now.plusSeconds(600)
     observe(viewModel).cancel()
@@ -1371,7 +1430,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
     val signedOutAt = now.plusSeconds(600)
     clock.currentInstant = signedOutAt
@@ -1394,7 +1452,6 @@ class GroupSessionsViewModelTest {
             profileRepository,
             clock,
             locationProvider = FakeLocationProvider(),
-            campusCenter = testCampusCenter,
         )
     viewModel.onQueryChange("bio")
     viewModel.onFilterChange(GroupSessionFilter.JOINED)
@@ -1604,8 +1661,7 @@ class GroupSessionsViewModelTest {
     val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
     val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
     val hosted = session("hosted", BOB)
-    val signedOutState =
-        GroupSessionsUiState(now = now, isLoading = false, campusCenter = testCampusCenter)
+    val signedOutState = GroupSessionsUiState(now = now, isLoading = false)
     emissions.emit(Result.success(listOf(hosted)))
     runCurrent()
     assertEquals(listOf(BOB), profileRepository.getProfileUserIds)
@@ -1721,7 +1777,8 @@ class GroupSessionsViewModelTest {
     assertFalse(sheet.isLoading)
     assertFalse(sheet.hasError)
     assertEquals(listOf("Bob", "Joining"), sheet.rows.map { it.username })
-    assertEquals(1, profileRepository.getProfileUserIds.count { it == BOB })
+    // Once for the card and once on opening the roster; membership changes add no read.
+    assertEquals(2, profileRepository.getProfileUserIds.count { it == BOB })
 
     emissions.emit(Result.success(emptyList()))
     runCurrent()
@@ -1786,6 +1843,232 @@ class GroupSessionsViewModelTest {
     assertNull(viewModel.uiState.value.participantsSheet)
   }
 
+  /**
+   * Participant rows and the host line get the URL from the profile read for the username. There is
+   * no URL when it is missing or blank, or when the member has no username.
+   */
+  @Test
+  fun pictureUrlsReachParticipantRowsAndHostLine() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    listOf(
+            UserProfile(uid = BOB, username = "Bob", profilePictureUrl = "bob.jpg"),
+            UserProfile(uid = ALICE, username = "Alice", profilePictureUrl = "alice.jpg"),
+            UserProfile(uid = "none", username = "None"),
+            UserProfile(uid = "blank", username = "Blank", profilePictureUrl = "  "),
+            UserProfile(uid = "nameless", username = " ", profilePictureUrl = "nameless.jpg"),
+        )
+        .forEach { profileRepository.enqueue(it.uid, Result.success(it)) }
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val members = listOf(BOB, ALICE, "none", "blank", "nameless")
+    val session = session("roster", BOB, members)
+    emissions.emit(Result.success(listOf(session)))
+    runCurrent()
+    viewModel.openParticipants(session.id)
+    runCurrent()
+
+    val rows = requireNotNull(viewModel.uiState.value.participantsSheet).rows
+    assertEquals(
+        mapOf(
+            BOB to "bob.jpg",
+            ALICE to "alice.jpg",
+            "none" to null,
+            "blank" to null,
+            "nameless" to null,
+        ),
+        rows.associate { it.userId to it.profilePictureUrl },
+    )
+    assertEquals("bob.jpg", viewModel.uiState.value.sessions.single().hostPictureUrl)
+    // The host, already read for the card, is read once more on opening the roster.
+    assertEquals((members + BOB).sorted(), profileRepository.getProfileUserIds.sorted())
+  }
+
+  /** Opening a roster reads every member again, so changed pictures show on rows and card. */
+  @Test
+  fun openingTheRosterReadsEveryMemberAgain() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    listOf(BOB to "bob", ALICE to "alice").forEach { (uid, name) ->
+      listOf("old", "new").forEach { version ->
+        profileRepository.enqueue(
+            uid,
+            Result.success(UserProfile(uid, name, "$name-$version.jpg")),
+        )
+      }
+    }
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val session = session("roster", BOB, listOf(BOB, ALICE))
+    emissions.emit(Result.success(listOf(session)))
+    runCurrent()
+    // The host was read for the card. This first opening reads Bob again and Alice once.
+    viewModel.openParticipants(session.id)
+    runCurrent()
+    viewModel.dismissParticipants()
+    runCurrent()
+
+    viewModel.openParticipants(session.id)
+    runCurrent()
+
+    val rows = requireNotNull(viewModel.uiState.value.participantsSheet).rows
+    assertEquals(listOf("bob-new.jpg", "alice-new.jpg"), rows.map { it.profilePictureUrl })
+    assertEquals("bob-new.jpg", viewModel.uiState.value.sessions.single().hostPictureUrl)
+    assertEquals(3, profileRepository.getProfileUserIds.count { it == BOB })
+    assertEquals(2, profileRepository.getProfileUserIds.count { it == ALICE })
+  }
+
+  /** The earlier profile stays on screen while it is read again, and if that read fails. */
+  @Test
+  fun rosterKeepsTheEarlierProfileWhileReadingAgainAndWhenThatFails() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    profileRepository.enqueue(BOB, Result.success(UserProfile(BOB, "Bob", "bob.jpg")))
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val session = session("roster", BOB)
+    emissions.emit(Result.success(listOf(session)))
+    runCurrent()
+    val secondRead = CompletableDeferred<Result<UserProfile?>>()
+    profileRepository.hold(BOB, secondRead)
+
+    viewModel.openParticipants(session.id)
+    runCurrent()
+    val whileReading = requireNotNull(viewModel.uiState.value.participantsSheet)
+    assertFalse(whileReading.isLoading)
+    assertEquals("bob.jpg", whileReading.rows.single().profilePictureUrl)
+
+    secondRead.complete(Result.failure(IllegalStateException("Unavailable")))
+    runCurrent()
+    val afterFailure = requireNotNull(viewModel.uiState.value.participantsSheet)
+    assertFalse(afterFailure.hasError)
+    assertEquals("Bob", afterFailure.rows.single().username)
+    assertEquals("bob.jpg", afterFailure.rows.single().profilePictureUrl)
+    assertEquals("bob.jpg", viewModel.uiState.value.sessions.single().hostPictureUrl)
+  }
+
+  /** A profile that no longer has a username replaces the earlier one. */
+  @Test
+  fun rosterDropsTheEarlierProfileWhenThereIsNoUsernameAnyMore() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    profileRepository.enqueue(BOB, Result.success(UserProfile(BOB, "Bob", "bob.jpg")))
+    profileRepository.enqueue(BOB, Result.success(null))
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val session = session("roster", BOB)
+    emissions.emit(Result.success(listOf(session)))
+    runCurrent()
+
+    viewModel.openParticipants(session.id)
+    runCurrent()
+
+    val row = requireNotNull(viewModel.uiState.value.participantsSheet).rows.single()
+    assertNull(row.username)
+    assertNull(row.profilePictureUrl)
+    assertNull(viewModel.uiState.value.sessions.single().hostName)
+    assertNull(viewModel.uiState.value.sessions.single().hostPictureUrl)
+  }
+
+  /** Coming back to the screen reads other hosts again; the first observation adds no read. */
+  @Test
+  fun returningToTheScreenReadsOtherHostsAgain() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    profileRepository.enqueue(BOB, Result.success(UserProfile(BOB, "Bob", "old.jpg")))
+    profileRepository.enqueue(BOB, Result.success(UserProfile(BOB, "Bob", "new.jpg")))
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    emissions.emit(Result.success(listOf(session("hosted", BOB), session("own", ALICE))))
+    runCurrent()
+    val firstVisit = observe(viewModel)
+    runCurrent()
+    assertEquals(listOf(BOB), profileRepository.getProfileUserIds)
+
+    firstVisit.cancel()
+    runCurrent()
+    observe(viewModel)
+    runCurrent()
+
+    assertEquals(listOf(BOB, BOB), profileRepository.getProfileUserIds)
+    val hosted = viewModel.uiState.value.sessions.first { it.session.id == "hosted" }
+    assertEquals("new.jpg", hosted.hostPictureUrl)
+  }
+
+  /** If the screen is reopened while a host's profile is still loading, it is not read twice. */
+  @Test
+  fun reopeningTheScreenDoesNotReadALoadingHostTwice() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    val pending = CompletableDeferred<Result<UserProfile?>>()
+    profileRepository.hold(BOB, pending)
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    emissions.emit(Result.success(listOf(session("hosted", BOB))))
+    runCurrent()
+    val firstVisit = observe(viewModel)
+    runCurrent()
+    firstVisit.cancel()
+    runCurrent()
+
+    val secondVisit = observe(viewModel)
+    runCurrent()
+    assertEquals(listOf(BOB), profileRepository.getProfileUserIds)
+
+    // The running read still applies, and once it has finished, reopening reads the host again.
+    pending.complete(Result.success(UserProfile(BOB, "Bob", "bob.jpg")))
+    runCurrent()
+    assertEquals("bob.jpg", viewModel.uiState.value.sessions.single().hostPictureUrl)
+    secondVisit.cancel()
+    runCurrent()
+    observe(viewModel)
+    runCurrent()
+    assertEquals(listOf(BOB, BOB), profileRepository.getProfileUserIds)
+  }
+
+  /** A session you created has no host picture URL, even once your own profile is cached. */
+  @Test
+  fun ownSessionCardHasNoHostPictureUrl() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    profileRepository.enqueue(
+        ALICE,
+        Result.success(UserProfile(uid = ALICE, username = "Alice", profilePictureUrl = "a.jpg")),
+    )
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val own = session("own", ALICE)
+    emissions.emit(Result.success(listOf(own)))
+    runCurrent()
+    viewModel.openParticipants(own.id)
+    runCurrent()
+    // A new snapshot rebuilds the cards after the profile has been cached.
+    emissions.emit(Result.success(listOf(own)))
+    runCurrent()
+
+    val row = requireNotNull(viewModel.uiState.value.participantsSheet).rows.single()
+    assertEquals("a.jpg", row.profilePictureUrl)
+    assertNull(viewModel.uiState.value.sessions.single().hostPictureUrl)
+  }
+
+  /** Refresh reads the host profile again, so a removed picture is not shown from the cache. */
+  @Test
+  fun refreshDropsAPictureUrlTheHostRemoved() = runTest {
+    authRepository.currentUser.value = account(ALICE)
+    profileRepository.enqueue(
+        BOB,
+        Result.success(UserProfile(uid = BOB, username = "Bob", profilePictureUrl = "bob.jpg")),
+    )
+    profileRepository.enqueue(BOB, Result.success(UserProfile(uid = BOB, username = "Bob")))
+    val emissions = MutableSharedFlow<Result<List<GroupSession>>>()
+    val viewModel = createViewModel(FlowGroupSessionsRepository(emissions))
+    val hosted = session("hosted", BOB)
+    emissions.emit(Result.success(listOf(hosted)))
+    runCurrent()
+    assertEquals("bob.jpg", viewModel.uiState.value.sessions.single().hostPictureUrl)
+
+    viewModel.refresh()
+    runCurrent()
+    emissions.emit(Result.success(listOf(hosted)))
+    runCurrent()
+
+    assertEquals("Bob", viewModel.uiState.value.sessions.single().hostName)
+    assertNull(viewModel.uiState.value.sessions.single().hostPictureUrl)
+  }
+
   /** Collects the state like a visible screen does, until the test ends or the job is cancelled. */
   private fun TestScope.observe(viewModel: GroupSessionsViewModel) =
       backgroundScope.launch(testDispatcher) { viewModel.uiState.collect {} }
@@ -1796,7 +2079,7 @@ class GroupSessionsViewModelTest {
       campusLocationRepository: CampusLocationRepository? = null,
       profiles: FakeProfileRepository = profileRepository,
       clock: Clock = MutableTestClock(now),
-      campusCenter: Location = testCampusCenter,
+      connectivityObserver: ConnectivityObserver? = null,
   ): GroupSessionsViewModel =
       GroupSessionsViewModel(
           authRepository = authRepository,
@@ -1805,7 +2088,7 @@ class GroupSessionsViewModelTest {
           locationProvider = locationProvider,
           campusLocationRepository = campusLocationRepository,
           profileRepository = profiles,
-          campusCenter = campusCenter,
+          connectivityObserver = connectivityObserver,
       )
 
   private fun visibleIds(viewModel: GroupSessionsViewModel): List<String> =
@@ -2034,7 +2317,12 @@ class GroupSessionsViewModelTest {
         return withContext(NonCancellable) { pending.await() }
       }
       val configured = outcomes[userId]
-      return if (configured.isNullOrEmpty()) Result.success(null) else configured.removeAt(0)
+      // The last answer repeats, as a stored profile does when it is read again.
+      return when {
+        configured.isNullOrEmpty() -> Result.success(null)
+        configured.size > 1 -> configured.removeAt(0)
+        else -> configured.single()
+      }
     }
 
     override suspend fun updateUsername(userId: String, username: String): Result<UserProfile> =

@@ -1,6 +1,7 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude AI Agent
 // Co-authored-by: Gemini AI Agent
+// Co-authored-by: Claude Sonnet 5.5
 package com.android.sample.ui.sharedComponents
 
 import androidx.compose.animation.AnimatedVisibility
@@ -28,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,6 +40,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.sample.R
@@ -46,16 +50,29 @@ import com.android.sample.ui.theme.DidYouStudyTheme
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 
-/** Displays a reusable add-action floating action button. */
+/**
+ * Displays a reusable add-action floating action button.
+ *
+ * @param enabled whether the button can be pressed. When false it is greyed out, does nothing when
+ *   tapped and is reported as disabled to accessibility services (a [FloatingActionButton] has no
+ *   `enabled` parameter of its own).
+ */
 @Composable
 fun AddButton(
     onClick: () -> Unit,
     contentDescription: String,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
   FloatingActionButton(
-      onClick = onClick,
-      modifier = modifier,
+      onClick = if (enabled) onClick else ({}),
+      containerColor =
+          if (enabled) FloatingActionButtonDefaults.containerColor
+          else MaterialTheme.colorScheme.surfaceVariant,
+      contentColor =
+          if (enabled) contentColorFor(FloatingActionButtonDefaults.containerColor)
+          else MaterialTheme.colorScheme.onSurfaceVariant,
+      modifier = modifier.semantics { if (!enabled) disabled() },
   ) {
     Icon(
         imageVector = Icons.Default.Add,

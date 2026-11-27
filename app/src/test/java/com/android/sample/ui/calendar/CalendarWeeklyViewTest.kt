@@ -26,7 +26,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.R
 import com.android.sample.model.event.EventDetails
 import com.android.sample.model.event.EventType
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.PersonalEvent
+import com.android.sample.ui.eventplanning.EventKind
 import com.android.sample.ui.theme.Dimens
 import java.time.Instant
 import java.time.LocalDate
@@ -536,6 +538,41 @@ class CalendarWeeklyViewTest {
 
     composeTestRule.onNodeWithText("Course").assertExists()
     composeTestRule.onNodeWithTag(CalendarTestTags.eventCard(event.id, 1)).assertIsDisplayed()
+  }
+
+  /** Each card reports its own ID and kind, so group sessions open as group sessions. */
+  @Test
+  fun timeGridCardClickReportsIdAndKind() {
+    val weekDates = CalendarDateHelper().weekDates(LocalDate.of(2026, 10, 14))
+    val personal = eventOn(weekDates[1], LocalTime.of(9, 0), LocalTime.of(10, 0), id = "personal")
+    val sessionSource = eventOn(weekDates[3], LocalTime.of(9, 0), LocalTime.of(10, 0))
+    val session =
+        GroupSession(
+            id = "session",
+            createdBy = "host",
+            memberIds = listOf("host"),
+            details = sessionSource.details,
+            createdAt = sessionSource.createdAt,
+        )
+    val clicks = mutableListOf<Pair<String, EventKind>>()
+    composeTestRule.setContent {
+      Box(modifier = Modifier.width(400.dp).height(800.dp)) {
+        CalendarTimeGrid(
+            modifier = Modifier.fillMaxSize(),
+            events = listOf(personal, session),
+            weekDates = weekDates,
+            onEventClick = { id, kind -> clicks += id to kind },
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(CalendarTestTags.eventCard("personal", 1)).performClick()
+    composeTestRule.onNodeWithTag(CalendarTestTags.eventCard("session", 3)).performClick()
+
+    assertEquals(
+        listOf("personal" to EventKind.PERSONAL, "session" to EventKind.GROUP_SESSION),
+        clicks,
+    )
   }
 
   /** Applies the calculated time and day placement to the rendered event card bounds. */

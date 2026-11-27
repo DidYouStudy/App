@@ -1,11 +1,13 @@
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Copilot
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 
 package com.android.sample.ui.eventplanning
 
 import com.android.sample.model.event.Event
 import com.android.sample.model.event.EventType
+import com.android.sample.model.event.GroupSession
 import com.android.sample.model.event.PersonalEvent
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -27,7 +29,20 @@ internal data class EventDetailsDisplay(
     val location: String?,
     val description: String?,
     val tasks: List<EventTaskDisplay>,
+    val isGroupSession: Boolean = false,
+    val participants: List<EventMember> = emptyList(),
+    val actions: EventDetailsActionSet = EventDetailsActionSet.EDIT_AND_DELETE,
 )
+
+/** Which action buttons the Event details screen offers for the displayed event. */
+internal enum class EventDetailsActionSet {
+  /** A personal event: Edit and Delete. */
+  EDIT_AND_DELETE,
+  /** A group session hosted by the signed-in user: Edit only (Delete lives in the editor). */
+  EDIT_ONLY,
+  /** A group session the signed-in user joined: no actions. */
+  NONE,
+}
 
 /** One checklist entry of [EventDetailsDisplay]. */
 internal data class EventTaskDisplay(val text: String, val isCompleted: Boolean)
@@ -35,14 +50,16 @@ internal data class EventTaskDisplay(val text: String, val isCompleted: Boolean)
 /**
  * Maps an [Event] to its [EventDetailsDisplay], formatting times in [zone].
  *
- * Only a [PersonalEvent] has a checklist; other kinds show no tasks.
+ * Personal events supply the checklist. Group sessions display [members] in their existing order.
  */
 internal fun Event.toDisplay(
     zone: ZoneId = ZoneId.systemDefault(),
     locale: Locale = Locale.getDefault(),
+    members: List<EventMember> = emptyList(),
 ): EventDetailsDisplay {
   val dateFormatter = DateTimeFormatter.ofPattern(EVENT_DATE_PATTERN, locale).withZone(zone)
   val timeFormatter = DateTimeFormatter.ofPattern(EVENT_TIME_PATTERN, locale).withZone(zone)
+  val isGroupSession = this is GroupSession
   return EventDetailsDisplay(
       type = details.type,
       title = details.subject?.takeIf { it.isNotBlank() },
@@ -55,5 +72,20 @@ internal fun Event.toDisplay(
           (this as? PersonalEvent)?.tasks.orEmpty().map {
             EventTaskDisplay(it.text, it.isCompleted)
           },
+      isGroupSession = isGroupSession,
+      participants = if (isGroupSession) members else emptyList(),
+      actions =
+          when {
+            !isGroupSession -> EventDetailsActionSet.EDIT_AND_DELETE
+            members.any { it.isHost && it.isCurrentUser } -> EventDetailsActionSet.EDIT_ONLY
+            else -> EventDetailsActionSet.NONE
+          },
   )
 }
+
+/** The [EventKind] this event is loaded and navigated as. */
+internal fun Event.kind(): EventKind =
+    when (this) {
+      is PersonalEvent -> EventKind.PERSONAL
+      is GroupSession -> EventKind.GROUP_SESSION
+    }

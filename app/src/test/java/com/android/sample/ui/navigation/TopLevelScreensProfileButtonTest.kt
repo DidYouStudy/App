@@ -4,14 +4,12 @@
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.sample.ui.navigation
 
-import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.lifecycle.ViewModel
-import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.sample.model.auth.AuthRepository
 import com.android.sample.model.auth.AuthRepositoryProvider
@@ -22,6 +20,9 @@ import com.android.sample.model.event.InMemoryEventsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepository
 import com.android.sample.model.groupsession.GroupSessionsRepositoryProvider
 import com.android.sample.model.location.FakeLocationProvider
+import com.android.sample.model.preferences.PreferencesRepository
+import com.android.sample.model.preferences.PreferencesRepositoryProvider
+import com.android.sample.model.preferences.UserPreferences
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.model.profile.UserProfile
 import com.android.sample.ui.calendar.CalendarDateHelper
@@ -30,7 +31,6 @@ import com.android.sample.ui.calendar.CalendarUiState
 import com.android.sample.ui.dashboard.DashboardScreen
 import com.android.sample.ui.groupsession.GroupSessionScreen
 import com.android.sample.ui.groupsession.GroupSessionsViewModel
-import com.android.sample.ui.groupsession.defaultCampusCenter
 import com.android.sample.ui.profile.ProfileButtonTestTags
 import java.time.Instant
 import java.time.LocalDate
@@ -55,6 +55,7 @@ class TopLevelScreensProfileButtonTest {
     AuthRepositoryProvider.setRepository(fakeAuthRepository)
     EventsRepositoryProvider.setRepository(InMemoryEventsRepository())
     GroupSessionsRepositoryProvider.setRepository(EmptyGroupSessionsRepository())
+    PreferencesRepositoryProvider.setRepository(FakePreferencesRepository())
   }
 
   @After
@@ -62,6 +63,7 @@ class TopLevelScreensProfileButtonTest {
     AuthRepositoryProvider.setRepository(null)
     EventsRepositoryProvider.setRepository(null)
     GroupSessionsRepositoryProvider.setRepository(null)
+    PreferencesRepositoryProvider.setRepository(null)
   }
 
   private val fakeAuthRepository =
@@ -132,8 +134,6 @@ class TopLevelScreensProfileButtonTest {
             EmptyGroupSessionsRepository(),
             EmptyProfileRepository(),
             locationProvider = FakeLocationProvider(),
-            campusCenter =
-                defaultCampusCenter(ApplicationProvider.getApplicationContext<Context>()),
         )
     assertProfileButtonOpensSettings(groupSessionsViewModel) { navigationActions, viewModel ->
       GroupSessionScreen(
@@ -183,5 +183,13 @@ class TopLevelScreensProfileButtonTest {
 
     override suspend fun updateProfilePictureUrl(userId: String, url: String): Result<Unit> =
         Result.failure(UnsupportedOperationException("Not needed in this test"))
+  }
+
+  private class FakePreferencesRepository : PreferencesRepository {
+    override suspend fun getPreferences(userId: String): Result<UserPreferences?> =
+        Result.success(null)
+
+    override suspend fun savePreferences(preferences: UserPreferences): Result<Unit> =
+        Result.success(Unit)
   }
 }

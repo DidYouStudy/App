@@ -191,10 +191,9 @@ dependencies {
   implementation(libs.maps.compose)
   implementation(libs.play.services.maps)
 
-  // Coil3 library which handles image loading through URL's ---- currently are untrusted artifacts
-  // but they will be needed for future implementations
-  //  implementation(libs.coil.compose)
-  //  implementation(libs.coil.network.okhttp)
+  // Coil 3 loads and caches images from URLs (the profile picture)
+  implementation(libs.coil.compose)
+  implementation(libs.coil.network.okhttp)
 
   debugImplementation(libs.compose.tooling)
   debugImplementation(libs.compose.test.manifest)
@@ -265,7 +264,7 @@ tasks.register("jacocoTestReport", JacocoReport::class) {
   executionData.setFrom(
       fileTree(layout.buildDirectory.get().asFile.absolutePath) {
         include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
-        include("outputs/code_coverage/debugAndroidTest/connected/*/*.ec")
+        include("outputs/code_coverage/**/debugAndroidTest/connected/*/*.ec")
       }
   )
 }

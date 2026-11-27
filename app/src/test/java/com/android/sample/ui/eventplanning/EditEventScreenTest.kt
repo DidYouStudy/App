@@ -33,6 +33,8 @@ import com.android.sample.model.location.CampusLocationFilter
 import com.android.sample.model.location.CampusLocationRepository
 import com.android.sample.model.location.CampusLocationType
 import com.android.sample.model.location.Location
+import com.android.sample.model.subject.InMemoryTrackedSubjectRepository
+import com.android.sample.model.subject.TrackedSubjectRepositoryProvider
 import com.android.sample.ui.eventplanning.EventPlanningScreenTestTags as Tags
 import java.time.Clock
 import java.time.Instant
@@ -93,6 +95,7 @@ class EditEventScreenTest {
   @Before
   fun setUp() {
     Dispatchers.setMain(testDispatcher)
+    TrackedSubjectRepositoryProvider.setRepository(InMemoryTrackedSubjectRepository())
     currentUser.value = UserAccount("user-1", null, null, null)
     whenever(authRepository.currentUser).thenReturn(currentUser)
     whenever(eventsRepository.observeSubjects(any()))
@@ -109,6 +112,7 @@ class EditEventScreenTest {
 
   @After
   fun tearDown() {
+    TrackedSubjectRepositoryProvider.setRepository(null)
     Dispatchers.resetMain()
   }
 
@@ -243,6 +247,27 @@ class EditEventScreenTest {
     composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).assertIsNotEnabled()
     composeTestRule.onNodeWithTag(Tags.DELETE_BUTTON).assertIsNotEnabled()
     composeTestRule.onNodeWithTag(Tags.DELETE_BUTTON_PROGRESS).assertIsDisplayed()
+  }
+
+  @Test
+  fun editStatelessGroupSessionOfflineDisablesSaveAndDeleteAndShowsOfflineMessage() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    setEditStatelessScreen(
+        uiState =
+            EventPlanningUiState(
+                eventKind = EventKind.GROUP_SESSION,
+                isEditing = true,
+                isOffline = true,
+            ),
+        onDeleteClick = {},
+    )
+
+    composeTestRule
+        .onNodeWithTag(Tags.OFFLINE_MESSAGE)
+        .assertIsDisplayed()
+        .assertTextEquals(context.getString(R.string.event_planning_offline_message))
+    composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(Tags.DELETE_BUTTON).assertIsNotEnabled()
   }
 
   @Test

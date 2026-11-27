@@ -9,10 +9,13 @@ import java.util.Locale
  *
  * @property spelling the latest display name for the subject.
  * @property tracked true if the student wants progress tracked for this subject.
+ * @property priority how important the student rates this subject, or null until one is saved. It
+ *   is kept when the subject is untracked, so tracking it again restores the earlier rating.
  */
 data class SubjectDecision(
     val spelling: String,
     val tracked: Boolean,
+    val priority: SubjectPriority? = null,
 )
 
 /**
@@ -45,6 +48,26 @@ data class SubjectDecisions(
     val key = SubjectCatalogFirestoreMapper.key(subject)
     return decisions.containsKey(key)
   }
+
+  /**
+   * Returns the saved priority of [subject], or null if [subject] is null, none was saved, or no
+   * decision exists.
+   *
+   * Subject comparison ignores case and surrounding whitespace. The priority is returned even for
+   * an untracked subject; callers that only show priorities for tracked subjects should combine it
+   * with [isTracked].
+   */
+  fun priorityOf(subject: String?): SubjectPriority? = subject?.let {
+    decisions[SubjectCatalogFirestoreMapper.key(it)]?.priority
+  }
+
+  /** Number of subjects the student marked as tracked. */
+  val trackedCount: Int
+    get() = decisions.values.count { it.tracked }
+
+  /** Number of subjects with a recorded decision, tracked or not. */
+  val decidedCount: Int
+    get() = decisions.size
 
   /**
    * Returns subjects from [subjects] for which no decision exists, keeping the first occurrence per

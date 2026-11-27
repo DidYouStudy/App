@@ -3,6 +3,7 @@
 package com.android.sample.ui.settings
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -15,6 +16,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.sample.R
 import com.android.sample.model.auth.AuthRepository
+import com.android.sample.model.profile.ImageCompressor
+import com.android.sample.model.profile.ProfilePictureRepository
 import com.android.sample.model.profile.ProfileRepository
 import com.android.sample.ui.navigation.NavigationTestTags
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,11 +56,13 @@ class SettingsScreenTest {
       events: MutableList<String>,
       username: String = "Alice",
       isLoading: Boolean = false,
+      isUploadingPicture: Boolean = false,
   ) {
     composeTestRule.setContent {
       SettingsScreenStateless(
           username = username,
           isLoading = isLoading,
+          isUploadingPicture = isUploadingPicture,
           onBackClick = { events += "back" },
           onEditUsernameClick = { events += "editUsername" },
           onChangeProfilePictureClick = { events += "changeProfilePicture" },
@@ -77,14 +82,19 @@ class SettingsScreenTest {
       SettingsScreen(
           viewModel = viewModel,
           onBackClick = { events += "back" },
-          onChangeProfilePictureClick = { events += "changeProfilePicture" },
           onModifyPreferencesClick = { events += "preferences" },
           onManageFriendsClick = { events += "friends" },
       )
     }
   }
 
-  private fun createViewModel() = SettingsViewModel(authRepository, profileRepository)
+  private fun createViewModel() =
+      SettingsViewModel(
+          authRepository,
+          profileRepository,
+          mock<ProfilePictureRepository>(),
+          mock<ImageCompressor>(),
+      )
 
   /** Makes the mocked repository's suspending [AuthRepository.signOut] throw [error]. */
   private fun makeSignOutFail(error: Throwable) {
@@ -228,6 +238,21 @@ class SettingsScreenTest {
     assertEquals(listOf("changeProfilePicture"), events)
   }
 
+  /**
+   * While a picture uploads, the avatar shows a progress ring and the change button is disabled.
+   */
+  @Test
+  fun uploadingPictureShowsProgressAndDisablesTheChangeButton() {
+    setStatelessContent(mutableListOf(), isUploadingPicture = true)
+
+    composeTestRule
+        .onNodeWithTag(SettingsScreenTestTags.PICTURE_UPLOADING_INDICATOR)
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(SettingsScreenTestTags.CHANGE_PROFILE_PICTURE_BUTTON)
+        .assertIsNotEnabled()
+  }
+
   @Test
   fun preferencesButtonInvokesOnlyItsCallback() {
     val events = mutableListOf<String>()
@@ -285,14 +310,11 @@ class SettingsScreenTest {
     setStatefulContent(createViewModel(), events)
 
     composeTestRule.onNodeWithTag(NavigationTestTags.GO_BACK_BUTTON).performClick()
-    composeTestRule
-        .onNodeWithTag(SettingsScreenTestTags.CHANGE_PROFILE_PICTURE_BUTTON)
-        .performClick()
     composeTestRule.onNodeWithTag(SettingsScreenTestTags.PREFERENCES_BUTTON).performClick()
     composeTestRule.onNodeWithTag(SettingsScreenTestTags.FRIENDS_BUTTON).performClick()
 
     assertEquals(
-        listOf("back", "changeProfilePicture", "preferences", "friends"),
+        listOf("back", "preferences", "friends"),
         events,
     )
   }

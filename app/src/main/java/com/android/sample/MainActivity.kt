@@ -4,6 +4,7 @@
 // Co-authored-by: Claude Opus 5.5
 // Co-authored-by: Gemini AI Agent
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: OpenAI Codex <noreply@openai.com>
 package com.android.sample
 
 import android.os.Bundle
@@ -50,6 +51,7 @@ import com.android.sample.ui.groupsession.GroupSessionScreen
 import com.android.sample.ui.navigation.NavigationActions
 import com.android.sample.ui.navigation.NavigationTestTags
 import com.android.sample.ui.navigation.Screen
+import com.android.sample.ui.navigation.eventKindArgument
 import com.android.sample.ui.preferences.PreferencesScreen
 import com.android.sample.ui.preferences.rememberScheduleImportLauncher
 import com.android.sample.ui.settings.SettingsScreen
@@ -212,10 +214,10 @@ fun DidYouStudyApp(
                   applicationViewModel::canNavigateTo,
               )
             },
-            onEventClick = { eventId ->
+            onEventClick = { eventId, kind ->
               navController.runIfCurrentEntry(entry) {
                 navigationActions.navigateIfAllowed(
-                    Screen.EventDetails(eventId),
+                    Screen.EventDetails(eventId, kind),
                     applicationViewModel::canNavigateTo,
                 )
               }
@@ -263,9 +265,17 @@ fun DidYouStudyApp(
 
     composable(
         Screen.EventDetails.ROUTE,
-        arguments = listOf(navArgument(Screen.EVENT_ID_ARGUMENT) { type = NavType.StringType }),
+        arguments =
+            listOf(
+                navArgument(Screen.EVENT_ID_ARGUMENT) { type = NavType.StringType },
+                navArgument(Screen.EVENT_KIND_ARGUMENT) {
+                  type = NavType.StringType
+                  defaultValue = EventKind.PERSONAL.name
+                },
+            ),
     ) { entry ->
       val eventId = entry.arguments?.getString(Screen.EVENT_ID_ARGUMENT) ?: return@composable
+      val kind = eventKindArgument(entry.arguments?.getString(Screen.EVENT_KIND_ARGUMENT))
       val viewModel = eventDetailsViewModel()
       val eventEdited by
           entry.savedStateHandle
@@ -273,18 +283,19 @@ fun DidYouStudyApp(
               .collectAsStateWithLifecycle()
       LaunchedEffect(eventEdited) {
         if (eventEdited) {
-          viewModel.loadEvent(eventId, refresh = true)
+          viewModel.loadEvent(eventId, kind, refresh = true)
           entry.savedStateHandle[EVENT_EDITED_RESULT] = false
         }
       }
       EventDetailsScreen(
           eventId = eventId,
+          kind = kind,
           viewModel = viewModel,
           onNavigateBack = { navController.runIfCurrentEntry(entry, navigationActions::goBack) },
-          onEdit = { selectedEventId ->
+          onEdit = { selectedEventId, selectedKind ->
             navController.runIfCurrentEntry(entry) {
               navigationActions.navigateIfAllowed(
-                  Screen.EditEvent(selectedEventId),
+                  Screen.EditEvent(selectedEventId, selectedKind),
                   applicationViewModel::canNavigateTo,
               )
             }
@@ -320,11 +331,10 @@ fun DidYouStudyApp(
         route = Screen.Settings.name,
     ) {
       composable(Screen.Settings.route) {
-        // Profile-picture editing and friends management are not built yet.
+        // Friends management are not built yet.
         val notImplemented = rememberNotImplementedToast()
         SettingsScreen(
             onBackClick = navigationActions::goBack,
-            onChangeProfilePictureClick = notImplemented,
             onModifyPreferencesClick = {
               navigationActions.navigateIfAllowed(
                   Screen.Preferences,
@@ -348,7 +358,7 @@ private fun NavGraphBuilder.editEventDestination(
       arguments =
           listOf(
               navArgument(Screen.EVENT_ID_ARGUMENT) { type = NavType.StringType },
-              navArgument("kind") {
+              navArgument(Screen.EVENT_KIND_ARGUMENT) {
                 type = NavType.StringType
                 defaultValue = EventKind.PERSONAL.name
               },
@@ -359,10 +369,7 @@ private fun NavGraphBuilder.editEventDestination(
       LaunchedEffect(Unit) { navController.runIfCurrentEntry(entry, navigationActions::goBack) }
       return@composable
     }
-    val kind =
-        entry.arguments?.getString("kind")?.let {
-          runCatching { EventKind.valueOf(it) }.getOrNull()
-        } ?: EventKind.PERSONAL
+    val kind = eventKindArgument(entry.arguments?.getString(Screen.EVENT_KIND_ARGUMENT))
     EditEventScreen(
         eventId = eventId,
         eventKind = kind,
@@ -379,7 +386,7 @@ private fun NavGraphBuilder.editEventDestination(
         onEventDelete = {
           navController.runIfCurrentEntry(entry) {
             if (navController.previousEventDetails(eventId, kind) != null) {
-              navigationActions.goBackPast(Screen.EventDetails(eventId))
+              navigationActions.goBackPast(Screen.EventDetails(eventId, kind))
             } else {
               navigationActions.goBack()
             }
@@ -389,15 +396,15 @@ private fun NavGraphBuilder.editEventDestination(
   }
 }
 
-/** Finds the matching personal event details entry that opened the editor. */
+/** Finds the preceding Details entry with the same event ID and kind. */
 private fun NavHostController.previousEventDetails(
     eventId: String,
     kind: EventKind,
 ): NavBackStackEntry? {
-  if (kind != EventKind.PERSONAL) return null
   return previousBackStackEntry?.takeIf {
     it.destination.route == Screen.EventDetails.ROUTE &&
-        it.arguments?.getString(Screen.EVENT_ID_ARGUMENT) == eventId
+        it.arguments?.getString(Screen.EVENT_ID_ARGUMENT) == eventId &&
+        eventKindArgument(it.arguments?.getString(Screen.EVENT_KIND_ARGUMENT)) == kind
   }
 }
 

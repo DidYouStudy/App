@@ -47,6 +47,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.android.sample.R
 import com.android.sample.model.event.Event
+import com.android.sample.ui.eventplanning.EventKind
+import com.android.sample.ui.eventplanning.kind
 import com.android.sample.ui.theme.Dimens
 import com.android.sample.ui.theme.Spacing
 import com.android.sample.ui.theme.calendarDateLabelStyle
@@ -76,6 +78,7 @@ object CalendarTestTags {
   const val TIME_GRID = "calendar_timeGrid"
   const val ADD_BUTTON = "calendar_addButton"
   const val TODAY_BUTTON = "calendar_todayButton"
+  const val LOADING = "calendar_loading"
 
   /** Creates a stable tag for an event card in a specific day column. */
   fun eventCard(eventId: String, dayIndex: Int): String =
@@ -114,7 +117,7 @@ object CalendarTestTags {
  * @param onPreviousWeek Callback invoked when the previous-week control is clicked.
  * @param onNextWeek Callback invoked when the next-week control is clicked.
  * @param modifier The modifier applied to the weekly calendar's root column.
- * @param onEventClick Callback receiving the selected event's ID.
+ * @param onEventClick Callback receiving the selected event's ID and kind.
  */
 @Composable
 internal fun CalendarWeeklyView(
@@ -122,7 +125,7 @@ internal fun CalendarWeeklyView(
     onPreviousWeek: () -> Unit,
     onNextWeek: () -> Unit,
     modifier: Modifier = Modifier,
-    onEventClick: (String) -> Unit = {},
+    onEventClick: (String, EventKind) -> Unit = { _, _ -> },
 ) {
   BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     // Checks the dimensions of the screen and decide whether to make the headers compact
@@ -339,14 +342,14 @@ private fun CalendarTodayCircle(modifier: Modifier = Modifier) {
  * viewport has enough scroll range.
  *
  * @param modifier The modifier applied to the timeline container.
- * @param onEventClick Callback receiving the selected event's ID.
+ * @param onEventClick Callback receiving the selected event's ID and kind.
  */
 @Composable
 fun CalendarTimeGrid(
     modifier: Modifier = Modifier,
     events: List<Event> = emptyList(),
     weekDates: List<LocalDate> = emptyList(),
-    onEventClick: (String) -> Unit = {},
+    onEventClick: (String, EventKind) -> Unit = { _, _ -> },
 ) {
   // Keep the grid vertically scrollable
   val scrollState = remember { ScrollState(0) }
@@ -428,7 +431,7 @@ fun CalendarTimeGrid(
                           .offset(x = cardWidth * placement.laneIndex, y = placement.top)
                           .height(maxOf(Dimens.calendarEventCardMinHeight, placement.height))
                           .testTag(CalendarTestTags.eventCard(placement.event.id, dayIndex)),
-                  onClick = { onEventClick(placement.event.id) },
+                  onClick = { onEventClick(placement.event.id, placement.event.kind()) },
               )
             }
           }

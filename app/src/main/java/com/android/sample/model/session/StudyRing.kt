@@ -1,0 +1,94 @@
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+package com.android.sample.model.session
+
+import java.time.Duration
+import java.time.Instant
+
+/** Identifies whether the current ring segment is study time or break time. */
+enum class RingMode {
+  /** The session is currently in a study segment. */
+  STUDYING,
+  /** The session is currently in a break segment. */
+  BREAK,
+}
+
+/** Describes the current segment and overall session progress. */
+data class RingState(
+    /** Whether the current segment is study time or break time. */
+    val mode: RingMode,
+    /** Progress from 0 to 1 inside the current segment. */
+    val progress: Float,
+    /** Time remaining in the current segment. */
+    val segmentRemaining: Duration,
+    /** Time remaining in the overall session. */
+    val sessionRemaining: Duration,
+    /** Whether the session has passed its end. */
+    val isOvertime: Boolean,
+    /**
+     * Exact end of the current study or break period. The card uses this to show a countdown with
+     * seconds; [segmentRemaining] is computed at the start of the current minute.
+     */
+    val segmentEndsAt: Instant,
+    /**
+     * Exact end of the session. The card uses this to show a countdown with seconds;
+     * [sessionRemaining] is computed at the start of the current minute.
+     */
+    val sessionEndsAt: Instant,
+)
+
+/** Computes the ring state for a timed study session. */
+object StudyRingCalculator {
+  /** Computes the segment containing [now], or overtime after [end]. */
+  fun compute(
+      start: Instant,
+      end: Instant,
+      now: Instant,
+      breakFrequency: Duration,
+      breakLength: Duration,
+  ): RingState {
+    require(end.isAfter(start))
+    require(!breakFrequency.isZero && !breakFrequency.isNegative)
+    require(!breakLength.isZero && !breakLength.isNegative)
+    require(!now.isBefore(start))
+
+    if (!now.isBefore(end)) {
+      return RingState(
+          RingMode.STUDYING,
+          1f,
+          Duration.ZERO,
+          Duration.ZERO,
+          isOvertime = true,
+          segmentEndsAt = end,
+          sessionEndsAt = end,
+      )
+    }
+
+    var segmentStart = start
+    var mode = RingMode.STUDYING
+    var segmentLength = breakFrequency
+    while (true) {
+      val segmentEnd = minOf(segmentStart.plus(segmentLength), end)
+      if (now.isBefore(segmentEnd)) {
+        val elapsed = Duration.between(segmentStart, now)
+        val actualSegmentLength = Duration.between(segmentStart, segmentEnd)
+        return RingState(
+            mode = mode,
+            progress = elapsed.toMillis().toFloat() / actualSegmentLength.toMillis().toFloat(),
+            segmentRemaining = Duration.between(now, segmentEnd),
+            sessionRemaining = Duration.between(now, end),
+            isOvertime = false,
+            segmentEndsAt = segmentEnd,
+            sessionEndsAt = end,
+        )
+      }
+      segmentStart = segmentEnd
+      if (mode == RingMode.STUDYING) {
+        mode = RingMode.BREAK
+        segmentLength = breakLength
+      } else {
+        mode = RingMode.STUDYING
+        segmentLength = breakFrequency
+      }
+    }
+  }
+}
