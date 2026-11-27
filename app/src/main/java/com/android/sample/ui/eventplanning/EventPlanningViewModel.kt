@@ -347,8 +347,17 @@ class EventPlanningViewModel(
     copy(endTime = endTime, hasSetCustomEndTime = true)
   }
 
-  /** Updates the optional event location. */
-  fun setLocation(location: String) = updateForm { copy(location = location) }
+  /** Updates the optional event location, capped at [EventTextLimits.LOCATION] characters. */
+  fun setLocation(location: String) = updateForm {
+    copy(
+        location =
+            applyTextLimit(
+                current = this.location,
+                newValue = location,
+                limit = EventTextLimits.LOCATION,
+            )
+    )
+  }
 
   /** Updates the optional event description. */
   fun setDescription(description: String) = updateForm {

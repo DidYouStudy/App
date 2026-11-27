@@ -13,6 +13,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
 import java.time.Instant
@@ -91,15 +92,23 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
     clients.clear()
   }
 
-  /** A creator's saved session round-trips identically for another signed-in user. */
+  /**
+   * A creator's saved session round-trips for another signed-in user, with creation and edit times
+   * set by the server instead of the phone's clock.
+   */
   @Test
   fun creatorSavesAndAnotherUserReadsEqualSession() = runBlocking {
-    val value = session(creator, uniqueId())
+    val phoneTime = Instant.parse("2020-01-01T00:00:00Z")
+    val value = session(creator, uniqueId()).copy(createdAt = phoneTime, updatedAt = phoneTime)
+    val before = Instant.now()
 
     creator.repository.saveSession(creator.uid, value).getOrThrow()
     sync(creator)
 
-    assertEquals(value, outsider.repository.getSession(value.id).getOrThrow())
+    val stored = outsider.repository.getSession(value.id).getOrThrow()
+    assertEquals(withoutTimes(value), withoutTimes(stored))
+    assertEquals(stored.createdAt, stored.updatedAt)
+    assertRecent(stored.createdAt, before)
   }
 
   /** Creation rejects mismatched creator/auth identities and membership beyond the creator. */
@@ -131,13 +140,17 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
     assertMissing(outsider, extraMemberId)
   }
 
-  /** Creator edits retain stored membership and creation time after a member joins. */
+  /**
+   * Creator edits retain stored membership and creation time after a member joins, and the server
+   * sets the edit time.
+   */
   @Test
   fun creatorEditKeepsStoredMembersAndCreatedAt() = runBlocking {
     val original = session(creator, uniqueId())
     creator.repository.saveSession(creator.uid, original).getOrThrow()
     member.repository.joinSession(member.uid, original.id).getOrThrow()
     sync(member)
+    val storedCreatedAt = outsider.repository.getSession(original.id).getOrThrow().createdAt
 
     val edited =
         original.copy(
@@ -149,13 +162,14 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
     creator.repository.saveSession(creator.uid, edited).getOrThrow()
     sync(creator)
 
+    val stored = outsider.repository.getSession(original.id).getOrThrow()
     assertEquals(
-        edited.copy(
-            memberIds = listOf(creator.uid, member.uid),
-            createdAt = original.createdAt,
-        ),
-        outsider.repository.getSession(original.id).getOrThrow(),
+        withoutTimes(edited.copy(memberIds = listOf(creator.uid, member.uid))),
+        withoutTimes(stored),
     )
+    assertEquals(storedCreatedAt, stored.createdAt)
+    assertTrue(stored.updatedAt > storedCreatedAt)
+    assertTrue(stored.updatedAt < edited.updatedAt)
   }
 
   /** Clearing optional details through a save persists no location or description value. */
@@ -177,7 +191,10 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
     val data = serverData(outsider, original.id)
     assertNull(data["location"])
     assertNull(data["description"])
-    assertEquals(cleared, outsider.repository.getSession(original.id).getOrThrow())
+    assertEquals(
+        withoutTimes(cleared),
+        withoutTimes(outsider.repository.getSession(original.id).getOrThrow()),
+    )
   }
 
   /** Non-creators and attempts to change creator identity fail without modifying stored data. */
@@ -336,7 +353,10 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
         withTimeout(TIMEOUT_MILLIS) {
           outsider.repository.observeSessions(threshold).first().getOrThrow()
         }
-    assertEquals(expected, observed.filter { it.id in testIds })
+    assertEquals(
+        expected.map(::withoutTimes),
+        observed.filter { it.id in testIds }.map(::withoutTimes),
+    )
   }
 
   /** Membership and creator edits arrive in another user's live observation flow. */
@@ -353,7 +373,7 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
         withTimeout(TIMEOUT_MILLIS) {
           flow.first { result -> result.getOrThrow().any { it.id == original.id } }.getOrThrow()
         }
-    assertEquals(original, initial.first { it.id == original.id })
+    assertEquals(withoutTimes(original), withoutTimes(initial.first { it.id == original.id }))
 
     val joined =
         async(Dispatchers.IO) {
@@ -431,6 +451,7 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
     member.repository.joinSession(member.uid, created.id).getOrThrow()
     sync(member)
     val original = created.copy(memberIds = listOf(creator.uid, member.uid))
+    val storedUpdatedAt = serverData(outsider, original.id)["updatedAt"] as Timestamp
 
     member.repository.joinSession(member.uid, original.id).getOrThrow()
     member.repository.joinSession(member.uid, original.id).getOrThrow()
@@ -439,9 +460,9 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
 
     val afterNoOps = serverData(outsider, original.id)
     assertEquals(listOf(creator.uid, member.uid), afterNoOps["memberIds"])
-    assertEquals(timestamp(original.updatedAt), afterNoOps["updatedAt"])
+    assertEquals(storedUpdatedAt, afterNoOps["updatedAt"])
     assertEquals(
-        original.updatedAt,
+        instant(storedUpdatedAt),
         outsider.repository.getSession(original.id).getOrThrow().updatedAt,
     )
 
@@ -449,7 +470,7 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
     sync(member)
     val afterLeave = serverData(outsider, original.id)
     assertEquals(listOf(creator.uid), afterLeave["memberIds"])
-    assertEquals(timestamp(original.updatedAt), afterLeave["updatedAt"])
+    assertEquals(storedUpdatedAt, afterLeave["updatedAt"])
   }
 
   /** The creator cannot leave and missing-session joins or leaves report NOT_FOUND. */
@@ -791,7 +812,13 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
 
   /** Writes a rule-valid but undecodable payload directly, bypassing the repository mapper. */
   private suspend fun writeUndecodableSession(id: String) {
-    val payload = GroupSessionFirestoreMapper.encode(session(creator, id)) + ("subject" to "\u00A0")
+    val payload =
+        GroupSessionFirestoreMapper.encode(session(creator, id)) +
+            mapOf(
+                "subject" to "\u00A0",
+                GroupSessionFirestoreMapper.CREATED_AT to FieldValue.serverTimestamp(),
+                GroupSessionFirestoreMapper.UPDATED_AT to FieldValue.serverTimestamp(),
+            )
     timed {
       creator.db
           .collection(GroupSessionFirestoreMapper.COLLECTION)
@@ -851,13 +878,28 @@ class GroupSessionsRepositoryFirestoreEmulatorTest {
   /** Uses one-second precision for stable Firestore timestamp round-trips. */
   private fun now(): Instant = Instant.now().truncatedTo(ChronoUnit.SECONDS)
 
-  /** Converts an instant to a Firestore timestamp. */
-  private fun timestamp(value: Instant) = Timestamp(value.epochSecond, value.nano)
+  /** Converts a Firestore timestamp to an instant. */
+  private fun instant(value: Timestamp): Instant =
+      Instant.ofEpochSecond(value.seconds, value.nanoseconds.toLong())
+
+  /** Replaces the server-set times, which a test cannot predict, before comparing sessions. */
+  private fun withoutTimes(session: GroupSession) =
+      session.copy(createdAt = Instant.EPOCH, updatedAt = Instant.EPOCH)
+
+  /**
+   * Requires [stored] to be a server time from this test run, not a phone-chosen one. The bound is
+   * loose because the emulator clock and the server clock can differ slightly.
+   */
+  private fun assertRecent(stored: Instant, before: Instant) {
+    assertTrue(stored > before.minusSeconds(CLOCK_TOLERANCE_SECONDS))
+    assertTrue(stored < Instant.now().plusSeconds(CLOCK_TOLERANCE_SECONDS))
+  }
 
   /** Returns a unique document ID for test isolation. */
   private fun uniqueId(): String = UUID.randomUUID().toString()
 
   private companion object {
     const val TIMEOUT_MILLIS = 15_000L
+    const val CLOCK_TOLERANCE_SECONDS = 120L
   }
 }

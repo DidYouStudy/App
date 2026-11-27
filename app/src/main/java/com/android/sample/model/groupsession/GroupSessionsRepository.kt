@@ -49,9 +49,10 @@ interface GroupSessionsRepository {
    * security rules also refuse a new session whose members include anyone besides its creator, with
    * PERMISSION_DENIED. Updating an undecodable stored session fails with INVALID_EVENT_DATA.
    *
-   * Timestamps are the caller's responsibility: set [GroupSession.updatedAt] to the edit time
-   * before saving an update; the repository stores it as given and never reads a clock. Joining and
-   * leaving do not change [GroupSession.updatedAt].
+   * Set [GroupSession.createdAt] and [GroupSession.updatedAt] to the device's time before saving.
+   * An implementation backed by a server may store its own clock instead (the Firestore one does),
+   * so read the session back for the stored values. Joining and leaving do not change
+   * [GroupSession.updatedAt].
    */
   suspend fun saveSession(userId: String, session: GroupSession): Result<Unit>
 

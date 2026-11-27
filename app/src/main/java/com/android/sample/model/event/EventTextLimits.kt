@@ -1,10 +1,17 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.sample.model.event
 
-/** Character limits shared by event text fields and their ViewModel. */
+/**
+ * Character limits shared by event text fields and their ViewModel.
+ *
+ * `firestore.rules` enforces the same [SUBJECT], [LOCATION] and [DESCRIPTION] limits for group
+ * sessions; change both files together.
+ */
 object EventTextLimits {
   const val DESCRIPTION = 500
   const val SUBJECT = 100
+  const val LOCATION = 100
   const val TASK = 200
 }
 
