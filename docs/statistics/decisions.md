@@ -4,7 +4,7 @@
 
 This document records what the team decided for the statistics flow, and what is still open.
 It builds on the wiki page [M3 Statistics flow plan](https://github.com/DidYouStudy/App/wiki/M3-Statistics-flow-plan).
-The decisions come from the review threads of this PR (22 to 27 November 2026), the review of PR #407, and a team discussion on 27 November 2026.
+The decisions come from the review threads of this PR (22 to 27 November 2026), the review of PR #407, and the team meeting of 27 November 2026 (five members).
 
 ## How to use this document
 
@@ -44,7 +44,7 @@ Source: Maria and Steven on this PR; wiki plan.
 - **Start now** (on the "Your day" card) starts an event early. It moves the event's start time through the edit event functions, but it does **not** start tracking: the student still taps **Start tracking time**.
 - **End event** (on the current session card) asks for confirmation, then stops tracking and ends the event. It moves the event's end time through the edit event functions.
 
-Source: Daniel and Maria on this PR; team discussion on 27 November.
+Source: Daniel and Maria on this PR; team meeting of 27 November.
 
 ### D3. Shape of a record
 
@@ -75,7 +75,7 @@ The **recorded focus time**: the sum of the tracked intervals. This is the "Aver
 
 It is affected by Start now and End event (they move the event and stop tracking, see D2) and by the Start / Pause tracking time buttons, which alone start and stop the recording.
 
-Source: team discussion on 27 November; wiki plan.
+Source: team meeting of 27 November; wiki plan.
 
 ### D8. Focus score
 
@@ -85,7 +85,7 @@ Example: 60 minutes planned with one 10-minute suggested break gives 50 minutes 
 
 "Average focus duration" must be added to the current dashboard mockups on Figma.
 
-Source: Daniel on this PR; team discussion on 27 November; wiki plan. The wiki says "against the total planned studying time": whether that already excludes the suggested breaks is open point 3.
+Source: Daniel on this PR; team meeting of 27 November; wiki plan. The wiki says "against the total planned studying time": whether that already excludes the suggested breaks is open point 3.
 
 ### D9. Subjects that do not come from an import
 
@@ -109,21 +109,21 @@ Decided in the review of PR #407 and implemented there: `StudyLog` (renamed from
 - A **See more** link opens the list of the student's subjects. Choosing one opens a **screen for that subject or course**, with a button per week to filter.
 - Each course card can be opened for more details: rings per week, overall perceived difficulty, AI feedback.
 
-Source: team discussion on 27 November; Daniel on this PR.
+Source: team meeting of 27 November; Daniel on this PR.
 
 ### Notifications
 
 - Before an event starts, when a suggested break ends, and when an event ends.
 - Suggested breaks are sent as a notification to take a break; they are never mandatory.
 
-Source: team discussion on 27 November. Task #392 covers part of it and needs an update.
+Source: team meeting of 27 November. Task #392 covers part of it and needs an update.
 
 ### Text feedback and AI feedback
 
 - The student can write a text comment on a past session, in a dialog from Event Details (#401). It is stored in the study log.
 - AI feedback is only generated on demand, with an **Ask for AI feedback** button, never automatically.
 
-Source: Yuhan on this PR; team discussion on 27 November.
+Source: Yuhan on this PR; team meeting of 27 November.
 
 ## Still open
 
